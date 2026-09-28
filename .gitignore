@@ -1,0 +1,40 @@
+# Unreal Engine generated folders (rebuilt automatically)
+Binaries/
+Intermediate/
+Saved/
+DerivedDataCache/
+Build/*
+!Build/*/
+Build/*/**
+!Build/*/Resources/
+!Build/*/Resources/**
+Plugins/**/Binaries/
+Plugins/**/Intermediate/
+
+# IDE / project files generated on Linux and Windows
+.vs/
+.vscode/
+.idea/
+*.sln
+*.suo
+*.vcxproj*
+*.code-workspace
+*.kdev4
+*.pri
+*.pro
+*.pro.user
+.kdev4/
+Makefile
+CMakeLists.txt
+cmake-build-*/
+compile_commands.json
+.clangd/
+.cache/
+
+# Packaged builds
+Builds/
+ArchivedBuilds/
+
+# OS files
+.DS_Store
+Thumbs.db
