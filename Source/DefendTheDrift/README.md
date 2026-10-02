@@ -19,7 +19,7 @@ are the files the guide's Phase 1 calls "the zip".
 | `DTDTypes.h` | enums | Faction, Formation, Unit State |
 | `DTDUnit` | `ADTDUnit` | One man: stance, volley, fire arc, reload, targeting, melee, death |
 | `DTDSquadComponent` | `UDTDSquadComponent` | Spawns units, formation slots, passes orders on, `On Order Given` event |
-| `DTDCommander` | `ADTDCommander` | One per squad; the pawn a player drives; carries the squad |
+| `DTDCommander` | `ADTDCommander` | One per squad; the unit a player drives; carries the squad; if he falls, his side loses |
 | `DTDSquadStart` | `ADTDSquadStart` | Where and when a squad enters |
 | `DTDPlayerController` | `ADTDPlayerController` | Enhanced Input to squad orders, switching squads, camera-relative movement |
 | `DTDGameMode` | `ADTDGameMode` | Creates Player 2, sides, squad arrivals, reserves, win check |
@@ -38,7 +38,9 @@ are the files the guide's Phase 1 calls "the zip".
 - Line of sight is a chest-to-chest trace against `WorldStatic` only. Standing
   chest height is about 141 cm and kneeling about 64 cm, so a 110 cm wall hides a
   kneeling man but not a standing one.
-- Commanders are not units, so nothing targets them; they cannot fall.
+- `ADTDCommander` is a child of `ADTDUnit`, so commanders can be shot, take part in
+  melee and fall. He follows the player's input instead of a slot, and has 300
+  Max Health by default. If any commander falls, his side loses the match.
 
 ## Blueprint hooks
 

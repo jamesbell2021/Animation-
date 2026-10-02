@@ -178,6 +178,9 @@ public:
 protected:
 	virtual void BeginPlay() override;
 
+	/** False for a unit a player moves himself (the commander): he doesn't walk to a slot or turn to its facing. */
+	virtual bool FollowsSlot() const { return true; }
+
 private:
 	void UpdateStance();
 	void UpdateMovement(float Now);
@@ -213,7 +216,7 @@ private:
 	UPROPERTY(VisibleInstanceOnly, Category = "DTD|State")
 	bool bHoldDown = false;
 
-	TWeakObjectPtr<UDTDSquadComponent> Squad;
+	TWeakObjectPtr<UDTDSquadComponent> OwningSquad;
 	TWeakObjectPtr<ADTDUnit> FireTarget;
 	TWeakObjectPtr<ADTDUnit> ChargeTarget;
 

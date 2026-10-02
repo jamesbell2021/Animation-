@@ -271,6 +271,19 @@ void ADTDGameMode::UpdateCountsAndCheckWin(float DeltaSeconds)
 		State->ZuluToCome = ZuluToCome;
 	}
 
+	// A commander falling loses the match for his side.
+	for (const ADTDCommander* Commander : Commanders)
+	{
+		if (IsValid(Commander) && Commander->IsDead())
+		{
+			const EDTDFaction Loser = Commander->Faction;
+			EndMatch(
+				Loser == EDTDFaction::British ? EDTDFaction::Zulu : EDTDFaction::British,
+				FText::Format(LOCTEXT("CommanderFell", "{0} lost its commander."), Commander->SquadName));
+			return;
+		}
+	}
+
 	// The storehouse: Zulu alone inside fills the bar; anything else drains it.
 	if (Objective)
 	{

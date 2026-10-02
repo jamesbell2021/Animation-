@@ -1,18 +1,18 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameFramework/Character.h"
-#include "DTDTypes.h"
+#include "DTDUnit.h"
 #include "DTDCommander.generated.h"
 
 class UDTDSquadComponent;
 
 /**
  * One per squad: the officer or induna a player drives. The squad forms up around him.
- * Commanders are not units, so nobody targets them.
+ * He is a unit himself, so he can be shot and fights anyone who reaches him.
+ * If any commander falls, his side loses the match.
  */
 UCLASS()
-class DEFENDTHEDRIFT_API ADTDCommander : public ACharacter
+class DEFENDTHEDRIFT_API ADTDCommander : public ADTDUnit
 {
 	GENERATED_BODY()
 
@@ -22,15 +22,9 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "DTD")
 	TObjectPtr<UDTDSquadComponent> Squad;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "DTD")
-	EDTDFaction Faction = EDTDFaction::British;
-
 	/** "Lieutenant", "Induna"... */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "DTD")
 	FText CommanderTitle;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "DTD", meta = (ClampMin = "0"))
-	float WalkSpeed = 300.f;
 
 	/** Set from the Squad Start he arrived at. */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "DTD")
@@ -42,4 +36,5 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
+	virtual bool FollowsSlot() const override { return false; }
 };

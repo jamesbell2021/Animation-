@@ -5,25 +5,20 @@
 
 ADTDCommander::ADTDCommander()
 {
-	PrimaryActorTick.bCanEverTick = true;
-
 	Squad = CreateDefaultSubobject<UDTDSquadComponent>(TEXT("Squad"));
 
-	// The player controller drives him without possessing him, so the view stays on the shared camera.
-	AutoPossessAI = EAutoPossessAI::Disabled;
-	AIControllerClass = nullptr;
-	bUseControllerRotationPitch = false;
-	bUseControllerRotationYaw = false;
-	bUseControllerRotationRoll = false;
+	// Losing him loses the match, so he takes a few hits rather than one.
+	MaxHealth = 300.f;
+	WalkSpeed = 300.f;
 
-	GetCapsuleComponent()->InitCapsuleSize(34.f, 88.f);
 	// Walk through his own men rather than shoving them out of their slots.
 	GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
 
+	// The player controller moves him; he turns to face the way he walks.
 	UCharacterMovementComponent* Move = GetCharacterMovement();
-	Move->bRunPhysicsWithNoController = true;
 	Move->bOrientRotationToMovement = true;
 	Move->RotationRate = FRotator(0.f, 540.f, 0.f);
+	Move->bUseRVOAvoidance = false;
 	Move->MaxWalkSpeed = WalkSpeed;
 }
 
@@ -31,4 +26,5 @@ void ADTDCommander::BeginPlay()
 {
 	Super::BeginPlay();
 	GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
+	GetCharacterMovement()->MaxWalkSpeedCrouched = CrouchSpeed;
 }

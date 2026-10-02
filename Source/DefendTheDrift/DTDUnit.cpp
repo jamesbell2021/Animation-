@@ -72,8 +72,11 @@ void ADTDUnit::Tick(float DeltaSeconds)
 	}
 
 	UpdateStance();
-	UpdateMovement(Now);
-	UpdateFacing(DeltaSeconds);
+	if (FollowsSlot())
+	{
+		UpdateMovement(Now);
+		UpdateFacing(DeltaSeconds);
+	}
 
 	if (Now >= NextMeleeCheck)
 	{
@@ -84,12 +87,12 @@ void ADTDUnit::Tick(float DeltaSeconds)
 
 UDTDSquadComponent* ADTDUnit::GetSquad() const
 {
-	return Squad.Get();
+	return OwningSquad.Get();
 }
 
 void ADTDUnit::SetSquad(UDTDSquadComponent* InSquad)
 {
-	Squad = InSquad;
+	OwningSquad = InSquad;
 }
 
 void ADTDUnit::SetSlot(const FVector& InLocation, const FVector& InFacing, bool bInCanFire)
@@ -354,7 +357,7 @@ void ADTDUnit::Die()
 	ChargeTarget = nullptr;
 	GetWorldTimerManager().ClearAllTimersForObject(this);
 
-	if (UDTDSquadComponent* MySquad = Squad.Get())
+	if (UDTDSquadComponent* MySquad = OwningSquad.Get())
 	{
 		MySquad->RemoveUnit(this);
 	}
