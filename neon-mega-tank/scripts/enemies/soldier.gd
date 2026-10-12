@@ -45,6 +45,7 @@ func _ready() -> void:
 		part(_body, Vector3(0.08, 0.1, 0.8), Vector3(0.25, 0.85, -0.35), 3.2)
 	_laser = G.neon_box(_body, Vector3(0.05, 0.05, 1.0), Vector3.ZERO, color, 3.0)
 	_laser.visible = false
+	apply_difficulty()
 
 
 func is_aiming() -> bool:
@@ -118,10 +119,10 @@ func _attack(delta: float, can_shoot: bool, dist: float) -> void:
 		if _burst_t <= 0.0:
 			_burst -= 1
 			_burst_t = 0.13
-			_fire("enemy_bullet", 26.0, 0.1)
+			_fire("enemy_bullet", 26.0, 0.16)
 	elif can_shoot and _cooldown <= 0.0:
 		_burst = 3
-		_cooldown = randf_range(2.2, 3.2)
+		_cooldown = randf_range(2.8, 4.0)
 
 
 func _fire(kind: String, projectile_speed: float, spread: float) -> void:

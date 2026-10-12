@@ -6,9 +6,9 @@ extends Node3D
 const KINDS := {
 	"shell": {"damage": 45.0, "radius": 3.2, "blast": 38.0, "range": 46.0, "size": Vector3(0.4, 0.4, 1.6), "energy": 5.0},
 	"bullet": {"damage": 6.0, "radius": 0.0, "blast": 0.0, "range": 30.0, "size": Vector3(0.14, 0.14, 1.1), "energy": 4.0},
-	"rocket": {"damage": 5.0, "radius": 2.3, "blast": 9.0, "range": 40.0, "size": Vector3(0.3, 0.3, 1.0), "energy": 4.0},
-	"enemy_bullet": {"damage": 1.2, "radius": 0.0, "blast": 0.0, "range": 28.0, "size": Vector3(0.12, 0.12, 0.7), "energy": 4.0},
-	"enemy_shell": {"damage": 7.0, "radius": 2.6, "blast": 9.0, "range": 42.0, "size": Vector3(0.35, 0.35, 1.3), "energy": 4.5},
+	"rocket": {"damage": 3.0, "radius": 2.3, "blast": 7.0, "range": 40.0, "size": Vector3(0.3, 0.3, 1.0), "energy": 4.0},
+	"enemy_bullet": {"damage": 0.6, "radius": 0.0, "blast": 0.0, "range": 28.0, "size": Vector3(0.12, 0.12, 0.7), "energy": 4.0},
+	"enemy_shell": {"damage": 5.0, "radius": 2.6, "blast": 7.0, "range": 42.0, "size": Vector3(0.35, 0.35, 1.3), "energy": 4.5},
 }
 const FLIGHT_HEIGHT := 0.7
 

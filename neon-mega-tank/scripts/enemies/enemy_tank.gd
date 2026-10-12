@@ -1,6 +1,7 @@
 class_name EnemyTank
 extends Enemy
 ## Enemy armour: rolls in along the streets, stops at range, paints a target laser and lobs a shell.
+## Heavy tanks (later waves) are slower, much tougher and fire a three-shell salvo.
 
 const SPEED := 3.6
 const TURN := 1.4
@@ -11,14 +12,16 @@ var _laser: MeshInstance3D
 var _cooldown := 3.0
 var _aim_time := 0.0
 var _speed := 0.0
+var heavy := false
+var _salvo := 0
+var _salvo_t := 0.0
 
 
 func _ready() -> void:
 	setup_enemy()
-	color = Color(1.0, 0.3, 0.2)
-	max_hp = 110.0
-	hp = max_hp
-	score_value = 75
+	color = Color(0.85, 0.25, 1.0) if heavy else Color(1.0, 0.3, 0.2)
+	max_hp = 260.0 if heavy else 110.0
+	score_value = 200 if heavy else 75
 	_cooldown = randf_range(2.0, 4.0)
 	var cs := CollisionShape3D.new()
 	cs.shape = G.box_shape(Vector3(2.8, 1.6, 3.9))
@@ -37,6 +40,15 @@ func _ready() -> void:
 	_turret.add_child(_muzzle)
 	_laser = G.neon_box(_turret, Vector3(0.06, 0.06, 1.0), Vector3.ZERO, color, 3.0)
 	_laser.visible = false
+	if heavy:
+		part(self, Vector3(2.7, 0.35, 3.0), Vector3(0, 1.3, 0.2), 2.0)
+		part(_turret, Vector3(1.8, 0.4, 0.5), Vector3(0, 0.75, 0.6), 2.4)
+		part(_turret, Vector3(0.24, 0.24, 2.2), Vector3(0.35, 0.35, -1.7), 3.0)
+	apply_difficulty()
+
+
+func death_lines() -> Array:
+	return VoiceLines.TANK_DEATH
 
 
 func is_aiming() -> bool:
@@ -73,7 +85,7 @@ func _physics_process(delta: float) -> void:
 		var fwd := -global_basis.z
 		var ang := fwd.signed_angle_to(want, Vector3.UP)
 		rotate_y(clampf(ang, -TURN * delta, TURN * delta))
-		target_speed = SPEED * maxf(0.0, cos(ang))
+		target_speed = SPEED * (0.7 if heavy else 1.0) * maxf(0.0, cos(ang))
 	_speed = move_toward(_speed, target_speed, 6.0 * delta)
 	velocity = -global_basis.z * _speed
 	move_and_slide()
@@ -83,7 +95,13 @@ func _physics_process(delta: float) -> void:
 	_turret.rotation.y += clampf(diff, -1.6 * delta, 1.6 * delta)
 
 	_cooldown -= delta
-	if _aim_time > 0.0:
+	if _salvo > 0:
+		_salvo_t -= delta
+		if _salvo_t <= 0.0:
+			_salvo -= 1
+			_salvo_t = 0.3
+			_fire()
+	elif _aim_time > 0.0:
 		_aim_time -= delta
 		var length := maxf(dist - 3.0, 1.0)
 		_laser.visible = true
@@ -92,7 +110,8 @@ func _physics_process(delta: float) -> void:
 		G.set_neon(_laser, color, 2.0 + 3.0 * absf(sin(_aim_time * 18.0)))
 		if _aim_time <= 0.0:
 			_laser.visible = false
-			_fire()
+			_salvo = 3 if heavy else 1
+			_salvo_t = 0.0
 			_cooldown = randf_range(3.5, 5.0)
 	elif los and dist < 26.0 and _cooldown <= 0.0 and absf(diff) < 0.12:
 		_aim_time = 0.8
@@ -101,6 +120,8 @@ func _physics_process(delta: float) -> void:
 func _fire() -> void:
 	var dir := -_muzzle.global_basis.z
 	dir.y = 0.0
+	if heavy:
+		dir = dir.rotated(Vector3.UP, randf_range(-0.08, 0.08))
 	G.spawn_projectile(_muzzle.global_position, dir.normalized() * 22.0, G.Team.ENEMY, "enemy_shell", color)
 	G.ring(_muzzle.global_position, color, 1.3, 0.25, _muzzle.global_position.y)
 	G.sfx("enemy_cannon", -2.0)

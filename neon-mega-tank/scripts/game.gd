@@ -14,8 +14,18 @@ const LAYER_ENEMY := 4
 
 enum Team { PLAYER, ENEMY }
 
+const SAVE_PATH := "user://neon_mega_tank.cfg"
+
 ## Devices that joined, kept across restarts so the crew doesn't have to rejoin.
 var joined_devices: Array[int] = []
+## AI crew fills empty seats when on (toggle F2 / gamepad Back).
+var ai_crew := true
+var music_on := true
+## Scales enemy health and damage; raised by Main every wave.
+var difficulty := 1.0
+var best_time := 0.0
+var best_wave := 0
+var best_score := 0
 var main: Main
 var tank: MegaTank
 var city: City
@@ -27,6 +37,7 @@ var edge_material: ShaderMaterial
 var on_top_material: ShaderMaterial
 var additive_material: ShaderMaterial
 var ui_font: SystemFont
+var jp_font: FontFile
 
 var _ring_shader: Shader
 var _scorch_shader: Shader
@@ -39,6 +50,14 @@ var _sounds := {}
 var _voices: Array[AudioStreamPlayer] = []
 var _next_voice := 0
 var _last_played := {}
+var _music := {}
+var _voice_streams := {}
+var _music_player: AudioStreamPlayer
+var _voice_players: Array[AudioStreamPlayer] = []
+var _announcer: AudioStreamPlayer
+var _wanted_track := ""
+var _last_voice := 0
+var _audio_task := -1
 
 
 func _ready() -> void:
@@ -56,17 +75,169 @@ func _ready() -> void:
 	ui_font = SystemFont.new()
 	ui_font.font_names = PackedStringArray(
 		["JetBrains Mono", "DejaVu Sans Mono", "Consolas", "Menlo", "Courier New", "monospace"])
+	jp_font = load("res://fonts/DotGothic16-Regular.ttf")
 	_sounds = SfxBank.build()
 	for i in 16:
 		var p := AudioStreamPlayer.new()
 		add_child(p)
 		_voices.append(p)
+	for i in 3:
+		var vp := AudioStreamPlayer.new()
+		vp.volume_db = -3.0
+		add_child(vp)
+		_voice_players.append(vp)
+	_announcer = AudioStreamPlayer.new()
+	_announcer.volume_db = 0.0
+	add_child(_announcer)
+	_music_player = AudioStreamPlayer.new()
+	_music_player.volume_db = -11.0
+	add_child(_music_player)
+	load_records()
+	# Music and voices are synthesised in the background so the game starts instantly.
+	_audio_task = WorkerThreadPool.add_task(_build_audio, false, "Synthesise audio")
+
+
+func _exit_tree() -> void:
+	if _audio_task != -1:
+		WorkerThreadPool.wait_for_task_completion(_audio_task)
+
+
+# --- Records ---------------------------------------------------------------------------------
+
+func load_records() -> void:
+	var cfg := ConfigFile.new()
+	if cfg.load(SAVE_PATH) != OK:
+		return
+	best_time = cfg.get_value("records", "best_time", 0.0)
+	best_wave = cfg.get_value("records", "best_wave", 0)
+	best_score = cfg.get_value("records", "best_score", 0)
+	ai_crew = cfg.get_value("options", "ai_crew", true)
+	music_on = cfg.get_value("options", "music_on", true)
+
+
+func save_records() -> void:
+	var cfg := ConfigFile.new()
+	cfg.set_value("records", "best_time", best_time)
+	cfg.set_value("records", "best_wave", best_wave)
+	cfg.set_value("records", "best_score", best_score)
+	cfg.set_value("options", "ai_crew", ai_crew)
+	cfg.set_value("options", "music_on", music_on)
+	cfg.save(SAVE_PATH)
+
+
+## Stores a finished run. Returns true if the survival time is a new record.
+func submit_run(time: float, wave: int, points: int) -> bool:
+	var record := time > best_time
+	best_time = maxf(best_time, time)
+	best_wave = maxi(best_wave, wave)
+	best_score = maxi(best_score, points)
+	save_records()
+	return record
+
+
+static func format_time(seconds: float) -> String:
+	var s := int(seconds)
+	return "%02d:%02d" % [s / 60, s % 60]
+
+
+# --- Music and voices ------------------------------------------------------------------------
+
+func _build_audio() -> void:
+	var voices := {}
+	for romaji in VoiceLines.all_romaji():
+		voices[romaji] = VoiceSynth.say(romaji, 125.0, true)
+	call_deferred("_audio_ready", {}, voices)
+	for track in ["lobby", "battle", "gameover"]:
+		call_deferred("_audio_ready", {track: Chiptune.render(track)}, {})
+
+
+func _audio_ready(music: Dictionary, voices: Dictionary) -> void:
+	_music.merge(music)
+	_voice_streams.merge(voices)
+	if music.has(_wanted_track):
+		play_music(_wanted_track)
+
+
+func play_music(track: String) -> void:
+	_wanted_track = track
+	if not music_on or not _music.has(track):
+		return
+	if _music_player.stream == _music[track] and _music_player.playing:
+		return
+	_music_player.stream = _music[track]
+	_music_player.play()
+
+
+func toggle_music() -> void:
+	music_on = not music_on
+	if music_on:
+		play_music(_wanted_track)
+	else:
+		_music_player.stop()
+	save_records()
+
+
+## Enemy death cry: a robotic Japanese shout plus a floating manga-style subtitle.
+func shout(pos: Vector3, line: Array, color: Color) -> void:
+	var now := Time.get_ticks_msec()
+	if now - _last_voice < 350:
+		return
+	_last_voice = now
+	if _voice_streams.has(line[0]):
+		var p: AudioStreamPlayer = _voice_players[now % _voice_players.size()]
+		p.stream = _voice_streams[line[0]]
+		p.pitch_scale = randf_range(0.9, 1.25)
+		p.play()
+	speech(pos + Vector3(0, 2.2, 0), line[1], line[2], color)
+
+
+func announce(key: String) -> void:
+	var line: Array = VoiceLines.ANNOUNCER[key]
+	if _voice_streams.has(line[0]):
+		_announcer.stream = _voice_streams[line[0]]
+		_announcer.pitch_scale = 0.78
+		_announcer.play()
+
+
+func speech(pos: Vector3, japanese: String, romaji: String, color: Color) -> void:
+	if fx_root == null:
+		return
+	var root := Node3D.new()
+	fx_root.add_child(root)
+	root.global_position = pos
+	var big := _speech_label(japanese, 96, color)
+	root.add_child(big)
+	var small := _speech_label(romaji, 44, color.lightened(0.4))
+	small.position.y = -1.1
+	root.add_child(small)
+	var tw := root.create_tween().set_parallel()
+	tw.tween_property(root, "position:y", pos.y + 2.5, 1.6).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+	tw.tween_property(big, "modulate:a", 0.0, 0.6).set_delay(1.0)
+	tw.tween_property(small, "modulate:a", 0.0, 0.6).set_delay(1.0)
+	tw.chain().tween_callback(root.queue_free)
+
+
+func _speech_label(text: String, size: int, color: Color) -> Label3D:
+	var l := Label3D.new()
+	l.text = text
+	l.font = jp_font
+	l.font_size = size
+	l.outline_size = 18
+	l.pixel_size = 0.016
+	l.modulate = color
+	l.outline_modulate = Color(0, 0, 0, 0.85)
+	l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	l.no_depth_test = true
+	l.render_priority = 30
+	l.outline_render_priority = 29
+	return l
 
 
 ## Called by Main when a new round starts.
 func reset_round() -> void:
 	score = 0
 	shake = 0.0
+	difficulty = 1.0
 	_scorches.clear()
 
 
@@ -140,6 +311,9 @@ func spawn_projectile(pos: Vector3, vel: Vector3, team: int, kind: String,
 		color := Color.WHITE) -> Projectile:
 	var p := Projectile.new()
 	p.setup(kind, team, vel, color)
+	if team == Team.ENEMY:
+		p.damage *= difficulty
+		p.blast_damage *= difficulty
 	fx_root.add_child(p)
 	p.global_position = pos
 	p.look_at(pos + vel, Vector3.UP)

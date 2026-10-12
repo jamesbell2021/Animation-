@@ -8,7 +8,7 @@ signal destroyed
 
 const DECK_Y := 1.4
 const DECK_HALF := Vector2(2.25, 3.7)
-const MAX_HP := 160.0
+const MAX_HP := 200.0
 const MAX_SPEED := 7.5
 const ACCEL := 9.0
 const TURN_RATE := 1.5
@@ -18,7 +18,7 @@ const REACTOR_CENTER := Vector2(-1.85, 3.25)
 const CANNON_RELOAD := 1.0
 const MG_INTERVAL := 0.075
 const MG_HEAT_PER_SHOT := 5.5
-const REPAIR_RATE := 11.0
+const REPAIR_RATE := 13.0
 const BREACH_DRAIN := 1.0
 const MAX_BREACHES := 5
 const JAM_RADIUS := 1.3
@@ -67,7 +67,8 @@ var _lugs: Array[MeshInstance3D] = []
 var _tread_phase := 0.0
 var _hit_flash_cd := 0.0
 var _time := 0.0
-var _obstacles := [[TURRET_CENTER, 1.35], [MG_CENTER, 0.45], [REACTOR_CENTER, 0.6]]
+## Deck obstacles crew walk around: [centre, radius].
+var obstacles := [[TURRET_CENTER, 1.35], [MG_CENTER, 0.45], [REACTOR_CENTER, 0.6]]
 
 
 func _ready() -> void:
@@ -189,12 +190,13 @@ func add_crew(crew: Crew, slot: int) -> void:
 	add_child(crew)
 
 
-func nearest_free_station(p: Vector2, max_dist := 1.1) -> Station:
+func nearest_free_station(p: Vector2, max_dist := 1.1, bots_count_as_free := false) -> Station:
 	var best: Station = null
 	var best_d := max_dist
 	for st: Station in stations.values():
 		var d := st.pos.distance_to(p)
-		if st.occupant == null and d < best_d:
+		var free := st.occupant == null or (bots_count_as_free and st.occupant.is_bot())
+		if free and d < best_d:
 			best = st
 			best_d = d
 	return best
@@ -217,12 +219,14 @@ func leave(crew: Crew) -> void:
 func clamp_deck(p: Vector2) -> Vector2:
 	p.x = clampf(p.x, -DECK_HALF.x, DECK_HALF.x)
 	p.y = clampf(p.y, -DECK_HALF.y, DECK_HALF.y)
-	for o in _obstacles:
+	for o in obstacles:
 		var c: Vector2 = o[0]
 		var r: float = o[1]
 		var off := p - c
 		if off.length() < r:
 			p = c + (off.normalized() if off.length() > 0.01 else Vector2.RIGHT) * r
+	p.x = clampf(p.x, -DECK_HALF.x, DECK_HALF.x)
+	p.y = clampf(p.y, -DECK_HALF.y, DECK_HALF.y)
 	return p
 
 

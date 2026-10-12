@@ -38,12 +38,25 @@ func take_damage(amount: float, _pos: Vector3, team: int) -> void:
 		die()
 
 
+## Scales health with the current difficulty; call at the end of a subclass _ready().
+func apply_difficulty() -> void:
+	max_hp *= G.difficulty
+	hp = max_hp
+
+
+## Lines this enemy may cry out when it dies.
+func death_lines() -> Array:
+	return VoiceLines.SOLDIER_DEATH
+
+
 func die() -> void:
 	if dead:
 		return
 	dead = true
 	remove_from_group("enemies")
 	G.add_score(score_value)
+	if randf() < 0.75:
+		G.shout(global_position, death_lines().pick_random(), color)
 	G.sparks(global_position + Vector3(0, 1, 0), color, 16, 7.0, 0.8)
 	G.ring(global_position, color, 1.6, 0.35)
 	queue_free()

@@ -1,7 +1,7 @@
 class_name Main
 extends Node3D
 ## Game root: builds the neon city, the mega tank and the isometric camera, handles drop-in
-## joining, the lobby DEPLOY gate, enemy waves and game over.
+## joining, AI crew, the lobby DEPLOY gate, endless escalating waves, survival time and game over.
 
 enum State { LOBBY, PLAYING, GAMEOVER }
 
@@ -15,6 +15,8 @@ var camera: Camera3D
 var hud: Hud
 var wave := 0
 var spawn_queue: Array[String] = []
+var survival_time := 0.0
+var new_record := false
 
 var _candidates := {}
 var _cam_target := Vector3.ZERO
@@ -29,6 +31,8 @@ var _wave_break := 0.0
 var _gameover_timer := 0.0
 var _time := 0.0
 var _leaving := false
+var _wave_clock := 0.0
+var _bot_t := 0.0
 
 
 func _ready() -> void:
@@ -57,6 +61,8 @@ func _ready() -> void:
 	add_child(hud)
 	for dev in G.joined_devices.duplicate():
 		_join(PlayerInput.new(dev), false)
+	_fill_bots()
+	G.play_music("lobby")
 
 
 # --- Setup -----------------------------------------------------------------------------------
@@ -121,23 +127,122 @@ func _build_gate() -> void:
 
 # --- Players ---------------------------------------------------------------------------------
 
+## A new player takes over the first AI crew member (keeping its station), or gets a new seat.
 func _join(input: PlayerInput, announce := true) -> void:
-	if players.size() >= MAX_PLAYERS:
+	var crew: Crew = null
+	var took_over := false
+	for c in players:
+		if c.is_bot():
+			crew = c
+			took_over = true
+			break
+	if crew:
+		crew.set_input(input)
+	elif players.size() < MAX_PLAYERS:
+		crew = _add_crew(input)
+	else:
 		return
-	var crew := Crew.new()
-	crew.setup(players.size(), input, G.tank)
-	G.tank.add_crew(crew, players.size())
-	players.append(crew)
 	_candidates.erase(input.device)
 	if not G.joined_devices.has(input.device):
 		G.joined_devices.append(input.device)
 	if announce:
 		G.sfx("join")
-		hud.toast("P%d JOINED THE CREW" % players.size())
+		hud.toast("P%d JOINED THE CREW%s" % [crew.index + 1, " - TOOK OVER FROM AI" if took_over else ""])
+
+
+func _add_crew(input: PlayerInput) -> Crew:
+	var crew := Crew.new()
+	crew.setup(players.size(), input, G.tank)
+	G.tank.add_crew(crew, players.size())
+	players.append(crew)
+	return crew
+
+
+func human_count() -> int:
+	var n := 0
+	for c in players:
+		if not c.is_bot():
+			n += 1
+	return n
+
+
+## Keeps the AI crew in sync with the setting: bots fill every empty seat once someone has joined.
+func _fill_bots() -> void:
+	if G.ai_crew and human_count() > 0:
+		while players.size() < MAX_PLAYERS:
+			_add_crew(BotInput.new(players.size()))
+	elif not G.ai_crew:
+		while not players.is_empty() and players.back().is_bot():
+			var c: Crew = players.pop_back()
+			G.tank.leave(c)
+			G.tank.crew_members.erase(c)
+			c.queue_free()
+
+
+func toggle_ai_crew() -> void:
+	G.ai_crew = not G.ai_crew
+	G.save_records()
+	_fill_bots()
+	hud.toast("AI CREW %s" % ("ON" if G.ai_crew else "OFF"))
+
+
+## Gives every AI crew member a job: drive and cannon first, then breaches, then MG and repair
+## (repair first when the hull is low).
+## Players always have priority; jammed stations are skipped so bots go patch them instead.
+func _assign_bots() -> void:
+	var bots: Array[Crew] = []
+	for c in players:
+		if c.is_bot():
+			bots.append(c)
+	if bots.is_empty():
+		return
+	var tank := G.tank
+	var tasks: Array[Dictionary] = []
+	for id in ["drive", "cannon"]:
+		_add_station_task(tasks, id)
+	for b in tank.breaches:
+		tasks.append({"kind": "fix", "breach": b})
+	# A badly damaged hull makes repair more urgent than the machine gun.
+	var order := ["repair", "mg"] if tank.hp < MegaTank.MAX_HP * 0.6 else ["mg", "repair"]
+	for id in order:
+		_add_station_task(tasks, id)
+	for task in tasks:
+		if bots.is_empty():
+			break
+		var target: Vector2
+		if task["kind"] == "station":
+			target = tank.stations[task["id"]].pos
+		else:
+			target = (task["breach"] as Breach).deck_pos
+		var best: Crew = null
+		var best_cost := INF
+		for b in bots:
+			var cost := b.deck_pos.distance_to(target)
+			var current: Dictionary = (b.input as BotInput).task
+			if task["kind"] == "station" and b.station and b.station.id == task["id"]:
+				cost -= 10.0
+			elif task["kind"] == "fix" and current.get("breach") == task["breach"]:
+				cost -= 5.0
+			if cost < best_cost:
+				best = b
+				best_cost = cost
+		(best.input as BotInput).task = task
+		bots.erase(best)
+	for b in bots:
+		(b.input as BotInput).task = {}
+
+
+func _add_station_task(tasks: Array[Dictionary], id: String) -> void:
+	var st: MegaTank.Station = G.tank.stations[id]
+	if st.jammed or (st.occupant and not st.occupant.is_bot()):
+		return
+	if id == "drive" and state != State.PLAYING:
+		return
+	tasks.append({"kind": "station", "id": id})
 
 
 func _poll_joins() -> void:
-	if players.size() >= MAX_PLAYERS or state == State.GAMEOVER:
+	if human_count() >= MAX_PLAYERS or state == State.GAMEOVER:
 		return
 	var devices: Array[int] = [PlayerInput.KEYBOARD_1, PlayerInput.KEYBOARD_2]
 	devices.append_array(Input.get_connected_joypads())
@@ -157,10 +262,20 @@ func stick_to_world(v: Vector2) -> Vector3:
 	return _screen_right * v.x - _screen_up * v.y
 
 
+## Inverse of stick_to_world, used by the AI crew to "push" the stick toward a world direction.
+func world_to_stick(w: Vector3) -> Vector2:
+	return Vector2(w.dot(_screen_right), -w.dot(_screen_up))
+
+
 # --- Loop ------------------------------------------------------------------------------------
 
 func _process(delta: float) -> void:
 	_time += delta
+	_fill_bots()
+	_bot_t -= delta
+	if _bot_t <= 0.0:
+		_bot_t = 0.25
+		_assign_bots()
 	for crew in players:
 		crew.input.poll()
 	_poll_joins()
@@ -179,12 +294,20 @@ func _process(delta: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	var pad := event as InputEventJoypadButton
+	if pad and pad.pressed and pad.button_index == JOY_BUTTON_BACK:
+		toggle_ai_crew()
+		return
 	var key := event as InputEventKey
 	if key == null or not key.pressed or key.echo:
 		return
 	match key.physical_keycode:
 		KEY_F1:
 			hud.crt.visible = not hud.crt.visible
+		KEY_F2:
+			toggle_ai_crew()
+		KEY_M:
+			G.toggle_music()
 		KEY_F11:
 			var full := DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN
 			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED if full else DisplayServer.WINDOW_MODE_FULLSCREEN)
@@ -209,51 +332,72 @@ func start_game() -> void:
 	G.explode(GATE_POS, 5.0, 0.0, G.Team.PLAYER, Color(1.0, 0.3, 0.85))
 	_gate.queue_free()
 	wave = 0
+	survival_time = 0.0
 	_wave_break = 3.0
-	hud.banner("DEPLOYED", "hostiles inbound - keep every station crewed")
+	hud.banner("出撃！  DEPLOYED", "survive as long as you can - keep every station crewed")
+	G.announce("deploy")
+	G.play_music("battle")
 
 
 func _playing(delta: float) -> void:
+	survival_time += delta
+	_wave_clock += delta
+	G.difficulty = minf(3.0, 1.0 + 0.07 * maxf(wave - 1, 0) + survival_time / 900.0)
 	if _wave_break > 0.0:
 		_wave_break -= delta
 		if _wave_break <= 0.0:
 			_start_wave()
 		return
+	var alive := get_tree().get_nodes_in_group("enemies").size()
 	if not spawn_queue.is_empty():
 		_spawn_timer -= delta
-		if _spawn_timer <= 0.0:
+		if _spawn_timer <= 0.0 and alive < 40:
 			_spawn_next()
-	elif get_tree().get_nodes_in_group("enemies").is_empty():
+	elif alive == 0:
 		var bonus := wave * 50
 		G.add_score(bonus)
-		G.tank.hp = minf(MegaTank.MAX_HP, G.tank.hp + 30.0)
-		hud.banner("WAVE %d CLEAR" % wave, "+%d   hull patched +30" % bonus)
-		_wave_break = 5.0
+		G.tank.hp = minf(MegaTank.MAX_HP, G.tank.hp + 40.0)
+		hud.banner("WAVE %d CLEAR" % wave, "+%d   hull patched +40" % bonus)
+		G.announce("clear")
+		_wave_break = 8.0
+	elif _wave_clock > 40.0 + wave * 2.0:
+		# Too slow: the next wave rolls in on top of the stragglers.
+		_start_wave(true)
 
 
-func _start_wave() -> void:
+func _start_wave(reinforcements := false) -> void:
 	wave += 1
-	var crew_scale := 0.75 + 0.25 * maxi(players.size(), 1)
-	var rifles := int(round((2.0 + wave * 1.6) * crew_scale))
-	var rpgs := int(round((wave - 1) * 0.9 * crew_scale))
-	var tanks := int(floor((wave - 1) * 0.5 * crew_scale))
-	spawn_queue.clear()
+	_wave_clock = 0.0
+	G.difficulty = minf(3.0, 1.0 + 0.07 * (wave - 1) + survival_time / 900.0)
+	# Wave size follows the number of crew (players plus AI), so a full crew faces more.
+	var crew_scale := 0.8 + 0.15 * maxi(players.size(), 1)
+	var rifles := int(round((2.0 + wave * 1.1) * crew_scale))
+	var rpgs := int(round((wave - 1) * 0.7 * crew_scale))
+	var tanks := int(floor((wave - 1) * 0.35 * crew_scale))
+	var heavies := maxi(0, (wave - 4) / 3)
 	for i in rifles:
 		spawn_queue.append("rifle")
 	for i in rpgs:
 		spawn_queue.append("rpg")
 	for i in tanks:
 		spawn_queue.append("tank")
+	for i in heavies:
+		spawn_queue.append("heavy")
 	spawn_queue.shuffle()
 	_spawn_angle = randf() * TAU
 	_spawn_timer = 0.0
-	hud.banner("WAVE %d" % wave, "%d INFANTRY   %d RPG   %d TANKS" % [rifles, rpgs, tanks])
+	var title := ("増援！  REINFORCEMENTS - WAVE %d" if reinforcements else "敵襲来！  WAVE %d") % wave
+	var detail := "%d INFANTRY   %d RPG   %d TANKS" % [rifles, rpgs, tanks]
+	if heavies > 0:
+		detail += "   %d HEAVY" % heavies
+	hud.banner(title, detail)
 	G.sfx("wave")
+	G.announce("reinforce" if reinforcements else "wave")
 
 
 func _spawn_next() -> void:
 	var kind: String = spawn_queue.back()
-	var pos: Variant = _find_spawn_point(3.0 if kind == "tank" else 1.0)
+	var pos: Variant = _find_spawn_point(1.0 if kind == "rifle" or kind == "rpg" else 3.0)
 	if pos == null:
 		_spawn_timer = 0.3
 		return
@@ -262,6 +406,10 @@ func _spawn_next() -> void:
 	match kind:
 		"tank":
 			e = EnemyTank.new()
+		"heavy":
+			var t := EnemyTank.new()
+			t.heavy = true
+			e = t
 		"rpg":
 			var s := Soldier.new()
 			s.rpg = true
@@ -270,7 +418,7 @@ func _spawn_next() -> void:
 			e = Soldier.new()
 	e.position = pos
 	_enemies_root.add_child(e)
-	_spawn_timer = 1.2 if kind == "tank" else 0.45
+	_spawn_timer = 0.45 if kind == "rifle" or kind == "rpg" else 1.2
 	if randf() < 0.2:
 		_spawn_angle += randf_range(-1.5, 1.5)
 
@@ -309,7 +457,12 @@ func _on_tank_destroyed() -> void:
 	state = State.GAMEOVER
 	_gameover_timer = 2.5
 	spawn_queue.clear()
-	hud.banner("TANK DESTROYED", "reached wave %d   score %d\n\npress ACTION to redeploy" % [wave, G.score], 999.0)
+	new_record = G.submit_run(survival_time, wave, G.score)
+	G.play_music("gameover")
+	G.announce("record" if new_record else "gameover")
+	var lines := "survived %s   wave %d   score %d" % [G.format_time(survival_time), wave, G.score]
+	lines += "\n" + ("★ 新記録！ NEW RECORD! ★" if new_record else "best %s  (wave %d)" % [G.format_time(G.best_time), G.best_wave])
+	hud.banner("ゲームオーバー  TANK DESTROYED", lines + "\n\npress ACTION to redeploy", 999.0)
 
 
 func _gameover(delta: float) -> void:

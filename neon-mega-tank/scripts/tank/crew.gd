@@ -1,7 +1,7 @@
 class_name Crew
 extends Node3D
-## One player. Walks around the tank deck, boards stations with INTERACT, and patches breaches
-## by holding ACTION next to them.
+## One crew member, controlled by a player or by the AI (BotInput). Walks around the tank deck,
+## boards stations with INTERACT, and patches breaches by holding ACTION next to them.
 
 const SPEED := 4.5
 
@@ -16,13 +16,27 @@ var fixing := false
 var _body: Node3D
 var _legs: Array[MeshInstance3D] = []
 var _walk := 0.0
+var _label: Label3D
 
 
 func setup(player_index: int, player_input: PlayerInput, owner_tank: MegaTank) -> void:
 	index = player_index
-	input = player_input
 	tank = owner_tank
 	color = G.PLAYER_COLORS[player_index]
+	set_input(player_input)
+
+
+func is_bot() -> bool:
+	return input is BotInput
+
+
+## Hands this crew member to a player or to the AI, mid-game if needed.
+func set_input(new_input: PlayerInput) -> void:
+	input = new_input
+	if input is BotInput:
+		(input as BotInput).crew = self
+	if _label:
+		_label.text = "P%d%s" % [index + 1, " AI" if is_bot() else ""]
 
 
 func _ready() -> void:
@@ -38,7 +52,8 @@ func _ready() -> void:
 		_legs.append(leg)
 	G.neon_box(self, Vector3(0.9, 0.02, 0.9), Vector3(0, 0.02, 0), color, 2.0, false, true)
 	var label := Label3D.new()
-	label.text = "P%d" % (index + 1)
+	_label = label
+	label.text = "P%d%s" % [index + 1, " AI" if is_bot() else ""]
 	label.font = G.ui_font
 	label.font_size = 48
 	label.outline_size = 12
@@ -70,8 +85,11 @@ func _process(delta: float) -> void:
 		if station:
 			tank.leave(self)
 		else:
-			var st := tank.nearest_free_station(deck_pos)
+			# Players may bump an AI crew member off the station they want.
+			var st := tank.nearest_free_station(deck_pos, 1.1, not is_bot())
 			if st:
+				if st.occupant:
+					tank.leave(st.occupant)
 				tank.occupy(st, self)
 	var moving := false
 	if station == null:

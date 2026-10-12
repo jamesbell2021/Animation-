@@ -11,6 +11,8 @@ var title_label: Label
 var sub_label: Label
 var help_label: Label
 var toast_label: Label
+var kana_label: Label
+var banner_bg: Panel
 var crt: ColorRect
 var indicators: ThreatIndicators
 
@@ -90,10 +92,20 @@ func _ready() -> void:
 	wave_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_anchor(wave_label, 0.5, 1.0, 0.0, 0.0, Vector2(0, 30), Vector2(-40, 70))
 
-	title_label = _label(72, Color(1.0, 0.3, 0.85))
+	banner_bg = Panel.new()
+	banner_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var bg := _panel_style()
+	bg.bg_color = Color(0.0, 0.01, 0.03, 0.6)
+	banner_bg.add_theme_stylebox_override("panel", bg)
+	root.add_child(banner_bg)
+	title_label = _label(72, Color(1.0, 0.3, 0.85), G.jp_font)
 	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_anchor(title_label, 0.0, 1.0, 0.1, 0.1, Vector2(0, 0), Vector2(0, 100))
-	sub_label = _label(26, Color(0.85, 0.95, 1.0))
+	kana_label = _label(34, Color(0.3, 0.9, 1.0), G.jp_font)
+	kana_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	kana_label.text = "ネオン・メガ・タンク　～ 生き残れ！ ～"
+	_anchor(kana_label, 0.0, 1.0, 0.1, 0.1, Vector2(0, 78), Vector2(0, 122))
+	sub_label = _label(26, Color(0.85, 0.95, 1.0), G.jp_font)
 	sub_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_anchor(sub_label, 0.0, 1.0, 0.1, 0.1, Vector2(0, 95), Vector2(0, 200))
 
@@ -105,9 +117,9 @@ func _ready() -> void:
 	help_label.text = ("KEYBOARD 1   WASD move   E board/leave station   SPACE action\n"
 		+ "KEYBOARD 2   ARROWS move   R-SHIFT or / board/leave   ENTER action\n"
 		+ "GAMEPAD   L-STICK move   B / X / Y board/leave   A or RT action\n"
-		+ "F1 toggle CRT   F11 fullscreen   ESC quit / back to lobby")
+		+ "F2 / BACK  AI crew on-off   M music   F1 CRT   F11 fullscreen   ESC quit / lobby")
 
-	toast_label = _label(28, Color(1.0, 0.9, 0.3))
+	toast_label = _label(28, Color(1.0, 0.9, 0.3), G.jp_font)
 	toast_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_anchor(toast_label, 0.0, 1.0, 1.0, 1.0, Vector2(0, -215), Vector2(0, -175))
 
@@ -132,9 +144,9 @@ func _panel_style() -> StyleBoxFlat:
 	return s
 
 
-func _label(size: int, color: Color) -> Label:
+func _label(size: int, color: Color, font: Font = null) -> Label:
 	var l := Label.new()
-	l.add_theme_font_override("font", G.ui_font)
+	l.add_theme_font_override("font", font if font else G.ui_font)
 	l.add_theme_font_size_override("font_size", size)
 	l.add_theme_constant_override("outline_size", 8)
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -164,10 +176,24 @@ func _anchor(l: Label, left: float, right: float, top: float, bottom: float,
 func _place_title(lobby: bool) -> void:
 	var left := 0.44 if lobby else 0.0
 	var top := 0.09 if lobby else 0.3
-	for l in [title_label, sub_label]:
+	for l in [title_label, sub_label, kana_label]:
 		l.anchor_left = left
 		l.anchor_top = top
 		l.anchor_bottom = top
+	kana_label.visible = lobby
+	sub_label.offset_top = 130.0 if lobby else 100.0
+	sub_label.offset_bottom = sub_label.offset_top + 170.0
+	# Dark band behind the title block so it reads over the busy city.
+	banner_bg.anchor_left = left
+	banner_bg.anchor_right = 1.0
+	banner_bg.anchor_top = top
+	banner_bg.anchor_bottom = top
+	banner_bg.offset_left = 20.0 if lobby else -10.0
+	banner_bg.offset_right = -20.0 if lobby else 10.0
+	banner_bg.offset_top = -10.0
+	var lines := sub_label.get_line_count() if sub_label.text != "" else 0
+	banner_bg.offset_bottom = sub_label.offset_top + 18.0 + lines * 36.0 if lines > 0 else 100.0
+	banner_bg.modulate.a = title_label.modulate.a
 	title_label.add_theme_font_size_override("font_size", 60 if lobby else 72)
 
 
@@ -219,9 +245,11 @@ func refresh(main: Main, delta: float) -> void:
 	var enemies := get_tree().get_nodes_in_group("enemies").size() + main.spawn_queue.size()
 	match main.state:
 		Main.State.LOBBY:
-			wave_label.text = "%d/4 CREW   LOBBY" % main.players.size()
+			wave_label.text = "AI CREW %s   BEST %s (WAVE %d)" % [
+				"ON" if G.ai_crew else "OFF", G.format_time(G.best_time), G.best_wave]
 		_:
-			wave_label.text = "WAVE %02d   HOSTILES %02d   SCORE %06d" % [main.wave, enemies, G.score]
+			wave_label.text = "TIME %s   WAVE %02d   HOSTILES %02d   SCORE %06d" % [
+				G.format_time(main.survival_time), main.wave, enemies, G.score]
 
 	help_label.visible = main.state == Main.State.LOBBY
 	_place_title(main.state == Main.State.LOBBY)
@@ -230,7 +258,8 @@ func refresh(main: Main, delta: float) -> void:
 		if main.players.is_empty():
 			sub_label.text = "press ACTION on any keyboard half or gamepad to join"
 		else:
-			sub_label.text = "more crew: press ACTION to join (up to 4)\nboard DRIVE and roll the tank through the DEPLOY gate"
+			sub_label.text = ("friends: press ACTION to join (up to 4)%s\nboard DRIVE and roll the tank through the DEPLOY gate"
+				% ("\nAI crew mans the empty stations" if G.ai_crew else ""))
 		title_label.modulate.a = 1.0
 		sub_label.modulate.a = 1.0
 	elif main.state == Main.State.PLAYING:

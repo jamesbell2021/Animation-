@@ -22,6 +22,8 @@ func _init(dev: int) -> void:
 
 
 static func device_name(dev: int) -> String:
+	if dev <= -100:
+		return "AI CREW"
 	match dev:
 		KEYBOARD_1:
 			return "KEYS WASD"
