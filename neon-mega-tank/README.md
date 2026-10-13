@@ -137,10 +137,30 @@ hand:
    Studio or the command-line tools) and a debug keystore. Godot can create the keystore for you.
 3. Open **Project → Export**, select the **Android** preset and click **Export Project**.
 
-APKs built by CI use a new throwaway debug key on each run, so you must uninstall the old
-version before installing a newer build. To keep one key, add a base64-encoded debug keystore
-(alias `androiddebugkey`, password `android`) as the `ANDROID_DEBUG_KEYSTORE_BASE64` repository
-secret. To publish on the Play Store, set up a release keystore and use **Export Release**.
+Debug APKs built by CI without the release secrets use a new throwaway key on each run, so you
+must uninstall the old version before installing a newer build. To keep one debug key, add a
+base64-encoded debug keystore (alias `androiddebugkey`, password `android`) as the
+`ANDROID_DEBUG_KEYSTORE_BASE64` repository secret. See *Release builds* above for signed builds.
+
+## Release builds and the itch.io launch
+
+`.github/workflows/neon-mega-tank-apk.yml` builds **Android, Windows and Linux** on every push
+and can upload them to itch.io (push a tag like `nmt-v1.0.0`, or run the workflow by hand with
+*Push the builds to itch.io* ticked; needs the `BUTLER_API_KEY` secret). The APK is
+release-signed when the `ANDROID_RELEASE_KEYSTORE_BASE64`, `_USER` and `_PASS` secrets are set;
+without them it's a debug build. Bump `version/code` and `version/name` in `export_presets.cfg`
+before each release.
+
+To export by hand: in Godot, **Project → Export**, pick the preset (Android, Windows Desktop or
+Linux) and **Export Project**. For a release-signed APK, set the release keystore in the
+Android preset (or the `GODOT_ANDROID_KEYSTORE_RELEASE_PATH` / `_USER` / `_PASSWORD`
+environment variables) and use **Export Release**. The Windows exe gets its icon and version
+info only if rcedit is configured in the editor settings (the workflow installs it with wine).
+
+`launch/` holds the launch kit: `make_art.py` draws the app icon set (`icons/`) and the itch.io
+covers, `itch-page.md` is the store page text in English and Japanese with all the page
+settings, `bundle.md` the five-game bundle, `posts.md` the announcement posts, and
+`CHECKLIST.md` the launch steps.
 
 ## Trailer
 
@@ -171,6 +191,8 @@ scripts/ui/               HUD, title menu, touch controls
 scripts/i18n/             Japanese translation (English text -> 日本語)
 shaders/                  neon wireframe (+ MultiMesh variant), ground grid, FX, CRT
 fonts/                    DotGothic16 pixel font for the Japanese text (SIL OFL, see OFL.txt)
+icons/                    app icon (drawn by launch/make_art.py)
+launch/                   launch kit: covers, store page text, posts, checklist (ignored by Godot)
 docs/                     screenshots and audio preview (ignored by Godot)
 ```
 
