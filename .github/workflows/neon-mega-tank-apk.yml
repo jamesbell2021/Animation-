@@ -64,12 +64,18 @@ jobs:
           rm "Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
 
       # rcedit (through wine) stamps the game's icon and version into the Windows .exe.
+      # On Ubuntu 24.04 the wine64 package has no /usr/bin/wine64; the wine package's
+      # /usr/bin/wine launcher runs it. The prefix is made here so the export doesn't wait on it.
       - name: Install wine and rcedit for the Windows icon
         run: |
           sudo dpkg --add-architecture i386
           sudo apt-get update -qq
-          sudo apt-get install -y -qq wine64 > /dev/null
+          sudo apt-get install -y -qq wine wine64 > /dev/null
           wget -q https://github.com/electron/rcedit/releases/download/v2.0.0/rcedit-x64.exe -O "$RUNNER_TEMP/rcedit-x64.exe"
+          echo "WINEDEBUG=-all" >> "$GITHUB_ENV"
+          echo "WINEDLLOVERRIDES=mscoree,mshtml=" >> "$GITHUB_ENV"
+          WINEDEBUG=-all WINEDLLOVERRIDES="mscoree,mshtml=" wineboot --init || echo "::warning::wineboot exited $?"
+          wine "$RUNNER_TEMP/rcedit-x64.exe" --help | head -3
 
       - name: Configure signing keys and editor settings
         env:
@@ -107,7 +113,7 @@ jobs:
           export/android/debug_keystore_user = "androiddebugkey"
           export/android/debug_keystore_pass = "android"
           export/windows/rcedit = "$RUNNER_TEMP/rcedit-x64.exe"
-          export/windows/wine = "/usr/bin/wine64"
+          export/windows/wine = "/usr/bin/wine"
           EOF
 
       - name: Export all platforms
@@ -121,6 +127,8 @@ jobs:
           test -s build/neon-mega-tank.apk
           test -s build/windows/NeonMegaTank.exe
           test -s build/linux/NeonMegaTank.x86_64
+          # rcedit only warns when it fails, which leaves Godot's icon on the exe: fail loudly instead.
+          python3 -c "import sys; d = open(sys.argv[1], 'rb').read(); sys.exit(0 if 'Neon Mega Tank'.encode('utf-16-le') in d else 'The Windows exe has no Neon Mega Tank icon or version info: rcedit did not run')" build/windows/NeonMegaTank.exe
           cp README.md build/windows/README.md
           cp README.md build/linux/README.md
           (cd build/windows && zip -q -r ../neon-mega-tank-windows.zip .)
