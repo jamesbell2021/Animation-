@@ -8,14 +8,14 @@ extends Node
 ## Hosts announce themselves with UDP broadcasts so phones on the same Wi-Fi find them.
 
 signal hosts_changed
-signal connect_failed(reason: String)
+signal connect_failed(reason: Variant)
 signal host_lost
 
 enum Mode { OFFLINE, HOST, CLIENT }
 
 const PORT := 47470
 const DISCOVERY_PORT := 47471
-const MAGIC := "NEONMEGATANK1"
+const MAGIC := "NEONMEGATANK2"  # bump when the network messages change
 const SNAPSHOT_RATE := 20.0
 const INPUT_RATE := 30.0
 ## Remote players use device ids from here up (device = REMOTE_BASE + peer id).
@@ -126,7 +126,7 @@ func stop_discovery() -> void:
 func join(ip: String) -> void:
 	var peer := ENetMultiplayerPeer.new()
 	if peer.create_client(ip.strip_edges(), PORT) != OK:
-		connect_failed.emit("could not reach %s" % ip)
+		connect_failed.emit(["could not reach %s", ip])
 		return
 	multiplayer.multiplayer_peer = peer
 	mode = Mode.CLIENT

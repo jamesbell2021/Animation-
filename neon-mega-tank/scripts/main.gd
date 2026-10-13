@@ -146,7 +146,7 @@ func _build_gate() -> void:
 	_gate_meshes.append(G.neon_box(_gate, Vector3(10.3, 0.7, 0.7), Vector3(0, 5.85, 0), c, 3.0))
 	_gate_meshes.append(G.neon_box(_gate, Vector3(9.0, 0.05, 3.0), Vector3(0, 0.03, 0), c, 1.5))
 	var label := Label3D.new()
-	label.text = "DEPLOY"
+	label.text = G.t("DEPLOY")
 	label.font = G.ui_font
 	label.font_size = 96
 	label.outline_size = 16
@@ -180,18 +180,18 @@ func _on_menu_play() -> void:
 
 func _on_menu_host() -> void:
 	if not Net.host():
-		menu.show_status("could not open port %d - is another game hosting here?" % Net.PORT)
+		menu.show_status(["could not open port %d - is another game hosting here?", Net.PORT])
 		return
 	G.menu_done = true
 	_enter_lobby()
 
 
 func _on_menu_join(ip: String) -> void:
-	menu.show_status("connecting to %s ..." % ip)
+	menu.show_status(["connecting to %s ...", ip])
 	Net.join(ip)
 
 
-func _on_connect_failed(reason: String) -> void:
+func _on_connect_failed(reason: Variant) -> void:
 	if state == State.MENU:
 		menu.show_status(reason)
 
@@ -253,7 +253,7 @@ func _join(input: PlayerInput, announce := true) -> void:
 		G.joined_devices.append(input.device)
 	if announce:
 		G.sfx("join")
-		_toast("P%d JOINED THE CREW%s" % [crew.index + 1, " - TOOK OVER FROM AI" if took_over else ""])
+		_toast(["P%d JOINED THE CREW%s", crew.index + 1, [" - TOOK OVER FROM AI" if took_over else ""]])
 
 
 func _add_crew(input: PlayerInput) -> Crew:
@@ -289,7 +289,7 @@ func remote_left(device: int) -> void:
 	for c in players:
 		if c.input.device == device:
 			c.set_input(BotInput.new(c.index))
-			_toast("P%d LEFT - AI TAKES OVER" % (c.index + 1))
+			_toast(["P%d LEFT - AI TAKES OVER", c.index + 1])
 	_fill_bots()
 
 
@@ -314,7 +314,7 @@ func toggle_ai_crew() -> void:
 	G.ai_crew = not G.ai_crew
 	G.save_records()
 	_fill_bots()
-	_toast("AI CREW %s" % ("ON" if G.ai_crew else "OFF"))
+	_toast(["AI CREW %s", ["ON" if G.ai_crew else "OFF"]])
 
 
 ## Gives every AI crew member a job: drive and cannon first, then breaches, then MG and repair
@@ -491,7 +491,7 @@ func _playing(delta: float) -> void:
 		var bonus := wave * 50
 		G.add_score(bonus)
 		G.tank.hp = minf(MegaTank.MAX_HP, G.tank.hp + 40.0)
-		_banner("WAVE %d CLEAR" % wave, "+%d   hull patched +40" % bonus)
+		_banner(["WAVE %d CLEAR", wave], ["+%d   hull patched +40", bonus])
 		G.announce("clear")
 		_wave_break = 8.0
 	elif _wave_clock > 40.0 + wave * 2.0 and not is_instance_valid(boss):
@@ -521,12 +521,12 @@ func _start_wave(reinforcements := false) -> void:
 		spawn_queue.append("boss")  # spawned first (the queue is popped from the back)
 	_spawn_angle = randf() * TAU
 	_spawn_timer = 0.0
-	var title := ("増援！  REINFORCEMENTS - WAVE %d" if reinforcements else "敵襲来！  WAVE %d") % wave
-	var detail := "%d INFANTRY   %d RPG   %d TANKS" % [rifles, rpgs, tanks + heavies]
-	if drones + buggies > 0:
-		detail += "   %d DRONES   %d BUGGIES" % [drones, buggies]
+	# Text specs (see G.tx) so every phone shows the banner in its own language.
+	var title: Variant = ["増援！  REINFORCEMENTS - WAVE %d" if reinforcements else "敵襲来！  WAVE %d", wave]
+	var detail: Variant = ["%s%s", ["%d INFANTRY   %d RPG   %d TANKS", rifles, rpgs, tanks + heavies],
+		["   %d DRONES   %d BUGGIES", drones, buggies] if drones + buggies > 0 else [""]]
 	if boss_wave:
-		title = "ボス出現！  BOSS - WAVE %d" % wave
+		title = ["ボス出現！  BOSS - WAVE %d", wave]
 		detail = "鬼戦車 ONI SENSHA - the demon tank approaches"
 	_banner(title, detail)
 	G.sfx("wave")
@@ -622,9 +622,13 @@ func _on_tank_destroyed() -> void:
 	spawn_queue.clear()
 	new_record = G.submit_run(survival_time, wave, G.score)
 	G.announce("record" if new_record else "gameover")
-	var lines := "survived %s   wave %d   score %d" % [G.format_time(survival_time), wave, G.score]
-	lines += "\n" + ("★ 新記録！ NEW RECORD! ★" if new_record else "best %s  (wave %d)" % [G.format_time(G.best_time), G.best_wave])
-	_banner("ゲームオーバー  TANK DESTROYED", lines + "\n\npress ACTION to redeploy", 999.0)
+	var lines := [
+		["survived %s   wave %d   score %d", G.format_time(survival_time), wave, G.score],
+		["★ 新記録！ NEW RECORD! ★"] if new_record else ["best %s  (wave %d)", G.format_time(G.best_time), G.best_wave],
+		[""],
+		["press ACTION to redeploy"],
+	]
+	_banner("ゲームオーバー  TANK DESTROYED", lines, 999.0)
 
 
 func _gameover(delta: float) -> void:
@@ -649,12 +653,13 @@ func _restart_local() -> void:
 	get_tree().reload_current_scene()
 
 
-func _banner(title: String, subtitle := "", time := 2.5) -> void:
+## Title and subtitle are text specs (see G.tx): each phone translates them itself.
+func _banner(title: Variant, subtitle: Variant = "", time := 2.5) -> void:
 	hud.banner(title, subtitle, time)
 	Net.send_event("banner", [title, subtitle, time], true)
 
 
-func _toast(text: String) -> void:
+func _toast(text: Variant) -> void:
 	hud.toast(text)
 	Net.send_event("toast", [text], true)
 

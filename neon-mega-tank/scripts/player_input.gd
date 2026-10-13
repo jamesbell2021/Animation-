@@ -32,17 +32,17 @@ static func for_device(dev: int) -> PlayerInput:
 
 static func device_name(dev: int) -> String:
 	if dev <= -100:
-		return "AI CREW"
+		return G.t("AI CREW")
 	if dev >= Net.REMOTE_BASE:
-		return "LAN PHONE"
+		return G.t("LAN PHONE")
 	if dev == -3:
-		return "TOUCH"
+		return G.t("TOUCH")
 	match dev:
 		KEYBOARD_1:
-			return "KEYS WASD"
+			return G.t("KEYS WASD")
 		KEYBOARD_2:
-			return "KEYS ARROWS"
-	return "PAD %d" % (dev + 1)
+			return G.t("KEYS ARROWS")
+	return G.t("PAD %d") % (dev + 1)
 
 
 func poll() -> void:

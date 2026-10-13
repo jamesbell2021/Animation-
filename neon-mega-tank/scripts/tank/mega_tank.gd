@@ -172,7 +172,7 @@ func _add_station(id: String, title: String, pos: Vector2, look: Vector2) -> voi
 	st.look = look
 	st.pad = G.neon_box(self, Vector3(1.0, 0.05, 1.0), Vector3(pos.x, DECK_Y + 0.03, pos.y), Color.WHITE, 1.2)
 	st.label = Label3D.new()
-	st.label.text = title
+	st.label.text = G.t(title)
 	st.label.font = G.ui_font
 	st.label.font_size = 36
 	st.label.outline_size = 10
@@ -541,7 +541,7 @@ func _process(delta: float) -> void:
 		G.set_neon(st.pad, c, e)
 		st.label.modulate = c
 		st.label.outline_modulate = Color(c, 0.3)
-		st.label.text = "JAMMED" if st.jammed else st.title
+		st.label.text = G.t("JAMMED") if st.jammed else G.t(st.title)
 	if not dead:
 		G.set_neon(reactor, Color(0.3, 1.0, 0.5), 4.5 if repairing else 2.0 + sin(_time * 3.0) * 0.4)
 	var count := _lugs.size() / 2

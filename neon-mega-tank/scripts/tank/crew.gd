@@ -45,7 +45,7 @@ func set_input(new_input: PlayerInput) -> void:
 func _label_text() -> String:
 	var tag := " AI" if is_bot() else ""
 	if Net.is_client() and input and input.device == Net.my_device():
-		tag = " YOU"
+		tag = G.t(" YOU")
 	return "P%d%s" % [index + 1, tag]
 
 
@@ -97,12 +97,12 @@ func _ready() -> void:
 
 func status_text() -> String:
 	if tank.dead:
-		return "BAILED OUT"
+		return G.t("BAILED OUT")
 	if station != null:
-		return station.title + (" [JAMMED]" if station.jammed else "")
+		return G.t("%s [JAMMED]") % G.t(station.title) if station.jammed else G.t(station.title)
 	if fixing:
-		return "PATCHING BREACH"
-	return "ON DECK"
+		return G.t("PATCHING BREACH")
+	return G.t("ON DECK")
 
 
 func _process(delta: float) -> void:

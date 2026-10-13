@@ -49,7 +49,10 @@ var shake := 0.0
 var edge_material: ShaderMaterial
 var on_top_material: ShaderMaterial
 var additive_material: ShaderMaterial
-var ui_font: SystemFont
+## Font for HUD and 3D labels: monospace in English, the pixel Japanese font in Japanese.
+var ui_font: Font
+## "en" or "ja". Starts from the device's language; the title menu's button switches it.
+var language := "en"
 var jp_font: FontFile
 
 var _ring_shader: Shader
@@ -64,6 +67,7 @@ var _voices: Array[AudioStreamPlayer] = []
 var _next_voice := 0
 var _last_played := {}
 var _music := {}
+var _mono_font: SystemFont
 var _voice_streams := {}
 var _music_player: AudioStreamPlayer
 var _voice_players: Array[AudioStreamPlayer] = []
@@ -85,10 +89,16 @@ func _ready() -> void:
 	_fade_ramp = Gradient.new()
 	_fade_ramp.set_color(0, Color(1, 1, 1, 1))
 	_fade_ramp.set_color(1, Color(1, 1, 1, 0))
-	ui_font = SystemFont.new()
-	ui_font.font_names = PackedStringArray(
+	_mono_font = SystemFont.new()
+	_mono_font.font_names = PackedStringArray(
 		["JetBrains Mono", "DejaVu Sans Mono", "Consolas", "Menlo", "Courier New", "monospace"])
 	jp_font = load("res://fonts/DotGothic16-Regular.ttf")
+	var ja := Translation.new()
+	ja.locale = "ja"
+	for msg in StringsJa.TEXT:
+		ja.add_message(msg, StringsJa.TEXT[msg])
+	TranslationServer.add_translation(ja)
+	language = "ja" if OS.get_locale_language() == "ja" else "en"
 	_sounds = SfxBank.build()
 	for i in 16:
 		var p := AudioStreamPlayer.new()
@@ -106,6 +116,7 @@ func _ready() -> void:
 	_music_player.volume_db = -11.0
 	add_child(_music_player)
 	load_records()
+	_apply_language()
 	# Music and voices are synthesised in the background so the game starts instantly.
 	_audio_task = WorkerThreadPool.add_task(_build_audio, false, "Synthesise audio")
 
@@ -126,6 +137,46 @@ func load_records() -> void:
 	best_score = cfg.get_value("records", "best_score", 0)
 	ai_crew = cfg.get_value("options", "ai_crew", true)
 	music_on = cfg.get_value("options", "music_on", true)
+	language = cfg.get_value("options", "language", language)
+
+
+# --- Language --------------------------------------------------------------------------------
+
+## Switches every text in the game between English and Japanese and remembers the choice.
+## Callers reload the scene so already-built labels pick it up.
+func set_language(lang: String) -> void:
+	language = lang
+	_apply_language()
+	save_records()
+
+
+func _apply_language() -> void:
+	TranslationServer.set_locale(language)
+	ui_font = jp_font if language == "ja" else _mono_font
+
+
+## Translates one string (English text is the key).
+func t(msg: String) -> String:
+	return String(TranslationServer.translate(msg))
+
+
+## Translates a text spec, so a message can travel to LAN phones and be shown in each phone's
+## own language: "msg", or ["format %s %d", arg...] (Array args are specs themselves), or a
+## list of specs [[...], [...]] for several lines.
+func tx(spec: Variant) -> String:
+	if spec is String:
+		return t(spec)
+	if spec is Array and not spec.is_empty():
+		if spec[0] is Array:
+			var lines: PackedStringArray = []
+			for line in spec:
+				lines.append(tx(line))
+			return "\n".join(lines)
+		var args := []
+		for a in spec.slice(1):
+			args.append(tx(a) if a is Array else a)
+		return t(spec[0]) % args if not args.is_empty() else t(spec[0])
+	return str(spec)
 
 
 func save_records() -> void:
@@ -135,6 +186,7 @@ func save_records() -> void:
 	cfg.set_value("records", "best_score", best_score)
 	cfg.set_value("options", "ai_crew", ai_crew)
 	cfg.set_value("options", "music_on", music_on)
+	cfg.set_value("options", "language", language)
 	cfg.save(SAVE_PATH)
 
 
@@ -224,6 +276,7 @@ func speech(pos: Vector3, japanese: String, romaji: String, color: Color) -> voi
 	root.add_child(big)
 	var small := _speech_label(romaji, 44, color.lightened(0.4))
 	small.position.y = -1.1
+	small.visible = language != "ja"  # Japanese players don't need the romaji line
 	root.add_child(small)
 	var tw := root.create_tween().set_parallel()
 	tw.tween_property(root, "position:y", pos.y + 2.5, 1.6).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)

@@ -28,6 +28,14 @@ game-over sting, the main sound effects and every voice line.
 <img src="docs/lan-lobby-touch.jpg" width="49%" alt="Hosting a LAN game with touch controls">
 </p>
 
+**日本語対応 / Japanese:** the **LANGUAGE** button on the title menu switches every menu, HUD,
+banner and station label between English and Japanese. A phone set to Japanese starts in
+Japanese, and the choice is saved on each device. In a LAN game every phone shows its own
+language, because the host sends the English text keys and each phone translates them. The
+Japanese strings live in `scripts/i18n/strings_ja.gd`, keyed by the English text.
+
+<img src="docs/menu-ja.jpg" width="49%" alt="The title menu in Japanese">
+
 ## Play on Android phones
 
 1. **Get the APK.** Every push that changes this folder builds one automatically: open the
@@ -160,6 +168,7 @@ scripts/enemies/          soldiers, enemy and heavy tanks, drones, buggies, the 
 scripts/world/            seeded procedural city and destructible blocks
 scripts/combat/           projectiles (shells, bullets, rockets)
 scripts/ui/               HUD, title menu, touch controls
+scripts/i18n/             Japanese translation (English text -> 日本語)
 shaders/                  neon wireframe (+ MultiMesh variant), ground grid, FX, CRT
 fonts/                    DotGothic16 pixel font for the Japanese text (SIL OFL, see OFL.txt)
 docs/                     screenshots and audio preview (ignored by Godot)

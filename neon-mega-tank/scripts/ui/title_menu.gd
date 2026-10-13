@@ -39,16 +39,21 @@ func _ready() -> void:
 	_main_box = VBoxContainer.new()
 	_main_box.add_theme_constant_override("separation", 14)
 	column.add_child(_main_box)
-	var play := _button("▶  PLAY", "this device + controllers, AI crew fills empty seats", Color(0.3, 1.0, 0.5))
+	var play := _button(G.t("▶  PLAY"), G.t("this device + controllers, AI crew fills empty seats"), Color(0.3, 1.0, 0.5))
 	play.pressed.connect(func() -> void: play_local.emit())
-	var host := _button("HOST LAN GAME", "friends join from their own phones on this Wi-Fi", Color(0.3, 0.8, 1.0))
+	var host := _button(G.t("HOST LAN GAME"), G.t("friends join from their own phones on this Wi-Fi"), Color(0.3, 0.8, 1.0))
 	host.pressed.connect(func() -> void: host_game.emit())
-	var join := _button("JOIN LAN GAME", "find a game hosted on this Wi-Fi", Color(1.0, 0.85, 0.2))
+	var join := _button(G.t("JOIN LAN GAME"), G.t("find a game hosted on this Wi-Fi"), Color(1.0, 0.85, 0.2))
 	join.pressed.connect(_show_join)
-	for b in [play, host, join]:
+	# The subtitle is always in the other language, so whoever needs the switch can read it.
+	var japanese := G.language == "ja"
+	var lang := _button("%s:  %s" % [G.t("LANGUAGE"), "日本語" if japanese else "ENGLISH"],
+		"Switch to English" if japanese else "日本語に切り替える", Color(1.0, 0.3, 0.85))
+	lang.pressed.connect(_toggle_language)
+	for b in [play, host, join, lang]:
 		_main_box.add_child(b)
 	if not OS.has_feature("mobile"):
-		var quit := _button("QUIT", "", Color(1.0, 0.3, 0.3))
+		var quit := _button(G.t("QUIT"), "", Color(1.0, 0.3, 0.3))
 		quit.pressed.connect(func() -> void: get_tree().quit())
 		_main_box.add_child(quit)
 
@@ -56,7 +61,7 @@ func _ready() -> void:
 	_join_box.add_theme_constant_override("separation", 12)
 	_join_box.visible = false
 	column.add_child(_join_box)
-	_searching = _label("searching for games on your Wi-Fi ...", 30, Color(0.7, 0.9, 1.0))
+	_searching = _label(G.t("searching for games on your Wi-Fi ..."), 30, Color(0.7, 0.9, 1.0))
 	_join_box.add_child(_searching)
 	_hosts_box = VBoxContainer.new()
 	_hosts_box.add_theme_constant_override("separation", 10)
@@ -65,21 +70,21 @@ func _ready() -> void:
 	row.add_theme_constant_override("separation", 12)
 	_join_box.add_child(row)
 	_ip_edit = LineEdit.new()
-	_ip_edit.placeholder_text = "host IP, e.g. 192.168.1.20"
+	_ip_edit.placeholder_text = G.t("host IP, e.g. 192.168.1.20")
 	_ip_edit.custom_minimum_size = Vector2(560, 84)
 	_ip_edit.add_theme_font_override("font", G.jp_font)
 	_ip_edit.add_theme_font_size_override("font_size", 32)
 	_ip_edit.virtual_keyboard_type = LineEdit.KEYBOARD_TYPE_NUMBER_DECIMAL
 	_ip_edit.text_submitted.connect(func(t: String) -> void: _connect(t))
 	row.add_child(_ip_edit)
-	var go := _button("CONNECT", "", Color(0.3, 1.0, 0.5), 200)
+	var go := _button(G.t("CONNECT"), "", Color(0.3, 1.0, 0.5), 200)
 	go.pressed.connect(func() -> void: _connect(_ip_edit.text))
 	row.add_child(go)
-	var back := _button("BACK", "", Color(1.0, 0.3, 0.3))
+	var back := _button(G.t("BACK"), "", Color(1.0, 0.3, 0.3))
 	back.pressed.connect(_show_main)
 	_join_box.add_child(back)
 
-	_status = _label(G.menu_message, 28, Color(1.0, 0.85, 0.3))
+	_status = _label(G.t(G.menu_message) if G.menu_message != "" else "", 28, Color(1.0, 0.85, 0.3))
 	G.menu_message = ""
 	column.add_child(_status)
 	Net.hosts_changed.connect(_refresh_hosts)
@@ -100,8 +105,14 @@ func _on_visibility() -> void:
 		Net.stop_discovery()
 
 
-func show_status(text: String) -> void:
-	_status.text = text
+## Shows a message under the buttons; takes a text spec (see G.tx).
+func show_status(spec: Variant) -> void:
+	_status.text = G.tx(spec)
+
+
+func _toggle_language() -> void:
+	G.set_language("en" if G.language == "ja" else "ja")
+	get_tree().reload_current_scene()
 
 
 func _show_main() -> void:
@@ -122,10 +133,10 @@ func _show_join() -> void:
 func _refresh_hosts() -> void:
 	for c in _hosts_box.get_children():
 		c.queue_free()
-	_searching.text = "searching for games on your Wi-Fi ..." if Net.hosts.is_empty() else "games found on your Wi-Fi:"
+	_searching.text = G.t("searching for games on your Wi-Fi ..." if Net.hosts.is_empty() else "games found on your Wi-Fi:")
 	for ip in Net.hosts:
 		var h: Dictionary = Net.hosts[ip]
-		var b := _button("JOIN  %s" % ip, "%s  -  %d player(s) aboard" % [h["name"], h["crew"]], Color(0.3, 0.9, 1.0))
+		var b := _button(G.t("JOIN  %s") % ip, G.t("%s  -  %d player(s) aboard") % [h["name"], h["crew"]], Color(0.3, 0.9, 1.0))
 		b.pressed.connect(_connect.bind(ip))
 		_hosts_box.add_child(b)
 	if not Net.hosts.is_empty():
@@ -136,7 +147,7 @@ func _connect(ip: String) -> void:
 	if ip.strip_edges().is_valid_ip_address():
 		join_game.emit(ip.strip_edges())
 	else:
-		_status.text = "that is not an IP address"
+		_status.text = G.t("that is not an IP address")
 
 
 func _label(text: String, size: int, color: Color) -> Label:

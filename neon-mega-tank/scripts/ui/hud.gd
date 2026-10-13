@@ -3,7 +3,8 @@ extends CanvasLayer
 ## Retro terminal overlay: crew roster, hull and weapon readouts, wave/score, banners,
 ## off-screen threat arrows and the CRT filter on top of everything.
 
-var roster: Array[Label] = []
+## One row per seat: [tag, status, device] labels in fixed-width columns (Japanese text is wide).
+var roster: Array = []
 var hull_label: Label
 var weapons_label: Label
 var wave_label: Label
@@ -83,9 +84,17 @@ func _ready() -> void:
 	box.add_theme_constant_override("separation", 2)
 	panel.add_child(box)
 	for i in 4:
-		var l := _label(24, G.PLAYER_COLORS[i])
-		box.add_child(l)
-		roster.append(l)
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 12)
+		box.add_child(row)
+		var cells := []
+		for width in [230, 310, 180]:
+			var l := _label(24, G.PLAYER_COLORS[i])
+			l.custom_minimum_size.x = width
+			l.clip_text = true
+			row.add_child(l)
+			cells.append(l)
+		roster.append(cells)
 	var spacer := Control.new()
 	spacer.custom_minimum_size = Vector2(0, 10)
 	box.add_child(spacer)
@@ -120,14 +129,16 @@ func _ready() -> void:
 	help_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	help_label.add_theme_stylebox_override("normal", _panel_style())
 	_anchor(help_label, 0.5, 0.5, 1.0, 1.0, Vector2(-430, -160), Vector2(430, -28))
-	help_label.text = ("KEYBOARD 1   WASD move   E board/leave station   SPACE action\n"
-		+ "KEYBOARD 2   ARROWS move   R-SHIFT or / board/leave   ENTER action\n"
-		+ "GAMEPAD   L-STICK move   B / X / Y board/leave   A or RT action\n"
-		+ "F2 / BACK  AI crew on-off   M music   F1 CRT   F11 fullscreen   ESC quit / lobby")
+	help_label.text = G.tx([
+		["KEYBOARD 1   WASD move   E board/leave station   SPACE action"],
+		["KEYBOARD 2   ARROWS move   R-SHIFT or / board/leave   ENTER action"],
+		["GAMEPAD   L-STICK move   B / X / Y board/leave   A or RT action"],
+		["F2 / BACK  AI crew on-off   M music   F1 CRT   F11 fullscreen   ESC quit / lobby"]])
 
 	if G.is_mobile():
-		help_label.text = ("LEFT SIDE drag to move   ACTION fire / repair / patch breaches\n"
-			+ "BOARD get on or off the station you stand on   phone BACK  menu")
+		help_label.text = G.tx([
+			["LEFT SIDE drag to move   ACTION fire / repair / patch breaches"],
+			["BOARD get on or off the station you stand on   phone BACK  menu"]])
 
 	boss_label = _label(30, Color(0.95, 0.15, 0.35), G.jp_font)
 	boss_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -217,14 +228,15 @@ func _place_title(lobby: bool) -> void:
 	title_label.add_theme_font_size_override("font_size", 60 if lobby else 72)
 
 
-func banner(title: String, subtitle := "", time := 2.5) -> void:
-	title_label.text = title
-	sub_label.text = subtitle
+## Title and subtitle are text specs (see G.tx), translated on this device.
+func banner(title: Variant, subtitle: Variant = "", time := 2.5) -> void:
+	title_label.text = G.tx(title)
+	sub_label.text = G.tx(subtitle)
 	_banner_t = time
 
 
-func toast(text: String) -> void:
-	toast_label.text = text
+func toast(text: Variant) -> void:
+	toast_label.text = G.tx(text)
 	_toast_t = 2.0
 
 
@@ -242,40 +254,44 @@ func refresh(main: Main, delta: float) -> void:
 	var boss := main.boss
 	boss_label.visible = is_instance_valid(boss) and not boss.dead
 	if boss_label.visible:
-		boss_label.text = "鬼戦車 ONI SENSHA  %s" % _bar(boss.hp / maxf(boss.max_hp, 1.0), 18)
+		boss_label.text = G.t("鬼戦車 ONI SENSHA  %s") % _bar(boss.hp / maxf(boss.max_hp, 1.0), 18)
 	indicators.camera = main.camera
 	for i in 4:
-		var l := roster[i]
+		var cells: Array = roster[i]
 		var col: Color = G.PLAYER_COLORS[i]
-		var tag := "[P%d] %-9s" % [i + 1, "(%s):" % G.PLAYER_NAMES[i]]
+		cells[0].text = "[P%d] (%s):" % [i + 1, G.t(G.PLAYER_NAMES[i])]
 		if i < main.players.size():
 			var crew: Crew = main.players[i]
-			l.text = "%s %-16s %s" % [tag, crew.status_text(), PlayerInput.device_name(crew.input.device)]
-			_tint(l, col)
+			cells[1].text = crew.status_text()
+			cells[2].text = PlayerInput.device_name(crew.input.device)
 		else:
-			l.text = "%s ---- press ACTION to join" % tag
-			_tint(l, col.darkened(0.65))
+			cells[1].text = G.t("---- press ACTION to join")
+			cells[2].text = ""
+			col = col.darkened(0.65)
+		for c in cells:
+			_tint(c, col)
 
 	var frac := tank.hp / MegaTank.MAX_HP
 	var hull_col := Color(0.4, 1.0, 0.5) if frac > 0.5 else (Color(1.0, 0.85, 0.2) if frac > 0.25 else Color(1.0, 0.2, 0.15))
 	if frac <= 0.25 and fmod(_time, 0.5) < 0.25:
 		hull_col = hull_col.darkened(0.5)
-	hull_label.text = "HULL   %s %3d" % [_bar(frac, 20), int(ceil(tank.hp))]
+	hull_label.text = G.t("HULL   %s %3d") % [_bar(frac, 20), int(ceil(tank.hp))]
 	_tint(hull_label, hull_col)
 
-	var cannon := "READY " if tank.cannon_cd <= 0.0 else _bar(1.0 - tank.cannon_cd / MegaTank.CANNON_RELOAD, 6)
-	var mg := ("OVERHEAT " + _bar(tank.mg_heat / 100.0, 6)) if tank.mg_overheated else ("HEAT " + _bar(tank.mg_heat / 100.0, 6))
+	var heat := _bar(tank.mg_heat / 100.0, 6)
+	var cannon := G.t("READY ") if tank.cannon_cd <= 0.0 else _bar(1.0 - tank.cannon_cd / MegaTank.CANNON_RELOAD, 6)
+	var mg := (G.t("OVERHEAT ") if tank.mg_overheated else G.t("HEAT ")) + heat
 	var breaches := tank.breaches.size()
-	weapons_label.text = "CANNON %s   MG %s   BREACHES %d" % [cannon, mg, breaches]
+	weapons_label.text = G.t("CANNON %s   MG %s   BREACHES %d") % [cannon, mg, breaches]
 	_tint(weapons_label, Color(1.0, 0.35, 0.25) if breaches > 0 and fmod(_time, 0.6) < 0.3 else Color(0.7, 0.9, 1.0))
 
 	var enemies := get_tree().get_nodes_in_group("enemies").size() + main.spawn_queue.size()
 	match main.state:
 		Main.State.LOBBY:
-			wave_label.text = "AI CREW %s   BEST %s (WAVE %d)" % [
-				"ON" if G.ai_crew else "OFF", G.format_time(G.best_time), G.best_wave]
+			wave_label.text = G.t("AI CREW %s   BEST %s (WAVE %d)") % [
+				G.t("ON" if G.ai_crew else "OFF"), G.format_time(G.best_time), G.best_wave]
 		_:
-			wave_label.text = "TIME %s   WAVE %02d   HOSTILES %02d   SCORE %06d" % [
+			wave_label.text = G.t("TIME %s   WAVE %02d   HOSTILES %02d   SCORE %06d") % [
 				G.format_time(main.survival_time), main.wave, enemies, G.score]
 
 	help_label.visible = main.state == Main.State.LOBBY
@@ -283,15 +299,18 @@ func refresh(main: Main, delta: float) -> void:
 	if main.state == Main.State.LOBBY:
 		title_label.text = "NEON MEGA TANK"
 		if main.players.is_empty():
-			sub_label.text = "press ACTION on any keyboard half or gamepad to join"
+			sub_label.text = G.t("press ACTION on any keyboard half or gamepad to join")
 		else:
-			var join_hint := "friends: press ACTION to join (up to 4)"
+			var lines: Array[String] = [G.t("friends: press ACTION to join (up to 4)")]
 			if Net.is_host():
-				join_hint = "HOSTING - friends tap JOIN LAN GAME on their phones\nor enter  %s" % "  /  ".join(Net.local_ips())
+				lines = [G.t("HOSTING - friends tap JOIN LAN GAME on their phones"),
+					G.t("or enter  %s") % "  /  ".join(Net.local_ips())]
 			elif Net.is_client():
-				join_hint = "connected to the host's tank over the LAN"
-			sub_label.text = ("%s%s\nboard DRIVE and roll the tank through the DEPLOY gate"
-				% [join_hint, "\nAI crew mans the empty stations" if G.ai_crew else ""])
+				lines = [G.t("connected to the host's tank over the LAN")]
+			if G.ai_crew:
+				lines.append(G.t("AI crew mans the empty stations"))
+			lines.append(G.t("board DRIVE and roll the tank through the DEPLOY gate"))
+			sub_label.text = "\n".join(lines)
 		title_label.modulate.a = 1.0
 		sub_label.modulate.a = 1.0
 	elif main.state == Main.State.PLAYING:
