@@ -134,6 +134,17 @@ version before installing a newer build. To keep one key, add a base64-encoded d
 (alias `androiddebugkey`, password `android`) as the `ANDROID_DEBUG_KEYSTORE_BASE64` repository
 secret. To publish on the Play Store, set up a release keystore and use **Export Release**.
 
+## Trailer
+
+`tools/trailer/` films the trailer inside the game. `record.sh` runs `director.gd` once per
+shot with Godot's Movie Maker (scripted crew, enemies and camera moves), and `assemble.py` cuts
+the takes together with neon title cards, the lobby and battle themes and the announcer:
+
+```
+xvfb-run -a -s "-screen 0 1920x1080x24" tools/trailer/record.sh   # or just ./record.sh on a desktop
+python3 tools/trailer/assemble.py   # -> tools/trailer/out/neon_mega_tank_trailer.mp4 and a poster
+```
+
 ## How it works
 
 ```

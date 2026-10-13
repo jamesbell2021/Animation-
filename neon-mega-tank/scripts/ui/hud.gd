@@ -18,6 +18,8 @@ var indicators: ThreatIndicators
 var boss_label: Label
 var touch: TouchControls
 var _root: Control
+## Hides the gameplay overlay (used when filming the trailer).
+var hidden_for_film := false
 
 var _banner_t := 0.0
 var _toast_t := 0.0
@@ -233,7 +235,7 @@ func _bar(fraction: float, width: int) -> String:
 
 func refresh(main: Main, delta: float) -> void:
 	_time += delta
-	_root.visible = main.state != Main.State.MENU
+	_root.visible = main.state != Main.State.MENU and not hidden_for_film
 	if main.state == Main.State.MENU:
 		return
 	var tank := G.tank

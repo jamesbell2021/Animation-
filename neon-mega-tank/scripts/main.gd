@@ -25,6 +25,8 @@ var new_record := false
 var boss: Enemy
 ## LAN client: this phone's controls.
 var local_input: PlayerInput
+## Trailer filming (tools/trailer): when set, called every frame instead of the follow camera.
+var cinematic: Callable
 
 var _candidates := {}
 var _cam_target := Vector3.ZERO
@@ -658,6 +660,9 @@ func _toast(text: String) -> void:
 
 
 func _update_camera(delta: float) -> void:
+	if cinematic.is_valid():
+		cinematic.call(delta)
+		return
 	var tank := G.tank
 	var target := tank.global_position + tank.velocity * 0.4
 	_cam_target = _cam_target.lerp(target, 1.0 - exp(-delta * 3.0))

@@ -4,3 +4,6 @@
 *.import
 builds/
 build/
+tools/trailer/takes/
+tools/trailer/out/
+override.cfg
