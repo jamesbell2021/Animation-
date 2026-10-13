@@ -77,8 +77,14 @@ func _draw() -> void:
 	var a := _action_center()
 	draw_circle(a, 120.0, Color(1.0, 0.3, 0.85, 0.45 if action_held else 0.2))
 	draw_arc(a, 120.0, 0.0, TAU, 48, Color(1.0, 0.3, 0.85, 0.9), 4.0, true)
-	draw_string(G.jp_font, a + Vector2(-100, 14), G.t("ACTION"), HORIZONTAL_ALIGNMENT_CENTER, 200, 34, Color.WHITE)
+	_label(a + Vector2(-100, 14), G.t("ACTION"), 200, 34)
 	var i := _interact_center()
 	draw_circle(i, 85.0, Color(0.3, 1.0, 0.5, 0.45 if interact_held else 0.2))
 	draw_arc(i, 85.0, 0.0, TAU, 48, Color(0.3, 1.0, 0.5, 0.9), 4.0, true)
-	draw_string(G.jp_font, i + Vector2(-70, 10), G.t("BOARD"), HORIZONTAL_ALIGNMENT_CENTER, 140, 28, Color.WHITE)
+	_label(i + Vector2(-70, 10), G.t("BOARD"), 140, 28)
+
+
+## Button text with a dark outline, so it stays readable over bright neon buildings.
+func _label(pos: Vector2, text: String, width: float, size: int) -> void:
+	draw_string_outline(G.jp_font, pos, text, HORIZONTAL_ALIGNMENT_CENTER, width, size, 8, Color(0.0, 0.0, 0.05, 0.85))
+	draw_string(G.jp_font, pos, text, HORIZONTAL_ALIGNMENT_CENTER, width, size, Color.WHITE)
