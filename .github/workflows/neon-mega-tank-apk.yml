@@ -17,6 +17,9 @@ name: Neon Mega Tank builds
 
 on:
   push:
+    # Branches must be listed alongside tags: with tags alone, a push to a branch never builds.
+    branches:
+      - "**"
     paths:
       - "neon-mega-tank/**"
       - ".github/workflows/neon-mega-tank-apk.yml"
