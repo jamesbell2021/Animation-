@@ -1,7 +1,10 @@
 class_name Block
 extends StaticBody3D
 ## One destructible piece of terrain: a building cube, barrier, crate or tree.
+## Blocks only own their collision; their neon boxes are instances in the City's MultiMeshes,
+## so the whole city draws in a few dozen calls (important on phones).
 
+var id := -1
 var hp := 30.0
 var size := Vector3.ONE
 var color := Color.WHITE
@@ -10,7 +13,10 @@ var crushable := false
 ## Building cubes live in a column; destroying one collapses everything stacked above.
 var column_key := Vector2i.ZERO
 var level := -1
-var meshes: Array[MeshInstance3D] = []
+## Visual parts: [local offset, size, color, energy, windows]; filled in by City.
+var parts: Array = []
+## MultiMesh slots of the parts once the city is built: [chunk index, instance index].
+var slots: Array = []
 var dead := false
 
 
@@ -24,22 +30,19 @@ func build(block_size: Vector3, block_color: Color, max_hp: float, energy := 2.2
 	var cs := CollisionShape3D.new()
 	cs.shape = G.box_shape(block_size)
 	add_child(cs)
-	add_mesh(block_size, Vector3.ZERO, block_color, energy, windows)
+	add_part(block_size, Vector3.ZERO, block_color, energy, windows)
 
 
-func add_mesh(mesh_size: Vector3, offset: Vector3, mesh_color: Color, energy := 2.2,
-		windows := false) -> MeshInstance3D:
-	var m := G.neon_box(self, mesh_size, offset, mesh_color, energy, windows)
-	m.set_instance_shader_parameter("fadeable", 1.0)
-	meshes.append(m)
-	return m
+func add_part(part_size: Vector3, offset: Vector3, part_color: Color, energy := 2.2,
+		windows := false) -> void:
+	parts.append([offset, part_size, part_color, energy, windows])
 
 
 func take_damage(amount: float, _pos: Vector3, _team: int) -> void:
-	if dead:
+	if dead or G.is_client():
 		return
 	hp -= amount
 	if hp <= 0.0:
 		G.city.destroy_block(self)
 	else:
-		G.flash(meshes, 0.6)
+		G.city.flash_block(self, 0.6)

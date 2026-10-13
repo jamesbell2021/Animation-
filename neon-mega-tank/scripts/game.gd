@@ -26,6 +26,19 @@ var difficulty := 1.0
 var best_time := 0.0
 var best_wave := 0
 var best_score := 0
+## True once the title menu has been passed (restarts go straight back to the lobby).
+var menu_done := false
+## Message shown on the title menu (e.g. "the host left").
+var menu_message := ""
+## Seed of the current round's city (shared with LAN clients).
+var round_seed := 0
+## On-screen controls, when the device has a touchscreen.
+var touch: TouchControls
+## Client side: visual projectiles by network id, so the host can end them.
+var net_projectiles := {}
+var _next_net_id := 1
+## While > 0, effects are not sent to LAN clients (they rebuild composite effects themselves).
+var net_mute := 0
 var main: Main
 var tank: MegaTank
 var city: City
@@ -183,16 +196,18 @@ func shout(pos: Vector3, line: Array, color: Color) -> void:
 	if now - _last_voice < 350:
 		return
 	_last_voice = now
+	_net("shout", [pos, line, color], true)
 	if _voice_streams.has(line[0]):
 		var p: AudioStreamPlayer = _voice_players[now % _voice_players.size()]
 		p.stream = _voice_streams[line[0]]
-		p.pitch_scale = randf_range(0.9, 1.25)
+		p.pitch_scale = randf_range(0.95, 1.12)
 		p.play()
 	speech(pos + Vector3(0, 2.2, 0), line[1], line[2], color)
 
 
 func announce(key: String) -> void:
 	var line: Array = VoiceLines.ANNOUNCER[key]
+	_net("announce", [key], true)
 	if _voice_streams.has(line[0]):
 		_announcer.stream = _voice_streams[line[0]]
 		_announcer.pitch_scale = 0.78
@@ -234,7 +249,28 @@ func _speech_label(text: String, size: int, color: Color) -> Label3D:
 
 
 ## Called by Main when a new round starts.
+func is_client() -> bool:
+	return Net.is_client()
+
+
+## Phone UI (touch controls, no CRT). Launch with "-- --touch" to try it on a desktop.
+func is_mobile() -> bool:
+	return (OS.has_feature("mobile") or DisplayServer.is_touchscreen_available()
+		or OS.get_cmdline_user_args().has("--touch"))
+
+
+func _net(kind: String, args: Array, reliable := false) -> void:
+	if net_mute == 0:
+		Net.send_event(kind, args, reliable)
+
+
+func next_net_id() -> int:
+	_next_net_id += 1
+	return _next_net_id
+
+
 func reset_round() -> void:
+	net_projectiles.clear()
 	score = 0
 	shake = 0.0
 	difficulty = 1.0
@@ -308,9 +344,17 @@ func add_score(points: int) -> void:
 
 
 func spawn_projectile(pos: Vector3, vel: Vector3, team: int, kind: String,
-		color := Color.WHITE) -> Projectile:
+		color := Color.WHITE, net_id := 0) -> Projectile:
 	var p := Projectile.new()
 	p.setup(kind, team, vel, color)
+	if is_client():
+		p.visual_only = true
+		p.net_id = net_id
+		if net_id != 0:
+			net_projectiles[net_id] = p
+	else:
+		p.net_id = next_net_id()
+		_net("proj", [pos, vel, team, kind, color, p.net_id])
 	if team == Team.ENEMY:
 		p.damage *= difficulty
 		p.blast_damage *= difficulty
@@ -323,7 +367,8 @@ func spawn_projectile(pos: Vector3, vel: Vector3, team: int, kind: String,
 ## Area damage plus the full visual treatment. Damage 0 = visuals only.
 func explode(pos: Vector3, radius: float, damage: float, team: int,
 		color := Color(1.0, 0.55, 0.15)) -> void:
-	if damage > 0.0 and main:
+	_net("explode", [pos, radius, color])
+	if damage > 0.0 and main and not is_client():
 		var q := PhysicsShapeQueryParameters3D.new()
 		var s := SphereShape3D.new()
 		s.radius = radius
@@ -338,6 +383,7 @@ func explode(pos: Vector3, radius: float, damage: float, team: int,
 			seen[c] = true
 			var d := (c as Node3D).global_position.distance_to(pos)
 			c.take_damage(damage * clampf(1.0 - d / (radius * 1.6), 0.35, 1.0), pos, team)
+	net_mute += 1
 	ring(pos, color, radius * 1.4, 0.5)
 	ring(pos, Color(1.0, 0.95, 0.8), radius * 0.7, 0.22)
 	sparks(pos + Vector3(0, 0.8, 0), color, int(10 + radius * 5), 6.0 + radius * 2.0)
@@ -345,11 +391,13 @@ func explode(pos: Vector3, radius: float, damage: float, team: int,
 	scorch(pos, radius * 0.8)
 	add_shake(0.2 + radius * 0.1)
 	sfx("explosion", -4.0 + radius, 1.3 - radius * 0.08)
+	net_mute -= 1
 
 
 func ring(pos: Vector3, color: Color, radius: float, time: float, height := 0.2) -> void:
 	if fx_root == null:
 		return
+	_net("ring", [pos, color, radius, time, height])
 	var mi := MeshInstance3D.new()
 	var mat := ShaderMaterial.new()
 	mat.shader = _ring_shader
@@ -369,6 +417,8 @@ func sparks(pos: Vector3, color: Color, amount: int, speed: float, life := 0.6,
 		size := 0.16, gravity := -14.0) -> void:
 	if fx_root == null:
 		return
+	if amount >= 6:
+		_net("sparks", [pos, color, amount, speed, life, size, gravity])
 	var p := CPUParticles3D.new()
 	p.one_shot = true
 	p.amount = maxi(amount, 1)
@@ -396,8 +446,11 @@ func sparks(pos: Vector3, color: Color, amount: int, speed: float, life := 0.6,
 
 ## Chunky pieces flying off a destroyed block.
 func debris(pos: Vector3, color: Color, size: Vector3) -> void:
+	_net("debris", [pos, color, size])
+	net_mute += 1
 	sparks(pos, color, 9, 7.0, 1.0, clampf(size.x * 0.25, 0.12, 0.55), -20.0)
 	sparks(pos, Color(1, 1, 1), 4, 4.0, 0.35, 0.1, 0.0)
+	net_mute -= 1
 
 
 func scorch(pos: Vector3, radius: float) -> void:
@@ -427,6 +480,7 @@ func scorch(pos: Vector3, radius: float) -> void:
 func sfx(sound: String, volume_db := 0.0, pitch := 1.0) -> void:
 	if not _sounds.has(sound):
 		return
+	_net("sfx", [sound, volume_db, pitch])
 	var now := Time.get_ticks_msec()
 	if now - int(_last_played.get(sound, -1000)) < 40:
 		return

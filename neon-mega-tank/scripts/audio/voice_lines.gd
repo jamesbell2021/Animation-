@@ -22,7 +22,18 @@ const TANK_DEATH := [
 	["da-Q-shu-tsu", "脱出！", "dasshutsu!"],
 ]
 
+const DRONE_DEATH := [
+	["ga-ga-Q", "ガガッ…", "ga-ga..."],
+	["e-ra-a", "エラー！", "ERROR!"],
+	["tsu-i-ra-ku", "墜落！", "tsuiraku!"],
+]
+
+const BOSS_DEATH := [
+	["ba-ka-na-a-a", "ばかなあああ！", "bakanaaa!"],
+]
+
 const ANNOUNCER := {
+	"boss": ["bo-su-shu-tsu-ge-n", "ボス出現！", "BOSU SHUTSUGEN!  -  BOSS INCOMING!"],
 	"deploy": ["shu-tsu-ge-ki", "出撃！", "SHUTSUGEKI!  -  SORTIE!"],
 	"wave": ["te-ki-shu-u-ra-i", "敵襲来！", "TEKI SHUURAI!  -  ENEMY ATTACK!"],
 	"reinforce": ["ku-ru-zo", "来るぞ！", "KURU ZO!  -  MORE INCOMING!"],
@@ -34,7 +45,7 @@ const ANNOUNCER := {
 
 static func all_romaji() -> Array[String]:
 	var out: Array[String] = []
-	for line in SOLDIER_DEATH + TANK_DEATH:
+	for line in SOLDIER_DEATH + TANK_DEATH + DRONE_DEATH + BOSS_DEATH:
 		out.append(line[0])
 	for key in ANNOUNCER:
 		out.append(ANNOUNCER[key][0])

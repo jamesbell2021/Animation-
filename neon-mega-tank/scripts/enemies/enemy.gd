@@ -1,6 +1,7 @@
 class_name Enemy
 extends CharacterBody3D
 ## Shared enemy behaviour: health, hit flash, death, line of sight and simple obstacle steering.
+## On LAN clients enemies are "puppets": no AI, they just follow the host's snapshots.
 
 const STEER_ANGLES := [0.0, 0.7, -0.7, 1.4, -1.4, 2.1, -2.1]
 
@@ -10,6 +11,15 @@ var dead := false
 var score_value := 10
 var color := G.ENEMY_COLOR
 var meshes: Array[MeshInstance3D] = []
+var net_id := 0
+## Type name used for replication ("rifle", "rpg", "tank", ...).
+var kind := ""
+var puppet := false
+
+var _net_pos := Vector3.ZERO
+var _net_yaw := 0.0
+var _net_aux := 0.0
+var _net_aiming := false
 
 var _steer_side := 1.0
 var _steer_t := 0.0
@@ -21,6 +31,42 @@ func setup_enemy() -> void:
 	collision_mask = G.LAYER_TERRAIN | G.LAYER_PLAYER | G.LAYER_ENEMY
 	motion_mode = CharacterBody3D.MOTION_MODE_FLOATING
 	add_to_group("enemies")
+	if puppet:
+		collision_mask = 0
+		_net_pos = position
+	else:
+		net_id = G.next_net_id()
+
+
+# --- Replication -----------------------------------------------------------------------------
+
+func net_state() -> Array:
+	return [net_id, kind, global_position.x, global_position.z, facing_yaw(), aux_yaw(), is_aiming(),
+		hp / maxf(max_hp, 1.0)]
+
+
+func apply_net(s: Array) -> void:
+	_net_pos = Vector3(s[2], 0.0, s[3])
+	_net_yaw = s[4]
+	_net_aux = s[5]
+	_net_aiming = s[6]
+	hp = float(s[7]) * max_hp
+
+
+## Client: glide toward the latest snapshot and animate. Returns the movement speed.
+func puppet_update(delta: float) -> float:
+	var prev := global_position
+	global_position = global_position.lerp(_net_pos, minf(1.0, delta * 12.0))
+	return (global_position - prev).length() / maxf(delta, 0.0001)
+
+
+## Facing and secondary yaw (turret / body) sent to clients; overridden per enemy type.
+func facing_yaw() -> float:
+	return rotation.y
+
+
+func aux_yaw() -> float:
+	return 0.0
 
 
 func part(parent: Node, size: Vector3, pos: Vector3, energy := 2.6) -> MeshInstance3D:
@@ -30,7 +76,7 @@ func part(parent: Node, size: Vector3, pos: Vector3, energy := 2.6) -> MeshInsta
 
 
 func take_damage(amount: float, _pos: Vector3, team: int) -> void:
-	if dead or team == G.Team.ENEMY:
+	if dead or team == G.Team.ENEMY or puppet:
 		return
 	hp -= amount
 	G.flash(meshes, 1.0)
@@ -64,7 +110,7 @@ func die() -> void:
 
 ## Is something telegraphing an attack? Used by the HUD threat arrows.
 func is_aiming() -> bool:
-	return false
+	return _net_aiming
 
 
 func has_line_of_sight(target: Vector3) -> bool:

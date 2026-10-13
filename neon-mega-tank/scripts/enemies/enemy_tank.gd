@@ -52,7 +52,11 @@ func death_lines() -> Array:
 
 
 func is_aiming() -> bool:
-	return _aim_time > 0.0
+	return _net_aiming if puppet else _aim_time > 0.0
+
+
+func aux_yaw() -> float:
+	return _turret.rotation.y
 
 
 func die() -> void:
@@ -65,6 +69,16 @@ func die() -> void:
 
 func _physics_process(delta: float) -> void:
 	if dead:
+		return
+	if puppet:
+		puppet_update(delta)
+		rotation.y = lerp_angle(rotation.y, _net_yaw, minf(1.0, delta * 10.0))
+		_turret.rotation.y = lerp_angle(_turret.rotation.y, _net_aux, minf(1.0, delta * 10.0))
+		_laser.visible = _net_aiming and G.tank != null
+		if _laser.visible:
+			var length := maxf(global_position.distance_to(G.tank.global_position) - 3.0, 1.0)
+			_laser.position = Vector3(0, 0.35, -2.9 - length * 0.5)
+			_laser.scale = Vector3(1, 1, length)
 		return
 	var tank := G.tank
 	if tank == null or tank.dead:

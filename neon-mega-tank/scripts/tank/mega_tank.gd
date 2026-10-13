@@ -37,6 +37,10 @@ class Station:
 
 var hp := MAX_HP
 var dead := false
+## LAN client: the tank only mirrors the host's snapshots.
+var puppet := false
+var _net := []
+var _breach_ids := {}
 var speed := 0.0
 var stations := {}
 var breaches: Array[Breach] = []
@@ -255,7 +259,7 @@ func fix_breach_near(p: Vector2, delta: float) -> bool:
 func _physics_process(delta: float) -> void:
 	_time += delta
 	_hit_flash_cd -= delta
-	if dead:
+	if dead or puppet:
 		return
 	_update_jams()
 	_drive(delta)
@@ -312,6 +316,8 @@ func _drive(delta: float) -> void:
 				b.take_damage(55.0 * delta, global_position, G.Team.PLAYER)
 		elif other is Soldier:
 			(other as Soldier).crush()
+		elif other is Buggy:
+			(other as Buggy).detonate()
 		elif other is EnemyTank and absf(speed) > 1.5:
 			(other as EnemyTank).take_damage(30.0 * delta, global_position, G.Team.PLAYER)
 
@@ -416,6 +422,7 @@ func _add_breach(p: Vector2) -> void:
 		if b.deck_pos.distance_to(p) < 0.8:
 			return
 	var b := Breach.new()
+	b.net_id = G.next_net_id()
 	b.deck_pos = p
 	b.position = Vector3(p.x, DECK_Y, p.y)
 	add_child(b)
@@ -436,9 +443,13 @@ func _die() -> void:
 	for i in 7:
 		var off := Vector3(randf_range(-2.5, 2.5), 1.5, randf_range(-3.5, 3.5))
 		get_tree().create_timer(i * 0.2).timeout.connect(_death_blast.bind(off, 3.0 + i * 0.3))
+	_show_wreck()
+	destroyed.emit()
+
+
+func _show_wreck() -> void:
 	for m in meshes:
 		G.set_neon(m, Color(0.7, 0.2, 0.1), 0.9)
-	destroyed.emit()
 
 
 func _death_blast(offset: Vector3, radius: float) -> void:
@@ -447,7 +458,77 @@ func _death_blast(offset: Vector3, radius: float) -> void:
 
 # --- Visual upkeep ---------------------------------------------------------------------------
 
-func _process(_delta: float) -> void:
+# --- Replication -----------------------------------------------------------------------------
+
+func net_state() -> Array:
+	var b := []
+	for br in breaches:
+		b.append([br.net_id, br.deck_pos, br.progress])
+	return [global_position.x, global_position.z, rotation.y, turret.rotation.y, mg_pivot.rotation.y,
+		hp, speed, cannon_cd, mg_heat, mg_overheated, dead, repairing, b]
+
+
+func apply_net(s: Array) -> void:
+	_net = s
+	hp = s[5]
+	speed = s[6]
+	cannon_cd = s[7]
+	mg_heat = s[8]
+	mg_overheated = s[9]
+	repairing = s[11]
+	if s[10] and not dead:
+		dead = true
+		_show_wreck()
+	# Breaches appear and disappear as the host reports them.
+	var seen := {}
+	for entry in s[12]:
+		var id: int = entry[0]
+		seen[id] = true
+		var br: Breach = _breach_ids.get(id)
+		if br == null:
+			br = Breach.new()
+			br.net_id = id
+			br.deck_pos = entry[1]
+			br.position = Vector3(br.deck_pos.x, DECK_Y, br.deck_pos.y)
+			add_child(br)
+			breaches.append(br)
+			_breach_ids[id] = br
+		br.progress = entry[2]
+	for id in _breach_ids.keys():
+		if not seen.has(id):
+			var br: Breach = _breach_ids[id]
+			breaches.erase(br)
+			br.queue_free()
+			_breach_ids.erase(id)
+
+
+func _puppet_update(delta: float) -> void:
+	if _net.is_empty():
+		return
+	var k := minf(1.0, delta * 12.0)
+	var target := Vector3(_net[0], 0.0, _net[1])
+	if global_position.distance_to(target) > 8.0:
+		global_position = target
+	global_position = global_position.lerp(target, k)
+	rotation.y = lerp_angle(rotation.y, _net[2], k)
+	turret.rotation.y = lerp_angle(turret.rotation.y, _net[3], k)
+	mg_pivot.rotation.y = lerp_angle(mg_pivot.rotation.y, _net[4], k)
+	velocity = -global_basis.z * speed
+	_tread_phase += speed * delta
+	_update_jams()
+	var gunner := _manned("cannon")
+	cannon_laser.visible = gunner != null and not dead
+	if gunner:
+		G.set_neon(cannon_laser, gunner.color, 1.3)
+	var mg := _manned("mg")
+	mg_laser.visible = mg != null and not mg_overheated and not dead
+	if mg:
+		G.set_neon(mg_laser, mg.color, 1.0)
+
+
+func _process(delta: float) -> void:
+	if puppet:
+		_puppet_update(delta)
 	for st: Station in stations.values():
 		var c := Color(0.75, 0.85, 1.0)
 		var e := 1.0

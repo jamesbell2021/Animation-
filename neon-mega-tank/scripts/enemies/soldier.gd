@@ -49,7 +49,11 @@ func _ready() -> void:
 
 
 func is_aiming() -> bool:
-	return _aim_time > 0.0
+	return _net_aiming if puppet else _aim_time > 0.0
+
+
+func facing_yaw() -> float:
+	return _body.rotation.y
 
 
 func crush() -> void:
@@ -62,6 +66,19 @@ func crush() -> void:
 
 func _physics_process(delta: float) -> void:
 	if dead:
+		return
+	if puppet:
+		var spd := puppet_update(delta)
+		if spd > 0.5:
+			_walk += delta * 11.0
+		_legs[0].rotation.x = sin(_walk) * 0.7
+		_legs[1].rotation.x = -sin(_walk) * 0.7
+		_body.rotation.y = lerp_angle(_body.rotation.y, _net_yaw, minf(1.0, delta * 10.0))
+		_laser.visible = rpg and _net_aiming and G.tank != null
+		if _laser.visible:
+			var length := maxf(global_position.distance_to(G.tank.global_position) - 2.0, 1.0)
+			_laser.position = Vector3(0.3, 1.15, -length * 0.5)
+			_laser.scale = Vector3(1, 1, length)
 		return
 	var tank := G.tank
 	if tank == null or tank.dead:

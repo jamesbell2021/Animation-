@@ -21,9 +21,22 @@ func _init(dev: int) -> void:
 	device = dev
 
 
+## Builds the right input reader for a saved device id.
+static func for_device(dev: int) -> PlayerInput:
+	if dev >= Net.REMOTE_BASE:
+		return NetInput.new(dev)
+	if dev == TouchInput.TOUCH_DEVICE:
+		return TouchInput.new()
+	return PlayerInput.new(dev)
+
+
 static func device_name(dev: int) -> String:
 	if dev <= -100:
 		return "AI CREW"
+	if dev >= Net.REMOTE_BASE:
+		return "LAN PHONE"
+	if dev == -3:
+		return "TOUCH"
 	match dev:
 		KEYBOARD_1:
 			return "KEYS WASD"

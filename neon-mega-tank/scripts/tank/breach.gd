@@ -4,6 +4,7 @@ extends Node3D
 ## until a crew member holds ACTION on it.
 
 var deck_pos := Vector2.ZERO
+var net_id := 0
 var progress := 0.0
 
 var _marks: Array[MeshInstance3D] = []

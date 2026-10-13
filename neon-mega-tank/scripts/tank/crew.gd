@@ -12,6 +12,9 @@ var tank: MegaTank
 var station: MegaTank.Station = null
 var deck_pos := Vector2.ZERO
 var fixing := false
+## LAN client: mirrors the host's snapshots instead of reading input.
+var puppet := false
+var _net_yaw := 0.0
 
 var _body: Node3D
 var _legs: Array[MeshInstance3D] = []
@@ -36,7 +39,32 @@ func set_input(new_input: PlayerInput) -> void:
 	if input is BotInput:
 		(input as BotInput).crew = self
 	if _label:
-		_label.text = "P%d%s" % [index + 1, " AI" if is_bot() else ""]
+		_label.text = _label_text()
+
+
+func _label_text() -> String:
+	var tag := " AI" if is_bot() else ""
+	if Net.is_client() and input and input.device == Net.my_device():
+		tag = " YOU"
+	return "P%d%s" % [index + 1, tag]
+
+
+func net_state() -> Array:
+	return [input.device, deck_pos, _body.rotation.y, station.id if station else "", fixing]
+
+
+func apply_net(s: Array) -> void:
+	deck_pos = s[1]
+	_net_yaw = s[2]
+	fixing = s[4]
+	var id: String = s[3]
+	var want: MegaTank.Station = tank.stations.get(id) if id != "" else null
+	if want != station:
+		if station and station.occupant == self:
+			station.occupant = null
+		station = want
+		if station:
+			station.occupant = self
 
 
 func _ready() -> void:
@@ -53,7 +81,7 @@ func _ready() -> void:
 	G.neon_box(self, Vector3(0.9, 0.02, 0.9), Vector3(0, 0.02, 0), color, 2.0, false, true)
 	var label := Label3D.new()
 	_label = label
-	label.text = "P%d%s" % [index + 1, " AI" if is_bot() else ""]
+	label.text = _label_text()
 	label.font = G.ui_font
 	label.font_size = 48
 	label.outline_size = 12
@@ -78,6 +106,9 @@ func status_text() -> String:
 
 
 func _process(delta: float) -> void:
+	if puppet:
+		_puppet_update(delta)
+		return
 	fixing = false
 	if tank.dead:
 		return
@@ -113,6 +144,18 @@ func _process(delta: float) -> void:
 		_walk += delta * 25.0
 	else:
 		_walk = lerpf(_walk, roundf(_walk / PI) * PI, minf(1.0, delta * 10.0))
+	_body.position.y = absf(sin(_walk)) * 0.1
+	_legs[0].rotation.x = sin(_walk) * 0.6
+	_legs[1].rotation.x = -sin(_walk) * 0.6
+
+
+func _puppet_update(delta: float) -> void:
+	var target := Vector3(deck_pos.x, MegaTank.DECK_Y, deck_pos.y)
+	var moved := position.distance_to(target)
+	position = position.lerp(target, minf(1.0, delta * 14.0))
+	_body.rotation.y = lerp_angle(_body.rotation.y, _net_yaw, minf(1.0, delta * 14.0))
+	if moved > 0.02 or fixing:
+		_walk += delta * (25.0 if fixing else 13.0)
 	_body.position.y = absf(sin(_walk)) * 0.1
 	_legs[0].rotation.x = sin(_walk) * 0.6
 	_legs[1].rotation.x = -sin(_walk) * 0.6

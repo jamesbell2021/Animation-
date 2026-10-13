@@ -2,6 +2,7 @@ class_name Projectile
 extends Node3D
 ## Shells, bullets and rockets. Moves with a ray cast per physics step; anything with
 ## take_damage() can be hit. Player bullets can also shoot enemy rockets out of the air.
+## On LAN clients projectiles are visual only: the host decides hits and sends the results.
 
 const KINDS := {
 	"shell": {"damage": 45.0, "radius": 3.2, "blast": 38.0, "range": 46.0, "size": Vector3(0.4, 0.4, 1.6), "energy": 5.0},
@@ -21,6 +22,8 @@ var blast_radius := 0.0
 var blast_damage := 0.0
 var range_left := 30.0
 var dead := false
+var visual_only := false
+var net_id := 0
 
 
 func setup(projectile_kind: String, projectile_team: int, vel: Vector3, tint: Color) -> void:
@@ -66,6 +69,9 @@ func _physics_process(delta: float) -> void:
 	var from := global_position
 	var to := from + velocity * delta
 	to.y = lerpf(from.y, FLIGHT_HEIGHT, minf(1.0, delta * 8.0))
+	if visual_only:
+		_fly_visual(from, to, delta)
+		return
 	if team == G.Team.PLAYER and kind == "bullet" and _hits_rocket(from, to):
 		return
 	var mask := G.LAYER_TERRAIN | (G.LAYER_ENEMY if team == G.Team.PLAYER else G.LAYER_PLAYER)
@@ -93,9 +99,36 @@ func _hits_rocket(from: Vector3, to: Vector3) -> bool:
 	return false
 
 
+## Client: fly until something solid is reached; the host reports the real outcome.
+func _fly_visual(from: Vector3, to: Vector3, delta: float) -> void:
+	var mask := G.LAYER_TERRAIN | (G.LAYER_ENEMY if team == G.Team.PLAYER else G.LAYER_PLAYER)
+	var hit := get_world_3d().direct_space_state.intersect_ray(
+			PhysicsRayQueryParameters3D.create(from, to, mask))
+	range_left -= velocity.length() * delta
+	if not hit.is_empty() or range_left <= 0.0:
+		if blast_radius <= 0.0 and not hit.is_empty():
+			G.sparks(hit["position"], color, 4, 4.0, 0.25, 0.1)
+		end()
+		return
+	global_position = to
+
+
+## Removes the projectile without effects (client: the host's events show the impact).
+func end() -> void:
+	dead = true
+	G.net_projectiles.erase(net_id)
+	queue_free()
+
+
+func _end_remote() -> void:
+	if blast_radius > 0.0 or kind == "rocket":
+		Net.send_event("proj_end", [net_id], true)
+
+
 func shoot_down() -> void:
 	if dead:
 		return
+	_end_remote()
 	dead = true
 	G.sparks(global_position, color, 14, 7.0)
 	G.ring(global_position, color, 1.5, 0.3, global_position.y)
@@ -106,6 +139,7 @@ func shoot_down() -> void:
 
 func _impact(pos: Vector3, collider: Object) -> void:
 	dead = true
+	_end_remote()
 	if collider and collider.has_method("take_damage"):
 		collider.take_damage(damage, pos, team)
 	if blast_radius > 0.0:

@@ -2,6 +2,8 @@ class_name City
 extends Node3D
 ## Procedural neon city on a road grid. Buildings are stacks of 2 m cubes, so everything can be
 ## shot apart; knocking out a cube makes the cubes above it collapse.
+## Generation is seeded so LAN clients build exactly the same city as the host; blocks are
+## numbered in creation order so destruction can be replicated by id.
 
 const CELL := 2.0
 const PERIOD := 24.0
@@ -17,11 +19,17 @@ const CRATE_COLOR := Color(1.0, 0.7, 0.15)
 const TREE_COLOR := Color(0.3, 1.0, 0.5)
 
 var columns := {}
+var blocks: Array[Block] = []
+## Ids of destroyed blocks, sent to clients that join mid-round.
+var destroyed_ids: Array[int] = []
 var rng := RandomNumberGenerator.new()
 
+var _chunks: Array[MultiMesh] = []
+var _flashing := {}
 
-func generate() -> void:
-	rng.randomize()
+
+func generate(seed_value: int) -> void:
+	rng.seed = seed_value
 	_build_ground()
 	_build_boundary()
 	for bx in range(-3, 3):
@@ -35,14 +43,113 @@ func generate() -> void:
 				_gen_buildings(ox, oz)
 				_gen_sidewalk_barriers(ox, oz)
 	_gen_roadblocks()
+	_build_chunks()
+
+
+## Packs every block part into one MultiMesh per city block (a few dozen draw calls in total).
+func _build_chunks() -> void:
+	var by_chunk := {}
+	for b in blocks:
+		var key := Vector2i(floori(b.position.x / PERIOD), floori(b.position.z / PERIOD))
+		if not by_chunk.has(key):
+			by_chunk[key] = []
+		by_chunk[key].append(b)
+	var unit := G.box_mesh(Vector3.ONE)
+	var mat := ShaderMaterial.new()
+	mat.shader = load("res://shaders/neon_multi.gdshader")
+	for key in by_chunk:
+		var list: Array = by_chunk[key]
+		var count := 0
+		for b: Block in list:
+			count += b.parts.size()
+		var mm := MultiMesh.new()
+		mm.transform_format = MultiMesh.TRANSFORM_3D
+		mm.use_colors = true
+		mm.use_custom_data = true
+		mm.mesh = unit
+		mm.instance_count = count
+		var chunk_index := _chunks.size()
+		_chunks.append(mm)
+		var i := 0
+		for b: Block in list:
+			for part in b.parts:
+				var offset: Vector3 = part[0]
+				mm.set_instance_transform(i, Transform3D(Basis.from_scale(part[1]), b.position + offset))
+				mm.set_instance_color(i, part[2])
+				mm.set_instance_custom_data(i, Color(0.0, 1.0 if part[4] else 0.0, 1.0, part[3]))
+				b.slots.append([chunk_index, i])
+				i += 1
+		var mmi := MultiMeshInstance3D.new()
+		mmi.multimesh = mm
+		mmi.material_override = mat
+		mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(mmi)
+
+
+func flash_block(b: Block, amount: float) -> void:
+	_flashing[b] = amount
+	_set_flash(b, amount)
+
+
+func _set_flash(b: Block, amount: float) -> void:
+	for slot in b.slots:
+		var mm := _chunks[slot[0]]
+		var c := mm.get_instance_custom_data(slot[1])
+		c.r = amount
+		mm.set_instance_custom_data(slot[1], c)
+
+
+func _process(delta: float) -> void:
+	for b in _flashing.keys():
+		if not is_instance_valid(b) or b.dead:
+			_flashing.erase(b)
+			continue
+		var v: float = maxf(0.0, _flashing[b] - delta * 5.0)
+		_set_flash(b, v)
+		if v <= 0.0:
+			_flashing.erase(b)
+		else:
+			_flashing[b] = v
+
+
+func _hide(b: Block) -> void:
+	for slot in b.slots:
+		_chunks[slot[0]].set_instance_transform(slot[1], Transform3D(Basis.from_scale(Vector3.ZERO), b.position))
+
+
+## Client side: the host destroyed this block.
+func destroy_by_id(block_id: int) -> void:
+	if block_id < 0 or block_id >= blocks.size():
+		return
+	var b := blocks[block_id]
+	if is_instance_valid(b) and not b.dead:
+		b.dead = true
+		G.debris(b.global_position, b.color, b.size)
+		_hide(b)
+		b.queue_free()
+
+
+## Client side: hide everything destroyed before we joined, without effects.
+func apply_destroyed(ids: Array) -> void:
+	for block_id in ids:
+		if block_id >= 0 and block_id < blocks.size():
+			var b := blocks[block_id]
+			if is_instance_valid(b) and not b.dead:
+				b.dead = true
+				_hide(b)
+				b.queue_free()
 
 
 func destroy_block(b: Block) -> void:
 	if b.dead:
 		return
 	b.dead = true
+	G.net_mute += 1
 	G.debris(b.global_position, b.color, b.size)
+	G.net_mute -= 1
 	G.add_score(1)
+	_hide(b)
+	_replicate_destroy(b)
 	if b.level >= 0 and columns.has(b.column_key):
 		var column: Array = columns[b.column_key]
 		var delay := 0.0
@@ -61,10 +168,19 @@ func destroy_block(b: Block) -> void:
 func _collapse(b: Block) -> void:
 	if not is_instance_valid(b):
 		return
+	G.net_mute += 1
 	G.debris(b.global_position, b.color, b.size)
+	G.net_mute -= 1
 	G.add_shake(0.05)
 	G.add_score(1)
+	_hide(b)
+	_replicate_destroy(b)
 	b.queue_free()
+
+
+func _replicate_destroy(b: Block) -> void:
+	destroyed_ids.append(b.id)
+	Net.send_event("block", [b.id], true)
 
 
 func _make_block(block_size: Vector3, pos: Vector3, color: Color, max_hp: float,
@@ -73,8 +189,14 @@ func _make_block(block_size: Vector3, pos: Vector3, color: Color, max_hp: float,
 	b.build(block_size, color, max_hp, energy, windows)
 	b.crushable = crushable
 	b.position = pos
-	add_child(b)
+	_register(b)
 	return b
+
+
+func _register(b: Block) -> void:
+	b.id = blocks.size()
+	blocks.append(b)
+	add_child(b)
 
 
 func _gen_buildings(ox: float, oz: float) -> void:
@@ -169,10 +291,10 @@ func _place_barrier(ox: float, oz: float, side: int, i: int) -> void:
 func _make_tree(ground_pos: Vector3) -> void:
 	var b := Block.new()
 	b.build(Vector3(0.6, 2.6, 0.6), TREE_COLOR.darkened(0.3), 8.0, 1.6)
-	b.add_mesh(Vector3(1.5, 1.2, 1.5), Vector3(0, 1.0, 0), TREE_COLOR, 2.4)
+	b.add_part(Vector3(1.5, 1.2, 1.5), Vector3(0, 1.0, 0), TREE_COLOR, 2.4)
 	b.crushable = true
 	b.position = ground_pos + Vector3(0, 1.3, 0)
-	add_child(b)
+	_register(b)
 
 
 ## Barricades across the streets: cover for enemy infantry, speed bumps for the mega tank.

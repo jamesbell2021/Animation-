@@ -15,6 +15,9 @@ var kana_label: Label
 var banner_bg: Panel
 var crt: ColorRect
 var indicators: ThreatIndicators
+var boss_label: Label
+var touch: TouchControls
+var _root: Control
 
 var _banner_t := 0.0
 var _toast_t := 0.0
@@ -63,6 +66,7 @@ func _ready() -> void:
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(root)
+	_root = root
 
 	indicators = ThreatIndicators.new()
 	indicators.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -119,6 +123,18 @@ func _ready() -> void:
 		+ "GAMEPAD   L-STICK move   B / X / Y board/leave   A or RT action\n"
 		+ "F2 / BACK  AI crew on-off   M music   F1 CRT   F11 fullscreen   ESC quit / lobby")
 
+	if G.is_mobile():
+		help_label.text = ("LEFT SIDE drag to move   ACTION fire / repair / patch breaches\n"
+			+ "BOARD get on or off the station you stand on   phone BACK  menu")
+
+	boss_label = _label(30, Color(0.95, 0.15, 0.35), G.jp_font)
+	boss_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_anchor(boss_label, 0.0, 1.0, 1.0, 1.0, Vector2(0, -78), Vector2(0, -36))
+
+	if G.is_mobile():
+		touch = TouchControls.new()
+		root.add_child(touch)
+
 	toast_label = _label(28, Color(1.0, 0.9, 0.3), G.jp_font)
 	toast_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_anchor(toast_label, 0.0, 1.0, 1.0, 1.0, Vector2(0, -215), Vector2(0, -175))
@@ -133,6 +149,8 @@ func _ready() -> void:
 	mat.shader = load("res://shaders/crt.gdshader")
 	crt.material = mat
 	crt_layer.add_child(crt)
+	# The CRT pass costs a full-screen copy; phones start without it (F1 toggles on desktop).
+	crt.visible = not G.is_mobile()
 
 
 func _panel_style() -> StyleBoxFlat:
@@ -215,7 +233,14 @@ func _bar(fraction: float, width: int) -> String:
 
 func refresh(main: Main, delta: float) -> void:
 	_time += delta
+	_root.visible = main.state != Main.State.MENU
+	if main.state == Main.State.MENU:
+		return
 	var tank := G.tank
+	var boss := main.boss
+	boss_label.visible = is_instance_valid(boss) and not boss.dead
+	if boss_label.visible:
+		boss_label.text = "鬼戦車 ONI SENSHA  %s" % _bar(boss.hp / maxf(boss.max_hp, 1.0), 18)
 	indicators.camera = main.camera
 	for i in 4:
 		var l := roster[i]
@@ -258,8 +283,13 @@ func refresh(main: Main, delta: float) -> void:
 		if main.players.is_empty():
 			sub_label.text = "press ACTION on any keyboard half or gamepad to join"
 		else:
-			sub_label.text = ("friends: press ACTION to join (up to 4)%s\nboard DRIVE and roll the tank through the DEPLOY gate"
-				% ("\nAI crew mans the empty stations" if G.ai_crew else ""))
+			var join_hint := "friends: press ACTION to join (up to 4)"
+			if Net.is_host():
+				join_hint = "HOSTING - friends tap JOIN LAN GAME on their phones\nor enter  %s" % "  /  ".join(Net.local_ips())
+			elif Net.is_client():
+				join_hint = "connected to the host's tank over the LAN"
+			sub_label.text = ("%s%s\nboard DRIVE and roll the tank through the DEPLOY gate"
+				% [join_hint, "\nAI crew mans the empty stations" if G.ai_crew else ""])
 		title_label.modulate.a = 1.0
 		sub_label.modulate.a = 1.0
 	elif main.state == Main.State.PLAYING:
