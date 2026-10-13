@@ -104,8 +104,9 @@ def video_shot(i, take, start, dur, end_card=False):
     vf = f"scale={W}:{H},fps={FPS},fade=in:st=0:d=0.12,fade=out:st={dur - 0.12:.2f}:d=0.12"
     if end_card:
         # Darken the footage and bring the title up over it.
-        lines = [("NEON MEGA TANK", 150, PINK), ("ネオン・メガ・タンク", 70, CYAN), (" ", 30, WHITE),
-                 ("COMING SOON  ·  ANDROID", 64, YELLOW), ("gamesdevni.site", 44, WHITE)]
+        lines = [("NEON MEGA TANK", 150, PINK), ("ネオン・メガ・タンク", 70, CYAN), (" ", 20, WHITE),
+                 ("OUT NOW ON ITCH.IO", 64, YELLOW), ("ANDROID  ·  WINDOWS  ·  LINUX  ·  日本語対応", 38, WHITE),
+                 ("gamesdevni.site", 40, WHITE)]
         vf = (f"scale={W}:{H},fps={FPS},eq=brightness=-0.3:saturation=0.75,"
               f"drawbox=x=0:y=ih*0.27:w=iw:h=ih*0.46:color=black@0.62:t=fill,format=gbrp,"
               + glow(drawtexts(lines, i, start_alpha_at=0.3))
