@@ -17,8 +17,8 @@ machine. Everything below was prepared in a cloud session on 13 October 2026 and
 | Screenshots for the itch.io page (8 English + 4 Japanese) | repo `jamesbell2021/gamesdevni-site`, `screenshots/nmt_*.jpg` on `main` |
 | Trailer with the "OUT NOW ON ITCH.IO" end card | `gamesdevni-site`, branch **`nmt-launch`**, `video/neon_mega_tank_trailer.mp4` (the `main` copy still says "coming soon") |
 | Website launch version (buy link, bundle section) | `gamesdevni-site`, branch `nmt-launch`; placeholders `GAME_URL` and `BUNDLE_URL` in `index.html` |
-| **Release signing keystore + password** | **Not in git.** In the `nmt-launch-kit.zip` handed over in chat (`neon-mega-tank-release.keystore`, `RELEASE-KEY-README.txt`). Keep them safe and private. |
-| A release-signed APK (arm64, v1.0.0) | in the same zip, `neon-mega-tank-release-arm64.apk`; the full two-architecture APK and the Windows/Linux zips come from the workflow's artifacts |
+| **Release signing keystore + password** | **Not in git.** On James's PC: `~/.local/share/godot/keystores/neon-mega-tank-release.keystore` and its password in `neon-mega-tank-release.txt` beside it (made 13 Oct 2026, certificate SHA-256 `139a7eda…96fc2f16`), and in the repository's `ANDROID_RELEASE_KEYSTORE_*` secrets. This is the key the first public APK is signed with. The key in the cloud chat's `nmt-launch-kit.zip` was never used for a release: don't sign with it. |
+| The release builds | the workflow's artifacts (APK release-signed with the key above, 64- and 32-bit ARM; Windows; Linux) |
 
 Clone or update:
 
@@ -35,12 +35,12 @@ cd gamesdevni-site && git checkout nmt-launch
 * Bundle **Neon Arcade Collection**, all five games, **$5.99**.
 * itch.io project name `neon-mega-tank` (the workflow's `ITCH_PROJECT` is `gamesdevnisite/neon-mega-tank`).
 * Android `version/code=2`, `version/name="1.0.0"` in `export_presets.cfg`. Bump both for every release.
-* Keystore alias `neonmegatank`; the password is in `RELEASE-KEY-README.txt`.
+* Keystore alias `neonmegatank`; the password is in `neon-mega-tank-release.txt` beside the keystore.
 
 ## What's left, in order (details in CHECKLIST.md)
 
-1. GitHub secrets `ANDROID_RELEASE_KEYSTORE_BASE64`, `_USER`, `_PASS` (and `BUTLER_API_KEY` if
-   the workflow should upload to itch.io). Then start a fresh build (**Actions → Neon Mega Tank
+1. Done 13 Oct: the `ANDROID_RELEASE_KEYSTORE_*` secrets are set (add `BUTLER_API_KEY` if the
+   workflow should upload to itch.io). To rebuild, start a fresh build (**Actions → Neon Mega Tank
    builds → Run workflow**; re-running an old run rebuilds that old commit with its old
    Android-only workflow), or push tag `nmt-v1.0.0`, and download the three builds from the
    run's artifacts.

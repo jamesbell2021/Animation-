@@ -4,8 +4,11 @@ Everything here is prepared; the steps marked **you** need your itch.io or GitHu
 
 ## 1. Signing key (once, before the first release build) - you
 
-The release keystore `neon-mega-tank-release.keystore` and its password were handed over in
-the chat. **Keep both somewhere safe** (a password manager): every future update must be
+**Done 13 Oct 2026.** The release keystore is on James's PC,
+`~/.local/share/godot/keystores/neon-mega-tank-release.keystore`, with its password in
+`neon-mega-tank-release.txt` beside it, and the three secrets below are set. (The key in the
+cloud chat's `nmt-launch-kit.zip` was never used for a release: don't sign with it.)
+**Keep both files somewhere safe** (a password manager): every future update must be
 signed with the same key, or phones will refuse to install it over the old version. It's not
 in the repository on purpose.
 
