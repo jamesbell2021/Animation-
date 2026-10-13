@@ -39,7 +39,7 @@ Japanese strings live in `scripts/i18n/strings_ja.gd`, keyed by the English text
 ## Play on Android phones
 
 1. **Get the APK.** Every push that changes this folder builds one automatically: open the
-   repository's **Actions** tab, select the latest **Neon Mega Tank APK** run, and download
+   repository's **Actions** tab, select the latest **Neon Mega Tank builds** run, and download
    `neon-mega-tank-apk` from its *Artifacts* section. You can also export it yourself (see below).
 2. **Install it on every phone.** Copy the `.apk` to the phone and open it. Android will ask you
    to allow installs from that app (Files, Chrome or your messenger) the first time.
@@ -140,7 +140,7 @@ hand:
 Debug APKs built by CI without the release secrets use a new throwaway key on each run, so you
 must uninstall the old version before installing a newer build. To keep one debug key, add a
 base64-encoded debug keystore (alias `androiddebugkey`, password `android`) as the
-`ANDROID_DEBUG_KEYSTORE_BASE64` repository secret. See *Release builds* above for signed builds.
+`ANDROID_DEBUG_KEYSTORE_BASE64` repository secret. See *Release builds* below for signed builds.
 
 ## Release builds and the itch.io launch
 

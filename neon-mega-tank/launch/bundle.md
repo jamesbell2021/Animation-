@@ -21,26 +21,30 @@ for a matching cover.
 
 **Five arcade games from 3BL for one price.**
 
-Co-op tank warfare in a neon city, longboat raids, a pass-and-play war, a missile duel between
-grumpy neighbours, and a tower-defence tour of Ulster's castles. All five for $5.99, a third
-off buying them one by one.
+Co-op tank warfare in a neon city, Viking raids across a freezing fjord, a nuclear war on one
+phone, four grumpy old wizards, and a catapult against the castles of Ulster. All five for
+$5.99, a third off buying them one by one.
 
 * **Neon Mega Tank** (new) - One tank, four crew. Co-op tank battle on your own phones over
   Wi-Fi or on one screen, in a neon city that falls down. Android, Windows, Linux. In English
   or Japanese.
-* **Cyber Vikings** - Raid, trade and sail in a neon-lit Norse future. Browser, Windows, Linux,
-  Android.
-* **Victory By None** - Pass-and-play war for two: take turns, outguess each other, hold the
-  board. Windows, Android.
-* **Angry Old Men** - Two grumpy neighbours, a fence, and far too many missiles. Windows,
-  Android.
-* **Pultz** - Tower defence over five Ulster castles, with a two-player mode. Browser, Windows,
+* **Cyber Vikings** - Turn-based Viking strategy in glowing neon: march your raiders over the
+  hills, row across the fjord and storm your rivals' castles before winter freezes the water.
+  Against the computer, hot-seat for up to four, or online. Browser, Windows, Linux, Android.
+* **Victory By None** - Two nations, one phone. Hide your silos, pick your targets in secret,
+  pass the phone across and watch both salvos fly. You can win, but the dead are counted. For
+  two, or against the computer. Windows, Android.
+* **Angry Old Men** - Four grumpy old wizards, one screen: magic missiles, fireballs, a walking
+  stick and a nice cup of tea. Last old man standing wins; the computer takes any empty seat.
+  Windows, Android.
+* **Pultz** - Pull back, let fly, smash the castle: a neon catapult game across five castles
+  named for the castles of Ulster, with the plague sheep and a 2 Player Mode. Browser, Windows,
   Android.
 
 Buy the bundle and every game lands in your itch.io library, with every future update.
 
-*(The one-line descriptions of the four older games are written from their website
-sections; tweak them to match each itch.io page.)*
+*(The four older games' lines are taken from their sections on gamesdevni.site, 13 October
+2026. All four are $1 or more on itch.io, so the five cost $8.99 one by one.)*
 
 ## The line for the other four pages
 

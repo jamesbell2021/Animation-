@@ -8,7 +8,7 @@ machine. Everything below was prepared in a cloud session on 13 October 2026 and
 | What | Where |
 |---|---|
 | The game (Godot 4.3) and this launch kit | repo `jamesbell2021/Animation-`, branch **`claude/windows-build-omarchy-d2b94k`**, folder `neon-mega-tank/` |
-| Build workflow (Android + Windows + Linux, GitHub Release on `nmt-v*` tags, itch.io upload with butler) | `.github/workflows/neon-mega-tank-apk.yml` in the same repo |
+| Build workflow (Android + Windows + Linux on every push to the game, itch.io upload with butler on `nmt-v*` tags or by hand) | `.github/workflows/neon-mega-tank-apk.yml` in the same repo |
 | itch.io page text (EN + JA), tags, settings | `neon-mega-tank/launch/itch-page.md` |
 | Bundle name, price, description, cross-promo lines | `neon-mega-tank/launch/bundle.md` |
 | Announcement posts | `neon-mega-tank/launch/posts.md` |
@@ -40,8 +40,10 @@ cd gamesdevni-site && git checkout nmt-launch
 ## What's left, in order (details in CHECKLIST.md)
 
 1. GitHub secrets `ANDROID_RELEASE_KEYSTORE_BASE64`, `_USER`, `_PASS` (and `BUTLER_API_KEY` if
-   the workflow should upload to itch.io). Then re-run the workflow, or push tag `nmt-v1.0.0`,
-   and download the three builds from the run's artifacts (or the GitHub Release the tag makes).
+   the workflow should upload to itch.io). Then start a fresh build (**Actions → Neon Mega Tank
+   builds → Run workflow**; re-running an old run rebuilds that old commit with its old
+   Android-only workflow), or push tag `nmt-v1.0.0`, and download the three builds from the
+   run's artifacts.
 2. Upload the trailer to YouTube.
 3. Create the itch.io project from `itch-page.md`, upload the three builds, set the price,
    add the screenshots, the cover and the YouTube link. Draft → check → Public.
@@ -60,3 +62,6 @@ cd gamesdevni-site && git checkout nmt-launch
   its dearest game, so set Neon Mega Tank's price before creating the bundle.
 * The Windows exe is unsigned, so SmartScreen warns on first run; normal for itch.io.
 * The keystore is the only copy. Losing it means no more updates to the Android build.
+* There's no GitHub Release on purpose: the repository is public, and a Release would give a
+  paid game's builds away. Run artifacts expire after 90 days, so keep a copy of the files you
+  upload to itch.io.
