@@ -3,3 +3,4 @@
 build/
 *.import
 *.uid
+launch/out/*.mp4

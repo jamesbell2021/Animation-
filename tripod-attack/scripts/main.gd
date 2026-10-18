@@ -45,6 +45,8 @@ func _ready() -> void:
 	layer.add_child(rect)
 	enter_title()
 	for arg in OS.get_cmdline_user_args():
+		if arg == "--reel":
+			add_child(load("res://scripts/demo_reel.gd").new())
 		if arg == "--smoke-test":
 			add_child(load("res://scripts/headless_test.gd").new())
 		if arg.begins_with("--shots="):
