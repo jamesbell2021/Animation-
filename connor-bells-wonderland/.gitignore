@@ -5,3 +5,5 @@
 builds/
 build/
 override.cfg
+# Godot 4.4+ writes a .uid next to each script; each machine keeps its own
+*.uid
