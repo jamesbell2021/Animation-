@@ -14,6 +14,14 @@ The chosen look is the one in `docs/concept/keepers_reference_sheet.png`: stylis
 |---|---|
 | ![focused](screenshots/night_focused.png) | ![close-up](screenshots/keeper_closeup.png) |
 
+| Title screen | Three keepers by day |
+|---|---|
+| ![title](screenshots/title.png) | ![co-op day](screenshots/coop_day.png) |
+
+| Three keepers at night with lanterns | Burst, splash and palisade up close |
+|---|---|
+| ![co-op night](screenshots/coop_night_lanterns.png) | ![effects](screenshots/effects_closeup.png) |
+
 | The homestead by day | The homestead at night |
 |---|---|
 | ![homestead](screenshots/homestead_day.png) | ![homestead at night](screenshots/homestead_night.png) |

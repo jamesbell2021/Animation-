@@ -52,6 +52,7 @@ var camera: Camera3D
 var spawner: Node
 var hud: CanvasLayer
 var _env: Environment
+var _sky_mat: ProceduralSkyMaterial
 var _sun: DirectionalLight3D
 var _enemies: Node3D
 var _tween: Tween
@@ -155,7 +156,17 @@ func _process(delta: float) -> void:
 
 func _build_environment() -> void:
 	_env = Environment.new()
-	_env.background_mode = Environment.BG_COLOR
+	_sky_mat = ProceduralSkyMaterial.new()
+	_sky_mat.sun_angle_max = 20.0
+	_sky_mat.sky_curve = 0.12
+	var sky := Sky.new()
+	sky.sky_material = _sky_mat
+	_env.sky = sky
+	_env.background_mode = Environment.BG_SKY
+	_env.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
+	_env.ssr_enabled = true
+	_env.ssr_max_steps = 48
+	_env.ssr_fade_in = 0.2
 	_env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	_env.tonemap_mode = Environment.TONE_MAPPER_ACES
 	_env.tonemap_exposure = 0.95
@@ -201,6 +212,17 @@ func _build_ground() -> void:
 	ground.add_child(cs)
 	_build_rocks()
 	_build_grass()
+	Props.flowers(self, 150)
+	Props.jetty(self, deg_to_rad(22.4))
+	Props.lobster_pot(self, _on_pad(3.9, 10.9) + Vector3(0.0, -0.05, 0.0), 0.4)
+	Props.lobster_pot(self, _on_pad(5.0, 10.5) + Vector3(0.0, -0.05, 0.0), 1.3)
+	Props.crate(self, _on_pad(-3.7, -1.9), 0.3)
+	Props.crate(self, _on_pad(-3.3, -2.6), 1.1, 0.45)
+	Props.barrel(self, _on_pad(-4.0, -4.3))
+	Props.barrel(self, _on_pad(-3.5, -4.6), Color(0.18, 0.2, 0.22))
+	Props.washing_line(self, _on_pad(-7.2, 0.4), _on_pad(-6.3, -0.9))
+	for i in 5:
+		Props.gull(self, 31 + i * 17)
 
 func _build_rocks() -> void:
 	# Crags all round the cliffs, a few boulders on the plateau, and sea stacks in the swell.
@@ -362,7 +384,13 @@ func _apply_lighting(p: int, duration: float) -> void:
 	if _tween and _tween.is_valid():
 		_tween.kill()
 	var tint: Color = cfg["tint"]
+	var bg: Color = cfg["bg"]
 	var targets := [
+		[_sky_mat, "sky_top_color", bg.darkened(0.35)],
+		[_sky_mat, "sky_horizon_color", bg],
+		[_sky_mat, "ground_horizon_color", bg.darkened(0.2)],
+		[_sky_mat, "ground_bottom_color", bg.darkened(0.7)],
+		[_sky_mat, "sun_angle_max", 20.0 if p == Cycle.Phase.DAY else 8.0],
 		[_env, "background_color", cfg["bg"]],
 		[_env, "fog_light_color", cfg["bg"]],
 		[_env, "ambient_light_color", cfg["amb"]],

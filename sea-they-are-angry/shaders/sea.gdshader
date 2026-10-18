@@ -44,6 +44,14 @@ void fragment() {
 	// Sparse whitecaps out at sea.
 	float caps = smoothstep(0.91, 0.98, noise(world_pos.xz * 0.6 + vec2(TIME * 0.15, TIME * 0.11))) * depth * 0.5;
 	col = mix(col, foam_color, clamp(foam + caps, 0.0, 1.0));
+	// Small moving ripples: a normal map built from two scrolling noise fields.
+	vec2 rp = world_pos.xz * 1.3;
+	float e = 0.08;
+	float n0 = noise(rp + vec2(TIME * 0.35, TIME * 0.2)) + noise(rp * 2.3 - vec2(TIME * 0.5, -TIME * 0.3)) * 0.5;
+	float nx = noise(rp + vec2(e, 0.0) + vec2(TIME * 0.35, TIME * 0.2)) + noise((rp + vec2(e, 0.0)) * 2.3 - vec2(TIME * 0.5, -TIME * 0.3)) * 0.5;
+	float nz = noise(rp + vec2(0.0, e) + vec2(TIME * 0.35, TIME * 0.2)) + noise((rp + vec2(0.0, e)) * 2.3 - vec2(TIME * 0.5, -TIME * 0.3)) * 0.5;
+	NORMAL_MAP = normalize(vec3((n0 - nx) * 2.2, (n0 - nz) * 2.2, 1.0)) * 0.5 + 0.5;
+	NORMAL_MAP_DEPTH = 1.0;
 	float fres = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 4.0);
 	ALBEDO = col + fres * 0.06;
 	ROUGHNESS = mix(0.12, 0.85, clamp(foam + caps, 0.0, 1.0));

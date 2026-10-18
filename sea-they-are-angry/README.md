@@ -22,16 +22,21 @@ On Windows use the console binary, for example `Godot_v4.3-stable_win64_console.
 
 ## Controls
 
-| Key | Action |
-|---|---|
-| W A S D | Move (W is up the screen) |
-| Mouse | Aim; the keeper faces the cursor |
-| Left mouse | Boathook swing (20 damage, 2.5 m, 60° either side of aim) |
-| E | Interact: gather, repair, refuel |
-| R | Operate the lamp (stand within 3.8 m of the lighthouse); R again to leave |
-| Q | While operating, switch the beam: wide slows creatures, focused burns them |
-| Space | Sprint (3 s, then 2 s cooldown) |
-| Enter | Skip the rest of the day or dawn |
+Choose 1 to 3 keepers on the title screen, then New Run (or Continue).
+
+| Action | P1: keyboard + mouse | P2: arrow keys (if no free gamepad) | Gamepad (P2, P3) |
+|---|---|---|---|
+| Move | W A S D | Arrow keys | Left stick |
+| Aim | Mouse | Facing direction | Right stick |
+| Boathook swing | Left mouse | Ctrl | X or right trigger |
+| Use: gather, repair, refuel, revive (hold) | E | Shift | A |
+| Work the lamp / leave it | R (within 3.8 m of the lighthouse) | / | Y |
+| Switch beam: wide slows, focused burns | Q | . | B |
+| Sprint | Space | , | Right shoulder |
+| Skip the rest of the day or dawn | Enter | | |
+| Pause | Esc | | Start |
+
+Keepers face the way they walk and turn to their aim to swing. Each carries a paraffin lantern that lights at dusk. A keeper who falls goes down; a teammate holds Use beside them for 3 seconds to revive them, and everyone gets up at dawn. The run ends when the lamp goes dark or every keeper is down. Only one keeper can work the lamp at a time.
 
 ## What is in the slice
 

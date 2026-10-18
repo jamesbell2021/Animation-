@@ -88,6 +88,19 @@ func _go() -> void:
 		c2.current = true
 		for i in 10:
 			await process_frame
+	if args.size() > 4 and args[4] == "fx":
+		main.hud.visible = false
+		var c3 := Camera3D.new()
+		main.add_child(c3)
+		var at3 := Vector3(4.0, Terrain.height_at(4.0, 6.0) + 0.8, 6.0)
+		c3.look_at_from_position(at3 + Vector3(2.5, 3.0, 6.5), at3, Vector3.UP)
+		c3.fov = 50.0
+		c3.current = true
+		FX.burst(main, at3)
+		FX.splash(main, Vector3(6.5, Terrain.SEA_LEVEL, 11.8), 1.2)
+		FX.steam(main, at3 + Vector3(-1.5, 0.6, 0.5))
+		for i in 3:
+			await process_frame
 	var img := root.get_texture().get_image()
 	if img == null:
 		quit()
