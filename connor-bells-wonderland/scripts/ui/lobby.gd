@@ -12,6 +12,7 @@ var _sections_spin: SpinBox
 var _bots_spin: SpinBox
 var _difficulty_option: OptionButton
 var _countdown_spin: SpinBox
+var _items_check: CheckButton
 var _start_button: Button
 var _ready_button: Button
 var _status: Label
@@ -83,6 +84,12 @@ func _build() -> void:
 	right.add_child(_row("Difficulty", _difficulty_option))
 	_countdown_spin = _spin(1, 10, 3)
 	right.add_child(_row("Countdown", _countdown_spin))
+	_items_check = CheckButton.new()
+	_items_check.text = "On"
+	_items_check.button_pressed = true
+	_items_check.disabled = not _is_host
+	_items_check.toggled.connect(func(_on: bool) -> void: _push_settings())
+	right.add_child(_row("Items", _items_check))
 	for control: SpinBox in [_sections_spin, _bots_spin, _countdown_spin]:
 		control.editable = _is_host
 		control.value_changed.connect(func(_v: float) -> void: _push_settings())
@@ -164,6 +171,7 @@ func _apply_settings(settings: Dictionary) -> void:
 	_bots_spin.value = int(settings.get("bots", 3))
 	_difficulty_option.selected = clampi(int(settings.get("difficulty", 1)), 0, 2)
 	_countdown_spin.value = int(settings.get("countdown", 3))
+	_items_check.button_pressed = bool(settings.get("items", true))
 	_updating = false
 
 
@@ -175,6 +183,7 @@ func _push_settings() -> void:
 		"bots": int(_bots_spin.value),
 		"difficulty": _difficulty_option.selected,
 		"countdown": int(_countdown_spin.value),
+		"items": _items_check.button_pressed,
 	})
 
 

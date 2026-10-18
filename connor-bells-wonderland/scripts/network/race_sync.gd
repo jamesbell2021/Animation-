@@ -99,6 +99,8 @@ func _connect_host_signals() -> void:
 	rm.race_finished.connect(func(results: Array) -> void: _rpc_results.rpc(_plain_results(results)))
 	if game.course != null and game.course.checkpoint_manager != null:
 		game.course.checkpoint_manager.checkpoint_reached.connect(func(c: Contestant, i: int) -> void: _rpc_checkpoint.rpc(str(c.name), i))
+	if game.items != null:
+		game.items.net_event.connect(func(event: String, args: Array) -> void: _rpc_item_event.rpc(event, args))
 	if game.decorator != null:
 		var children := game.decorator.get_children()
 		for i in range(children.size()):
@@ -175,6 +177,12 @@ func _rpc_restart() -> void:
 	race_time = 0.0
 	ranking_names = []
 	game.client_restart()
+
+
+@rpc("authority", "call_remote", "reliable")
+func _rpc_item_event(event: String, args: Array) -> void:
+	if game.items != null:
+		game.items.apply_remote_event(event, args)
 
 
 @rpc("authority", "call_remote", "unreliable_ordered")

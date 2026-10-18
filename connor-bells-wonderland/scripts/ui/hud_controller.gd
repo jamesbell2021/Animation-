@@ -1,7 +1,7 @@
 class_name HudController
 extends CanvasLayer
-## Race HUD built in code: timer, coins, position, checkpoint progress,
-## countdown, messages and a results panel. Emits restart_requested.
+## Race HUD built in code: timer, coins, held item, position, checkpoint
+## progress, countdown, messages and a results panel. Emits restart_requested.
 
 signal restart_requested
 
@@ -9,6 +9,11 @@ signal restart_requested
 
 var _timer_label: Label
 var _coins_label: Label
+var _item_box: HBoxContainer
+var _item_swatch: ColorRect
+var _item_label: Label
+var _item_kind: int = -1
+var _item_uses: int = -1
 var _position_label: Label
 var _progress_label: Label
 var _countdown_label: Label
@@ -40,6 +45,22 @@ func set_time(seconds: float) -> void:
 
 func set_coins(coins: int) -> void:
 	_coins_label.text = "Gold: %d" % coins
+
+
+## Shows the held item. [param hint] is the key/button to press, e.g. "E".
+func set_item(kind: int, uses: int, hint: String = "") -> void:
+	if kind == _item_kind and uses == _item_uses:
+		return
+	_item_kind = kind
+	_item_uses = uses
+	if kind == ItemKinds.Kind.NONE:
+		_item_box.visible = false
+		return
+	_item_box.visible = true
+	_item_swatch.color = ItemKinds.colour_for(kind)
+	var count := " x%d" % uses if uses > 1 else ""
+	var press := "   [%s]" % hint if not hint.is_empty() else ""
+	_item_label.text = "%s%s%s" % [ItemKinds.display_name(kind), count, press]
 
 
 func set_position(rank: int, total: int) -> void:
@@ -116,6 +137,18 @@ func _build() -> void:
 	_coins_label.position = Vector2(20.0, 58.0)
 	_coins_label.text = "Gold: 0"
 	add_child(_coins_label)
+
+	_item_box = HBoxContainer.new()
+	_item_box.name = "ItemSlot"
+	_item_box.position = Vector2(20.0, 100.0)
+	_item_box.add_theme_constant_override("separation", 10)
+	_item_box.visible = false
+	add_child(_item_box)
+	_item_swatch = ColorRect.new()
+	_item_swatch.custom_minimum_size = Vector2(34.0, 34.0)
+	_item_box.add_child(_item_swatch)
+	_item_label = _make_label(28, Color(1.0, 1.0, 1.0))
+	_item_box.add_child(_item_label)
 
 	_position_label = _make_label(44, Color(0.6, 1.0, 0.7))
 	_position_label.name = "PositionLabel"

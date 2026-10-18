@@ -2,7 +2,8 @@ class_name TrapDevice
 extends Node3D
 ## Placed traps. CATAPULT/BOXING_GLOVE/SPRINGER knock the victim and vanish.
 ## OIL_SLICK stays for a while and makes everyone who crosses it slippery.
-## CAKE makes its victim fat and slow, then vanishes. The host decides hits;
+## CAKE makes its victim fat and slow, SHRINK_POTION makes it tiny; both then
+## vanish. A Shield Bubble blocks any trap once. The host decides hits;
 ## clients replay animations via trigger_remote().
 
 signal triggered(trap: TrapDevice, victim: Contestant)
@@ -53,6 +54,8 @@ func _ready() -> void:
 			_lifetime = float(ItemKinds.get_def(kind).get("lifetime", 12.0))
 		ItemKinds.Kind.CAKE:
 			_build_cake()
+		ItemKinds.Kind.SHRINK_POTION:
+			_build_potion()
 		_:
 			_build_springer()
 	var area := Area3D.new()
@@ -83,7 +86,7 @@ func _process(delta: float) -> void:
 	if _moving_part != null:
 		_moving_part.position = _rest_position.lerp(_rest_position + _fired_offset, t)
 		_moving_part.rotation = _rest_rotation.lerp(_rest_rotation + _fired_rotation, t)
-	if kind == ItemKinds.Kind.CAKE:
+	if kind == ItemKinds.Kind.CAKE or kind == ItemKinds.Kind.SHRINK_POTION:
 		scale = Vector3.ONE * maxf(1.0 - t, 0.01)
 	if _age - _fire_time > 0.9:
 		queue_free()
@@ -140,6 +143,8 @@ func _on_body_entered(body: Node3D) -> void:
 			return
 		ItemKinds.Kind.CAKE:
 			_apply_status(victim, StatusEffects.Effect.FAT, float(def.get("effect_seconds", 6.0)))
+		ItemKinds.Kind.SHRINK_POTION:
+			_apply_status(victim, StatusEffects.Effect.SMALL, float(def.get("effect_seconds", 6.0)))
 		_:
 			StatusEffects.try_knock(victim, Vector3(victim.velocity.x * 0.5, float(def.get("launch_up", 22.0)), victim.velocity.z * 0.5), stumble)
 	_spent = true
@@ -153,6 +158,8 @@ func _on_body_entered(body: Node3D) -> void:
 func _apply_status(victim: Contestant, effect: int, seconds: float) -> void:
 	var status := victim.get_node_or_null("StatusEffects") as StatusEffects
 	if status != null:
+		if status.consume_shield():
+			return
 		status.apply(effect, seconds)
 	else:
 		victim.knock(Vector3.UP * 3.0, 0.8)
@@ -272,3 +279,27 @@ func _build_cake() -> void:
 	flame.mesh = fs
 	flame.position = Vector3(0.0, y + 0.35, 0.0)
 	add_child(flame)
+
+
+func _build_potion() -> void:
+	var glass := CourseBuilder.make_material(Color(0.4, 0.9, 0.6, 0.75))
+	glass.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	var flask := MeshInstance3D.new()
+	var sphere := SphereMesh.new()
+	sphere.radius = 0.45
+	sphere.height = 0.85
+	sphere.material = glass
+	flask.mesh = sphere
+	flask.position = Vector3(0.0, 0.45, 0.0)
+	add_child(flask)
+	CourseBuilder.add_decor_cylinder(self, 0.14, 0.35, Vector3(0.0, 1.0, 0.0), Color(0.4, 0.9, 0.6), "Neck")
+	CourseBuilder.add_decor_cylinder(self, 0.16, 0.14, Vector3(0.0, 1.22, 0.0), Color(0.55, 0.35, 0.15), "Cork")
+	var fizz := MeshInstance3D.new()
+	var bubble := SphereMesh.new()
+	bubble.radius = 0.32
+	bubble.height = 0.5
+	bubble.material = CourseBuilder.make_material(Color(0.6, 0.2, 0.8))
+	fizz.mesh = bubble
+	fizz.position = Vector3(0.0, 0.38, 0.0)
+	add_child(fizz)
+	CourseBuilder.add_sign(self, "SHRINK", Vector3(0.0, 1.7, 0.0), Color(0.7, 1.0, 0.8), 40)

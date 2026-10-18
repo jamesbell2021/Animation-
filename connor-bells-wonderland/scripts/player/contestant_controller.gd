@@ -38,6 +38,8 @@ var is_local_player: bool = true
 ## World-space desired movement direction (length 0..1). Set by bots/touch when not local.
 var move_direction: Vector3 = Vector3.ZERO
 var jump_requested: bool = false
+## Set by input, bots or the network; the ItemHolder consumes it.
+var use_requested: bool = false
 
 var _visual: ContestantVisuals
 var _stumble: StumbleController
@@ -45,6 +47,7 @@ var _was_on_floor: bool = true
 
 
 func _ready() -> void:
+	add_to_group("contestants")
 	collision_layer = CONTESTANT_LAYER
 	collision_mask = COURSE_LAYER | CONTESTANT_LAYER
 	platform_floor_layers = COURSE_LAYER
@@ -115,6 +118,12 @@ func _physics_process(delta: float) -> void:
 		_on_fell()
 
 
+## Horizontal unit vector the contestant is facing.
+func get_facing() -> Vector3:
+	var yaw := _visual.rotation.y if _visual != null else 0.0
+	return Vector3(-sin(yaw), 0.0, -cos(yaw))
+
+
 func is_stumbling() -> bool:
 	return _stumble != null and _stumble.is_stumbling
 
@@ -132,6 +141,7 @@ func respawn() -> void:
 	global_position = respawn_position
 	move_direction = Vector3.ZERO
 	jump_requested = false
+	use_requested = false
 	if _stumble != null:
 		_stumble.cancel()
 	respawned.emit()
@@ -151,6 +161,8 @@ func _gather_local_input() -> void:
 	move_direction = _camera_relative_direction(input_dir)
 	if Input.is_action_just_pressed("jump"):
 		jump_requested = true
+	if InputMap.has_action("use_item") and Input.is_action_just_pressed("use_item"):
+		use_requested = true
 
 
 func _camera_relative_direction(input_dir: Vector2) -> Vector3:

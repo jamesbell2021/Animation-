@@ -13,6 +13,7 @@ var _colour_option: OptionButton
 var _sections_spin: SpinBox
 var _bots_spin: SpinBox
 var _difficulty_option: OptionButton
+var _items_check: CheckButton
 var _ip_edit: LineEdit
 var _status: Label
 var _buttons: Array[Button] = []
@@ -34,6 +35,7 @@ func _ready() -> void:
 		_sections_spin.value = int(_net.settings.get("sections", 6))
 		_bots_spin.value = int(_net.settings.get("bots", 3))
 		_difficulty_option.selected = clampi(int(_net.settings.get("difficulty", 1)), 0, 2)
+		_items_check.button_pressed = bool(_net.settings.get("items", true))
 
 
 func _build() -> void:
@@ -88,6 +90,10 @@ func _build() -> void:
 		_difficulty_option.add_item(DIFFICULTY_NAMES[i], i)
 	_difficulty_option.selected = 1
 	box.add_child(_row("Difficulty", _difficulty_option))
+	_items_check = CheckButton.new()
+	_items_check.text = "Gift boxes and items"
+	_items_check.button_pressed = true
+	box.add_child(_row("Items", _items_check))
 
 	box.add_child(_button("Play Solo", _on_play_solo))
 	box.add_child(_button("Host Wi-Fi Game", _on_host))
@@ -164,6 +170,7 @@ func _apply_identity_and_settings() -> void:
 		"bots": int(_bots_spin.value),
 		"difficulty": _difficulty_option.selected,
 		"countdown": 3,
+		"items": _items_check.button_pressed,
 	}
 
 

@@ -100,6 +100,11 @@ func consume_shield() -> bool:
 	return true
 
 
+## Ends [param effect] now (clients use this when the host reports it ended).
+func end_effect(effect: int) -> void:
+	_end(effect)
+
+
 func clear_all() -> void:
 	for effect in _timers.keys():
 		_end(int(effect))
