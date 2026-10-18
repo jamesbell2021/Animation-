@@ -1,10 +1,9 @@
 @echo off
-rem Launch Sea They Are Angry. On a fresh clone, first runs Godots one-time import.
+rem Launch Sea They Are Angry. Always runs Godots import first (a few seconds), so new
+rem scripts pulled from git are registered before the game starts.
 rem Usage: play.bat C:\path\to\Godot_v4.3-stable_win64.exe
 set "GODOT=%~1"
 if "%GODOT%"=="" set "GODOT=Godot_v4.3-stable_win64.exe"
-if not exist "%~dp0.godot\global_script_class_cache.cfg" (
-  echo First run: importing the project...
-  "%GODOT%" --headless --editor --quit --path "%~dp0."
-)
+echo Importing the project...
+"%GODOT%" --headless --editor --quit --path "%~dp0."
 "%GODOT%" --path "%~dp0."

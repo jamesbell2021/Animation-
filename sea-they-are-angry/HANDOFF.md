@@ -19,7 +19,7 @@ To start the next session, open Claude Code in `sea-they-are-angry/` and say:
 
 ## How to verify
 
-On a fresh clone, run `./play.sh` (or `play.bat`) or open the project in the editor once first. Launching with `godot --path` before any import fails with "Could not find type Lighthouse", because the class list lives in the git-ignored `.godot/` folder. Any headless test run needs `godot --headless --editor --quit --path sea-they-are-angry` once beforehand for the same reason.
+On a fresh clone, run `./play.sh` (or `play.bat`) or open the project in the editor once first. Launching with `godot --path` before any import fails with "Could not find type Lighthouse", because the class list lives in the git-ignored `.godot/` folder. The same applies after any pull that adds a `class_name` script: the cached list goes stale. `play.sh` re-imports whenever a script, shader or model is newer than the cache; before headless tests, run `godot --headless --editor --quit --path sea-they-are-angry` yourself.
 
 ```
 godot --headless --quit --path sea-they-are-angry

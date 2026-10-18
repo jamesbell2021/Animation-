@@ -10,7 +10,7 @@ This folder holds the **grey-box vertical slice**: every object is a primitive m
 2. Either open Godot, choose **Import**, pick `sea-they-are-angry/project.godot` and press **F5**,
 3. or run the launcher: `./play.sh ~/Godot_v4.3-stable_linux.x86_64` on Linux, `play.bat C:\path\to\Godot_v4.3-stable_win64.exe` on Windows.
 
-On a fresh clone, launching with `godot --path` alone fails with "Could not find type Lighthouse" and similar errors. Godot builds its list of script classes in the git-ignored `.godot/` folder the first time the editor opens the project. The launchers do that import automatically; by hand it is `godot --headless --editor --quit --path sea-they-are-angry`, once.
+On a fresh clone, launching with `godot --path` alone fails with "Could not find type Lighthouse" and similar errors. Godot builds its list of script classes in the git-ignored `.godot/` folder the first time the editor opens the project. The same error appears after a `git pull` that adds new scripts, because the list is then out of date. The launchers re-import automatically whenever anything changed; by hand it is `godot --headless --editor --quit --path sea-they-are-angry`.
 
 Headless load check (no window):
 
