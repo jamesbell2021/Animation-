@@ -8,7 +8,6 @@ const BURST_STRUCT_DMG := 40
 const BURST_PLAYER_DMG := 30
 const LIGHT_SLOW := 0.6
 const MAX_PULSE := 0.3
-const BURST_FX_TIME := 0.25
 const BODY_COLOR := Color(0.40, 0.46, 0.39)
 const GLOW_COLOR := Color(0.8, 1.0, 0.6)
 const HIT_COLOR := Color(0.95, 0.95, 0.9)
@@ -28,6 +27,8 @@ var _burn_t := 0.0
 var _burn_k := 0.0
 var _burn_acc := 0.0
 var _burst_done := false
+var _steam_t := 0.0
+var _sizzle_t := 0.0
 
 func _init() -> void:
 	max_hp = 60
@@ -102,6 +103,14 @@ func in_light(mode: int, delta: float) -> void:
 			take_damage(dmg, Vector3.ZERO, null)
 			# The burn has its own glow; skip the white hit flash it would trigger every tick.
 			_hit_t = 0.0
+		_steam_t -= delta
+		if _steam_t <= 0.0:
+			_steam_t = 0.18
+			FX.steam(get_parent(), global_position + Vector3(randf_range(-0.3, 0.3), 1.6, randf_range(-0.3, 0.3)))
+		_sizzle_t -= delta
+		if _sizzle_t <= 0.0:
+			_sizzle_t = 0.55
+			Audio.sfx("sizzle", global_position, -8.0, 0.2)
 
 func _physics_process(delta: float) -> void:
 	super._physics_process(delta)
@@ -145,6 +154,7 @@ func on_dawn() -> void:
 
 func _enter_Bloat() -> void:
 	velocity = Vector3.ZERO
+	Audio.sfx("groan", global_position, -2.0, 0.05)
 	_knock = Vector3.ZERO
 	_body_mat.emission_enabled = true
 
@@ -170,26 +180,7 @@ func _enter_Burst() -> void:
 	for p in get_tree().get_nodes_in_group("player"):
 		if p is Node3D and Geo.flat_dist(c, p.global_position) <= BURST_RADIUS:
 			p.take_damage(BURST_PLAYER_DMG)
-	_spawn_burst_fx(c)
+	FX.burst(get_parent(), c + Vector3(0.0, 0.9, 0.0))
+	Audio.sfx("burst", c, 0.0)
 	Events.enemy_killed.emit(self)
 	queue_free()
-
-func _spawn_burst_fx(at: Vector3) -> void:
-	var root := get_parent()
-	if root == null:
-		return
-	var fx := MeshInstance3D.new()
-	var m := SphereMesh.new()
-	m.radius = 1.0
-	m.height = 2.0
-	fx.mesh = m
-	var mat := Geo.mat(Color(0.7, 1.0, 0.5, 0.35), true)
-	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	fx.material_override = mat
-	fx.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	root.add_child(fx)
-	fx.global_position = at + Vector3(0.0, 0.8, 0.0)
-	fx.scale = Vector3.ONE * 0.1
-	var tw := fx.create_tween()
-	tw.tween_property(fx, "scale", Vector3.ONE * BURST_RADIUS, BURST_FX_TIME)
-	tw.tween_callback(fx.queue_free)

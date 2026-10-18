@@ -90,5 +90,6 @@ func interact(_player: Node) -> bool:
 	available = false
 	_mesh.visible = false
 	Stock.add(kind, amount)
+	Audio.sfx("gather", global_position, -2.0, 0.05)
 	Events.message.emit("+%d %s" % [amount, kind])
 	return true

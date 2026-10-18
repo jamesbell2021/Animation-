@@ -3,6 +3,8 @@ extends Node
 var active := false
 var night := 1
 var lamp_fuel := 100.0
+# Set before reloading the scene to skip the title screen (New Run from game over).
+var quick_start := false
 
 func start_new() -> void:
 	night = 1

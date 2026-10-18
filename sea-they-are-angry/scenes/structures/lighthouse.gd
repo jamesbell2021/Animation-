@@ -151,6 +151,7 @@ func interact(player: Node) -> bool:
 	if _can_refuel():
 		Stock.spend(REFUEL_COST)
 		lamp.refuel_clean(REFUEL_UNITS)
+		Audio.sfx("refuel", global_position + Vector3(0.0, 1.0, 0.0))
 		Events.message.emit("Lamp refuelled  (%d%%)" % roundi(lamp.fuel))
 		return true
 	return false

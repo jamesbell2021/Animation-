@@ -32,6 +32,8 @@ var attack_target: Structure
 
 var _knock := Vector3.ZERO
 var _detour_t := 0.0
+var _groan_t := 0.0
+var _in_water := true
 var _detour_dir := Vector3.ZERO
 var _attack_t := 0.0
 
@@ -111,6 +113,10 @@ func ground_y() -> float:
 func _enter_Emerge() -> void:
 	velocity = Vector3.ZERO
 	position.y = ground_y() + EMERGE_DEPTH
+	var surface := Vector3(global_position.x, Terrain.SEA_LEVEL, global_position.z)
+	FX.splash(get_parent(), surface, 1.0)
+	Audio.sfx("splash", surface, -4.0)
+	_groan_t = randf_range(0.5, 4.0)
 
 func _tick_Emerge(_delta: float) -> void:
 	velocity = Vector3.ZERO
@@ -118,6 +124,7 @@ func _tick_Emerge(_delta: float) -> void:
 	position.y = lerpf(g + EMERGE_DEPTH, g, clampf(state_t / EMERGE_TIME, 0.0, 1.0))
 	if state_t >= EMERGE_TIME:
 		position.y = g
+		_in_water = false
 		change_state(&"Approach")
 
 func _enter_Approach() -> void:
@@ -135,6 +142,10 @@ func _tick_Approach(delta: float) -> void:
 		change_state(&"Arrived")
 		return
 	var dir := to.normalized()
+	_groan_t -= delta
+	if _groan_t <= 0.0:
+		_groan_t = randf_range(6.0, 12.0)
+		Audio.sfx("groan", global_position, -6.0, 0.15)
 	for i in get_slide_collision_count():
 		var hit := get_slide_collision(i)
 		var col := hit.get_collider()
@@ -191,16 +202,24 @@ func _tick_Retreat(_delta: float) -> void:
 	var dir := away.normalized()
 	face(dir)
 	velocity = dir * speed * RETREAT_MULT
+	if global_position.y < Terrain.SEA_LEVEL and not _in_water:
+		_in_water = true
+		var surface := Vector3(global_position.x, Terrain.SEA_LEVEL, global_position.z)
+		FX.splash(get_parent(), surface, 0.7)
+		Audio.sfx("splash", surface, -8.0)
 	# Walk down the beach and keep sinking once past the shore.
 	position.y = ground_y() - maxf(0.0, r - SHORE_RADIUS) * SINK_RATE
 
 # ---- damage ----
 
-func take_damage(amount: int, from_dir: Vector3 = Vector3.ZERO, _source: Node = null) -> void:
+func take_damage(amount: int, from_dir: Vector3 = Vector3.ZERO, source: Node = null) -> void:
 	if state == &"Emerge" or hp <= 0:
 		return
 	hp -= amount
 	_knock += Vector3(from_dir.x, 0.0, from_dir.z) * (KNOCKBACK / mass)
+	if source != null:
+		FX.spray(get_parent(), global_position + Vector3(0.0, 1.1, 0.0), from_dir, Color(0.55, 0.65, 0.45))
+		Audio.sfx("hit", global_position)
 	_on_hit()
 	if hp <= 0:
 		hp = 0

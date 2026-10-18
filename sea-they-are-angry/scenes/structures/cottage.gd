@@ -15,6 +15,7 @@ const WINDOW_LIT := Color(1.0, 0.72, 0.38)
 var _wall_mat: StandardMaterial3D
 var _window_mat: StandardMaterial3D
 var _lamp: OmniLight3D
+var _chimney_top := Vector3.ZERO
 
 func _init() -> void:
 	id = "cottage"
@@ -51,6 +52,7 @@ func _build() -> void:
 	var chimney := Geo.box(self, Vector3(0.55, 1.1, 0.55), STONE, Vector3(WIDTH * 0.5 - 0.35, ridge_y + 0.15, 0.0))
 	chimney.material_override = stone
 	Geo.box(self, Vector3(0.62, 0.1, 0.62), Color(0.3, 0.29, 0.27), Vector3(WIDTH * 0.5 - 0.35, ridge_y + 0.72, 0.0))
+	_chimney_top = Vector3(WIDTH * 0.5 - 0.35, ridge_y + 0.85, 0.0)
 	# Door and windows on the side facing the lighthouse (local -Z).
 	Geo.box(self, Vector3(0.8, 1.45, 0.08), Color(0.22, 0.16, 0.11), Vector3(-0.3, 0.95, -DEPTH * 0.5 - 0.03))
 	_window_mat = Look.glow_mat(WINDOW_DARK, 0.0)
@@ -68,6 +70,7 @@ func _build() -> void:
 	Geo.box_shape(self, Vector3(WIDTH, WALL_H + 0.4, DEPTH), Vector3(0.0, WALL_H * 0.5 + 0.2, 0.0))
 	Cycle.phase_changed.connect(_on_phase_changed)
 	_set_windows(Cycle.phase == Cycle.Phase.DUSK or Cycle.phase == Cycle.Phase.NIGHT)
+	FX.chimney_smoke.call_deferred(self, to_global(_chimney_top))
 
 func _on_phase_changed(p: int) -> void:
 	_set_windows(p == Cycle.Phase.DUSK or p == Cycle.Phase.NIGHT)

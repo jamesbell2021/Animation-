@@ -35,7 +35,13 @@ func _run() -> void:
 		DirAccess.remove_absolute(rj)
 	root.size = Vector2i(1600, 900)
 	change_scene_to_file("res://scenes/main.tscn")
-	await frames(5)
+	# Scene swaps happen at frame end; wait until the keeper actually exists.
+	for i in 600:
+		if current_scene != null and current_scene.get("player") != null:
+			break
+		await process_frame
+	for i in 3:
+		await physics_frame
 	var main = current_scene
 	check(main != null and main.player != null, "main scene builds")
 	var Run = root.get_node("Run")
@@ -265,7 +271,10 @@ func _run() -> void:
 
 	# New Run.
 	main.hud._on_new_run()
-	await frames(5)
+	for i in 600:
+		if current_scene != null and current_scene != main and current_scene.get("player") != null:
+			break
+		await process_frame
 	var m2 = current_scene
 	check(m2 != main and Run.night == 1 and Run.active and Cycle.phase == 0, "New Run restarts at night 1, day")
 

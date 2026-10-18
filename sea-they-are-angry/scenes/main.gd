@@ -3,6 +3,12 @@ extends Node3D
 
 const SpawnerScript := preload("res://scenes/systems/spawner.gd")
 const HudScript := preload("res://scenes/ui/hud.gd")
+const TitleScript := preload("res://scenes/ui/title.gd")
+const PauseScript := preload("res://scenes/ui/pause.gd")
+const TITLE_ORBIT_SPEED := 0.05
+const SPRAY_EVERY := 1.6
+# Where each keeper appears when a run starts, around the lighthouse door.
+const SPAWNS := [Vector3(2.5, 0.0, 4.0), Vector3(-1.5, 0.0, 4.5), Vector3(1.0, 0.0, 5.6)]
 
 const FENCE_RING := 9.0
 const FENCE_SECTIONS := 8
@@ -10,7 +16,6 @@ const FENCE_GAP := 1.0
 const SCAVENGE_RING := 12.3
 const SPAWN_RING := 17.0
 const SPAWN_POINTS := 6
-const PLAYER_START := Vector3(4.0, 0.0, 4.0)
 const CAMERA_POS := Vector3(0.0, 26.0, 19.0)
 const CAMERA_TARGET := Vector3(0.0, 2.0, 4.0)
 const CAMERA_FOV := 47.0
@@ -38,6 +43,11 @@ var _lighting := [
 
 var lighthouse: Lighthouse
 var player: Player
+var players: Array[Player] = []
+var title: CanvasLayer
+var _title_cam: Camera3D
+var _title_t := 0.0
+var _spray_t := 0.0
 var camera: Camera3D
 var spawner: Node
 var hud: CanvasLayer
@@ -57,25 +67,68 @@ func _ready() -> void:
 	_build_fences()
 	_build_scavenge()
 	_build_camera()
-	player = Player.new()
-	player.position = PLAYER_START + Vector3(0.0, Terrain.height_at_v(PLAYER_START) + 0.2, 0.0)
-	player.camera = camera
-	player.lamp = lighthouse.lamp
-	add_child(player)
 	_enemies = Node3D.new()
 	_enemies.name = "Enemies"
 	add_child(_enemies)
 	_build_spawner()
 	hud = HudScript.new()
-	hud.player = player
 	hud.lighthouse = lighthouse
 	hud.lamp = lighthouse.lamp
 	add_child(hud)
+	add_child(PauseScript.new())
 
 	Cycle.phase_changed.connect(_on_phase_changed)
 	Events.run_ended.connect(_on_run_ended)
+	Audio.start_ambience()
 
-	var d := SaveSys.load_run()
+	# Tests and CI run headless and start straight away; so does New Run from game over.
+	if DisplayServer.get_name() == "headless" or Run.quick_start:
+		Run.quick_start = false
+		begin_run(true, Players.wanted)
+	else:
+		_show_title()
+
+func _show_title() -> void:
+	Run.active = false
+	hud.visible = false
+	_apply_lighting(Cycle.Phase.DUSK, 0.0)
+	_title_cam = Camera3D.new()
+	_title_cam.fov = 50.0
+	add_child(_title_cam)
+	_title_cam.current = true
+	lighthouse.lamp.showcase = true
+	lighthouse.lamp._set_state(Lamp.State.BURNING)
+	title = TitleScript.new()
+	title.start_requested.connect(begin_run)
+	add_child(title)
+
+## Start (or continue) a run with n keepers.
+func begin_run(continue_save: bool, n: int) -> void:
+	if title != null:
+		title.queue_free()
+		title = null
+	if _title_cam != null:
+		_title_cam.queue_free()
+		_title_cam = null
+	camera.current = true
+	lighthouse.lamp.showcase = false
+	lighthouse.lamp._set_state(Lamp.State.OFF)
+	Players.configure(n)
+	for i in Players.wanted:
+		var p := Player.new()
+		p.idx = i
+		var at: Vector3 = SPAWNS[i % SPAWNS.size()]
+		p.position = at + Vector3(0.0, Terrain.height_at_v(at) + 0.2, 0.0)
+		p.camera = camera
+		p.lamp = lighthouse.lamp
+		Players.nodes.append(p)
+		players.append(p)
+		add_child(p)
+	player = players[0]
+	hud.player = player
+	hud.players = players
+	hud.visible = true
+	var d := SaveSys.load_run() if continue_save else {}
 	if not d.is_empty():
 		Run.start_loaded(d)
 	else:
@@ -84,7 +137,17 @@ func _ready() -> void:
 	_apply_lighting(Cycle.Phase.DAY, 0.0)
 	Cycle.start(Cycle.Phase.DAY)
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	if _title_cam != null:
+		_title_t += delta * TITLE_ORBIT_SPEED
+		var a := _title_t * TAU + 0.6
+		_title_cam.look_at_from_position(Vector3(sin(a) * 27.0, 10.0, cos(a) * 27.0), Vector3(-4.0, 3.5, 0.0), Vector3.UP)
+	_spray_t -= delta
+	if _spray_t <= 0.0:
+		_spray_t = SPRAY_EVERY * randf_range(0.5, 1.5)
+		var a2 := randf() * TAU
+		var r := 13.2 + randf() * 0.8
+		FX.sea_spray(self, Vector3(sin(a2) * r, Terrain.SEA_LEVEL, cos(a2) * r))
 	if Run.active and Input.is_action_just_pressed("skip"):
 		Cycle.skip()
 

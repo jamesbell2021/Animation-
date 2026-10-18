@@ -5,7 +5,12 @@ func _init() -> void:
 func _go() -> void:
 	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://run.json"))
 	change_scene_to_file("res://scenes/main.tscn")
-	for i in 5:
+	# Scene swaps happen at frame end; wait until the keeper actually exists.
+	for i in 600:
+		if current_scene != null and current_scene.get("player") != null:
+			break
+		await process_frame
+	for i in 3:
 		await physics_frame
 	var main = current_scene
 	var Cycle = root.get_node("Cycle")

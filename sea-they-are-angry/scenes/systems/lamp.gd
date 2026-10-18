@@ -34,6 +34,8 @@ var mode: int = Mode.WIDE
 var fuel: float = FUEL_MAX
 var operator: Node3D = null
 var yaw: float = 0.0
+# On the title screen the lamp sweeps for show: no fuel burn, no effect on creatures.
+var showcase := false
 
 var _pivot: Node3D
 var _light: SpotLight3D
@@ -131,7 +133,13 @@ func _on_lighthouse_destroyed() -> void:
 		_set_state(State.GUTTERING)
 
 func _physics_process(delta: float) -> void:
-	if not is_lit() or not Run.active:
+	if not is_lit():
+		return
+	if showcase:
+		_aim(delta)
+		_flicker(delta)
+		return
+	if not Run.active:
 		return
 	if operator != null and not is_instance_valid(operator):
 		set_operator(null)
@@ -219,6 +227,8 @@ func _set_state(s: int) -> void:
 	_update_visibility()
 	state_changed.emit(s)
 	Events.lamp_state_changed.emit(s)
+	if s == State.BURNING and is_inside_tree():
+		FX.sparks(self, global_position)
 	if s == State.DARK:
 		Run.end_run("The lamp went dark.")
 

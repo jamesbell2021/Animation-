@@ -12,7 +12,12 @@ func _go() -> void:
 	f.store_string(JSON.stringify({"night": 3, "anger": 4, "stock": {"driftwood": 9, "scrap": 2, "seaweed": 0, "bio": 5}, "fuel": 61.5}))
 	f = null
 	change_scene_to_file("res://scenes/main.tscn")
-	for i in 5:
+	# Scene swaps happen at frame end; wait until the keeper actually exists.
+	for i in 600:
+		if current_scene != null and current_scene.get("player") != null:
+			break
+		await process_frame
+	for i in 3:
 		await physics_frame
 	var main = current_scene
 	var Run = root.get_node("Run")

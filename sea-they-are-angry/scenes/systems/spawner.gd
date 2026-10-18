@@ -57,7 +57,9 @@ func _queue_group(entry: Dictionary) -> void:
 	var idx: int = entry["point"]
 	if idx < 0 or idx >= points.size():
 		idx = randi() % points.size()
-	for i in int(entry["count"]):
+	# Co-op: more keepers, more creatures (x1.5 per extra keeper, rounded up).
+	var count := ceili(float(entry["count"]) * (1.0 + 0.5 * float(Players.count() - 1)))
+	for i in count:
 		_pending.append({"at": points[idx], "delay": STAGGER * float(i)})
 
 func _process(delta: float) -> void:

@@ -55,13 +55,22 @@ func take_damage(amount: int) -> void:
 	hp = clampi(hp - amount, 0, max_hp)
 	health_changed.emit(hp, max_hp)
 	Events.structure_damaged.emit(self)
+	_on_damaged()
 	_refresh()
 	if hp == 0:
 		destroyed.emit()
 		Events.structure_destroyed.emit(self)
 		Anger.add(1)
 
+# Virtual: feedback when hit. Default: splinters and a thud.
+func _on_damaged() -> void:
+	if is_inside_tree():
+		FX.splinters(get_parent(), global_position + Vector3(0.0, 0.8, 0.0))
+		Audio.sfx("hit", global_position, -6.0, 0.15)
+
 func repair(amount: int) -> void:
+	if is_inside_tree():
+		Audio.sfx("repair", global_position, -2.0)
 	hp = clampi(hp + amount, 0, max_hp)
 	health_changed.emit(hp, max_hp)
 	_refresh()

@@ -11,6 +11,7 @@ const PALE := Color(0.92, 0.94, 0.96)
 const CONTROLS := "WASD move · Mouse aim · LMB attack · E interact · R operate lamp · Q beam · Space sprint · Enter skip day/dawn"
 
 var player: Player
+var players: Array = []
 var lighthouse: Lighthouse
 var lamp: Lamp
 
@@ -148,7 +149,14 @@ func _process(delta: float) -> void:
 	_phase_label.text = "Night %d — %s  (%s)" % [Run.night, Cycle.phase_name(), _mmss(Cycle.time_left)]
 	_stock_label.text = "Driftwood %d · Scrap %d · Bio %d" % [Stock.get_amount("driftwood"), Stock.get_amount("scrap"), Stock.get_amount("bio")]
 	if player and is_instance_valid(player):
-		_player_label.text = "Keeper HP %d / %d" % [player.hp, player.max_hp]
+		var parts: Array[String] = []
+		var list: Array = players if players.size() > 1 else [player]
+		for p in list:
+			if not is_instance_valid(p):
+				continue
+			var who := ("P%d %s " % [p.idx + 1, p.keeper_name()]) if list.size() > 1 else "Keeper "
+			parts.append(who + ("DOWN" if p.downed else "HP %d / %d" % [p.hp, p.max_hp]))
+		_player_label.text = "   ".join(parts)
 		_prompt_label.text = player.interact_prompt() if Run.active else ""
 	if lighthouse and is_instance_valid(lighthouse):
 		_lh_label.text = "Lighthouse %d / %d" % [lighthouse.hp, lighthouse.max_hp]
@@ -211,6 +219,7 @@ func _on_run_ended(reason: String, night: int) -> void:
 	_prompt_label.text = ""
 
 func _on_new_run() -> void:
+	Run.quick_start = true
 	Run.start_new()
 	SaveSys.clear_run()
 	get_tree().reload_current_scene()

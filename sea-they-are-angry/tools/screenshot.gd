@@ -16,6 +16,20 @@ func _go() -> void:
 	for i in 3:
 		await process_frame
 	var main = current_scene
+	var keepers := 1
+	if args.size() > 3 and args[3].begins_with("keepers"):
+		keepers = int(args[3].substr(7))
+	if args.size() > 3 and args[3] == "title":
+		for i in 40:
+			await process_frame
+		var timg := root.get_texture().get_image()
+		if timg != null:
+			timg.save_png(out)
+		print("saved ", out)
+		quit()
+		return
+	if main.title != null:
+		main.begin_run(false, keepers)
 	var cyc = root.get_node("Cycle")
 	cyc._enter(phase)
 	cyc.running = false
@@ -30,6 +44,10 @@ func _go() -> void:
 		b.position = pos
 		main.get_node("Enemies").add_child(b)
 	main.player.global_position = Vector3(3.0, Terrain.height_at(3.0, 4.5) + 0.1, 4.5)
+	if keepers > 1:
+		main.players[1].global_position = Vector3(-1.5, Terrain.height_at(-1.5, 6.0) + 0.1, 6.0)
+	if keepers > 2:
+		main.players[2].global_position = Vector3(5.5, Terrain.height_at(5.5, 1.0) + 0.1, 1.0)
 	main.player.camera = null
 	main.player._aim = Vector3(0.5, 0, 1).normalized()
 	if focused:
