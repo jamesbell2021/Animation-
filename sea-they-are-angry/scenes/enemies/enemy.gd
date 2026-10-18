@@ -14,6 +14,8 @@ const SHORE_RADIUS := 14.0
 const SINK_RATE := 0.25
 const KNOCKBACK := 3.0
 const KNOCKBACK_DECAY := 8.0
+# Heights on the body the lamp tests against its cone: feet, waist, head.
+const LIGHT_PROBE_HEIGHTS := [0.3, 1.0, 1.8]
 
 var hp := 10
 var max_hp := 10
@@ -49,6 +51,13 @@ func in_light(_mode: int, _delta: float) -> void:
 
 func pick_target() -> Node3D:
 	return lighthouse
+
+# Points the lamp tests against its cone. Override for odd shapes (the Eel's head).
+func light_probe_points() -> Array:
+	var out: Array = []
+	for h in LIGHT_PROBE_HEIGHTS:
+		out.append(global_position + Vector3(0.0, float(h), 0.0))
+	return out
 
 func _enter_Arrived() -> void:
 	velocity = Vector3.ZERO

@@ -18,7 +18,7 @@ const BURN_FOCUSED := 1.5
 const UNMANNED_MULT := 0.8
 const AUTO_SWEEP_DEG := 20.0
 const AIM_SHARPNESS := 6.0
-const TILT_DEG := -22.0
+const TILT_DEG := -30.0
 const BOOST_TIME := 30.0
 const BOOST_MULT := 1.3
 const ENERGY_SCALE := 3.0
@@ -155,22 +155,25 @@ func _burn(delta: float) -> void:
 		_set_state(State.GUTTERING)
 
 func _sweep(delta: float) -> void:
-	var fwd := Vector2(-sin(yaw), -cos(yaw))
-	var origin := global_position
+	# True 3D cone test, so only what the player can see lit is affected.
+	# The lamp is high and tilted, so it cannot reach the ground near its own base.
+	var origin := _light.global_position
+	var fwd := -_light.global_transform.basis.z
 	var r := current_range()
 	var half := deg_to_rad(current_angle())
 	for e in get_tree().get_nodes_in_group("enemies"):
-		if not (e is Node3D):
+		if not (e is Node3D) or not e.has_method("in_light"):
 			continue
-		var p: Vector3 = e.global_position
-		var to := Vector2(p.x - origin.x, p.z - origin.z)
-		var d := to.length()
-		if d > r:
-			continue
-		if d > 0.001 and absf(fwd.angle_to(to)) > half:
-			continue
-		if e.has_method("in_light"):
-			e.in_light(mode, delta)
+		var probes: Array = []
+		if e.has_method("light_probe_points"):
+			probes = e.light_probe_points()
+		else:
+			probes = [e.global_position]
+		for p in probes:
+			var to: Vector3 = p - origin
+			if to.length() <= r and fwd.angle_to(to) <= half:
+				e.in_light(mode, delta)
+				break
 
 func _flicker(delta: float) -> void:
 	_flicker_t += delta

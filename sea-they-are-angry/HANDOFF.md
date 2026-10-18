@@ -39,6 +39,7 @@ Two kinds of console noise are expected and harmless:
 
 ## Things Phase A must reconcile
 
+- **The lamp tests a real 3D cone** against `Enemy.light_probe_points()` and is tilted 30°, so it cannot reach near its own base. Plan item B4 asks for `light_probe_position()`; use the existing `light_probe_points()` instead and have the Eel return its head. See DECISIONS.
 - **The focused beam now burns the Bloated** at 10 hp per second instead of slowing it, by the owner's decision after playtesting. The appendix still lists only "light slow ×0.6" for the Bloated, so add the burn to `Balance` alongside it. See DECISIONS.
 - **The appendix changes slice numbers.** Plan 2 says "solo still plays exactly as before", but its appendix sets Day 120 s, Dusk 30 s, Night min(150 + 10(n−1), 240) and Dawn 60 s. The slice uses 60, 15, min(120 + 10(n−1), 210) and 30. The appendix is the newer design, so move to it when building `Balance` and record that in DECISIONS.
 - **`autoload/cycle.gd` and the other autoloads were written verbatim from plan 1.** Moving their numbers into `Balance` is expected; keep their signals and method names.
