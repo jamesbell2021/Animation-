@@ -19,6 +19,9 @@ func wait_until(cond: Callable, max_frames: int) -> bool:
 		await physics_frame
 	return cond.call()
 
+func on_ground(p: Vector3) -> Vector3:
+	return Vector3(p.x, Terrain.height_at(p.x, p.z) + 0.15, p.z)
+
 func frames(n: int) -> void:
 	for i in n:
 		await physics_frame
@@ -52,7 +55,7 @@ func _run() -> void:
 			all_in = false
 			print("   off-screen rim point at ", p)
 	check(all_in, "island rim r14 fully on screen")
-	check(cam.is_position_in_frustum(Vector3(0, 9, 0)), "lighthouse top on screen")
+	check(cam.is_position_in_frustum(lh.global_position + Vector3(0, 10.4, 0)), "lighthouse top on screen")
 
 	# Fence ring: eight fences, adjacent ends separated by a keeper-sized gap.
 	var fences := []
@@ -91,7 +94,7 @@ func _run() -> void:
 		if n is ScavengePoint and n.kind == "scrap":
 			sp = n
 	var scrap0: int = Stock.get_amount("scrap")
-	player.global_position = sp.global_position + Vector3(1.0, 0.1, 0.0)
+	player.global_position = on_ground(sp.global_position + Vector3(1.0, 0.1, 0.0))
 	await frames(3)
 	check(player.interact_prompt().begins_with("[E] Gather"), "gather prompt near a scavenge box: " + player.interact_prompt())
 	Input.action_press("interact")
@@ -106,13 +109,13 @@ func _run() -> void:
 	main.get_node("Enemies").add_child(b)
 	await wait_until(func(): return b.state == &"Approach", 120)
 	b.process_mode = Node.PROCESS_MODE_DISABLED
-	player.global_position = b.global_position + Vector3(0, 0.1, 1.5)
+	player.global_position = on_ground(b.global_position + Vector3(0, 0.1, 1.5))
 	player._aim = Vector3(0, 0, -1)
 	player._attack_cd = 0.0
 	player._attack()
 	check(b.hp == 40, "boathook hit takes 20 hp (hp now %d)" % b.hp)
 	b.process_mode = Node.PROCESS_MODE_INHERIT
-	player.global_position = Vector3(4, 0.1, 4)
+	player.global_position = on_ground(Vector3(4, 0.1, 4))
 	b.take_damage(20, Vector3.ZERO, player)
 	b.take_damage(20, Vector3.ZERO, player)
 	check(b.state == &"Bloat", "killing a Bloated starts Bloat")
@@ -141,7 +144,7 @@ func _run() -> void:
 	check(lh.hp == lh_hp - 40, "burst at the lighthouse deals 40 (hp %d -> %d)" % [lh_hp, lh.hp])
 
 	# Repair the broken fence.
-	player.global_position = fence.global_position + Vector3(0, 0.1, -1.0)
+	player.global_position = on_ground(fence.global_position + Vector3(0, 0.1, -1.0))
 	await frames(3)
 	var dw: int = Stock.get_amount("driftwood")
 	check(player.interact_prompt().begins_with("[E] Repair fence"), "repair prompt: " + player.interact_prompt())
@@ -159,7 +162,7 @@ func _run() -> void:
 
 	# Operate and beam. Detach the camera so the headless mouse does not overwrite the aim.
 	player.camera = null
-	player.global_position = Vector3(0, 0.1, 3.0)
+	player.global_position = on_ground(Vector3(0, 0.1, 3.0))
 	await frames(2)
 	Input.action_press("operate")
 	await frames(2)
@@ -242,7 +245,7 @@ func _run() -> void:
 	check(main.hud._lamp_label.text.begins_with("Lamp: GUTTERING"), "HUD shows: " + main.hud._lamp_label.text)
 	lh.hp = lh.max_hp
 	Stock.add("bio", 1)
-	player.global_position = Vector3(0, 0.1, 2.8)
+	player.global_position = on_ground(Vector3(0, 0.1, 2.8))
 	await frames(3)
 	check(player.interact_prompt().begins_with("[E] Refuel"), "refuel prompt: " + player.interact_prompt())
 	Input.action_press("interact")

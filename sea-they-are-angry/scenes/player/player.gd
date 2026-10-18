@@ -38,6 +38,8 @@ func _ready() -> void:
 	add_to_group("player")
 	collision_layer = 2
 	collision_mask = 1 | 4 | 8
+	# The island's rocky slopes are steep; let the keeper scramble up them.
+	floor_max_angle = deg_to_rad(60.0)
 	_hook_pivot = Node3D.new()
 	_hook_pivot.position = Vector3(0.4, 0.9, 0.0)
 	add_child(_hook_pivot)

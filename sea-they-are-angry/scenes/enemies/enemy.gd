@@ -14,6 +14,7 @@ const SHORE_RADIUS := 14.0
 const SINK_RATE := 0.25
 const KNOCKBACK := 3.0
 const KNOCKBACK_DECAY := 8.0
+const DETOUR_TIME := 0.8
 # Heights on the body the lamp tests against its cone: feet, waist, head.
 const LIGHT_PROBE_HEIGHTS := [0.3, 1.0, 1.8]
 
@@ -30,6 +31,8 @@ var state_t := 0.0
 var attack_target: Structure
 
 var _knock := Vector3.ZERO
+var _detour_t := 0.0
+var _detour_dir := Vector3.ZERO
 var _attack_t := 0.0
 
 func _ready() -> void:
@@ -120,24 +123,38 @@ func _tick_Emerge(_delta: float) -> void:
 func _enter_Approach() -> void:
 	target = pick_target()
 
-func _tick_Approach(_delta: float) -> void:
+func _tick_Approach(delta: float) -> void:
 	if target == null or not is_instance_valid(target):
 		target = pick_target()
 	if target == null:
 		velocity = Vector3.ZERO
 		return
-	for i in get_slide_collision_count():
-		var col := get_slide_collision(i).get_collider()
-		if col is Structure and col != target and not col.is_destroyed():
-			attack_target = col
-			change_state(&"AttackFence")
-			return
 	var to := target.global_position - global_position
 	to.y = 0.0
 	if to.length() < reach:
 		change_state(&"Arrived")
 		return
 	var dir := to.normalized()
+	for i in get_slide_collision_count():
+		var hit := get_slide_collision(i)
+		var col := hit.get_collider()
+		if col == target or col is CharacterBody3D:
+			continue
+		if col is Fence and not col.is_destroyed():
+			attack_target = col
+			change_state(&"AttackFence")
+			return
+		if col is StaticBody3D and _detour_t <= 0.0:
+			# Buildings and scenery: step sideways along the wall for a moment.
+			var n := hit.get_normal()
+			var side := Vector3(n.z, 0.0, -n.x).normalized()
+			if side.dot(dir) < 0.0 or (absf(side.dot(dir)) < 0.05 and get_instance_id() % 2 == 0):
+				side = -side
+			_detour_dir = side
+			_detour_t = DETOUR_TIME
+	if _detour_t > 0.0:
+		_detour_t -= delta
+		dir = _detour_dir
 	face(dir)
 	velocity = dir * speed * speed_mult
 	position.y = ground_y()

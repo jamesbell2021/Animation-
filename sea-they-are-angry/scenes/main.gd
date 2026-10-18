@@ -7,12 +7,12 @@ const HudScript := preload("res://scenes/ui/hud.gd")
 const FENCE_RING := 9.0
 const FENCE_SECTIONS := 8
 const FENCE_GAP := 1.0
-const SCAVENGE_RING := 12.0
+const SCAVENGE_RING := 12.3
 const SPAWN_RING := 17.0
 const SPAWN_POINTS := 6
 const PLAYER_START := Vector3(4.0, 0.0, 4.0)
-const CAMERA_POS := Vector3(0.0, 22.0, 18.0)
-const CAMERA_TARGET := Vector3(0.0, 0.0, 3.8)
+const CAMERA_POS := Vector3(0.0, 26.0, 19.0)
+const CAMERA_TARGET := Vector3(0.0, 2.0, 4.0)
 const CAMERA_FOV := 47.0
 const LIGHT_TWEEN := 2.0
 const GRASS_TUFTS := 4200
@@ -51,7 +51,9 @@ func _ready() -> void:
 	_build_ground()
 	_build_sea()
 	lighthouse = Lighthouse.new()
+	lighthouse.position = Vector3(0.0, Terrain.height_at(0.0, 0.0), 0.0)
 	add_child(lighthouse)
+	_build_homestead()
 	_build_fences()
 	_build_scavenge()
 	_build_camera()
@@ -138,20 +140,26 @@ func _build_ground() -> void:
 	_build_grass()
 
 func _build_rocks() -> void:
-	# Boulders along the shore, a few on the plateau, and sea stacks out in the swell.
+	# Crags all round the cliffs, a few boulders on the plateau, and sea stacks in the swell.
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 77
-	var shore := [15.0, 75.0, 130.0, 190.0, 250.0, 305.0]
-	for k in shore.size():
-		var a := deg_to_rad(float(shore[k]))
-		for i in 4:
-			var r := rng.randf_range(12.4, 14.2)
-			var aa := a + rng.randf_range(-0.12, 0.12)
-			var p := Vector3(sin(aa) * r, 0.0, cos(aa) * r)
-			var s := rng.randf_range(0.4, 1.1) * (1.3 if i == 0 else 0.8)
-			p.y = Terrain.height_at_v(p) - s * 0.15
-			Look.rock(self, k * 31 + i * 7 + 3, Vector3(s * 1.3, s * 0.9, s * 1.1), p)
-	var boulders := [Vector3(-5.5, 0, -6.5), Vector3(6.8, 0, -3.5), Vector3(-9.5, 0, 2.5), Vector3(2.5, 0, -10.0)]
+	var scav_angles: Array[float] = []
+	for s in SCAVENGE:
+		scav_angles.append(deg_to_rad(float(s[0])))
+	for i in 46:
+		var a := rng.randf() * TAU
+		var clear := true
+		for sa in scav_angles:
+			if absf(wrapf(a - sa, -PI, PI)) < 0.16:
+				clear = false
+		if not clear:
+			continue
+		var r := rng.randf_range(10.6, 14.0)
+		var p := Vector3(sin(a) * r, 0.0, cos(a) * r)
+		var s := rng.randf_range(0.6, 1.5)
+		p.y = Terrain.height_at_v(p) - s * 0.2
+		Look.rock(self, 40 + i * 7, Vector3(s * 1.4, s * 1.1, s * 1.2), p, Color(0.34, 0.33, 0.31), 0.45)
+	var boulders := [Vector3(-2.5, 0, -7.0), Vector3(7.4, 0, 1.5), Vector3(-8.2, 0, 0.5), Vector3(2.5, 0, -8.0)]
 	for i in boulders.size():
 		var p: Vector3 = boulders[i]
 		p.y = Terrain.height_at_v(p) - 0.1
@@ -169,8 +177,10 @@ func _build_grass() -> void:
 	var xforms: Array[Transform3D] = []
 	for i in GRASS_TUFTS:
 		var a := rng.randf() * TAU
-		var r := sqrt(rng.randf_range(3.2 * 3.2, 11.9 * 11.9))
+		var r := sqrt(rng.randf_range(3.2 * 3.2, 10.6 * 10.6))
 		var p := Vector3(sin(a) * r, 0.0, cos(a) * r)
+		if not Terrain.is_grassy(p.x, p.z):
+			continue
 		p.y = Terrain.height_at_v(p)
 		var b := Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * rng.randf_range(0.7, 1.35))
 		xforms.append(Transform3D(b, p))
@@ -187,6 +197,44 @@ func _build_grass() -> void:
 	mmi.material_override = mat
 	mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(mmi)
+
+func _on_pad(x: float, z: float) -> Vector3:
+	return Vector3(x, Terrain.height_at(x, z), z)
+
+func _face_inward(n: Node3D) -> void:
+	# Local +Z points away from the lighthouse, so doors on local -Z face it.
+	n.rotation.y = atan2(n.position.x, n.position.z)
+
+func _build_homestead() -> void:
+	var cottage := Cottage.new()
+	cottage.position = _on_pad(Terrain.PADS[0][0], Terrain.PADS[0][1])
+	_face_inward(cottage)
+	add_child(cottage)
+	var garden := Garden.new()
+	garden.position = _on_pad(Terrain.PADS[1][0], Terrain.PADS[1][1])
+	_face_inward(garden)
+	add_child(garden)
+	_build_shed(_on_pad(Terrain.PADS[2][0], Terrain.PADS[2][1]))
+
+func _build_shed(at: Vector3) -> void:
+	# Oil and tool store: scenery that blocks movement but takes no damage.
+	var shed := StaticBody3D.new()
+	shed.name = "Shed"
+	shed.collision_layer = 4
+	shed.collision_mask = 0
+	shed.position = at
+	_face_inward(shed)
+	add_child(shed)
+	var stone := Look.flat_mat(Color(0.44, 0.43, 0.40))
+	var walls := Geo.box(shed, Vector3(2.4, 1.6, 2.0), Color.WHITE, Vector3(0.0, 0.8, 0.0))
+	walls.material_override = stone
+	var roof := Geo.box(shed, Vector3(2.7, 0.12, 2.4), Color.WHITE, Vector3(0.0, 1.75, 0.0))
+	roof.material_override = Look.flat_mat(Color(0.20, 0.22, 0.25), 0.6)
+	roof.rotation.x = deg_to_rad(-12.0)
+	Geo.box(shed, Vector3(0.75, 1.25, 0.08), Color(0.30, 0.22, 0.14), Vector3(0.2, 0.62, -1.03))
+	var barrel := Geo.cyl(shed, 0.28, 0.8, Color.WHITE, Vector3(-0.85, 0.4, -1.35))
+	barrel.material_override = Look.flat_mat(Color(0.18, 0.2, 0.22), 0.5)
+	Geo.box_shape(shed, Vector3(2.4, 1.6, 2.0), Vector3(0.0, 0.8, 0.0))
 
 func _build_sea() -> void:
 	var sea := MeshInstance3D.new()

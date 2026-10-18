@@ -26,7 +26,7 @@ func _go() -> void:
 	var t9: Array = main.spawner.night_table(9)
 	check(t9.size() == 5 and int(t9[0]["count"]) == 3 + 2 + 1, "night 9 uses night 4 pattern +2, +1 anger")
 	# Keep the keeper out of the way and the lamp fuelled, then run a night fast.
-	main.player.global_position = Vector3(-4, 0.1, -4)
+	main.player.global_position = Vector3(-4, Terrain.height_at(-4.0, -4.0) + 0.15, -4)
 	Run.night = 1
 	Anger.set_value(0)
 	Cycle._enter(Cycle.Phase.NIGHT)

@@ -1,5 +1,5 @@
 # Screenshot tool. Renders the real scene and saves a PNG; needs a display (or Xvfb).
-# godot --path sea-they-are-angry --script res://tools/screenshot.gd -- out.png <phase 0-3> [focused 0/1] [close]
+# godot --path sea-they-are-angry --script res://tools/screenshot.gd -- out.png <phase 0-3> [focused 0/1] [close or homestead]
 # Headless containers: install mesa-vulkan-drivers, then wrap in: xvfb-run -a -s "-screen 0 1600x900x24"
 extends SceneTree
 func _init() -> void:
@@ -29,7 +29,7 @@ func _go() -> void:
 		b.lighthouse = main.lighthouse
 		b.position = pos
 		main.get_node("Enemies").add_child(b)
-	main.player.global_position = Vector3(3.0, 0.1, 4.5)
+	main.player.global_position = Vector3(3.0, Terrain.height_at(3.0, 4.5) + 0.1, 4.5)
 	main.player.camera = null
 	main.player._aim = Vector3(0.5, 0, 1).normalized()
 	if focused:
@@ -58,6 +58,16 @@ func _go() -> void:
 		c.look_at_from_position(at + Vector3(0.6, 1.6, 4.2), at, Vector3.UP)
 		c.fov = 40.0
 		c.current = true
+		for i in 10:
+			await process_frame
+	if args.size() > 3 and args[3] == "homestead":
+		main.hud.visible = false
+		var c2 := Camera3D.new()
+		main.add_child(c2)
+		var at: Vector3 = Vector3(-2.0, Terrain.height_at(-2.0, 1.0) + 1.0, 1.0)
+		c2.look_at_from_position(at + Vector3(5.5, 4.5, 8.0), at, Vector3.UP)
+		c2.fov = 50.0
+		c2.current = true
 		for i in 10:
 			await process_frame
 	var img := root.get_texture().get_image()

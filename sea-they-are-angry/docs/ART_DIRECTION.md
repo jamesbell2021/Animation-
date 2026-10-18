@@ -14,13 +14,18 @@ The chosen look is the one in `docs/concept/keepers_reference_sheet.png`: stylis
 |---|---|
 | ![focused](screenshots/night_focused.png) | ![close-up](screenshots/keeper_closeup.png) |
 
+| The homestead by day | The homestead at night |
+|---|---|
+| ![homestead](screenshots/homestead_day.png) | ![homestead at night](screenshots/homestead_night.png) |
+
 Regenerate with `tools/screenshot.gd`.
 
 The owner's brief is "a Valheim look". In practice that means simple, faceted low-poly shapes with flat colour, carried by modern, moody lighting. It is the lighting and atmosphere that make Valheim read as beautiful, not texture detail. The checklist the game now follows:
 
 | Valheim trait | How this game does it |
 |---|---|
-| Chunky faceted terrain | `scenes/util/terrain.gd`: a jittered grid, flat-shaded, one painted colour per triangle |
+| Chunky faceted terrain | `scenes/util/terrain.gd`: a raised rocky island, the lighthouse on a gravel knoll, mossy rock slopes to the sea; a jittered grid, flat-shaded, one painted colour per triangle |
+| A lived-in homestead | Whitewashed cottage with slate roof and glowing windows, a stone store shed, a drystone-walled garden, gravel paths |
 | Dense grass swaying in the wind | `shaders/grass.gdshader`: 4,200 vertex-coloured tufts in a MultiMesh, gusting wind, up-facing normals so the field shades softly |
 | Living water | `shaders/sea.gdshader`: layered swells, shallow-to-deep colour, a breathing foam line at the shore, sparse whitecaps |
 | Volumetric fog and god rays | Forward+ volumetric fog per phase; the lamp's spot light scatters in it, plus a soft additive beam mesh (`shaders/beam.gdshader`) |

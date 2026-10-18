@@ -51,7 +51,7 @@ Two kinds of console noise are expected and harmless:
 
 ## The visual pass (done early, at the owner's request)
 
-The game already has its Valheim-style look: generated terrain, grass, sea, fog, a modelled lighthouse, and Callum's model as the keeper. See `docs/ART_DIRECTION.md` for screenshots and the checklist of what each Valheim trait maps to, and DECISIONS for the details. Keep the look intact while doing phases A to G. `tools/screenshot.gd` renders real frames so changes can be checked by eye; in a headless container it needs `mesa-vulkan-drivers` and `xvfb-run`.
+The game already has its Valheim-style look: a raised rocky island, grass, sea, fog, a modelled lighthouse on its knoll, the cottage, shed and garden, and Callum's model as the keeper. Phase C should build on the existing `Cottage` and `Garden` classes (`scenes/structures/`) rather than create new ones; their positions differ from plan 2, see DECISIONS. See `docs/ART_DIRECTION.md` for screenshots and the checklist of what each Valheim trait maps to, and DECISIONS for the details. Keep the look intact while doing phases A to G. `tools/screenshot.gd` renders real frames so changes can be checked by eye; in a headless container it needs `mesa-vulkan-drivers` and `xvfb-run`.
 
 ## Art that is waiting for Phase F
 
