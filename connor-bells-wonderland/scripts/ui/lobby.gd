@@ -21,7 +21,7 @@ var _updating: bool = false
 
 
 func _ready() -> void:
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_net = get_node_or_null("/root/NetworkManager")
 	if _net == null or not _net.is_multiplayer_session:
 		push_error("Lobby: no network session; returning to the menu.")
@@ -39,10 +39,10 @@ func _ready() -> void:
 func _build() -> void:
 	var bg := ColorRect.new()
 	bg.color = Color(0.25, 0.5, 0.95)
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
 	var panel := PanelContainer.new()
-	panel.set_anchors_preset(Control.PRESET_CENTER)
+	panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
 	panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	panel.grow_vertical = Control.GROW_DIRECTION_BOTH
 	add_child(panel)

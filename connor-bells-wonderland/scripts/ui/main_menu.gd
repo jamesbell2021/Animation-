@@ -20,7 +20,7 @@ var _buttons: Array[Button] = []
 
 
 func _ready() -> void:
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	get_tree().paused = false
 	_net = get_node_or_null("/root/NetworkManager")
 	if _net == null:
@@ -41,7 +41,7 @@ func _ready() -> void:
 func _build() -> void:
 	var bg := ColorRect.new()
 	bg.color = Color(0.3, 0.55, 1.0)
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
 	for i in range(7):
 		var stripe := ColorRect.new()
@@ -52,26 +52,37 @@ func _build() -> void:
 		add_child(stripe)
 
 	var panel := PanelContainer.new()
-	panel.set_anchors_preset(Control.PRESET_CENTER)
+	panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
 	panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	panel.grow_vertical = Control.GROW_DIRECTION_BOTH
 	add_child(panel)
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 10)
-	box.custom_minimum_size = Vector2(620.0, 0.0)
-	panel.add_child(box)
+	var outer := VBoxContainer.new()
+	outer.add_theme_constant_override("separation", 14)
+	panel.add_child(outer)
 
 	var title := Label.new()
 	title.text = Branding.title_upper()
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", 40)
 	title.add_theme_color_override("font_color", Color(1.0, 0.85, 0.2))
-	box.add_child(title)
+	outer.add_child(title)
 	var subtitle := Label.new()
 	subtitle.text = Branding.SUBTITLE
 	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	subtitle.add_theme_font_size_override("font_size", 22)
-	box.add_child(subtitle)
+	outer.add_child(subtitle)
+
+	var columns := HBoxContainer.new()
+	columns.add_theme_constant_override("separation", 30)
+	outer.add_child(columns)
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 10)
+	box.custom_minimum_size = Vector2(400.0, 0.0)
+	columns.add_child(box)
+	var actions := VBoxContainer.new()
+	actions.add_theme_constant_override("separation", 10)
+	actions.custom_minimum_size = Vector2(380.0, 0.0)
+	columns.add_child(actions)
 
 	_name_edit = LineEdit.new()
 	_name_edit.max_length = 14
@@ -91,30 +102,32 @@ func _build() -> void:
 	_difficulty_option.selected = 1
 	box.add_child(_row("Difficulty", _difficulty_option))
 	_items_check = CheckButton.new()
-	_items_check.text = "Gift boxes and items"
+	_items_check.text = "Gift boxes"
 	_items_check.button_pressed = true
 	box.add_child(_row("Items", _items_check))
 
-	box.add_child(_button("Play Solo", _on_play_solo))
-	box.add_child(_button("Host Wi-Fi Game", _on_host))
+	actions.add_child(_button("Play Solo", _on_play_solo))
+	actions.add_child(_button("Host Wi-Fi Game", _on_host))
 	_ip_edit = LineEdit.new()
 	_ip_edit.placeholder_text = "Host IP, e.g. 192.168.1.20"
-	box.add_child(_row("Join IP", _ip_edit))
-	box.add_child(_button("Join Wi-Fi Game", _on_join))
-	box.add_child(_button("Quit", func() -> void: get_tree().quit()))
+	_ip_edit.custom_minimum_size = Vector2(0.0, 44.0)
+	actions.add_child(_ip_edit)
+	actions.add_child(_button("Join Wi-Fi Game", _on_join))
+	actions.add_child(_button("Quit", func() -> void: get_tree().quit()))
 
 	_status = Label.new()
 	_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_status.custom_minimum_size = Vector2(380.0, 0.0)
 	_status.add_theme_color_override("font_color", Color(1.0, 0.9, 0.5))
-	box.add_child(_status)
+	actions.add_child(_status)
 
 
 func _row(label_text: String, control: Control) -> HBoxContainer:
 	var row := HBoxContainer.new()
 	var label := Label.new()
 	label.text = label_text
-	label.custom_minimum_size = Vector2(150.0, 0.0)
+	label.custom_minimum_size = Vector2(130.0, 0.0)
 	label.add_theme_font_size_override("font_size", 22)
 	row.add_child(label)
 	control.size_flags_horizontal = Control.SIZE_EXPAND_FILL

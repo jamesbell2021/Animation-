@@ -172,7 +172,7 @@ func _build() -> void:
 
 	_countdown_label = _make_label(110, Color(1.0, 0.9, 0.2))
 	_countdown_label.name = "CountdownLabel"
-	_countdown_label.set_anchors_preset(Control.PRESET_CENTER)
+	_countdown_label.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
 	_countdown_label.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_countdown_label.grow_vertical = Control.GROW_DIRECTION_BOTH
 	_countdown_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -180,7 +180,7 @@ func _build() -> void:
 
 	_message_label = _make_label(36, Color.WHITE)
 	_message_label.name = "MessageLabel"
-	_message_label.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_message_label.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
 	_message_label.offset_top = 90.0
 	_message_label.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_message_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -188,7 +188,7 @@ func _build() -> void:
 
 	_results_panel = PanelContainer.new()
 	_results_panel.name = "ResultsPanel"
-	_results_panel.set_anchors_preset(Control.PRESET_CENTER)
+	_results_panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
 	_results_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_results_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
 	_results_panel.visible = false
