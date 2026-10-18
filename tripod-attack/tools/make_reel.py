@@ -81,10 +81,11 @@ def tripod_icon(img, cx, cy, s, colour=GREEN, w=5):
     img.alpha_composite(layer)
 
 
-def scanlines(img, alpha=70):
+def scanlines(img, shade=18):
+    """Dark stripes on an opaque card (drawn opaque: ImageDraw replaces pixels, it does not blend)."""
     d = ImageDraw.Draw(img)
     for y in range(0, img.height, 4):
-        d.line([(0, y), (img.width, y)], fill=(0, 0, 0, alpha), width=1)
+        d.line([(0, y), (img.width, y)], fill=(shade, shade, shade, 255), width=1)
 
 
 def mark_3bl(img, cx, cy, size=64, sub=True):
@@ -123,8 +124,8 @@ def intro_card():
 
 
 def outro_card():
-    img = Image.new("RGBA", (W, H), (0, 0, 0, 215))
-    scanlines(img, 40)
+    img = Image.new("RGBA", (W, H), (0, 0, 0, 255))
+    scanlines(img)
     tripod_icon(img, W // 2, 420, 1.3, GREEN, 6)
     neon_text(img, "TRIPOD ATTACK!", (W // 2, 820), 118, GREEN, glow=18)
     neon_text(img, "OUT NOW", (W // 2, 960), 90, WHITE, glow=14)
@@ -138,6 +139,8 @@ def outro_card():
 def main():
     take = sys.argv[1]
     out = sys.argv[2]
+    probe = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", take], capture_output=True, text=True, check=True)
+    duration = float(probe.stdout.strip())
     work = tempfile.mkdtemp(prefix="reel-")
     top_band().save(os.path.join(work, "top.png"))
     intro_card().save(os.path.join(work, "intro.png"))
@@ -150,7 +153,7 @@ def main():
         inputs += ["-loop", "1", "-i", os.path.join(work, f"cap{i}.png")]
     f = []
     f.append(f"[0:v]fps=30,split[g][gb]")
-    f.append(f"[gb]scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},gblur=sigma=28,eq=brightness=-0.28:saturation=1.3[bg]")
+    f.append(f"[gb]scale={W // 4}:{H // 4}:force_original_aspect_ratio=increase,crop={W // 4}:{H // 4},gblur=sigma=7,eq=brightness=-0.28:saturation=1.3,scale={W}:{H}[bg]")
     f.append(f"[g]scale={W}:{GAME_H}[game]")
     f.append(f"[bg][game]overlay=0:{GAME_Y}[v0]")
     f.append("[v0][1:v]overlay=0:0[v1]")
@@ -164,7 +167,7 @@ def main():
     f.append(f"[vi][outro]overlay=0:0:enable='gte(t,{OUTRO_START})',format=yuv420p[vout]")
     f.append("[0:a]alimiter=limit=0.9,loudnorm=I=-14:TP=-1.5:LRA=11,aresample=48000[aout]")
     cmd = ["ffmpeg", "-y", "-hide_banner", "-loglevel", "error"] + inputs + ["-filter_complex", ";".join(f), "-map", "[vout]", "-map", "[aout]",
-           "-shortest", "-c:v", "libx264", "-preset", "slow", "-crf", "19", "-profile:v", "high", "-r", "30", "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", out]
+           "-t", str(duration), "-c:v", "libx264", "-preset", "medium", "-crf", "19", "-profile:v", "high", "-r", "30", "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", out]
     subprocess.run(cmd, check=True)
     # a cover frame for the post
     subprocess.run(["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-ss", "9.9", "-i", out, "-frames:v", "1", "-q:v", "3", os.path.splitext(out)[0] + "-cover.jpg"], check=True)
