@@ -189,12 +189,15 @@ scripts/world/            seeded procedural city and destructible blocks
 scripts/combat/           projectiles (shells, bullets, rockets)
 scripts/ui/               HUD, title menu, touch controls
 scripts/i18n/             Japanese translation (English text -> 日本語)
+studio/                   3BL_Indie splash (first autoload) and credits screen, shared with the other games
 shaders/                  neon wireframe (+ MultiMesh variant), ground grid, FX, CRT
 fonts/                    DotGothic16 pixel font for the Japanese text (SIL OFL, see OFL.txt)
 icons/                    app icon (drawn by launch/make_art.py)
 launch/                   launch kit: covers, store page text, posts, checklist (ignored by Godot)
 docs/                     screenshots and audio preview (ignored by Godot)
 ```
+
+**3BL_Indie splash and credits.** `studio/splash.gd` is the first autoload: it shows the 3BL_Indie logo for about three seconds at launch (any key, click, tap or button skips it; headless runs and `--no-splash` skip it). `studio/credits.gd` is the credits screen opened from the title menu's CREDITS button. Both files are shared word for word across the 3BL_Indie games, so change them in every game together. See `CREDITS.md`.
 
 ### LAN multiplayer
 

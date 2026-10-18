@@ -29,6 +29,10 @@ var data := {}
 
 func _initialize() -> void:
 	shot = OS.get_cmdline_user_args()[0]
+	# No studio splash in trailer takes.
+	var splash := root.get_node_or_null("StudioSplash")
+	if splash:
+		splash.free()
 	g = root.get_node("G")
 	g.menu_done = true
 	g.music_on = false

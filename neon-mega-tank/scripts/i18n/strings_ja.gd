@@ -12,6 +12,7 @@ const TEXT := {
 	"friends join from their own phones on this Wi-Fi": "同じWi-Fiの友だちが自分のスマホで参加",
 	"JOIN LAN GAME": "LANゲームに参加",
 	"find a game hosted on this Wi-Fi": "同じWi-Fiのゲームを探す",
+	"CREDITS": "クレジット",
 	"QUIT": "終了",
 	"LANGUAGE": "言語",
 	"searching for games on your Wi-Fi ...": "Wi-Fi内のゲームを探しています…",

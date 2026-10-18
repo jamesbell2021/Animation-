@@ -50,7 +50,9 @@ func _ready() -> void:
 	var lang := _button("%s:  %s" % [G.t("LANGUAGE"), "日本語" if japanese else "ENGLISH"],
 		"Switch to English" if japanese else "日本語に切り替える", Color(1.0, 0.3, 0.85))
 	lang.pressed.connect(_toggle_language)
-	for b in [play, host, join, lang]:
+	var credits := _button(G.t("CREDITS"), "", Color(0.75, 0.55, 1.0))
+	credits.pressed.connect(func() -> void: _show_credits(credits))
+	for b in [play, host, join, lang, credits]:
 		_main_box.add_child(b)
 	if not OS.has_feature("mobile"):
 		var quit := _button(G.t("QUIT"), "", Color(1.0, 0.3, 0.3))
@@ -114,6 +116,13 @@ func _toggle_language() -> void:
 	G.set_language("en" if G.language == "ja" else "ja")
 	get_tree().reload_current_scene()
 
+
+func _show_credits(from: Button) -> void:
+	var c := preload("res://studio/credits.gd").open(self, "Neon Mega Tank", [
+		"Font: DotGothic16 by The DotGothic16 Project Authors (SIL OFL 1.1)",
+		"Music, voices and sound effects synthesised in code",
+	], G.jp_font)
+	c.closed.connect(from.grab_focus)
 
 func _show_main() -> void:
 	Net.stop_discovery()

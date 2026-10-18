@@ -15,11 +15,12 @@ config/description="Up to 4-player couch co-op: crew one giant neon tank, swap s
 run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.3", "Forward Plus")
 config/icon="res://icons/icon.png"
-boot_splash/bg_color=Color(0.008, 0.016, 0.047, 1)
+boot_splash/bg_color=Color(0.02, 0.02, 0.03, 1)
 boot_splash/show_image=false
 
 [autoload]
 
+StudioSplash="*res://studio/splash.gd"
 Net="*res://scripts/net/net.gd"
 G="*res://scripts/game.gd"
 

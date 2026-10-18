@@ -47,6 +47,7 @@ Keepers face the way they walk and turn to their aim to swing. Each carries a pa
 - One enemy, the Bloated Dead: walks at the lighthouse, batters fences, swells and bursts.
 - A spawner driven by a per-night table and the hidden Sea Anger value.
 - HUD, dawn autosave and resume, game-over screen with New Run.
+- 3BL_Indie studio splash at launch and a Credits screen on the title menu (`studio/`, shared with the other 3BL_Indie games; see [CREDITS.md](CREDITS.md)).
 
 Design choices the spec left open are recorded in [docs/DECISIONS.md](docs/DECISIONS.md).
 

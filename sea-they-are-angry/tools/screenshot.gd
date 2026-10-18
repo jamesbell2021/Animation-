@@ -9,6 +9,9 @@ func _go() -> void:
 	var out := args[0]
 	var phase := int(args[1])
 	var focused := args.size() > 2 and args[2] == "1"
+	var splash := root.get_node_or_null("StudioSplash")
+	if splash:
+		splash.free()
 	if FileAccess.file_exists("user://run.json"):
 		DirAccess.remove_absolute(ProjectSettings.globalize_path("user://run.json"))
 	root.size = Vector2i(1600, 900)

@@ -45,6 +45,7 @@ func _ready() -> void:
 		_first = new_btn
 	_keepers_btn = _button(box, "", _cycle_keepers)
 	_keepers_btn.gui_input.connect(_on_keepers_input)
+	_button(box, "Credits", _on_credits)
 	_button(box, "Quit", _on_quit)
 	_device_label = _label(box, "", 16, Color(0.75, 0.8, 0.85))
 	_device_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -115,6 +116,13 @@ func _on_continue() -> void:
 func _on_new() -> void:
 	SaveSys.clear_run()
 	start_requested.emit(false, _keepers)
+
+func _on_credits() -> void:
+	var c := preload("res://studio/credits.gd").open(self, "Sea They Are Angry", [
+		"Fonts: IM FELL English by Igino Marini (SIL OFL 1.1) · Special Elite by Astigmatic (Apache 2.0)",
+		"Sound and music synthesised in code",
+	], Fonts.title())
+	c.closed.connect(func() -> void: _first.grab_focus())
 
 func _on_quit() -> void:
 	get_tree().quit()

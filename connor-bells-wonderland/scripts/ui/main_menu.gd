@@ -115,6 +115,7 @@ func _build() -> void:
 	_ip_edit.custom_minimum_size = Vector2(0.0, 44.0)
 	actions.add_child(_ip_edit)
 	actions.add_child(_button("Join Wi-Fi Game", _on_join))
+	actions.add_child(_button("Credits", _on_credits))
 	actions.add_child(_button("Quit", func() -> void: get_tree().quit()))
 
 	_status = Label.new()
@@ -188,6 +189,10 @@ func _apply_identity_and_settings() -> void:
 		"items": _items_check.button_pressed,
 	}
 
+
+func _on_credits() -> void:
+	var c := preload("res://studio/credits.gd").open(self, Branding.GAME_TITLE)
+	c.closed.connect(func() -> void: _buttons[_buttons.size() - 2].grab_focus())
 
 func _on_play_solo() -> void:
 	_apply_identity_and_settings()

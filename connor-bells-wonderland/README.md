@@ -120,7 +120,10 @@ scripts/items/   coins, item boxes, item rules, traps, custard pie
 scripts/fx/      particle bursts, trails and shock rings
 scripts/audio/   synthesised sound effects and disco music
 tools/           headless bot race and item tests (not exported)
+studio/          3BL_Indie splash (first autoload) and credits screen, shared with the other games
 ```
+
+**3BL_Indie splash and credits.** `studio/splash.gd` is the first autoload: it shows the 3BL_Indie logo for about three seconds at launch (any key, click, tap or button skips it; headless runs and `--no-splash` skip it). `studio/credits.gd` is the credits screen opened from the main menu's Credits button. Both files are shared word for word across the 3BL_Indie games, so change them in every game together. See `CREDITS.md`.
 
 ## Headless tests
 

@@ -93,3 +93,8 @@ Judgement calls made where the spec was open, contradictory, or would not work a
 
 - **Two typefaces instead of Godot's default sans.** IM FELL English (SC for titles, Roman for the tagline) for the title, menus, warnings, game-over heading and name tags: an old-print serif that suits a haunted lighthouse. Special Elite, a typewriter face, is the project-wide default (`gui/theme/custom_font`), so the HUD reads like the keeper's logbook. Licences and credits are in `fonts/`.
 - **IM Fell's old-style "1" looks like a capital I**, so numbers stay in the typewriter face (the night counter) or are spelled out (the keeper count on the title).
+
+## Studio splash and credits (owner's request)
+
+- **3BL_Indie splash on every game.** `studio/splash.gd` is the first autoload in Sea They Are Angry, Neon Mega Tank and Connor Bell's Wonderland. It covers the screen from the first frame, so the island being built underneath is hidden, then fades the logo in and out over about three seconds. Any key, click, tap or button skips it. Its timeline waits for the game to settle and steps at most 0.1 s per frame, so a long first frame can't skip it. Headless runs (the tests) and `--no-splash` leave it out. The capture tools free it.
+- **Credits screen.** `studio/credits.gd` opens from the title menu's Credits button. It names the studio and the team (James, Aaron, Connor, Bonnie), the font licences, and Godot. Each game passes its own title, extra lines and font. Both files are identical in every game; change them everywhere together.
