@@ -18,7 +18,7 @@ const MENU_SCENE := "res://scenes/menus/main_menu.tscn"
 var local_name: String = "Player"
 var local_colour: Color = Color(1.0, 0.35, 0.35)
 var players: Dictionary = {}
-var settings: Dictionary = {"sections": 6, "bots": 3, "difficulty": 1, "countdown": 3}
+var settings: Dictionary = {"sections": 6, "bots": 3, "difficulty": 1, "countdown": 3, "items": true}
 var is_multiplayer_session: bool = false
 
 

@@ -2,6 +2,7 @@ class_name BotController
 extends Node
 ## Drives a Contestant along a BotNavigation route. Add as a child of the
 ## contestant and call setup(). Behaviour is shaped by a BotProfiles dictionary.
+## Bots also grab nearby gift boxes and use items when a rival is in reach.
 
 @export var look_ahead: float = 1.3
 ## Distances checked beyond look_ahead for a landing spot across a gap.
@@ -10,6 +11,10 @@ extends Node
 @export var platform_jump_lead: float = 0.85
 @export var ground_probe_depth: float = 3.5
 @export var coin_check_interval: float = 0.5
+## How far off the route a bot will go for a gift box.
+@export var box_detour_radius: float = 4.0
+## A bot that has held an item this long uses it even without a good target.
+@export var item_patience: float = 20.0
 
 var contestant: Contestant
 var navigation: BotNavigation
@@ -30,6 +35,8 @@ var _coin_target: CoinPickup
 var _edge_roll: float = -1.0
 var _gap_jump: bool = false
 var _air_target: MovingPlatform
+var _box_target: ItemBox
+var _item_hold: float = 0.0
 
 
 func setup(p_contestant: Contestant, p_navigation: BotNavigation, p_profile: Dictionary) -> void:
@@ -73,7 +80,8 @@ func _physics_process(delta: float) -> void:
 		if not contestant.is_on_floor() and is_instance_valid(_air_target):
 			target.x = _air_target.global_position.x
 	else:
-		target = _coin_detour(pos, target, delta)
+		var box_spot := _box_detour(pos, target)
+		target = box_spot if box_spot != Vector3.INF else _coin_detour(pos, target, delta)
 
 	var flat := target - pos
 	flat.y = 0.0
@@ -120,6 +128,7 @@ func _physics_process(delta: float) -> void:
 		want_jump = false
 	_handle_jump(want_jump, delta)
 	contestant.move_direction = dir * float(profile.get("speed", 0.9))
+	_think_items(pos, delta)
 
 
 ## Nearest sliding platform ahead (not the one underfoot) at about this height.
@@ -225,6 +234,84 @@ func _update_stuck(delta: float) -> void:
 		_unstick_timer = 0.7
 
 
+## Position of a gift box worth a short detour (only with an empty item slot), or INF.
+func _box_detour(pos: Vector3, target: Vector3) -> Vector3:
+	var holder := contestant.get_node_or_null("ItemHolder") as ItemHolder
+	if holder == null or not holder.is_empty():
+		_box_target = null
+		return Vector3.INF
+	if _box_target != null and is_instance_valid(_box_target) and _box_target.is_available():
+		var still := _box_target.global_position - pos
+		still.y = 0.0
+		if still.length() < box_detour_radius + 1.0:
+			return _box_target.global_position
+	_box_target = null
+	var ahead := target - pos
+	ahead.y = 0.0
+	var best := box_detour_radius * box_detour_radius
+	for node in get_tree().get_nodes_in_group("item_boxes"):
+		var box := node as ItemBox
+		if box == null or not box.is_available():
+			continue
+		var offset := box.global_position - pos
+		if absf(offset.y) > 2.5:
+			continue
+		offset.y = 0.0
+		var d := offset.length_squared()
+		if d < best and offset.dot(ahead) > 0.0:
+			best = d
+			_box_target = box
+	return _box_target.global_position if _box_target != null else Vector3.INF
+
+
+## Uses the held item when it would hit someone (or after holding it a long time).
+func _think_items(pos: Vector3, delta: float) -> void:
+	var holder := contestant.get_node_or_null("ItemHolder") as ItemHolder
+	if holder == null or holder.is_empty():
+		_item_hold = 0.0
+		return
+	_item_hold += delta
+	if _item_hold < float(profile.get("item_delay", 1.2)) or not holder.can_use():
+		return
+	var def := ItemKinds.get_def(holder.kind)
+	var facing := contestant.get_facing()
+	var want := false
+	match ItemKinds.mode_of(holder.kind):
+		"self":
+			want = true
+		"trap":
+			want = _rival_near(pos, -facing, 7.0, 0.3, 0.0) or _item_hold > 8.0
+		"melee":
+			want = _rival_near(pos, facing, float(def.get("range", 2.5)) * 0.9, float(def.get("cone", 0.3)) + 0.15, 0.0)
+		"burst":
+			want = _rival_near(pos, Vector3.ZERO, float(def.get("radius", 4.5)) * 0.8, -2.0, 0.0)
+		"throw":
+			want = _rival_near(pos, facing, 11.0, 0.85, 6.5)
+	if want or _item_hold > item_patience:
+		contestant.use_requested = true
+		_item_hold = 0.0
+
+
+## Is another contestant between [param min_dist] and [param reach] away, roughly in
+## direction [param dir] (dot >= [param min_dot]; dir ZERO means any direction)?
+func _rival_near(pos: Vector3, dir: Vector3, reach: float, min_dot: float, min_dist: float) -> bool:
+	for node in get_tree().get_nodes_in_group("contestants"):
+		var other := node as Contestant
+		if other == null or other == contestant:
+			continue
+		var offset := other.global_position - pos
+		if absf(offset.y) > 2.0:
+			continue
+		offset.y = 0.0
+		var dist := offset.length()
+		if dist > reach or dist < min_dist:
+			continue
+		if dir != Vector3.ZERO and dist > 0.3 and offset.normalized().dot(dir) < min_dot:
+			continue
+		return true
+	return false
+
+
 func _coin_detour(pos: Vector3, target: Vector3, delta: float) -> Vector3:
 	var greed := float(profile.get("coin_greed", 0.0))
 	if greed <= 0.0:
@@ -253,6 +340,7 @@ func _coin_detour(pos: Vector3, target: Vector3, delta: float) -> Vector3:
 
 func _on_respawned() -> void:
 	_air_target = null
+	_box_target = null
 	_edge_roll = -1.0
 	if navigation == null:
 		return

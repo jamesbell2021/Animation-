@@ -17,6 +17,7 @@ code, so the project has no art or audio files.
 |---|---|---|
 | Move | WASD or arrow keys | Left half of the screen (joystick appears under your thumb) |
 | Jump | Space | Right half of the screen |
+| Use item | E or F | USE button above JUMP |
 | Pause / menu | MENU button | MENU button or Android Back |
 
 To try the touch controls on a PC, tick **Force Touch Controls** on the `Main` node in
@@ -34,6 +35,33 @@ To try the touch controls on a PC, tick **Force Touch Controls** on the `Main` n
 | 6 | The Grand Finale Tower | Spiral ledges, sweeping arms, Connor's Crown |
 
 Coins are worth 1 gold and shamrocks 5. Falling returns you to your last checkpoint.
+
+## Fairground Mayhem items
+
+Each section has a row of floating "?" gift boxes. Run through one with an empty item
+slot to get a random item; the box comes back after 4 seconds. Your item shows under
+the gold counter and floats above your head. The **Items** switch on the main menu and
+in the lobby turns gift boxes off for a pure race.
+
+| Item | How it works |
+|---|---|
+| Catapult | Trap dropped behind you: flings the next racer high and backwards |
+| Big Boxing Glove | Trap: punches the next racer away |
+| Big Springer | Trap: launches the next racer sky-high |
+| Slippery Oil | Trap that stays 12 s: everyone who crosses it slides about for 4 s |
+| Big Fatty Cake | Trap: the victim goes big, round and slow for 6 s |
+| Shrink Potion | Trap: the victim goes tiny for 6 s |
+| Plastic Sword | 3 swings: whacks racers just in front of you |
+| Zapper | 3 zaps: stuns racers in front of you |
+| Balloon | 2 uses: racers in front float up helplessly, then drop |
+| Custard Pie | 2 throws: lobbed about 9 m ahead, splats whoever it lands near |
+| Confetti Bomb | Blasts everyone around you away in rainbow confetti |
+| Rocket Boots | 3 s speed burst |
+| Giant Magnet | Pulls in every coin within 5 m for 5 s |
+| Shield Bubble | Blocks the next item attack (lasts 15 s) |
+
+Traps can only be dropped on solid, still ground; on a ride or over a gap the item is
+kept until you can. Bots grab boxes they pass and use items when a rival is in reach.
 
 ## Wi-Fi multiplayer
 
@@ -65,29 +93,30 @@ scenes/          five tiny scenes, each just a root node with a script
 scripts/game/    game manager, race rules, checkpoints, ranking, roster, quality tiers, branding
 scripts/course/  course builder, section base class, the six sections, scenery and coins
 scripts/obstacles/ spinners, moving platforms, dodgem cars, bounce pads
-scripts/player/  contestant, leprechaun model, stumbles, camera, touch controls, status effects
+scripts/player/  contestant, leprechaun model, stumbles, camera, touch controls, status effects, item slot
 scripts/ai/      bot personalities, route, driver
 scripts/network/ ENet lobby (autoload), per-contestant sync, race event sync
 scripts/ui/      HUD, main menu, lobby, pause menu
-scripts/items/   coins, plus the first Stage 7 item files (not used in races yet)
+scripts/items/   coins, gift boxes, item rules, traps, custard pie, confetti
 scripts/audio/   synthesised sound effects and organ music
-tools/           headless bot race test (not exported)
+tools/           headless bot race and item tests (not exported)
 ```
 
-## Bot race test
+## Headless tests
 
-A headless race with 7 bots checks that the course can be completed:
+A race with 7 bots checks that the course can be completed and that items get used:
 
 ```
 godot --headless --path . --fixed-fps 60 -s res://tools/bot_race_test.gd -- diff=2
 ```
 
-`diff=0` is Easy, `1` Medium, `2` Hard. It prints progress every 20 seconds and the
-results. Typical runs: most Hard bots finish in 70–90 s; on Easy only a couple finish.
+`diff=0` is Easy, `1` Medium, `2` Hard; add `items=off` to race without gift boxes. It
+prints progress every 20 seconds, the results, and how many items were picked up, used
+and landed. Typical Hard runs: the winner finishes in 70–80 s and about 20 items are used.
 
-## Not done yet: Stage 7 "Fairground Mayhem" items
+The item test gives the player each item in turn and checks it does what it should
+(15 checks, including the shield blocking a hit and the magnet pulling in a coin):
 
-`item_kinds.gd`, `trap_device.gd` and `status_effects.gd` are in place, but items do not
-appear in races yet. Still to write: `item_box.gd`, `item_holder.gd`, `item_manager.gd`,
-`confetti_burst.gd`, `pie_projectile.gd`, the Shrink Potion trap, a `use_item` input and
-button, network sync for items, HUD item slot, and bots that use items.
+```
+godot --headless --path . --fixed-fps 60 -s res://tools/item_test.gd
+```

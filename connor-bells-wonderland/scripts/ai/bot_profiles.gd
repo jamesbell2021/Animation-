@@ -64,11 +64,12 @@ static func difficulty_name(difficulty: int) -> String:
 ## jump_delay: seconds of hesitation before a jump. weave: lateral sway amplitude.
 ## coin_greed: detour radius for coins (0 = ignore). patience: 1 = waits for moving
 ## platforms, 0 = walks off edges. stuck_time: seconds without progress before un-sticking.
+## item_delay: seconds a bot holds an item before it starts looking for a chance to use it.
 static func _base(difficulty: Difficulty) -> Dictionary:
 	match difficulty:
 		Difficulty.EASY:
-			return {"speed": 0.78, "steer_noise": 0.35, "jump_delay": 0.25, "weave": 0.3, "coin_greed": 3.0, "patience": 0.7, "stuck_time": 1.8}
+			return {"speed": 0.78, "steer_noise": 0.35, "jump_delay": 0.25, "weave": 0.3, "coin_greed": 3.0, "patience": 0.7, "stuck_time": 1.8, "item_delay": 2.5}
 		Difficulty.HARD:
-			return {"speed": 1.0, "steer_noise": 0.06, "jump_delay": 0.03, "weave": 0.05, "coin_greed": 2.0, "patience": 1.0, "stuck_time": 1.2}
+			return {"speed": 1.0, "steer_noise": 0.06, "jump_delay": 0.03, "weave": 0.05, "coin_greed": 2.0, "patience": 1.0, "stuck_time": 1.2, "item_delay": 0.5}
 		_:
-			return {"speed": 0.9, "steer_noise": 0.18, "jump_delay": 0.12, "weave": 0.15, "coin_greed": 3.0, "patience": 0.9, "stuck_time": 1.5}
+			return {"speed": 0.9, "steer_noise": 0.18, "jump_delay": 0.12, "weave": 0.15, "coin_greed": 3.0, "patience": 0.9, "stuck_time": 1.5, "item_delay": 1.2}

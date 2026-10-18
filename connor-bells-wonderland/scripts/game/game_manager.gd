@@ -3,7 +3,8 @@ extends Node3D
 ## Main-scene script. Modes: SOLO (offline vs bots), HOST (authoritative, runs
 ## everything), CLIENT (puppets driven by host state). Settings come from the
 ## NetworkManager autoload when present, otherwise from the exports below.
-## Adds touch controls, a pause menu and device quality settings.
+## Adds touch controls, a pause menu, device quality settings and the
+## Fairground Mayhem items (gift boxes, held items, traps, status effects).
 
 enum Mode { SOLO, HOST, CLIENT }
 
@@ -20,6 +21,8 @@ const CONTESTANT_SCENE_PATH := "res://scenes/characters/contestant.tscn"
 @export var scenery_enabled: bool = true
 @export var coins_enabled: bool = true
 @export var music_enabled: bool = true
+## Gift boxes and items. The menu/lobby "Items" switch overrides this.
+@export var items_enabled: bool = true
 @export var ranking_interval: float = 0.25
 ## -1 = auto-detect, otherwise MobileSettings.Tier (0 Low, 1 Medium, 2 High).
 @export_range(-1, 2) var quality: int = -1
@@ -33,6 +36,7 @@ var camera: CameraController
 var sound: SoundManager
 var decorator: SceneryDecorator
 var navigation: BotNavigation
+var items: ItemManager
 var sync: RaceSync
 var touch: TouchControls
 var pause_menu: PauseMenu
@@ -67,6 +71,10 @@ func _ready() -> void:
 	_spawn_points = course.get_spawn_positions(max_contestants)
 	navigation = BotNavigation.new()
 	navigation.build(course)
+	items = ItemManager.new()
+	items.name = "ItemManager"
+	add_child(items)
+	items.setup(self, course, bool(settings["items"]))
 	var tier := MobileSettings.detect() if quality < 0 else (quality as MobileSettings.Tier)
 	MobileSettings.apply(tier, get_viewport(), self)
 
@@ -112,6 +120,9 @@ func _ready() -> void:
 		camera.set_target(player)
 		_connect_player_sounds(player)
 	_connect_signals()
+	items.hit.connect(_on_item_hit)
+	items.item_fx.connect(_on_item_fx)
+	items.picked_up.connect(_on_item_picked_up)
 	match mode:
 		Mode.SOLO:
 			start_race()
@@ -130,6 +141,10 @@ func _process(delta: float) -> void:
 	var cm := course.checkpoint_manager
 	if cm != null:
 		hud.set_progress(cm.get_progress(player) + 1, cm.get_checkpoint_count())
+	var holder := player.get_node_or_null("ItemHolder") as ItemHolder
+	if holder != null:
+		hud.set_item(holder.kind, holder.uses, "USE" if touch.visible else "E")
+		touch.set_item_state(not holder.is_empty(), ItemKinds.colour_for(holder.kind))
 	_ranking_timer -= delta
 	if _ranking_timer > 0.0:
 		return
@@ -146,7 +161,7 @@ func _process(delta: float) -> void:
 
 
 func _resolve_settings() -> Dictionary:
-	var s := {"sections": enabled_sections, "bots": bot_count, "difficulty": int(bot_difficulty), "countdown": countdown_seconds}
+	var s := {"sections": enabled_sections, "bots": bot_count, "difficulty": int(bot_difficulty), "countdown": countdown_seconds, "items": items_enabled}
 	if _net != null:
 		var shared: Dictionary = _net.get("settings")
 		for key in s.keys():
@@ -194,6 +209,14 @@ func spawn_contestant(contestant_name: String, colour: Color, local: bool, hat: 
 	contestant.position = spawn
 	add_child(contestant)
 	contestant.set_respawn_point(spawn)
+	var status := StatusEffects.new()
+	status.name = "StatusEffects"
+	contestant.add_child(status)
+	var holder := ItemHolder.new()
+	holder.name = "ItemHolder"
+	contestant.add_child(holder)
+	if items != null:
+		items.register_contestant(contestant)
 	_contestants.append(contestant)
 	if race_manager != null:
 		race_manager.register_contestant(contestant)
@@ -238,6 +261,8 @@ func _reset_local_state() -> void:
 	_coins.clear()
 	if decorator != null:
 		decorator.reset_coins()
+	if items != null:
+		items.reset()
 	if course.checkpoint_manager != null:
 		course.checkpoint_manager.reset_progress()
 
@@ -321,6 +346,45 @@ func _on_coin_collected(contestant: Contestant, value: int) -> void:
 	_coins[key] = int(_coins.get(key, 0)) + value
 	if contestant == player:
 		sound.play("shamrock" if value >= 5 else "coin", randf_range(0.95, 1.1))
+
+
+func _on_item_picked_up(contestant_name: String, kind: int) -> void:
+	if player != null and contestant_name == str(player.name):
+		hud.show_message("Got the %s!" % ItemKinds.display_name(kind), 1.5)
+		sound.play("pickup")
+
+
+func _on_item_hit(victim_name: String, attacker_name: String, kind: int) -> void:
+	if player == null:
+		return
+	var me := str(player.name)
+	var item_name := ItemKinds.display_name(kind)
+	if victim_name == me:
+		var who := attacker_name if not attacker_name.is_empty() and attacker_name != me else "Your own"
+		if who == "Your own":
+			hud.show_message("Oops! Your own %s got you!" % item_name, 1.8)
+		else:
+			hud.show_message("%s got you with the %s!" % [who, item_name], 1.8)
+		match kind:
+			ItemKinds.Kind.PIE: sound.play("splat")
+			ItemKinds.Kind.ZAPPER: sound.play("zap")
+	elif attacker_name == me:
+		hud.show_message("You got %s with the %s!" % [victim_name, item_name], 1.5)
+
+
+func _on_item_fx(_user_name: String, kind: int, origin: Vector3) -> void:
+	if player == null or origin.distance_to(player.global_position) > 18.0:
+		return
+	match ItemKinds.mode_of(kind):
+		"trap":
+			sound.play("trap")
+		"self":
+			sound.play("bounce", 1.3)
+		_:
+			match kind:
+				ItemKinds.Kind.ZAPPER: sound.play("zap")
+				ItemKinds.Kind.CONFETTI: sound.play("boom")
+				_: sound.play("whoosh")
 
 
 func on_race_finished(results: Array) -> void:

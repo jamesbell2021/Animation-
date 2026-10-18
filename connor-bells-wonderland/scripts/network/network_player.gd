@@ -60,6 +60,8 @@ func _physics_process(delta: float) -> void:
 		var input_dir := Input.get_vector("move_left", "move_right", "move_forward", "move_back")
 		var jump := Input.is_action_just_pressed("jump")
 		_rpc_input.rpc_id(1, _camera_relative_direction(input_dir), jump)
+		if InputMap.has_action("use_item") and Input.is_action_just_pressed("use_item"):
+			_rpc_use.rpc_id(1)
 
 
 func _process(delta: float) -> void:
@@ -104,6 +106,16 @@ func _rpc_input(direction: Vector3, jump: bool) -> void:
 	contestant.move_direction = direction.limit_length(1.0)
 	if jump:
 		contestant.jump_requested = true
+
+
+## Item presses are rare and must not be lost, so they go reliably.
+@rpc("any_peer", "call_remote", "reliable")
+func _rpc_use() -> void:
+	if not _is_host or contestant == null:
+		return
+	if multiplayer.get_remote_sender_id() != peer_id:
+		return
+	contestant.use_requested = true
 
 
 @rpc("authority", "call_remote", "unreliable_ordered")

@@ -74,6 +74,12 @@ func _build_sounds() -> void:
 	_sounds["finish"] = _make_stream(1.0, func(t: float) -> float: return _tone([72, 76, 79, 84, 84], t, 0.2))
 	_sounds["bounce"] = _make_stream(0.2, func(t: float) -> float: return sin(TAU * (200.0 + 800.0 * t) * t) * _env(t, 0.2) * 0.6)
 	_sounds["click"] = _make_stream(0.05, func(t: float) -> float: return _noise() * _env(t, 0.05) * 0.4)
+	_sounds["pickup"] = _make_stream(0.36, func(t: float) -> float: return _tone([79, 83, 86, 91], t, 0.09) * 0.7)
+	_sounds["whoosh"] = _make_stream(0.25, func(t: float) -> float: return _noise() * sin(PI * t / 0.25) * 0.5)
+	_sounds["zap"] = _make_stream(0.3, func(t: float) -> float: return _square(90.0 + 60.0 * sin(TAU * 30.0 * t), t) * _env(t, 0.3) * 0.45)
+	_sounds["splat"] = _make_stream(0.3, func(t: float) -> float: return (_noise() * 0.7 + sin(TAU * 110.0 * t) * 0.3) * _env(t, 0.3) * 0.8)
+	_sounds["boom"] = _make_stream(0.7, func(t: float) -> float: return (_noise() * 0.6 + sin(TAU * (70.0 - 40.0 * t) * t) * 0.6) * _env(t, 0.7))
+	_sounds["trap"] = _make_stream(0.18, func(t: float) -> float: return sin(TAU * (500.0 - 900.0 * t) * t) * _env(t, 0.18) * 0.6)
 
 
 func _env(t: float, duration: float) -> float:
