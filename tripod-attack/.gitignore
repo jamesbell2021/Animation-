@@ -1,4 +1,5 @@
 # Godot caches and local exports
 .godot/
 build/
+*.import
 *.uid
