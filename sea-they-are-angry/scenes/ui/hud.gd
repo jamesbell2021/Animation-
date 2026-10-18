@@ -43,7 +43,7 @@ func _ready() -> void:
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_theme_constant_override("separation", 4)
 	root.add_child(panel)
-	_phase_label = _label(panel, FONT + 4)
+	_phase_label = _label(panel, FONT + 6)
 	_stock_label = _label(panel, FONT)
 	_player_label = _label(panel, FONT)
 	_lh_label = _label(panel, FONT)
@@ -78,7 +78,8 @@ func _ready() -> void:
 	_msg_label = _bottom_label(root, -84.0, FONT)
 	_msg_label.add_theme_color_override("font_color", AMBER)
 
-	_warn_label = _label(root, 44)
+	_warn_label = _label(root, 52)
+	Fonts.use_title(_warn_label)
 	_warn_label.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_warn_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_warn_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -130,7 +131,8 @@ func _build_game_over(root: Control) -> void:
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 18)
 	center.add_child(box)
-	var title := _label(box, 52)
+	var title := _label(box, 64)
+	Fonts.use_title(title)
 	title.text = "The light is out."
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_over_reason = _label(box, 26)
@@ -139,7 +141,8 @@ func _build_game_over(root: Control) -> void:
 	_over_stats.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	var btn := Button.new()
 	btn.text = "New Run"
-	btn.add_theme_font_size_override("font_size", 24)
+	btn.add_theme_font_size_override("font_size", 28)
+	Fonts.use_title(btn)
 	btn.custom_minimum_size = Vector2(220, 52)
 	btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	btn.pressed.connect(_on_new_run)

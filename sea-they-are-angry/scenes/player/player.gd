@@ -252,7 +252,10 @@ func _build_marker() -> void:
 	_tag.no_depth_test = true
 	_tag.fixed_size = true
 	_tag.pixel_size = 0.0011
-	_tag.font_size = 22
+	_tag.font_size = 26
+	var tag_font := Fonts.title()
+	if tag_font:
+		_tag.font = tag_font
 	_tag.outline_size = 8
 	_tag.modulate = col
 	_tag.position.y = 2.25

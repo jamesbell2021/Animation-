@@ -88,3 +88,8 @@ Judgement calls made where the spec was open, contradictory, or would not work a
 - **Bioluminescence:** at night the sea shows small, sparse, slowly pulsing cyan specks. The first version was too large and bright and read as confetti.
 - **The foghorn is the alarm system.** Two long blasts at dusk, and one short blast for each spawn group, with a centred warning naming the compass direction (north is up-screen). Three short blasts every 7 s while the lamp is guttering, and a short-long blast once a night when the lighthouse drops below 30%. `Spawner.wave_incoming(point, count)` drives the wave warnings.
 - **The title screen opens in the night fog,** with the dusk lighting.
+
+## Typography (owner's request)
+
+- **Two typefaces instead of Godot's default sans.** IM FELL English (SC for titles, Roman for the tagline) for the title, menus, warnings, game-over heading and name tags: an old-print serif that suits a haunted lighthouse. Special Elite, a typewriter face, is the project-wide default (`gui/theme/custom_font`), so the HUD reads like the keeper's logbook. Licences and credits are in `fonts/`.
+- **IM Fell's old-style "1" looks like a capital I**, so numbers stay in the typewriter face (the night counter) or are spelled out (the keeper count on the title).

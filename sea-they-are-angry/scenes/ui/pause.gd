@@ -24,7 +24,8 @@ func _ready() -> void:
 	var title := Label.new()
 	title.text = "Paused"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 48)
+	title.add_theme_font_size_override("font_size", 56)
+	Fonts.use_title(title)
 	title.add_theme_color_override("font_color", Color(1.0, 0.78, 0.42))
 	box.add_child(title)
 	_resume = _button(box, "Resume", toggle)
@@ -39,7 +40,8 @@ func _button(parent: Node, text: String, cb: Callable) -> Button:
 	var b := Button.new()
 	b.text = text
 	b.flat = true
-	b.add_theme_font_size_override("font_size", 28)
+	b.add_theme_font_size_override("font_size", 32)
+	Fonts.use_title(b)
 	b.add_theme_color_override("font_focus_color", Color(1.0, 0.78, 0.42))
 	b.add_theme_color_override("font_hover_color", Color(1.0, 0.78, 0.42))
 	b.pressed.connect(func() -> void:

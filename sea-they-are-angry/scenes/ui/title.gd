@@ -29,9 +29,11 @@ func _ready() -> void:
 	box.custom_minimum_size = Vector2(470, 0)
 	box.add_theme_constant_override("separation", 14)
 	root.add_child(box)
-	var title := _label(box, "SEA THEY\nARE ANGRY", 64, GOLD)
-	title.add_theme_constant_override("line_spacing", -10)
-	_label(box, "Keep the light burning.", 22, PALE)
+	var title := _label(box, "Sea They\nAre Angry", 80, GOLD)
+	Fonts.use_title(title)
+	title.add_theme_constant_override("line_spacing", -22)
+	var sub := _label(box, "Keep the light burning.", 26, PALE)
+	Fonts.use_serif(sub)
 	var gap := Control.new()
 	gap.custom_minimum_size = Vector2(0, 26)
 	box.add_child(gap)
@@ -72,7 +74,8 @@ func _button(parent: Node, text: String, cb: Callable) -> Button:
 	b.text = text
 	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	b.flat = true
-	b.add_theme_font_size_override("font_size", 30)
+	b.add_theme_font_size_override("font_size", 34)
+	Fonts.use_title(b)
 	b.add_theme_color_override("font_color", PALE)
 	b.add_theme_color_override("font_focus_color", GOLD)
 	b.add_theme_color_override("font_hover_color", GOLD)
@@ -98,7 +101,8 @@ func _on_keepers_input(ev: InputEvent) -> void:
 		_keepers_btn.accept_event()
 
 func _update_keepers() -> void:
-	_keepers_btn.text = "Keepers:  ◀ %d ▶" % _keepers
+	# Spelled out: IM Fell's old-style "1" reads as a capital I.
+	_keepers_btn.text = "Keepers:  ◀ %s ▶" % ["One", "Two", "Three"][_keepers - 1]
 	Players.configure(_keepers)
 	var lines: Array[String] = []
 	for i in _keepers:

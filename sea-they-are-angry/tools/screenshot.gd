@@ -57,6 +57,11 @@ func _go() -> void:
 	for i in 50:
 		lamp.yaw = deg_to_rad(150.0)
 		await process_frame
+	if args.has("warn"):
+		main.hud.warn("Something stirs in the water — north-east.")
+		root.get_node("Events").message.emit("+2 driftwood")
+		for i in 2:
+			await process_frame
 	if args.size() > 3 and args[3] == "close":
 		var hud = main.hud
 		hud.visible = false
