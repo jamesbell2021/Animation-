@@ -1,0 +1,219 @@
+class_name Lamp
+extends Node3D
+## The single fail axis of the game. If this goes DARK, the run ends.
+
+enum State { OFF, BURNING, GUTTERING, DARK }
+enum Mode { WIDE, FOCUSED }
+
+signal state_changed(s: int)
+
+const GUTTER_WINDOW := 25.0
+const FUEL_MAX := 100.0
+const WIDE_ANGLE := 35.0
+const FOCUS_ANGLE := 10.0
+const WIDE_RANGE := 20.0
+const FOCUS_RANGE := 18.0
+const BURN_WIDE := 0.5
+const BURN_FOCUSED := 1.5
+const UNMANNED_MULT := 0.8
+const AUTO_SWEEP_DEG := 20.0
+const AIM_SHARPNESS := 6.0
+const TILT_DEG := -22.0
+const BOOST_TIME := 30.0
+const BOOST_MULT := 1.3
+const ENERGY_SCALE := 3.0
+const GUTTER_ENERGY := 0.35
+const LOW_HP_FLICKER := 0.3
+const CONE_ALPHA := 0.12
+
+var lighthouse: Structure
+var state: int = State.OFF
+var mode: int = Mode.WIDE
+var fuel: float = FUEL_MAX
+var operator: Node3D = null
+var yaw: float = 0.0
+
+var _pivot: Node3D
+var _light: SpotLight3D
+var _cone: MeshInstance3D
+var _cone_mesh: CylinderMesh
+var _cone_mat: StandardMaterial3D
+var _gutter_t := 0.0
+var _boost_t := 0.0
+var _flicker_t := 0.0
+
+func _ready() -> void:
+	fuel = Run.lamp_fuel
+	_pivot = Node3D.new()
+	add_child(_pivot)
+	_light = SpotLight3D.new()
+	_light.rotation.x = deg_to_rad(TILT_DEG)
+	_light.light_color = Color(1.0, 0.8, 0.5)
+	_light.shadow_enabled = true
+	_light.spot_attenuation = 0.6
+	_pivot.add_child(_light)
+	_cone_mesh = CylinderMesh.new()
+	_cone_mesh.top_radius = 0.05
+	_cone_mat = StandardMaterial3D.new()
+	_cone_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	_cone_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	_cone_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	_cone_mat.albedo_color = Color(1.0, 0.8, 0.4, CONE_ALPHA)
+	_cone = MeshInstance3D.new()
+	_cone.mesh = _cone_mesh
+	_cone.material_override = _cone_mat
+	_cone.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	# CylinderMesh apex (+Y) is rotated onto +Z; the mesh is then pushed down -Z so the apex sits at the light.
+	_cone.rotation.x = deg_to_rad(90.0)
+	_light.add_child(_cone)
+	_apply_mode()
+	_update_visibility()
+	Cycle.phase_changed.connect(_on_phase_changed)
+	if lighthouse:
+		lighthouse.destroyed.connect(_on_lighthouse_destroyed)
+
+func current_angle() -> float:
+	return WIDE_ANGLE if mode == Mode.WIDE else FOCUS_ANGLE
+
+func current_range() -> float:
+	return WIDE_RANGE if mode == Mode.WIDE else FOCUS_RANGE
+
+func is_lit() -> bool:
+	return state == State.BURNING or state == State.GUTTERING
+
+func burn_rate() -> float:
+	var rate := BURN_WIDE if mode == Mode.WIDE else BURN_FOCUSED
+	if operator == null:
+		rate *= UNMANNED_MULT
+	return rate
+
+func _apply_mode() -> void:
+	var a := current_angle()
+	var r := current_range()
+	_light.spot_angle = a
+	_light.spot_range = r
+	_cone_mesh.height = r
+	_cone_mesh.bottom_radius = r * tan(deg_to_rad(a))
+	_cone.position = Vector3(0.0, 0.0, -r * 0.5)
+
+func toggle_mode() -> void:
+	mode = Mode.FOCUSED if mode == Mode.WIDE else Mode.WIDE
+	_apply_mode()
+
+func set_operator(p: Node3D) -> void:
+	operator = p
+	if p == null:
+		mode = Mode.WIDE
+		_apply_mode()
+
+func _on_phase_changed(p: int) -> void:
+	if state == State.DARK:
+		return
+	if p == Cycle.Phase.DUSK:
+		if lighthouse and lighthouse.is_destroyed():
+			_set_state(State.GUTTERING)
+		elif fuel <= 0.0:
+			_set_state(State.GUTTERING)
+		else:
+			_set_state(State.BURNING)
+	elif p == Cycle.Phase.DAWN:
+		_set_state(State.OFF)
+
+func _on_lighthouse_destroyed() -> void:
+	if state == State.BURNING:
+		_set_state(State.GUTTERING)
+
+func _physics_process(delta: float) -> void:
+	if not is_lit() or not Run.active:
+		return
+	if operator != null and not is_instance_valid(operator):
+		set_operator(null)
+	_aim(delta)
+	_burn(delta)
+	if not is_lit():
+		return
+	_sweep(delta)
+	_flicker(delta)
+
+func _aim(delta: float) -> void:
+	if operator != null and operator.has_method("aim_yaw"):
+		yaw = lerp_angle(yaw, operator.aim_yaw(), 1.0 - exp(-delta * AIM_SHARPNESS))
+	else:
+		yaw = wrapf(yaw + deg_to_rad(AUTO_SWEEP_DEG) * delta, -PI, PI)
+	_pivot.rotation.y = yaw
+
+func _burn(delta: float) -> void:
+	if _boost_t > 0.0:
+		_boost_t = maxf(0.0, _boost_t - delta)
+	if state == State.GUTTERING:
+		_gutter_t += delta
+		if _gutter_t >= GUTTER_WINDOW:
+			_set_state(State.DARK)
+		return
+	fuel = maxf(0.0, fuel - burn_rate() * delta)
+	if fuel <= 0.0:
+		_set_state(State.GUTTERING)
+
+func _sweep(delta: float) -> void:
+	var fwd := Vector2(-sin(yaw), -cos(yaw))
+	var origin := global_position
+	var r := current_range()
+	var half := deg_to_rad(current_angle())
+	for e in get_tree().get_nodes_in_group("enemies"):
+		if not (e is Node3D):
+			continue
+		var p: Vector3 = e.global_position
+		var to := Vector2(p.x - origin.x, p.z - origin.z)
+		var d := to.length()
+		if d > r:
+			continue
+		if d > 0.001 and absf(fwd.angle_to(to)) > half:
+			continue
+		if e.has_method("in_light"):
+			e.in_light(mode, delta)
+
+func _flicker(delta: float) -> void:
+	_flicker_t += delta
+	var base := 1.0 if state == State.BURNING else GUTTER_ENERGY
+	var low_hp := lighthouse != null and lighthouse.health_ratio() < LOW_HP_FLICKER
+	if state == State.GUTTERING or low_hp:
+		var n := 0.8 + 0.2 * sin(_flicker_t * 37.0) * sin(_flicker_t * 13.0 + 1.3) + randf_range(-0.2, 0.2)
+		base *= clampf(n, 0.2, 1.2)
+	if _boost_t > 0.0:
+		base *= BOOST_MULT
+	_light.light_energy = base * ENERGY_SCALE
+	_cone_mat.albedo_color.a = CONE_ALPHA * base
+
+func refuel_clean(units: float) -> void:
+	fuel = minf(FUEL_MAX, fuel + units)
+	_recover()
+
+func refuel_dirty(units: float) -> void:
+	fuel = minf(FUEL_MAX, fuel + units)
+	_boost_t = BOOST_TIME
+	Anger.add(1)
+	_recover()
+
+func _recover() -> void:
+	if state == State.GUTTERING and fuel > 0.0 and lighthouse != null and lighthouse.hp > 0:
+		_set_state(State.BURNING)
+
+func _set_state(s: int) -> void:
+	if s == state:
+		return
+	state = s
+	_gutter_t = 0.0
+	_update_visibility()
+	state_changed.emit(s)
+	Events.lamp_state_changed.emit(s)
+	if s == State.DARK:
+		Run.end_run("The lamp went dark.")
+
+func _update_visibility() -> void:
+	_light.visible = is_lit()
+	_cone.visible = is_lit()
+
+func gutter_left() -> float:
+	if state != State.GUTTERING:
+		return GUTTER_WINDOW
+	return maxf(0.0, GUTTER_WINDOW - _gutter_t)
