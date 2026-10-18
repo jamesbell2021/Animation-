@@ -10,6 +10,10 @@ The chosen look is the one in `docs/concept/keepers_reference_sheet.png`: stylis
 |---|---|---|
 | ![grey box](screenshots/greybox_day.png) | ![day](screenshots/day.png) | ![night](screenshots/night.png) |
 
+| Night, focused beam | Callum and a Bloated up close |
+|---|---|
+| ![focused](screenshots/night_focused.png) | ![close-up](screenshots/keeper_closeup.png) |
+
 Regenerate with `tools/screenshot.gd`.
 
 The owner's brief is "a Valheim look". In practice that means simple, faceted low-poly shapes with flat colour, carried by modern, moody lighting. It is the lighting and atmosphere that make Valheim read as beautiful, not texture detail. The checklist the game now follows:

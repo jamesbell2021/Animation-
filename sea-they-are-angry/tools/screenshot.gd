@@ -46,9 +46,8 @@ func _go() -> void:
 		b2.lighthouse = main.lighthouse
 		b2.position = main.player.global_position + Vector3(1.6, 0, -1.2)
 		main.get_node("Enemies").add_child(b2)
-		for i in 30:
-			await process_frame
 		b2.process_mode = Node.PROCESS_MODE_DISABLED
+		b2.global_position.y = Terrain.height_at_v(b2.global_position)
 		b2.rotation.y = 0.9
 		main.player._aim = Vector3(0, 0, 1)
 		main.player.rotation.y = main.player.aim_yaw()
@@ -62,6 +61,9 @@ func _go() -> void:
 		for i in 10:
 			await process_frame
 	var img := root.get_texture().get_image()
+	if img == null:
+		quit()
+		return
 	img.save_png(out)
 	print("saved ", out)
 	quit()

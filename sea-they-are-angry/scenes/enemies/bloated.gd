@@ -9,7 +9,7 @@ const BURST_PLAYER_DMG := 30
 const LIGHT_SLOW := 0.6
 const MAX_PULSE := 0.3
 const BURST_FX_TIME := 0.25
-const BODY_COLOR := Color(0.50, 0.58, 0.46)
+const BODY_COLOR := Color(0.40, 0.46, 0.39)
 const GLOW_COLOR := Color(0.8, 1.0, 0.6)
 const HIT_COLOR := Color(0.95, 0.95, 0.9)
 const LIT_COLOR := Color(0.9, 0.86, 0.62)
@@ -53,8 +53,9 @@ func _part_sphere(r: float, scale: Vector3, pos: Vector3, mat: Material) -> Mesh
 func _build() -> void:
 	_visual = Node3D.new()
 	add_child(_visual)
-	_body_mat = Look.flat_mat(BODY_COLOR, 0.6)
-	var limb := Look.flat_mat(Color(0.42, 0.49, 0.38), 0.7)
+	# Low roughness gives the drowned skin a wet sheen in the lamp light.
+	_body_mat = Look.flat_mat(BODY_COLOR, 0.32)
+	var limb := Look.flat_mat(Color(0.33, 0.39, 0.32), 0.4)
 	var weed := Look.flat_mat(Color(0.12, 0.20, 0.10), 0.9)
 	# Swollen, hunched torso and a sagging belly.
 	_part_sphere(0.6, Vector3(1.0, 1.25, 0.9), Vector3(0.0, 1.0, 0.0), _body_mat)

@@ -16,7 +16,8 @@ void vertex() {
 }
 
 void fragment() {
-	ALBEDO = COLOR.rgb;
+	// Vertex colours are sRGB; convert to linear like a vertex_color_is_srgb material.
+	ALBEDO = pow(COLOR.rgb, vec3(2.2));
 	ROUGHNESS = 0.95;
 	SPECULAR = 0.2;
 }

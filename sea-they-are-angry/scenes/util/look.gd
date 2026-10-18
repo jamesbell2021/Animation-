@@ -12,6 +12,8 @@ const RUST := Color(0.48, 0.26, 0.15)
 static func vertex_mat(roughness: float = 0.92) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
 	m.vertex_color_use_as_albedo = true
+	# Vertex colours (ours and the GLBs') are authored in sRGB.
+	m.vertex_color_is_srgb = true
 	m.roughness = roughness
 	return m
 

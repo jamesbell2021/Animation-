@@ -32,7 +32,7 @@ const SCAVENGE := [
 var _lighting := [
 	{"bg": Color(0.60, 0.67, 0.72), "amb": Color(0.62, 0.68, 0.76), "amb_e": 0.55, "sun": Color(1.0, 0.92, 0.78), "sun_e": 1.3, "fog": 0.002, "vfog": 0.005, "tint": Color(0.70, 0.75, 0.80)},
 	{"bg": Color(0.34, 0.31, 0.38), "amb": Color(0.52, 0.44, 0.52), "amb_e": 0.38, "sun": Color(1.0, 0.58, 0.36), "sun_e": 0.8, "fog": 0.008, "vfog": 0.03, "tint": Color(0.52, 0.42, 0.44)},
-	{"bg": Color(0.03, 0.05, 0.08), "amb": Color(0.26, 0.36, 0.52), "amb_e": 0.34, "sun": Color(0.55, 0.68, 0.95), "sun_e": 0.5, "fog": 0.01, "vfog": 0.03, "tint": Color(0.10, 0.14, 0.20)},
+	{"bg": Color(0.03, 0.05, 0.08), "amb": Color(0.26, 0.36, 0.52), "amb_e": 0.42, "sun": Color(0.55, 0.68, 0.95), "sun_e": 0.5, "fog": 0.01, "vfog": 0.03, "tint": Color(0.10, 0.14, 0.20)},
 	{"bg": Color(0.52, 0.50, 0.55), "amb": Color(0.60, 0.55, 0.60), "amb_e": 0.42, "sun": Color(1.0, 0.74, 0.58), "sun_e": 0.95, "fog": 0.006, "vfog": 0.02, "tint": Color(0.62, 0.56, 0.58)},
 ]
 

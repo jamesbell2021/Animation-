@@ -49,11 +49,15 @@ Two kinds of console noise are expected and harmless:
 - **Light slow.** Enemies reset `speed_mult` after moving, not before, because the lamp processes first in the tree. Keep that order when adding the Squid's `lit_this_frame`: set it in `in_light`, read it in the tick, clear it after `move_and_slide`.
 - **Spawner stagger** is counted down in `_process` rather than with `await`, so a scene reload cannot resume a coroutine on a freed node. Phase D's count scaling and Phase B's spawn-rate multiplier both slot into `_queue_group`.
 
+## The visual pass (done early, at the owner's request)
+
+The game already has its Valheim-style look: generated terrain, grass, sea, fog, a modelled lighthouse, and Callum's model as the keeper. See `docs/ART_DIRECTION.md` for screenshots and the checklist of what each Valheim trait maps to, and DECISIONS for the details. Keep the look intact while doing phases A to G. `tools/screenshot.gd` renders real frames so changes can be checked by eye; in a headless container it needs `mesa-vulkan-drivers` and `xvfb-run`.
+
 ## Art that is waiting for Phase F
 
 `art/README.md` has the details. In short:
 
-- Four keeper models, a lineup, a boathook and a whole-island blockout are in `art/`. Nothing loads them yet.
+- Four keeper models, a lineup, a boathook and a whole-island blockout are in `art/`. Callum and the boathook are already loaded by `Player.load_art()`; the other keepers wait for co-op in Phase A/D.
 - **They are Z-up.** Rotate the root −90° about X on import or they lie on their backs.
 - Keepers are about 2.05 m tall with feet at the origin, use vertex colours only and have no rig or animations.
 - A natural mapping for Phase F's `Balance.ASSET_PATHS`: player slot 0 to `art/characters/callum_keeper.glb`, 1 to Hamish, 2 to Mairi, 3 to Ewan, and the boathook prop on every keeper. Plan 2 has a single `player` key, so add per-slot keys and record the choice.
