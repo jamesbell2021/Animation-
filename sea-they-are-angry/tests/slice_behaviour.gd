@@ -180,7 +180,7 @@ func _run() -> void:
 	# Lamp slows enemies in the cone.
 	var s := Bloated.new()
 	s.lighthouse = lh
-	s.position = Vector3(6.5, 0, 0)
+	s.position = Vector3(7.6, 0, 0)
 	main.get_node("Enemies").add_child(s)
 	await wait_until(func(): return s.state == &"Approach", 120)
 	lamp.yaw = PI
@@ -202,6 +202,16 @@ func _run() -> void:
 	print("   Bloated speed unlit ", snappedf(dark_speed, 0.01), "  lit ", snappedf(lit_speed, 0.01))
 	check(dark_speed > 1.4 and lit_speed > 0.8 and lit_speed < 1.1, "beam slows a Bloated from 1.6 to ~0.96 m/s")
 	check(s._lit_k > 0.9 and s._visual.scale.y < 0.9, "lit Bloated visibly pales and cowers")
+	# Focused beam burns at 10/s instead of slowing.
+	lamp.toggle_mode()
+	var hp0: int = s.hp
+	p0 = s.global_position
+	await frames(60)
+	var f_speed: float = Geo.flat_dist(p0, s.global_position) / 1.0
+	print("   focused: hp ", hp0, " -> ", s.hp, " in 1 s, speed ", snappedf(f_speed, 0.01), " state ", s.state)
+	check(s.hp <= hp0 - 9 and s.hp >= hp0 - 11, "focused beam burns ~10 hp per second")
+	check(s._burn_k > 0.9, "burning Bloated glows orange")
+	lamp.toggle_mode()
 	lamp.yaw = PI
 	lamp.set_operator(null)
 	lamp.yaw = PI

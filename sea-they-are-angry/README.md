@@ -29,7 +29,7 @@ On Windows use the console binary, for example `Godot_v4.3-stable_win64_console.
 | Left mouse | Boathook swing (20 damage, 2.5 m, 60° either side of aim) |
 | E | Interact: gather, repair, refuel |
 | R | Operate the lamp (stand within 3.8 m of the lighthouse); R again to leave |
-| Q | While operating, switch the beam between wide and focused |
+| Q | While operating, switch the beam: wide slows creatures, focused burns them |
 | Space | Sprint (3 s, then 2 s cooldown) |
 | Enter | Skip the rest of the day or dawn |
 

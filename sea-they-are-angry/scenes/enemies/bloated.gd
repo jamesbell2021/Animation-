@@ -13,6 +13,8 @@ const BODY_COLOR := Color(0.55, 0.65, 0.5)
 const GLOW_COLOR := Color(0.8, 1.0, 0.6)
 const HIT_COLOR := Color(0.95, 0.95, 0.9)
 const LIT_COLOR := Color(0.9, 0.86, 0.62)
+const BURN_COLOR := Color(1.0, 0.5, 0.2)
+const BEAM_DPS := 10.0
 const LIT_HOLD := 0.15
 const LIT_FADE := 6.0
 const COWER_SCALE := Vector3(1.12, 0.84, 1.12)
@@ -22,6 +24,9 @@ var _body_mat: StandardMaterial3D
 var _hit_t := 0.0
 var _lit_t := 0.0
 var _lit_k := 0.0
+var _burn_t := 0.0
+var _burn_k := 0.0
+var _burn_acc := 0.0
 var _burst_done := false
 
 func _init() -> void:
@@ -46,10 +51,20 @@ func _build() -> void:
 func pick_target() -> Node3D:
 	return lighthouse
 
-func in_light(_mode: int, _delta: float) -> void:
-	# Either beam mode slows the Bloated; focus does nothing extra (deliberate).
-	speed_mult = LIGHT_SLOW
-	_lit_t = LIT_HOLD
+func in_light(mode: int, delta: float) -> void:
+	# Wide beam slows the Bloated; the focused beam burns it instead.
+	if mode != Lamp.Mode.FOCUSED:
+		speed_mult = LIGHT_SLOW
+		_lit_t = LIT_HOLD
+	elif state != &"Emerge" and not is_bursting():
+		_burn_t = LIT_HOLD
+		_burn_acc += BEAM_DPS * delta
+		var dmg := floori(_burn_acc)
+		if dmg > 0:
+			_burn_acc -= float(dmg)
+			take_damage(dmg, Vector3.ZERO, null)
+			# The burn has its own glow; skip the white hit flash it would trigger every tick.
+			_hit_t = 0.0
 
 func _physics_process(delta: float) -> void:
 	super._physics_process(delta)
@@ -57,10 +72,15 @@ func _physics_process(delta: float) -> void:
 		return
 	_hit_t = maxf(0.0, _hit_t - delta)
 	_lit_t = maxf(0.0, _lit_t - delta)
+	_burn_t = maxf(0.0, _burn_t - delta)
+	_burn_k = move_toward(_burn_k, 1.0 if _burn_t > 0.0 else 0.0, LIT_FADE * delta)
 	# Ease in and out of the lit look so a sweeping beam reads as a wash, not a flicker.
 	var lit_target := 1.0 if _lit_t > 0.0 else 0.0
 	_lit_k = move_toward(_lit_k, lit_target, LIT_FADE * delta)
 	var c := BODY_COLOR.lerp(LIT_COLOR, _lit_k)
+	if _burn_k > 0.0:
+		var flicker := 0.85 + 0.15 * sin(state_t * 40.0)
+		c = c.lerp(BURN_COLOR, _burn_k * flicker)
 	if _hit_t > 0.0:
 		c = c.lerp(HIT_COLOR, _hit_t / 0.1)
 	_body_mat.albedo_color = c

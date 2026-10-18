@@ -39,6 +39,7 @@ Two kinds of console noise are expected and harmless:
 
 ## Things Phase A must reconcile
 
+- **The focused beam now burns the Bloated** at 10 hp per second instead of slowing it, by the owner's decision after playtesting. The appendix still lists only "light slow ×0.6" for the Bloated, so add the burn to `Balance` alongside it. See DECISIONS.
 - **The appendix changes slice numbers.** Plan 2 says "solo still plays exactly as before", but its appendix sets Day 120 s, Dusk 30 s, Night min(150 + 10(n−1), 240) and Dawn 60 s. The slice uses 60, 15, min(120 + 10(n−1), 210) and 30. The appendix is the newer design, so move to it when building `Balance` and record that in DECISIONS.
 - **`autoload/cycle.gd` and the other autoloads were written verbatim from plan 1.** Moving their numbers into `Balance` is expected; keep their signals and method names.
 - **Camera.** FOV is 47 and the camera looks at (0, 0, 3.8), because FOV 45 cannot fit the island from (0, 22, 18). Phase D3 says the island must fit with every player on screen, so keep this.
