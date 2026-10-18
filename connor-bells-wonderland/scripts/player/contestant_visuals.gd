@@ -22,7 +22,8 @@ var _idle_time: float = 0.0
 var _blend: float = 0.0
 
 
-func setup(body_colour: Color, hat_colour: Color = Color(0.1, 0.6, 0.2)) -> void:
+## [param _hat_colour] is kept for callers but unused: contestants have no hats.
+func setup(body_colour: Color, _hat_colour: Color = Color(0.1, 0.6, 0.2)) -> void:
 	for child in get_children():
 		child.queue_free()
 	pivot = Node3D.new()
@@ -35,7 +36,6 @@ func setup(body_colour: Color, hat_colour: Color = Color(0.1, 0.6, 0.2)) -> void
 	pivot.add_child(rig)
 	_build_body(body_colour)
 	_build_face()
-	_build_hat(hat_colour)
 	_arm_l = _build_arm(-0.46, body_colour)
 	_arm_r = _build_arm(0.46, body_colour)
 	_leg_l = _build_leg(-0.17)
@@ -122,23 +122,6 @@ func _build_face() -> void:
 	tash.position = Vector3(0.0, 0.92, -0.42)
 	rig.add_child(tash)
 	_sphere(0.06, Color(1.0, 0.6, 0.5), Vector3(0.0, 0.95, -0.44), rig)
-
-
-func _build_hat(colour: Color) -> void:
-	var brim := CourseBuilder.make_cylinder_mesh(0.56, 0.06, colour)
-	brim.position = Vector3(0.0, 1.36, 0.0)
-	rig.add_child(brim)
-	var crown := CourseBuilder.make_cylinder_mesh(0.36, 0.48, colour)
-	crown.position = Vector3(0.0, 1.62, 0.0)
-	rig.add_child(crown)
-	var band := CourseBuilder.make_cylinder_mesh(0.375, 0.1, Color(0.1, 0.1, 0.1))
-	band.position = Vector3(0.0, 1.45, 0.0)
-	rig.add_child(band)
-	var buckle := CourseBuilder.make_box_mesh(Vector3(0.14, 0.12, 0.04), Color(1.0, 0.8, 0.1))
-	buckle.position = Vector3(0.0, 1.45, -0.37)
-	rig.add_child(buckle)
-	for offset: Vector3 in [Vector3(-0.05, 0.04, 0.0), Vector3(0.05, 0.04, 0.0), Vector3(0.0, -0.03, 0.0)]:
-		_sphere(0.035, Color(0.2, 0.8, 0.3), Vector3(0.22, 1.5, -0.3) + offset, rig, 0.6)
 
 
 func _build_arm(x: float, colour: Color) -> Node3D:

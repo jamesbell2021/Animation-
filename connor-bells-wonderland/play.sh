@@ -2,7 +2,7 @@
 # Launch Connor Bell's Wonderland.
 # Godot needs a one-time import that builds the list of named scripts in .godot/.
 # This runs it on a fresh clone, and again whenever a script is newer than that
-# list (for example after a git pull).
+# list (for example after a git pull) or a different Godot version is used.
 # Usage: ./play.sh [path-to-godot]   (or set GODOT=/path/to/godot)
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
@@ -20,9 +20,13 @@ if [ -z "$godot" ]; then
 	exit 1
 fi
 cache="$here/.godot/global_script_class_cache.cfg"
-if [ ! -f "$cache" ] || [ -n "$(find "$here/scripts" -name '*.gd' -newer "$cache" -print -quit)" ]; then
+stamp="$here/.godot/play_sh_godot_version"
+version="$("$godot" --version 2>/dev/null | tail -n 1 || true)"
+if [ ! -f "$cache" ] || [ "$(cat "$stamp" 2>/dev/null || true)" != "$version" ] \
+	|| [ -n "$(find "$here/scripts" -name '*.gd' -newer "$cache" -print -quit)" ]; then
 	echo "Importing the project (a few seconds)..."
 	"$godot" --headless --path "$here" --import >/dev/null 2>&1 || true
 	touch "$cache" 2>/dev/null || true
+	printf '%s' "$version" > "$stamp" 2>/dev/null || true
 fi
 exec "$godot" --path "$here" "${@:2}"

@@ -89,7 +89,7 @@ func _rebuild_icon() -> void:
 		return
 	_icon = Node3D.new()
 	_icon.name = "HeldItem"
-	_icon.position = Vector3(0.0, 2.45, 0.0)
+	_icon.position = Vector3(0.0, 2.0, 0.0)
 	contestant.add_child(_icon)
 	var colour := ItemKinds.colour_for(kind)
 	match kind:
