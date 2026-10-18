@@ -1,0 +1,58 @@
+# Handoff: Sea They Are Angry
+
+Read this first, then `docs/DECISIONS.md` and `git log`. Written 2026-10-18 at the end of a cloud session.
+
+## Where things stand
+
+| Plan | File | State |
+|---|---|---|
+| 1. Vertical slice | `docs/prompts/01_vertical_slice.md` | Done, tested, pushed |
+| 2. First release, phases A to G | `docs/prompts/02_first_release_phases_A-G.md` | **Next: start at Phase A** |
+| 3. Phases H to L | `docs/prompts/03_phases_H-L.md` | After v0.1.0 |
+| 4. Roadmap after v0.2.0 | `docs/prompts/04_after_v0.2_roadmap.md` | Ideas for after playtests |
+
+The work lives on branch `claude/windows-build-omarchy-d2b94k` of `jamesbell2021/Animation-`, in the `sea-they-are-angry/` folder. The repo also holds other projects (`neon-mega-tank/`, `animation-principles/`); leave them alone.
+
+To start the next session, open Claude Code in `sea-they-are-angry/` and say:
+
+> Follow docs/prompts/02_first_release_phases_A-G.md from Phase A. Read HANDOFF.md, docs/DECISIONS.md and git log first.
+
+## How to verify
+
+```
+godot --headless --quit --path sea-they-are-angry
+godot --headless --path sea-they-are-angry --script res://tests/slice_behaviour.gd
+godot --headless --path sea-they-are-angry --script res://tests/slice_night.gd
+godot --headless --path sea-they-are-angry --script res://tests/slice_retreat.gd
+```
+
+On Windows use `Godot_v4.3-stable_win64_console.exe` in place of `godot`. All three tests ended in PASS on Godot 4.3 stable. `slice_behaviour.gd` covers every item of the slice's verify list, from W moving up-screen to New Run restarting at night 1.
+
+Two kinds of console noise are expected and harmless:
+
+- `Parameter "m" is null` from `mesh_get_surface_count`: Godot 4.3's headless dummy renderer prints it once per primitive mesh with a material override. It does not appear with a real renderer.
+- Compile errors before the first PASS line when running a test with `--script`: the test loads class scripts before the autoloads exist, then the real run compiles cleanly.
+
+`slice_night.gd` overwrites `user://run.json`, so do not run it on a machine with a save you care about.
+
+## Things Phase A must reconcile
+
+- **The appendix changes slice numbers.** Plan 2 says "solo still plays exactly as before", but its appendix sets Day 120 s, Dusk 30 s, Night min(150 + 10(n−1), 240) and Dawn 60 s. The slice uses 60, 15, min(120 + 10(n−1), 210) and 30. The appendix is the newer design, so move to it when building `Balance` and record that in DECISIONS.
+- **`autoload/cycle.gd` and the other autoloads were written verbatim from plan 1.** Moving their numbers into `Balance` is expected; keep their signals and method names.
+- **Camera.** FOV is 47 and the camera looks at (0, 0, 3.8), because FOV 45 cannot fit the island from (0, 22, 18). Phase D3 says the island must fit with every player on screen, so keep this.
+- **Fences** are chord-length sections with 0.92 m gaps that a keeper fits through and a Bloated does not. Phase B's Squid climbs fences, and Phase B's Eel surge breaks any fence on its line. Neither needs the gaps changed.
+- **Structures have `surface_distance(point)`.** Use it for anything measured to a structure: interact range, burst splash, the Crab's slam arc, trap placement checks.
+- **Light slow.** Enemies reset `speed_mult` after moving, not before, because the lamp processes first in the tree. Keep that order when adding the Squid's `lit_this_frame`: set it in `in_light`, read it in the tick, clear it after `move_and_slide`.
+- **Spawner stagger** is counted down in `_process` rather than with `await`, so a scene reload cannot resume a coroutine on a freed node. Phase D's count scaling and Phase B's spawn-rate multiplier both slot into `_queue_group`.
+
+## Art that is waiting for Phase F
+
+`art/README.md` has the details. In short:
+
+- Four keeper models, a lineup, a boathook and a whole-island blockout are in `art/`. Nothing loads them yet.
+- **They are Z-up.** Rotate the root −90° about X on import or they lie on their backs.
+- Keepers are about 2.05 m tall with feet at the origin, use vertex colours only and have no rig or animations.
+- A natural mapping for Phase F's `Balance.ASSET_PATHS`: player slot 0 to `art/characters/callum_keeper.glb`, 1 to Hamish, 2 to Mairi, 3 to Ewan, and the boathook prop on every keeper. Plan 2 has a single `player` key, so add per-slot keys and record the choice.
+- The island model is 31 × 22 m with its own lighthouse, buildings and garden. The gameplay rock is a 14 m radius. Treat the model as a backdrop to fit around the gameplay layout, not a drop-in replacement, until the two are reconciled.
+
+The chosen visual style is the painted low-poly look on the reference sheet. `docs/ART_DIRECTION.md` describes it, includes the Blender two-tone material script, and sketches a Godot shader equivalent. Use it when Phase E and Phase F touch materials.

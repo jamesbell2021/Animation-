@@ -46,3 +46,7 @@ Design choices the spec left open are recorded in [docs/DECISIONS.md](docs/DECIS
 ## Next milestone
 
 Specified in [docs/NEXT_MILESTONE.md](docs/NEXT_MILESTONE.md): the Wall-Crawling Squid, the Armoured Crab, the Giant Constrictor Eel, then the garden, traps, upgrades, dirty fuel, flare gun, downed and revive, 2 to 4 player local co-op, fog volumes and audio.
+
+## For the next session
+
+Start with [HANDOFF.md](HANDOFF.md). The phase plans are in [docs/prompts/](docs/prompts/), the first real models are in [art/](art/README.md), and the chosen visual style is in [docs/ART_DIRECTION.md](docs/ART_DIRECTION.md).

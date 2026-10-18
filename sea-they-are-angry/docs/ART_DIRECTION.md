@@ -1,0 +1,28 @@
+# Art direction
+
+The chosen look is the one in `docs/concept/keepers_reference_sheet.png`: stylised low-poly, faceted clothing folds, hand-painted colour, chunky boots and heavy coats, lit by a cold blue night with a warm lighthouse beam. The project owner picked this over the earlier blockout style ("this style is way better").
+
+![Keeper reference sheet](concept/keepers_reference_sheet.png)
+
+## The four keepers
+
+| Keeper | Role | Read at a glance | Signature prop |
+|---|---|---|---|
+| Callum MacLeod | Lamp keeper | Navy peacoat, grey beard, knit cap | Brass key |
+| Hamish Fraser | Engineer | Olive wax jacket, red beard, steel-toe boots | Hammer |
+| Mairi Campbell | Gardener and runner | Green jumper, auburn braid, canvas satchel, green wellingtons | Satchel |
+| Ewan Reid | Frontline | Navy smock, orange life-jacket straps, fisherman's jumper | Boathook |
+
+In-game scale is about 2.0 m. The four map naturally onto player slots P1 to P4, and their roles echo the systems they lean on: the lamp, repairs, the garden, and the boathook. The design rules out classes, so these stay cosmetic unless that decision changes.
+
+Tagline from the sheet: **Four souls. One island. No escape.**
+
+## Rendering the look in Godot
+
+The Blender material in `art/source/stylized_character_material.py` is a hard two-step ramp: a cool shadow tint (0.2, 0.2, 0.25) below 0.35 and a pale light tint (0.9, 0.9, 0.95) above 0.65, output as emission. A Godot equivalent is a small spatial shader whose `light()` function quantises `dot(NORMAL, LIGHT)` into two or three bands, tinted cool in shadow, multiplied by vertex colour. Keep the warm lamp light as a separate, unquantised term so the beam still reads as the brightest thing on screen.
+
+## Prompt template for more concept sheets
+
+> A concept art character reference sheet featuring a full-body turnaround (front, side, back views) of a rugged [Profession/Role, e.g., Mountain Ranger / Lighthouse Keeper] in a stylized low-poly video game aesthetic. Faceted geometric clothing folds, hand-painted painterly textures, chunky boots, and heavy outerwear. Detailed close-ups of equipment props like [Prop 1] and [Prop 2]. Cinematic dramatic lighting, concept art style for an Unreal Engine adventure game, blue-grey atmospheric background with scale grid.
+
+Use the same template for the creatures (Bloated Dead, Wall-Crawling Squid, Armoured Crab, Giant Constrictor Eel) so they sit in the same world as the keepers.
