@@ -30,7 +30,7 @@ var _item_colour: Color = Color.WHITE
 
 
 func _ready() -> void:
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	visible = force_visible or DisplayServer.is_touchscreen_available()
 	set_process_unhandled_input(visible)
