@@ -6,7 +6,7 @@ extends Area3D
 
 signal picked(box: ItemBox, contestant: Contestant)
 
-@export var respawn_seconds: float = 4.0
+@export var respawn_seconds: float = 3.0
 @export var size: float = 0.9
 
 var index: int = 0
@@ -91,32 +91,35 @@ func _build_model() -> void:
 	_model = Node3D.new()
 	_model.name = "Model"
 	add_child(_model)
-	var colour := CourseBuilder.rainbow(index)
-	var cube := CourseBuilder.make_box_mesh(Vector3(size, size, size), colour)
-	var mat := cube.mesh.material as StandardMaterial3D
-	mat.emission_enabled = true
-	mat.emission = colour
-	mat.emission_energy_multiplier = 0.35
-	_model.add_child(cube)
-	var ribbon := Color(1.0, 0.95, 0.4)
-	_model.add_child(_ribbon(Vector3(size + 0.04, size + 0.04, 0.16), ribbon))
-	_model.add_child(_ribbon(Vector3(0.16, size + 0.04, size + 0.04), ribbon))
-	for x: float in [-0.14, 0.14]:
-		var bow := MeshInstance3D.new()
-		var sphere := SphereMesh.new()
-		sphere.radius = 0.14
-		sphere.height = 0.2
-		sphere.material = CourseBuilder.make_material(ribbon)
-		bow.mesh = sphere
-		bow.position = Vector3(x, size * 0.5 + 0.08, 0.0)
-		_model.add_child(bow)
+	var glow := CourseBuilder.accent(index)
+	_model.add_child(CourseBuilder.make_box_mesh(Vector3(size, size, size), Color(0.08, 0.08, 0.1)))
+	# Glowing edges on every side.
+	var h := size * 0.5
+	for axis in range(3):
+		for a: float in [-1.0, 1.0]:
+			for b: float in [-1.0, 1.0]:
+				var edge_size := Vector3(0.07, 0.07, 0.07)
+				var pos := Vector3.ZERO
+				match axis:
+					0:
+						edge_size.x = size + 0.06
+						pos = Vector3(0.0, a * h, b * h)
+					1:
+						edge_size.y = size + 0.06
+						pos = Vector3(a * h, 0.0, b * h)
+					2:
+						edge_size.z = size + 0.06
+						pos = Vector3(a * h, b * h, 0.0)
+				CourseBuilder.add_neon_strip(_model, edge_size, pos, glow, "Edge")
 	var mark := Label3D.new()
 	mark.text = "?"
-	mark.font_size = 120
-	mark.outline_size = 16
+	mark.font_size = 140
+	mark.outline_size = 18
+	mark.modulate = Color(glow.r * 1.6, glow.g * 1.6, glow.b * 1.6)
 	mark.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	mark.position = Vector3(0.0, size * 0.9, 0.0)
+	mark.position = Vector3(0.0, size * 0.95, 0.0)
 	add_child(mark)
+	FX.attach(self, "sparkle", Vector3.ZERO, glow * 1.5)
 
 
 func _ribbon(box_size: Vector3, colour: Color) -> MeshInstance3D:

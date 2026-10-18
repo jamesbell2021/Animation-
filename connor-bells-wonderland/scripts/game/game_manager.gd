@@ -13,7 +13,7 @@ const CONTESTANT_SCENE_PATH := "res://scenes/characters/contestant.tscn"
 
 @export_range(1, 6) var enabled_sections: int = 6
 @export var player_name: String = "You"
-@export var player_colour: Color = Color(1.0, 0.35, 0.35)
+@export var player_colour: Color = Color(0.85, 0.08, 0.12)
 @export var countdown_seconds: int = 3
 @export var max_contestants: int = 8
 @export_range(0, 7) var bot_count: int = 7
@@ -123,6 +123,11 @@ func _ready() -> void:
 	items.hit.connect(_on_item_hit)
 	items.item_fx.connect(_on_item_fx)
 	items.picked_up.connect(_on_item_picked_up)
+	items.gold_stolen.connect(_on_gold_stolen)
+	if player != null:
+		var my_holder := player.get_node_or_null("ItemHolder") as ItemHolder
+		if my_holder != null:
+			my_holder.preview_owner = true
 	match mode:
 		Mode.SOLO:
 			start_race()
@@ -143,8 +148,12 @@ func _process(delta: float) -> void:
 		hud.set_progress(cm.get_progress(player) + 1, cm.get_checkpoint_count())
 	var holder := player.get_node_or_null("ItemHolder") as ItemHolder
 	if holder != null:
-		hud.set_item(holder.kind, holder.uses, "USE" if touch.visible else "E")
+		var hint := "USE" if touch.visible else "E"
+		if holder.kind == ItemKinds.Kind.CATAPULT:
+			hint = "hold %s, aim, let go" % hint
+		hud.set_item(holder.kind, holder.uses, hint)
 		touch.set_item_state(not holder.is_empty(), ItemKinds.colour_for(holder.kind))
+	hud.set_effects(_player_effects())
 	_ranking_timer -= delta
 	if _ranking_timer > 0.0:
 		return
@@ -290,7 +299,31 @@ func _connect_signals() -> void:
 func _connect_player_sounds(contestant: Contestant) -> void:
 	contestant.jumped.connect(func() -> void: sound.play("jump", randf_range(0.95, 1.05)))
 	contestant.landed.connect(_on_player_landed)
-	contestant.knocked.connect(func(_impulse: Vector3) -> void: sound.play("knock"))
+	contestant.knocked.connect(func(_impulse: Vector3) -> void:
+		sound.play("knock")
+		camera.add_shake(0.35))
+
+
+const EFFECT_NAMES := {
+	StatusEffects.Effect.OIL: "SLIPPY",
+	StatusEffects.Effect.FAT: "STUFFED",
+	StatusEffects.Effect.SMALL: "SHRUNK",
+	StatusEffects.Effect.FLOAT: "FLOATING",
+	StatusEffects.Effect.SPEED: "ROCKET BOOTS",
+	StatusEffects.Effect.MAGNET: "MAGNET",
+	StatusEffects.Effect.SHIELD: "SHIELD",
+}
+
+
+func _player_effects() -> Array:
+	var result: Array = []
+	var status := player.get_node_or_null("StatusEffects") as StatusEffects
+	if status == null:
+		return result
+	for effect in status.active_effects():
+		var good: bool = effect == StatusEffects.Effect.SPEED or effect == StatusEffects.Effect.MAGNET or effect == StatusEffects.Effect.SHIELD
+		result.append([EFFECT_NAMES.get(effect, "?"), status.remaining(effect), CourseBuilder.accent(1) if good else CourseBuilder.accent(2)])
+	return result
 
 
 func _on_player_landed(impact: float) -> void:
@@ -308,6 +341,11 @@ func on_race_started() -> void:
 
 
 func on_contestant_finished(contestant: Contestant, place: int, time: float) -> void:
+	if contestant != null:
+		for i in range(3):
+			var offset := Vector3(randf_range(-3.0, 3.0), 4.0 + float(i) * 1.5, randf_range(-3.0, 3.0))
+			FX.burst(self, "fireworks", contestant.global_position + offset, Color.WHITE, 1.0)
+		SoundManager.world(self, "firework", contestant.global_position + Vector3.UP * 4.0, 1.0, 3.0)
 	if contestant == player:
 		var text := "You finished %s in %s!" % [hud.ordinal(place), hud.format_time(time)]
 		if place == 1:
@@ -315,6 +353,7 @@ func on_contestant_finished(contestant: Contestant, place: int, time: float) -> 
 		hud.show_message(text, 4.0)
 		camera.set_orbit(true)
 		sound.play("finish")
+		sound.play("cheer", 1.0, -4.0)
 	else:
 		var who := contestant.display_name if contestant != null else "Someone"
 		hud.show_message("%s finished %s" % [who, hud.ordinal(place)], 2.0)
@@ -330,6 +369,7 @@ func on_checkpoint_reached(contestant: Contestant, index: int) -> void:
 	if contestant == player:
 		hud.show_message("Checkpoint %d!" % (index + 1), 1.2)
 		sound.play("checkpoint")
+		FX.burst(self, "sparkle", player.global_position + Vector3.UP * 1.0, CourseBuilder.accent(1) * 1.5, 1.5)
 
 
 func on_coin_remote(coin_index: int, contestant: Contestant, value: int) -> void:
@@ -344,8 +384,6 @@ func on_coin_remote(coin_index: int, contestant: Contestant, value: int) -> void
 func _on_coin_collected(contestant: Contestant, value: int) -> void:
 	var key := str(contestant.name)
 	_coins[key] = int(_coins.get(key, 0)) + value
-	if contestant == player:
-		sound.play("shamrock" if value >= 5 else "coin", randf_range(0.95, 1.1))
 
 
 func _on_item_picked_up(contestant_name: String, kind: int) -> void:
@@ -365,26 +403,40 @@ func _on_item_hit(victim_name: String, attacker_name: String, kind: int) -> void
 			hud.show_message("Oops! Your own %s got you!" % item_name, 1.8)
 		else:
 			hud.show_message("%s got you with the %s!" % [who, item_name], 1.8)
+		camera.add_shake(0.6)
 		match kind:
-			ItemKinds.Kind.PIE: sound.play("splat")
-			ItemKinds.Kind.ZAPPER: sound.play("zap")
+			ItemKinds.Kind.PIE:
+				hud.splat(2.4)
+			ItemKinds.Kind.ZAPPER:
+				hud.flash(Color(0.5, 0.9, 1.0), 0.5)
+			ItemKinds.Kind.CONFETTI, ItemKinds.Kind.CATAPULT, ItemKinds.Kind.BOXING_GLOVE, ItemKinds.Kind.SWORD:
+				hud.flash(Color(1.0, 0.5, 0.2), 0.35)
 	elif attacker_name == me:
 		hud.show_message("You got %s with the %s!" % [victim_name, item_name], 1.5)
 
 
 func _on_item_fx(_user_name: String, kind: int, origin: Vector3) -> void:
-	if player == null or origin.distance_to(player.global_position) > 18.0:
+	if player == null:
 		return
-	match ItemKinds.mode_of(kind):
-		"trap":
-			sound.play("trap")
-		"self":
-			sound.play("bounce", 1.3)
-		_:
-			match kind:
-				ItemKinds.Kind.ZAPPER: sound.play("zap")
-				ItemKinds.Kind.CONFETTI: sound.play("boom")
-				_: sound.play("whoosh")
+	var dist := origin.distance_to(player.global_position)
+	if kind == ItemKinds.Kind.CONFETTI and dist < 16.0:
+		camera.add_shake(clampf(1.0 - dist / 16.0, 0.0, 1.0) * 0.9)
+		if dist < 7.0:
+			hud.flash(Color(1.0, 0.6, 0.2), 0.4)
+	elif kind == -1 and dist < 12.0:
+		camera.add_shake(clampf(1.0 - dist / 12.0, 0.0, 1.0) * 0.7)
+
+
+## Gold moved by an item hit or the Giant Magnet (same on every screen).
+func _on_gold_stolen(from_name: String, to_name: String, amount: int) -> void:
+	_coins[from_name] = maxi(int(_coins.get(from_name, 0)) - amount, 0)
+	_coins[to_name] = int(_coins.get(to_name, 0)) + amount
+	if player == null:
+		return
+	if from_name == str(player.name):
+		hud.show_message("%s stole %d gold!" % [to_name, amount], 1.0)
+	elif to_name == str(player.name):
+		sound.play("coin", 1.2, -4.0)
 
 
 func on_race_finished(results: Array) -> void:

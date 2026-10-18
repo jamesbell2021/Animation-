@@ -25,10 +25,10 @@ func _build_geometry() -> void:
 	add_gateway(-6.0, section_width - 1.0)
 	_build_big_top()
 	_build_hurdles()
-	SpinnerObstacle.create(self, Vector3(-4.5, 0.0, -28.0), 4.0, spinner_speed, 1, CourseBuilder.rainbow(2))
-	SpinnerObstacle.create(self, Vector3(4.5, 0.0, -28.0), 4.0, -spinner_speed, 1, CourseBuilder.rainbow(4))
-	add_tent(Vector3(-12.0, 0.0, -20.0), 4.0, 4.0, CourseBuilder.rainbow(1))
-	add_tent(Vector3(12.0, 0.0, -20.0), 4.0, 4.0, CourseBuilder.rainbow(5))
+	SpinnerObstacle.create(self, Vector3(-4.5, 0.0, -28.0), 4.0, spinner_speed, 1, CourseBuilder.accent(2))
+	SpinnerObstacle.create(self, Vector3(4.5, 0.0, -28.0), 4.0, -spinner_speed, 1, CourseBuilder.accent(4))
+	add_tent(Vector3(-12.0, 0.0, -20.0), 4.0, 4.0, CourseBuilder.accent(1))
+	add_tent(Vector3(12.0, 0.0, -20.0), 4.0, 4.0, CourseBuilder.accent(5))
 	add_checkpoint(Vector3(0.0, 0.0, -38.0))
 
 
@@ -51,10 +51,10 @@ func get_spawn_positions(count: int) -> Array[Vector3]:
 
 func _build_big_top() -> void:
 	var centre := Vector3(0.0, 0.0, START_FLOOR_Z + 12.0)
-	CourseBuilder.add_decor_cylinder(self, 11.0, 0.3, centre + Vector3(0.0, -0.15, 0.0), Color(0.3, 0.6, 0.3), "BigTopGround")
+	CourseBuilder.add_decor_cylinder(self, 11.0, 0.3, centre + Vector3(0.0, -0.15, 0.0), Color(0.08, 0.08, 0.1), "BigTopGround")
 	for i in range(8):
 		var angle := i * TAU / 8.0
-		var wall := CourseBuilder.make_box_mesh(Vector3(8.5, 5.0, 0.3), CourseBuilder.rainbow(i))
+		var wall := CourseBuilder.make_box_mesh(Vector3(8.5, 5.0, 0.3), Color(0.55, 0.04, 0.08) if i % 2 == 0 else Color(0.07, 0.07, 0.08))
 		wall.name = "BigTopWall%d" % i
 		wall.position = centre + Vector3(cos(angle) * 10.0, 2.5, sin(angle) * 10.0)
 		wall.rotation.y = -angle + PI * 0.5
@@ -64,18 +64,22 @@ func _build_big_top() -> void:
 	cone.top_radius = 0.2
 	cone.bottom_radius = 11.5
 	cone.height = 7.0
-	cone.material = CourseBuilder.make_material(Color(1.0, 0.95, 0.9))
+	cone.material = CourseBuilder.make_material(Color(0.12, 0.12, 0.14))
 	roof.mesh = cone
 	roof.name = "BigTopRoof"
 	roof.position = centre + Vector3(0.0, 8.5, 0.0)
 	add_child(roof)
-	CourseBuilder.add_decor_cylinder(self, 0.15, 3.0, centre + Vector3(0.0, 13.0, 0.0), Color(0.6, 0.4, 0.2), "BigTopMast")
-	CourseBuilder.add_decor_box(self, Vector3(1.5, 0.9, 0.05), centre + Vector3(0.75, 14.0, 0.0), Color(0.2, 0.7, 0.3), "BigTopFlag")
-	CourseBuilder.add_sign(self, Branding.BIG_TOP_SIGN, centre + Vector3(0.0, 6.0, -11.0), Color(1.0, 0.9, 0.2), 140)
+	var ring := CourseBuilder.make_cylinder_mesh(11.6, 0.15, CourseBuilder.accent(0))
+	ring.mesh.material = CourseBuilder.make_neon_material(CourseBuilder.accent(0))
+	ring.position = centre + Vector3(0.0, 5.05, 0.0)
+	add_child(ring)
+	CourseBuilder.add_decor_cylinder(self, 0.15, 3.0, centre + Vector3(0.0, 13.0, 0.0), Color(0.3, 0.3, 0.33), "BigTopMast")
+	CourseBuilder.add_decor_box(self, Vector3(1.5, 0.9, 0.05), centre + Vector3(0.75, 14.0, 0.0), Color(0.85, 0.06, 0.1), "BigTopFlag")
+	CourseBuilder.add_sign(self, Branding.BIG_TOP_SIGN, centre + Vector3(0.0, 6.0, -11.0), CourseBuilder.accent(0), 140)
 
 
 func _build_hurdles() -> void:
-	var colours: Array[Color] = [CourseBuilder.rainbow(3), CourseBuilder.rainbow(5)]
+	var colours: Array[Color] = [CourseBuilder.accent(3), CourseBuilder.accent(5)]
 	var zs: Array[float] = [-14.0, -20.0]
 	for i in range(zs.size()):
 		CourseBuilder.add_box(self, Vector3(section_width - 0.6, hurdle_height, 0.5), Vector3(0.0, hurdle_height * 0.5, zs[i]), colours[i], "Hurdle%d" % i)

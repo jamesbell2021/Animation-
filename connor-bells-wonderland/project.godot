@@ -14,7 +14,7 @@ config/name="Connor Bell's Wonderland"
 config/description="Tower of Frustration at the Travelling Fair: an 8-contestant fairground obstacle race."
 run/main_scene="res://scenes/menus/main_menu.tscn"
 config/features=PackedStringArray("4.3", "Mobile")
-boot_splash/bg_color=Color(0.3, 0.55, 1, 1)
+boot_splash/bg_color=Color(0.04, 0.045, 0.07, 1)
 config/icon="res://icon.svg"
 
 [autoload]

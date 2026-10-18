@@ -45,7 +45,7 @@ func _build_geometry() -> void:
 	shape.position = Vector3(0.0, height * 0.5, 0.0)
 	add_child(shape)
 
-	var rim := CourseBuilder.make_cylinder_mesh(radius + 0.15, height * 0.8, colour.darkened(0.4))
+	var rim := CourseBuilder.make_cylinder_mesh(radius + 0.15, height * 0.8, Color(0.12, 0.12, 0.14))
 	rim.name = "Rim"
 	rim.position = Vector3(0.0, height * 0.4, 0.0)
 	add_child(rim)
@@ -59,7 +59,7 @@ func _build_geometry() -> void:
 	var sphere := SphereMesh.new()
 	sphere.radius = radius * 0.9
 	sphere.height = 0.5
-	sphere.material = CourseBuilder.make_material(colour.lightened(0.3))
+	sphere.material = CourseBuilder.make_neon_material(colour, 1.2)
 	dome.mesh = sphere
 	dome.name = "Dome"
 	dome.position = Vector3(0.0, height, 0.0)
@@ -92,4 +92,7 @@ func _on_bounce_zone_entered(body: Node3D) -> void:
 	if launch_direction != Vector3.ZERO:
 		contestant.velocity.x = launch_direction.x
 		contestant.velocity.z = launch_direction.z
+	FX.ring(self, global_position + Vector3.UP * height, radius * 1.6, colour)
+	FX.burst(self, "sparks", global_position + Vector3.UP * height, colour * 1.5, 0.7)
+	SoundManager.world(self, "bounce", global_position, randf_range(0.9, 1.15), -2.0)
 	bounced.emit(contestant)

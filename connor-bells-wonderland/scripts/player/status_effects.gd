@@ -16,8 +16,8 @@ enum Effect { OIL, FAT, SMALL, FLOAT, SPEED, MAGNET, SHIELD }
 @export var small_scale: Vector3 = Vector3(0.55, 0.55, 0.55)
 @export var float_gravity: float = 3.0
 @export var float_lift: float = 5.0
-@export var speed_multiplier: float = 1.6
-@export var magnet_radius: float = 5.0
+@export var speed_multiplier: float = 2.0
+@export var magnet_radius: float = 9.0
 
 var contestant: Contestant
 var _timers: Dictionary = {}
@@ -25,6 +25,18 @@ var _saved: Dictionary = {}
 var _attachments: Dictionary = {}
 var _visual: Node3D
 var _magnet_timer: float = 0.0
+var _particles: Dictionary = {}
+
+## Particles, start burst and sound for each effect.
+const EFFECT_FX := {
+	Effect.OIL: ["oil", "drips", "splash"],
+	Effect.FAT: ["crumbs", "", "munch"],
+	Effect.SMALL: ["magic", "sparkle", "bloop"],
+	Effect.FLOAT: ["poof", "", "boing"],
+	Effect.SPEED: ["fire", "flames", "rocket"],
+	Effect.MAGNET: ["electric", "magnet", "magnet"],
+	Effect.SHIELD: ["sparkle", "shield", "shield"],
+}
 
 
 ## Knock [param victim] unless a shield absorbs it. Returns true if the hit landed.
@@ -60,10 +72,10 @@ func _process(delta: float) -> void:
 	if _visual != null and has_effect(Effect.FAT):
 		var w := 1.0 + sin(t * 6.0) * 0.04
 		_visual.scale = Vector3(fat_scale.x * w, fat_scale.y / w, fat_scale.z * w)
-	if has_effect(Effect.MAGNET) and multiplayer.is_server():
+	if has_effect(Effect.MAGNET):
 		_magnet_timer -= delta
 		if _magnet_timer <= 0.0:
-			_magnet_timer = 0.2
+			_magnet_timer = 0.15
 			_pull_coins()
 
 
@@ -130,14 +142,16 @@ func _start(effect: int) -> void:
 			if multiplayer.is_server():
 				contestant.velocity.y = float_lift
 		Effect.SPEED:
-			saved = {"move_speed": contestant.move_speed, "acceleration": contestant.acceleration}
+			saved = {"move_speed": contestant.move_speed, "acceleration": contestant.acceleration, "jump_velocity": contestant.jump_velocity}
 			contestant.move_speed *= speed_multiplier
-			contestant.acceleration *= 1.5
+			contestant.acceleration *= 2.0
+			contestant.jump_velocity *= 1.2
 		Effect.MAGNET:
 			_magnet_timer = 0.0
 	_saved[effect] = saved
 	_attach_visual(effect)
 	_update_scale()
+	_start_fx(effect)
 
 
 func _end(effect: int) -> void:
@@ -155,6 +169,14 @@ func _end(effect: int) -> void:
 		if is_instance_valid(node):
 			node.queue_free()
 		_attachments.erase(effect)
+	if _particles.has(effect):
+		var p: Node = _particles[effect]
+		if is_instance_valid(p):
+			p.queue_free()
+		_particles.erase(effect)
+	if effect == Effect.SHIELD and contestant.is_inside_tree():
+		FX.burst(contestant, "sparkle", contestant.global_position + Vector3.UP * 0.8, Color(0.6, 1.0, 1.4), 1.4)
+		SoundManager.world(contestant, "shield_break", contestant.global_position)
 	_update_scale()
 	effect_ended.emit(effect)
 
@@ -170,14 +192,26 @@ func _update_scale() -> void:
 		_visual.scale = Vector3.ONE
 
 
+## Coins in range fly to the magnet's owner (collection is decided by the host).
 func _pull_coins() -> void:
 	for node in get_tree().get_nodes_in_group("coins"):
 		var coin := node as CoinPickup
 		if coin == null or coin.is_taken():
 			continue
 		if coin.global_position.distance_to(contestant.global_position) <= magnet_radius:
-			coin.take_remote()
-			coin.collected.emit(contestant, coin.value)
+			coin.attract_to(contestant)
+
+
+func _start_fx(effect: int) -> void:
+	if not EFFECT_FX.has(effect) or not contestant.is_inside_tree():
+		return
+	var cfg: Array = EFFECT_FX[effect]
+	var pos := contestant.global_position + Vector3.UP * 0.8
+	FX.burst(contestant, str(cfg[0]), pos)
+	if not str(cfg[1]).is_empty():
+		var offset := Vector3(0.0, 0.15, 0.0) if effect == Effect.SPEED else Vector3(0.0, 0.9, 0.0)
+		_particles[effect] = FX.attach(contestant, str(cfg[1]), offset)
+	SoundManager.world(contestant, str(cfg[2]), contestant.global_position)
 
 
 func _attach_visual(effect: int) -> void:
@@ -193,7 +227,7 @@ func _attach_visual(effect: int) -> void:
 			var sphere := SphereMesh.new()
 			sphere.radius = 0.4
 			sphere.height = 0.95
-			sphere.material = CourseBuilder.make_material(CourseBuilder.rainbow(randi() % 7))
+			sphere.material = CourseBuilder.make_material(CourseBuilder.accent(randi() % 7))
 			balloon.mesh = sphere
 			balloon.position = Vector3(0.0, 2.9, 0.0)
 			holder.add_child(balloon)

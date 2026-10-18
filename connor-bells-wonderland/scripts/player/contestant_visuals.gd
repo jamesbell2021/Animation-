@@ -11,6 +11,8 @@ const BODY_CENTRE_Y: float = 0.7
 
 var pivot: Node3D
 var rig: Node3D
+## Superman dive pose (catapult flight).
+var diving: bool = false
 
 var _arm_l: Node3D
 var _arm_r: Node3D
@@ -45,6 +47,13 @@ func setup(body_colour: Color, _hat_colour: Color = Color(0.1, 0.6, 0.2)) -> voi
 ## Call every frame with the horizontal speed and grounded state.
 func update_motion(speed: float, on_floor: bool, delta: float) -> void:
 	if rig == null:
+		return
+	rig.rotation.x = lerp_angle(rig.rotation.x, -1.25 if diving else 0.0, 10.0 * delta)
+	if diving:
+		_set_x(_arm_l, -3.0, delta)
+		_set_x(_arm_r, -3.0, delta)
+		_set_x(_leg_l, 0.2, delta)
+		_set_x(_leg_r, 0.2, delta)
 		return
 	var target_blend := clampf(speed / maxf(move_speed_reference, 0.01), 0.0, 1.0) if on_floor else 0.0
 	_blend = lerpf(_blend, target_blend, 10.0 * delta)

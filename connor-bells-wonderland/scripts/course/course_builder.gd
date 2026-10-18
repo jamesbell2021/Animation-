@@ -3,19 +3,41 @@ extends RefCounted
 ## Static helpers for building low-poly fairground geometry in code.
 ## All positions are local to the given parent. Sections build along -Z.
 
-const RAINBOW: Array[Color] = [
-	Color(1.0, 0.3, 0.3),
-	Color(1.0, 0.6, 0.2),
-	Color(1.0, 0.9, 0.2),
-	Color(0.3, 0.85, 0.4),
-	Color(0.25, 0.6, 1.0),
-	Color(0.5, 0.35, 0.9),
-	Color(0.9, 0.4, 0.8),
+## Night-fair look: dark steel surfaces with a few neon accents.
+const ACCENTS: Array[Color] = [
+	Color(1.0, 0.42, 0.0),   # hot orange
+	Color(0.0, 0.78, 1.0),   # electric cyan
+	Color(0.92, 0.08, 0.2),  # crimson
+	Color(0.55, 1.0, 0.1),   # acid lime
 ]
+## Base colour for big surfaces (floors, platforms, walls).
+const STEEL := Color(0.15, 0.16, 0.19)
+## Contestant body colours (menu order): strong, not pastel.
+const PLAYER_COLOURS: Array[Color] = [
+	Color(0.85, 0.08, 0.12),  # red
+	Color(1.0, 0.45, 0.02),   # orange
+	Color(1.0, 0.78, 0.0),    # gold
+	Color(0.35, 0.85, 0.1),   # lime
+	Color(0.0, 0.7, 0.95),    # cyan
+	Color(0.15, 0.28, 0.95),  # blue
+	Color(0.5, 0.12, 0.85),   # purple
+	Color(0.12, 0.12, 0.14),  # black
+]
+const PLAYER_COLOUR_NAMES: Array[String] = ["Red", "Orange", "Gold", "Lime", "Cyan", "Blue", "Purple", "Black"]
 
 
-static func rainbow(index: int) -> Color:
-	return RAINBOW[posmod(index, RAINBOW.size())]
+## Neon accent colour number [param index] (wraps around).
+static func accent(index: int) -> Color:
+	return ACCENTS[posmod(index, ACCENTS.size())]
+
+
+static func player_colour(index: int) -> Color:
+	return PLAYER_COLOURS[posmod(index, PLAYER_COLOURS.size())]
+
+
+## A dark steel surface with a faint tint of [param tint].
+static func surface(tint: Color) -> Color:
+	return STEEL.lerp(tint, 0.2)
 
 
 static func make_material(colour: Color) -> StandardMaterial3D:
@@ -23,6 +45,32 @@ static func make_material(colour: Color) -> StandardMaterial3D:
 	mat.albedo_color = colour
 	mat.roughness = 0.8
 	return mat
+
+
+## Glowing material for neon trims, lights and pads.
+static func make_neon_material(colour: Color, energy: float = 1.6) -> StandardMaterial3D:
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = colour
+	mat.emission_enabled = true
+	mat.emission = colour
+	mat.emission_energy_multiplier = energy
+	mat.roughness = 0.4
+	return mat
+
+
+## Decorative glowing strip (no collision).
+static func add_neon_strip(parent: Node, size: Vector3, pos: Vector3, colour: Color, node_name: String = "Neon") -> MeshInstance3D:
+	if parent == null:
+		return null
+	var mi := MeshInstance3D.new()
+	var mesh := BoxMesh.new()
+	mesh.size = size
+	mesh.material = make_neon_material(colour)
+	mi.mesh = mesh
+	mi.name = node_name
+	mi.position = pos
+	parent.add_child(mi)
+	return mi
 
 
 static func make_box_mesh(size: Vector3, colour: Color) -> MeshInstance3D:
@@ -156,4 +204,4 @@ static func add_bunting(parent: Node, from: Vector3, to: Vector3, count: int = 1
 		var t := float(i) / float(count)
 		var pos := from.lerp(to, t)
 		pos.y -= sin(t * PI) * 0.6
-		add_decor_box(parent, Vector3(0.25, 0.35, 0.08), pos, rainbow(i), "Bunting%d" % i)
+		add_neon_strip(parent, Vector3(0.18, 0.18, 0.18), pos, accent(i % 2), "Bunting%d" % i)

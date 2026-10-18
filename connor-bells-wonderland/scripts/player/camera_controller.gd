@@ -13,6 +13,7 @@ extends Camera3D
 var _target: Node3D
 var _yaw: float = 0.0
 var _orbit: bool = false
+var _trauma: float = 0.0
 
 
 func _ready() -> void:
@@ -32,6 +33,11 @@ func set_orbit(enabled: bool) -> void:
 		_yaw = 0.0
 
 
+## Screen shake: 0..1 (adds up, fades over about half a second).
+func add_shake(amount: float) -> void:
+	_trauma = clampf(_trauma + amount, 0.0, 1.0)
+
+
 func get_target() -> Node3D:
 	return _target
 
@@ -45,6 +51,16 @@ func _process(delta: float) -> void:
 	var weight: float = clampf(smoothing * delta, 0.0, 1.0)
 	global_position = global_position.lerp(desired, weight)
 	_look_at_target()
+	if _trauma > 0.0:
+		_trauma = maxf(_trauma - delta * 1.8, 0.0)
+		var s := _trauma * _trauma
+		rotate_object_local(Vector3.RIGHT, randf_range(-1.0, 1.0) * 0.06 * s)
+		rotate_object_local(Vector3.UP, randf_range(-1.0, 1.0) * 0.06 * s)
+		h_offset = randf_range(-1.0, 1.0) * 0.35 * s
+		v_offset = randf_range(-1.0, 1.0) * 0.35 * s
+	else:
+		h_offset = 0.0
+		v_offset = 0.0
 
 
 func _offset() -> Vector3:

@@ -94,18 +94,24 @@ func _build_geometry() -> void:
 		cyl.height = size.y
 		shape.shape = cyl
 		add_child(shape)
-		var mesh := CourseBuilder.make_cylinder_mesh(disc_radius, size.y, colour)
+		var mesh := CourseBuilder.make_cylinder_mesh(disc_radius, size.y, CourseBuilder.surface(colour))
 		mesh.name = "DiscMesh"
 		add_child(mesh)
+		var rim := CourseBuilder.make_cylinder_mesh(disc_radius + 0.06, size.y * 0.4, colour)
+		rim.mesh.material = CourseBuilder.make_neon_material(colour)
+		rim.name = "DiscRim"
+		add_child(rim)
 		_add_disc_stripes()
 	else:
 		var box := BoxShape3D.new()
 		box.size = size
 		shape.shape = box
 		add_child(shape)
-		var mesh := CourseBuilder.make_box_mesh(size, colour)
+		var mesh := CourseBuilder.make_box_mesh(size, CourseBuilder.surface(colour))
 		mesh.name = "BoxMesh"
 		add_child(mesh)
+		for side: float in [-1.0, 1.0]:
+			CourseBuilder.add_neon_strip(self, Vector3(size.x + 0.04, 0.08, 0.1), Vector3(0.0, size.y * 0.5, side * size.z * 0.5), colour, "Edge")
 
 
 ## Rainbow wedges painted on top of a disc so the spin is visible.
@@ -113,7 +119,8 @@ func _add_disc_stripes() -> void:
 	var segments := 6
 	for i in range(segments):
 		var angle := i * TAU / float(segments)
-		var stripe := CourseBuilder.make_box_mesh(Vector3(disc_radius * 0.9, 0.05, 0.4), CourseBuilder.rainbow(i))
+		var stripe := CourseBuilder.make_box_mesh(Vector3(disc_radius * 0.9, 0.05, 0.25), CourseBuilder.accent(i % 2))
+		stripe.mesh.material = CourseBuilder.make_neon_material(CourseBuilder.accent(i % 2), 1.0)
 		stripe.name = "Stripe%d" % i
 		stripe.position = Vector3(cos(angle) * disc_radius * 0.5, size.y * 0.5 + 0.03, sin(angle) * disc_radius * 0.5)
 		stripe.rotation.y = -angle

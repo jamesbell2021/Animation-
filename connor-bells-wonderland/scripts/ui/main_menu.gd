@@ -4,7 +4,7 @@ extends Control
 
 const GAME_SCENE := "res://scenes/main/main.tscn"
 const LOBBY_SCENE := "res://scenes/menus/lobby.tscn"
-const COLOUR_NAMES: Array[String] = ["Red", "Orange", "Yellow", "Green", "Blue", "Purple", "Pink"]
+const COLOUR_NAMES: Array[String] = CourseBuilder.PLAYER_COLOUR_NAMES
 const DIFFICULTY_NAMES: Array[String] = ["Easy", "Medium", "Hard"]
 
 var _net: Node
@@ -40,12 +40,12 @@ func _ready() -> void:
 
 func _build() -> void:
 	var bg := ColorRect.new()
-	bg.color = Color(0.3, 0.55, 1.0)
+	bg.color = Color(0.04, 0.045, 0.07)
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
 	for i in range(7):
 		var stripe := ColorRect.new()
-		stripe.color = CourseBuilder.rainbow(i)
+		stripe.color = CourseBuilder.accent(i % 2) if i % 3 != 2 else Color(0.04, 0.045, 0.07)
 		stripe.anchor_right = 1.0
 		stripe.offset_top = 10.0 + float(i) * 8.0
 		stripe.offset_bottom = 18.0 + float(i) * 8.0
@@ -64,7 +64,9 @@ func _build() -> void:
 	title.text = Branding.title_upper()
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", 40)
-	title.add_theme_color_override("font_color", Color(1.0, 0.85, 0.2))
+	title.add_theme_color_override("font_color", CourseBuilder.accent(0))
+	title.add_theme_color_override("font_outline_color", Color.BLACK)
+	title.add_theme_constant_override("outline_size", 8)
 	outer.add_child(title)
 	var subtitle := Label.new()
 	subtitle.text = Branding.SUBTITLE
@@ -119,7 +121,7 @@ func _build() -> void:
 	_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_status.custom_minimum_size = Vector2(380.0, 0.0)
-	_status.add_theme_color_override("font_color", Color(1.0, 0.9, 0.5))
+	_status.add_theme_color_override("font_color", CourseBuilder.accent(1))
 	actions.add_child(_status)
 
 
@@ -164,7 +166,7 @@ func _nearest_colour_index(colour: Color) -> int:
 	var best := 0
 	var best_dist := INF
 	for i in range(COLOUR_NAMES.size()):
-		var c := CourseBuilder.rainbow(i)
+		var c := CourseBuilder.player_colour(i)
 		var d := Vector3(c.r - colour.r, c.g - colour.g, c.b - colour.b).length_squared()
 		if d < best_dist:
 			best_dist = d
@@ -177,7 +179,7 @@ func _apply_identity_and_settings() -> void:
 		return
 	var player_name := _name_edit.text.strip_edges()
 	_net.local_name = player_name if not player_name.is_empty() else "Player"
-	_net.local_colour = CourseBuilder.rainbow(_colour_option.selected)
+	_net.local_colour = CourseBuilder.player_colour(_colour_option.selected)
 	_net.settings = {
 		"sections": int(_sections_spin.value),
 		"bots": int(_bots_spin.value),
