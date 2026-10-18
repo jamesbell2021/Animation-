@@ -9,9 +9,20 @@ code, so the project has no art or audio files.
 
 ## Run it
 
-1. Install **Godot 4.3** (standard build, not .NET).
-2. Project Manager → **Import** → pick this folder's `project.godot`.
-3. Press **F5**. The main menu opens.
+Install Godot 4.3 or newer (standard build, not .NET; on Omarchy or Arch,
+`sudo pacman -S godot`), then from this folder:
+
+```
+./play.sh
+```
+
+On Windows: `play.bat C:\path\to\Godot_v4.3-stable_win64.exe`.
+
+The launcher runs Godot's import first when needed. Without it, Godot can't find the
+game's named scripts and stops with errors like `Identifier "CourseBuilder" not
+declared`. To do it by hand, run `godot --path . --import` once (and again after a
+`git pull`), then `godot --path .`. Opening the project in the Godot editor and pressing
+**F5** also works.
 
 | Action | Keyboard | Phone |
 |---|---|---|
