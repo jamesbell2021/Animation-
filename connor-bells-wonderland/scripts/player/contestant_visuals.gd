@@ -11,6 +11,8 @@ const BODY_CENTRE_Y: float = 0.7
 
 var pivot: Node3D
 var rig: Node3D
+## Superman dive pose (catapult flight).
+var diving: bool = false
 
 var _arm_l: Node3D
 var _arm_r: Node3D
@@ -22,7 +24,8 @@ var _idle_time: float = 0.0
 var _blend: float = 0.0
 
 
-func setup(body_colour: Color, hat_colour: Color = Color(0.1, 0.6, 0.2)) -> void:
+## [param _hat_colour] is kept for callers but unused: contestants have no hats.
+func setup(body_colour: Color, _hat_colour: Color = Color(0.1, 0.6, 0.2)) -> void:
 	for child in get_children():
 		child.queue_free()
 	pivot = Node3D.new()
@@ -35,7 +38,6 @@ func setup(body_colour: Color, hat_colour: Color = Color(0.1, 0.6, 0.2)) -> void
 	pivot.add_child(rig)
 	_build_body(body_colour)
 	_build_face()
-	_build_hat(hat_colour)
 	_arm_l = _build_arm(-0.46, body_colour)
 	_arm_r = _build_arm(0.46, body_colour)
 	_leg_l = _build_leg(-0.17)
@@ -45,6 +47,13 @@ func setup(body_colour: Color, hat_colour: Color = Color(0.1, 0.6, 0.2)) -> void
 ## Call every frame with the horizontal speed and grounded state.
 func update_motion(speed: float, on_floor: bool, delta: float) -> void:
 	if rig == null:
+		return
+	rig.rotation.x = lerp_angle(rig.rotation.x, -1.25 if diving else 0.0, 10.0 * delta)
+	if diving:
+		_set_x(_arm_l, -3.0, delta)
+		_set_x(_arm_r, -3.0, delta)
+		_set_x(_leg_l, 0.2, delta)
+		_set_x(_leg_r, 0.2, delta)
 		return
 	var target_blend := clampf(speed / maxf(move_speed_reference, 0.01), 0.0, 1.0) if on_floor else 0.0
 	_blend = lerpf(_blend, target_blend, 10.0 * delta)
@@ -122,23 +131,6 @@ func _build_face() -> void:
 	tash.position = Vector3(0.0, 0.92, -0.42)
 	rig.add_child(tash)
 	_sphere(0.06, Color(1.0, 0.6, 0.5), Vector3(0.0, 0.95, -0.44), rig)
-
-
-func _build_hat(colour: Color) -> void:
-	var brim := CourseBuilder.make_cylinder_mesh(0.56, 0.06, colour)
-	brim.position = Vector3(0.0, 1.36, 0.0)
-	rig.add_child(brim)
-	var crown := CourseBuilder.make_cylinder_mesh(0.36, 0.48, colour)
-	crown.position = Vector3(0.0, 1.62, 0.0)
-	rig.add_child(crown)
-	var band := CourseBuilder.make_cylinder_mesh(0.375, 0.1, Color(0.1, 0.1, 0.1))
-	band.position = Vector3(0.0, 1.45, 0.0)
-	rig.add_child(band)
-	var buckle := CourseBuilder.make_box_mesh(Vector3(0.14, 0.12, 0.04), Color(1.0, 0.8, 0.1))
-	buckle.position = Vector3(0.0, 1.45, -0.37)
-	rig.add_child(buckle)
-	for offset: Vector3 in [Vector3(-0.05, 0.04, 0.0), Vector3(0.05, 0.04, 0.0), Vector3(0.0, -0.03, 0.0)]:
-		_sphere(0.035, Color(0.2, 0.8, 0.3), Vector3(0.22, 1.5, -0.3) + offset, rig, 0.6)
 
 
 func _build_arm(x: float, colour: Color) -> Node3D:

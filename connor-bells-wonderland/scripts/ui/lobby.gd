@@ -38,7 +38,7 @@ func _ready() -> void:
 
 func _build() -> void:
 	var bg := ColorRect.new()
-	bg.color = Color(0.25, 0.5, 0.95)
+	bg.color = Color(0.04, 0.045, 0.07)
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
 	var panel := PanelContainer.new()
@@ -56,7 +56,7 @@ func _build() -> void:
 	var title := Label.new()
 	title.text = "%s LOBBY%s" % [Branding.HERO_NAME.to_upper() + "'S", " (host)" if _is_host else ""]
 	title.add_theme_font_size_override("font_size", 34)
-	title.add_theme_color_override("font_color", Color(1.0, 0.85, 0.2))
+	title.add_theme_color_override("font_color", CourseBuilder.accent(0))
 	left.add_child(title)
 	_ip_label = Label.new()
 	_ip_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -106,7 +106,7 @@ func _build() -> void:
 	right.add_child(_button("Leave", _on_leave_pressed))
 	_status = Label.new()
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_status.add_theme_color_override("font_color", Color(1.0, 0.9, 0.5))
+	_status.add_theme_color_override("font_color", CourseBuilder.accent(1))
 	right.add_child(_status)
 
 

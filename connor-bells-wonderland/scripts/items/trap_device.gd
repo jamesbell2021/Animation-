@@ -108,6 +108,7 @@ func trigger_remote(punch_direction: Vector3 = Vector3.ZERO) -> void:
 	if punch_direction != Vector3.ZERO:
 		_set_punch_direction(punch_direction)
 	_fire_time = _age
+	_fire_fx()
 
 
 func get_punch_direction() -> Vector3:
@@ -139,6 +140,8 @@ func _on_body_entered(body: Node3D) -> void:
 				return
 			_victim_cooldowns[str(victim.name)] = now
 			_apply_status(victim, StatusEffects.Effect.OIL, float(def.get("effect_seconds", 4.0)))
+			FX.burst(self, "oil", victim.global_position, Color.WHITE, 1.2)
+			SoundManager.world(self, "splash", global_position)
 			triggered.emit(self, victim)
 			return
 		ItemKinds.Kind.CAKE:
@@ -152,7 +155,29 @@ func _on_body_entered(body: Node3D) -> void:
 	if punch_dir != Vector3.ZERO:
 		_set_punch_direction(punch_dir)
 	_fire_time = _age
+	_fire_fx()
 	triggered.emit(self, victim)
+
+
+## Particles and sound when a one-shot trap goes off (host and clients).
+func _fire_fx() -> void:
+	if not is_inside_tree():
+		return
+	var pos := global_position + Vector3.UP * 0.8
+	match kind:
+		ItemKinds.Kind.BOXING_GLOVE:
+			FX.burst(self, "impact", pos, Color.WHITE, 1.4)
+			SoundManager.world(self, "punch", pos, 1.0, 3.0)
+		ItemKinds.Kind.CAKE:
+			FX.burst(self, "crumbs", pos, Color.WHITE, 1.5)
+			SoundManager.world(self, "munch", pos)
+		ItemKinds.Kind.SHRINK_POTION:
+			FX.burst(self, "magic", pos, Color.WHITE, 1.5)
+			SoundManager.world(self, "bloop", pos)
+		_:
+			FX.burst(self, "dust", global_position, Color.WHITE, 1.4)
+			FX.ring(self, global_position, 2.0, ItemKinds.colour_for(kind))
+			SoundManager.world(self, "boing", pos, 1.0, 2.0)
 
 
 func _apply_status(victim: Contestant, effect: int, seconds: float) -> void:
@@ -221,7 +246,7 @@ func _build_glove() -> void:
 func _build_springer() -> void:
 	CourseBuilder.add_decor_cylinder(self, 0.8, 0.2, Vector3(0.0, 0.1, 0.0), Color(0.3, 0.3, 0.35), "Base")
 	for i in range(5):
-		CourseBuilder.add_decor_cylinder(self, 0.55, 0.1, Vector3(0.0, 0.28 + float(i) * 0.12, 0.0), CourseBuilder.rainbow(i), "Coil%d" % i)
+		CourseBuilder.add_decor_cylinder(self, 0.55, 0.1, Vector3(0.0, 0.28 + float(i) * 0.12, 0.0), CourseBuilder.accent(i), "Coil%d" % i)
 	_moving_part = Node3D.new()
 	_moving_part.name = "Plate"
 	_moving_part.position = Vector3(0.0, 0.9, 0.0)
@@ -241,7 +266,7 @@ func _build_oil() -> void:
 	add_child(puddle)
 	for i in range(5):
 		var a := i * TAU / 5.0
-		var sheen := CourseBuilder.make_cylinder_mesh(0.35, 0.04, CourseBuilder.rainbow(i + 2))
+		var sheen := CourseBuilder.make_cylinder_mesh(0.35, 0.04, CourseBuilder.accent(i + 2))
 		sheen.position = Vector3(cos(a) * 0.9, 0.07, sin(a) * 0.9)
 		add_child(sheen)
 	var can := CourseBuilder.make_cylinder_mesh(0.25, 0.5, Color(0.9, 0.8, 0.1))

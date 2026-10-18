@@ -38,7 +38,7 @@ static func make(index: int, difficulty: Difficulty = Difficulty.MEDIUM, persona
 	profile["personality"] = p
 	profile["difficulty"] = difficulty
 	profile["name"] = NAMES[index % NAMES.size()]
-	profile["colour"] = CourseBuilder.rainbow(index + 1)
+	profile["colour"] = CourseBuilder.player_colour(index + 1)
 	profile["hat_colour"] = HAT_COLOURS[index % HAT_COLOURS.size()]
 	return profile
 

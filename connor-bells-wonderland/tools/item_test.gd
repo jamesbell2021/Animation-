@@ -1,7 +1,7 @@
 extends SceneTree
 ## Headless check that every Fairground Mayhem item does what it should.
 ## Gives the player each item, places a still bot where it should be hit,
-## uses the item and checks the result. Run from the project folder:
+## uses the item and checks the result. Player starts at z -16 facing -Z. Run from the project folder:
 ##   godot --headless --path . --fixed-fps 60 -s res://tools/item_test.gd
 
 const K := ItemKinds.Kind
@@ -17,14 +17,16 @@ var passed := 0
 var failed := 0
 var hits := 0
 
-# [label, kind, target offset from player (player faces -Z), wait frames, check]
+# [label, kind, target offset from player (player faces -Z), wait frames, check,
+#  optional setup callable, optional seconds to hold the use button]
 var tests: Array = []
+var _start_z: float = 0.0
 
 
 func _process(_d: float) -> bool:
 	frame += 1
 	if frame == 2:
-		root.get_node("NetworkManager").settings = {"sections": 1, "bots": 2, "difficulty": 1, "countdown": 1, "items": true}
+		root.get_node("NetworkManager").settings = {"sections": 2, "bots": 2, "difficulty": 1, "countdown": 1, "items": true}
 		change_scene_to_file("res://scenes/main/main.tscn")
 		return false
 	if frame < 5:
@@ -39,6 +41,7 @@ func _process(_d: float) -> bool:
 	if player == null:
 		player = gm.player
 		target = gm._contestants[1]
+		player.is_local_player = false
 		for c in gm._contestants:
 			var brain = c.get_node_or_null("BotController")
 			if brain != null:
@@ -54,6 +57,8 @@ func _process(_d: float) -> bool:
 		_use(t)
 	if step_frame == 40 + int(t[3]):
 		var ok: bool = t[4].call()
+		if OS.get_cmdline_user_args().has("debug"):
+			print("   player=", player.global_position.round(), " target=", target.global_position.round(), " ballistic=", player.ballistic)
 		print("%s  %s" % ["PASS" if ok else "FAIL", t[0]])
 		if ok:
 			passed += 1
@@ -71,6 +76,7 @@ func _reset_actor(c: Contestant, pos: Vector3) -> void:
 	c.respawn()
 	c.get_node("StatusEffects").clear_all()
 	c.get_node("ItemHolder").clear()
+	gm._coins.clear()
 	c._visual.rotation.y = 0.0
 
 
@@ -80,6 +86,8 @@ func _next_step() -> void:
 	if step >= tests.size():
 		return
 	gm.items.reset()
+	if gm.decorator != null:
+		gm.decorator.reset_coins()
 	var t: Array = tests[step]
 	_reset_actor(player, Vector3(0.0, 0.5, -16.0))
 	_reset_actor(target, Vector3(0.0, 0.5, -16.0) + t[2])
@@ -91,6 +99,10 @@ func _next_step() -> void:
 func _use(t: Array) -> void:
 	player._visual.rotation.y = 0.0
 	player.use_requested = true
+	_start_z = player.global_position.z
+	if t.size() > 6:
+		player.use_held = true
+		create_timer(float(t[6]), false).timeout.connect(func() -> void: player.use_held = false)
 	if ItemKinds.is_trap(t[1]):
 		# Walk the target onto the trap once it has armed.
 		get_timer(1.3).timeout.connect(func() -> void: target.global_position = Vector3(0.0, 0.5, -16.0 + gm.items.trap_drop_distance))
@@ -104,19 +116,30 @@ func _effect(c: Contestant, e: int) -> bool:
 	return c.get_node("StatusEffects").has_effect(e)
 
 
+func _gold(c: Contestant) -> int:
+	return int(gm._coins.get(str(c.name), 0))
+
+
 func _build_tests() -> void:
 	var front := Vector3(0.0, 0.0, -1.5)
+	var no_op := func() -> void: pass
 	tests = [
+		["Catapult flings you far forward", K.CATAPULT, Vector3(6.0, 0.0, 0.0), 120, func() -> bool: return _start_z - player.global_position.z > 12.0, no_op, 1.3],
+		["Catapult flight rams a rival out of the way", K.CATAPULT, Vector3(0.0, 0.0, -2.5), 30, func() -> bool: return target.is_stumbling(), no_op, 0.2],
+		["Catapult landing slams rivals nearby", K.CATAPULT, Vector3(1.5, 0.0, -19.0), 210, func() -> bool: return target.is_stumbling() or target.velocity.length() > 3.0, no_op, 1.4],
+		["Rocket Boots barge a rival aside", K.ROCKET_BOOTS, Vector3(0.0, 0.0, -1.0), 15, func() -> bool: return target.is_stumbling()],
+		["Giant Magnet steals a rival's gold", K.MAGNET, Vector3(0.0, 0.0, -6.0), 90, func() -> bool: return _gold(player) >= 1 and _gold(target) < 5, func() -> void: gm._coins[str(target.name)] = 5],
+		["Item hits steal gold", K.SWORD, front, 10, func() -> bool: return _gold(player) == 1 and _gold(target) == 2, func() -> void: gm._coins[str(target.name)] = 3],
+		["Shield bounces a sword hit back at the attacker", K.SWORD, front, 10, func() -> bool: return player.is_stumbling() and not target.is_stumbling(), func() -> void: target.get_node("StatusEffects").apply(E.SHIELD, 10.0)],
 		["Plastic Sword knocks the bot in front", K.SWORD, front, 10, func() -> bool: return target.is_stumbling()],
 		["Zapper zaps the bot in front", K.ZAPPER, front, 10, func() -> bool: return target.is_stumbling()],
 		["Balloon floats the bot in front", K.BALLOON, front, 10, func() -> bool: return _effect(target, E.FLOAT)],
-		["Confetti Bomb blasts a bot beside you", K.CONFETTI, Vector3(2.5, 0.0, 0.0), 10, func() -> bool: return target.is_stumbling()],
+		["Mega Bomb blasts a bot beside you", K.CONFETTI, Vector3(2.5, 0.0, 0.0), 10, func() -> bool: return target.is_stumbling()],
 		["Custard Pie splats a bot where it lands", K.PIE, Vector3(0.0, 0.0, -8.8), 70, func() -> bool: return target.is_stumbling()],
 		["Rocket Boots speed you up", K.ROCKET_BOOTS, Vector3(6.0, 0.0, 0.0), 5, func() -> bool: return _effect(player, E.SPEED) and player.move_speed > 6.5],
 		["Giant Magnet pulls in a nearby coin", K.MAGNET, Vector3(6.0, 0.0, 0.0), 30, func() -> bool: return _effect(player, E.MAGNET) and int(gm._coins.get(str(player.name), 0)) > 0],
 		["Shield Bubble starts", K.SHIELD, Vector3(6.0, 0.0, 0.0), 5, func() -> bool: return _effect(player, E.SHIELD)],
 		["Shield Bubble blocks a sword hit", K.SWORD, Vector3(0.0, 0.0, -1.5), 10, func() -> bool: return not target.is_stumbling() and not _effect(target, E.SHIELD), func() -> void: target.get_node("StatusEffects").apply(E.SHIELD, 10.0)],
-		["Catapult trap flings the bot", K.CATAPULT, Vector3(5.0, 0.0, 0.0), 95, func() -> bool: return target.is_stumbling() or target.global_position.y > 1.5],
 		["Boxing Glove trap punches the bot", K.BOXING_GLOVE, Vector3(5.0, 0.0, 0.0), 95, func() -> bool: return target.is_stumbling()],
 		["Big Springer trap launches the bot", K.SPRINGER, Vector3(5.0, 0.0, 0.0), 95, func() -> bool: return target.is_stumbling() or target.global_position.y > 2.0],
 		["Slippery Oil makes the bot slide", K.OIL_SLICK, Vector3(5.0, 0.0, 0.0), 95, func() -> bool: return _effect(target, E.OIL)],

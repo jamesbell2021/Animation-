@@ -15,6 +15,8 @@ enum Kind { COIN, SHAMROCK }
 var _origin_y: float = 0.0
 var _time: float = 0.0
 var _taken: bool = false
+var _attractor: Contestant
+var _attract_speed: float = 0.0
 
 
 ## [param pos] is local to [param parent]; it is the coin's centre.
@@ -36,6 +38,7 @@ func _ready() -> void:
 	if value <= 0:
 		value = 5 if kind == Kind.SHAMROCK else 1
 	_origin_y = position.y
+	set_meta("home", position)
 	_time = randf() * TAU
 	var shape := CollisionShape3D.new()
 	var sphere := SphereShape3D.new()
@@ -52,6 +55,9 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if _taken:
 		return
+	if _attractor != null:
+		_fly_to_attractor(delta)
+		return
 	_time += delta
 	rotation.y = wrapf(rotation.y + deg_to_rad(spin_speed_degrees) * delta, 0.0, TAU)
 	position.y = _origin_y + sin(_time * 3.0) * bob_height
@@ -59,8 +65,34 @@ func _process(delta: float) -> void:
 
 func reset() -> void:
 	_taken = false
+	_attractor = null
+	position.y = _origin_y
+	if has_meta("home"):
+		position = get_meta("home")
 	visible = true
 	set_deferred("monitoring", true)
+
+
+## Fly toward [param c] (Giant Magnet). On the host the coin is collected on arrival.
+func attract_to(c: Contestant) -> void:
+	if _taken or _attractor != null:
+		return
+	if not has_meta("home"):
+		set_meta("home", position)
+	_attractor = c
+	_attract_speed = 4.0
+
+
+func _fly_to_attractor(delta: float) -> void:
+	if not is_instance_valid(_attractor):
+		_attractor = null
+		return
+	var target := _attractor.global_position + Vector3.UP * 0.9
+	_attract_speed = minf(_attract_speed + 40.0 * delta, 30.0)
+	global_position = global_position.move_toward(target, _attract_speed * delta)
+	rotation.y += delta * 12.0
+	if global_position.distance_to(target) < 0.5 and multiplayer.is_server():
+		_collect(_attractor)
 
 
 func is_taken() -> bool:
@@ -69,9 +101,21 @@ func is_taken() -> bool:
 
 ## Hide without emitting; used on clients when the host reports a collection.
 func take_remote() -> void:
+	if _taken:
+		return
 	_taken = true
+	_attractor = null
 	visible = false
 	set_deferred("monitoring", false)
+	_collect_fx()
+
+
+func _collect_fx() -> void:
+	if not is_inside_tree():
+		return
+	var shamrock := kind == Kind.SHAMROCK
+	FX.burst(self, "coins" if not shamrock else "sparkle", global_position, Color(0.5, 1.6, 0.6) if shamrock else Color.WHITE)
+	SoundManager.world(self, "shamrock" if shamrock else "coin", global_position, randf_range(0.95, 1.1), -2.0)
 
 
 func _on_body_entered(body: Node3D) -> void:
@@ -79,10 +123,18 @@ func _on_body_entered(body: Node3D) -> void:
 		return
 	if not multiplayer.is_server():
 		return
+	_collect(body as Contestant)
+
+
+func _collect(c: Contestant) -> void:
+	if _taken:
+		return
 	_taken = true
+	_attractor = null
 	visible = false
 	set_deferred("monitoring", false)
-	collected.emit(body as Contestant, value)
+	_collect_fx()
+	collected.emit(c, value)
 
 
 func _gold() -> StandardMaterial3D:

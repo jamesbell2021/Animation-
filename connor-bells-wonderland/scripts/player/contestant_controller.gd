@@ -9,6 +9,8 @@ signal respawned
 signal jumped
 signal landed(impact_speed: float)
 signal knocked(impulse: Vector3)
+## Emitted when a launch (catapult) ends on the ground.
+signal launch_landed
 
 ## Physics layer 1 is the course; contestants live on layer 2. Contestants do not
 ## count as moving platforms, so two of them stacked can't launch each other upward.
@@ -40,6 +42,14 @@ var move_direction: Vector3 = Vector3.ZERO
 var jump_requested: bool = false
 ## Set by input, bots or the network; the ItemHolder consumes it.
 var use_requested: bool = false
+## True while the use button is held (catapult pull-back).
+var use_held: bool = false
+## Set while charging the catapult: movement is slowed.
+var charging: bool = false
+## True while flying after a catapult launch: no steering until landing.
+var ballistic: bool = false
+
+var _ballistic_time: float = 0.0
 
 var _visual: ContestantVisuals
 var _stumble: StumbleController
@@ -76,8 +86,10 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	if is_local_player:
 		_gather_local_input()
-	var can_act := controls_enabled and not is_stumbling()
+	var can_act := controls_enabled and not is_stumbling() and not ballistic
 	var wish_dir := move_direction if can_act else Vector3.ZERO
+	if charging:
+		wish_dir *= 0.3
 	if wish_dir.length() > 1.0:
 		wish_dir = wish_dir.normalized()
 
@@ -87,7 +99,9 @@ func _physics_process(delta: float) -> void:
 
 	var control := 1.0 if on_floor else air_control
 	var horizontal := Vector3(velocity.x, 0.0, velocity.z)
-	if wish_dir.length() > 0.01:
+	if ballistic:
+		pass
+	elif wish_dir.length() > 0.01:
 		horizontal = horizontal.move_toward(wish_dir * move_speed, acceleration * control * delta)
 		_face_direction(wish_dir, delta)
 	else:
@@ -98,20 +112,33 @@ func _physics_process(delta: float) -> void:
 	if can_act and on_floor and jump_requested:
 		velocity.y = jump_velocity
 		jumped.emit()
+		FX.burst(self, "dust", global_position, Color.WHITE, 0.6)
+		if not is_local_player:
+			SoundManager.world(self, "jump", global_position, 1.0, -8.0)
 	jump_requested = false
 
 	var vertical_before := velocity.y
 	move_and_slide()
 	_handle_collisions()
 
-	if not _was_on_floor and is_on_floor():
+	if ballistic:
+		_ballistic_time += delta
+		if _ballistic_time > 0.15 and is_on_floor():
+			ballistic = false
+			launch_landed.emit()
+	elif not _was_on_floor and is_on_floor():
 		var impact := -vertical_before
 		landed.emit(impact)
+		if impact > 7.0:
+			FX.burst(self, "dust", global_position, Color.WHITE, clampf(impact / 10.0, 0.6, 1.6))
+			if not is_local_player:
+				SoundManager.world(self, "land", global_position, 1.0, -6.0)
 		if impact > hard_landing_speed:
 			_stumble.stumble(0.6, 6.0)
 	_was_on_floor = is_on_floor()
 
 	if _visual != null:
+		_visual.diving = ballistic
 		_visual.update_motion(Vector2(velocity.x, velocity.z).length(), is_on_floor(), delta)
 
 	if global_position.y < fall_limit_y:
@@ -131,14 +158,37 @@ func is_stumbling() -> bool:
 ## Replace velocity with [param impulse] and tumble for [param stumble_seconds].
 func knock(impulse: Vector3, stumble_seconds: float = 0.9) -> void:
 	velocity = impulse
+	ballistic = false
+	FX.burst(self, "impact", global_position + Vector3.UP * 0.9)
+	if not is_local_player:
+		SoundManager.world(self, "knock", global_position, 1.0, -3.0)
 	if _stumble != null and stumble_seconds > 0.0:
 		_stumble.stumble(stumble_seconds)
 	knocked.emit(impulse)
 
 
+## Throw the contestant through the air (catapult). No steering until it lands.
+func launch(new_velocity: Vector3) -> void:
+	velocity = new_velocity
+	ballistic = true
+	_ballistic_time = 0.0
+	charging = false
+	if _stumble != null:
+		_stumble.cancel()
+	if new_velocity.length() > 0.1:
+		var flat := Vector3(new_velocity.x, 0.0, new_velocity.z)
+		if flat.length() > 0.1 and _visual != null:
+			_visual.rotation.y = atan2(-flat.x, -flat.z)
+
+
 func respawn() -> void:
 	velocity = Vector3.ZERO
+	ballistic = false
+	charging = false
+	use_held = false
 	global_position = respawn_position
+	FX.burst(self, "poof", respawn_position)
+	SoundManager.world(self, "poof", respawn_position, 1.0, -4.0)
 	move_direction = Vector3.ZERO
 	jump_requested = false
 	use_requested = false
@@ -161,8 +211,10 @@ func _gather_local_input() -> void:
 	move_direction = _camera_relative_direction(input_dir)
 	if Input.is_action_just_pressed("jump"):
 		jump_requested = true
-	if InputMap.has_action("use_item") and Input.is_action_just_pressed("use_item"):
-		use_requested = true
+	if InputMap.has_action("use_item"):
+		if Input.is_action_just_pressed("use_item"):
+			use_requested = true
+		use_held = Input.is_action_pressed("use_item")
 
 
 func _camera_relative_direction(input_dir: Vector2) -> Vector3:

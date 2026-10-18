@@ -96,9 +96,10 @@ func _resolve_finish_area(end_z: float) -> void:
 		holder.name = "SceneryFinish"
 		add_child(holder)
 		_finish_area = CourseBuilder.add_area(holder, Vector3(16.0, 4.0, 1.0), Vector3(0.0, 2.0, end_z + 1.5), "FinishLine")
-		CourseBuilder.add_box(holder, Vector3(0.4, 4.0, 0.4), Vector3(-7.0, 2.0, end_z + 1.5), Color(0.9, 0.2, 0.5), "FinishPostL")
-		CourseBuilder.add_box(holder, Vector3(0.4, 4.0, 0.4), Vector3(7.0, 2.0, end_z + 1.5), Color(0.9, 0.2, 0.5), "FinishPostR")
-		CourseBuilder.add_sign(holder, "FINISH", Vector3(0.0, 5.0, end_z + 1.5), Color(1.0, 0.9, 0.2), 96)
+		CourseBuilder.add_box(holder, Vector3(0.4, 4.0, 0.4), Vector3(-7.0, 2.0, end_z + 1.5), Color(0.2, 0.2, 0.24), "FinishPostL")
+		CourseBuilder.add_box(holder, Vector3(0.4, 4.0, 0.4), Vector3(7.0, 2.0, end_z + 1.5), Color(0.2, 0.2, 0.24), "FinishPostR")
+		CourseBuilder.add_neon_strip(holder, Vector3(14.4, 0.2, 0.2), Vector3(0.0, 4.1, end_z + 1.5), CourseBuilder.accent(0), "FinishNeon")
+		CourseBuilder.add_sign(holder, "FINISH", Vector3(0.0, 5.0, end_z + 1.5), CourseBuilder.accent(0), 96)
 	if _finish_area == null:
 		push_error("FairgroundCourse: failed to create a finish area.")
 
@@ -111,23 +112,35 @@ func _build_environment() -> void:
 	var sun := DirectionalLight3D.new()
 	sun.name = "Sun"
 	sun.rotation_degrees = sun_rotation_degrees
-	sun.light_energy = 1.2
+	# Floodlight "moon": bright enough to race by, cool white.
+	sun.light_color = Color(0.82, 0.86, 1.0)
+	sun.light_energy = 1.05
 	sun.shadow_enabled = true
 	holder.add_child(sun)
 
+	# Dusk-into-night sky with an orange glow on the horizon.
 	var sky_mat := ProceduralSkyMaterial.new()
-	sky_mat.sky_top_color = Color(0.3, 0.55, 1.0)
-	sky_mat.sky_horizon_color = Color(0.8, 0.9, 1.0)
-	sky_mat.ground_bottom_color = Color(0.3, 0.5, 0.3)
-	sky_mat.ground_horizon_color = Color(0.7, 0.85, 0.7)
+	sky_mat.sky_top_color = Color(0.02, 0.03, 0.09)
+	sky_mat.sky_horizon_color = Color(0.45, 0.16, 0.12)
+	sky_mat.sky_curve = 0.08
+	sky_mat.ground_bottom_color = Color(0.01, 0.01, 0.02)
+	sky_mat.ground_horizon_color = Color(0.2, 0.08, 0.08)
+	sky_mat.sun_angle_max = 1.0
 	var sky := Sky.new()
 	sky.sky_material = sky_mat
 
 	var env := Environment.new()
 	env.background_mode = Environment.BG_SKY
 	env.sky = sky
-	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
-	env.ambient_light_energy = 0.8
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	env.ambient_light_color = Color(0.42, 0.45, 0.62)
+	env.ambient_light_energy = 0.9
+	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+	# Bloom so neon trims, lights and pickups glow.
+	env.glow_enabled = true
+	env.glow_intensity = 0.9
+	env.glow_bloom = 0.15
+	env.glow_hdr_threshold = 0.9
 	var world_env := WorldEnvironment.new()
 	world_env.name = "WorldEnvironment"
 	world_env.environment = env
@@ -140,10 +153,10 @@ func _build_ground() -> void:
 	holder.name = "SceneryGround"
 	add_child(holder)
 	var length := _total_length + 120.0
-	CourseBuilder.add_decor_box(holder, Vector3(300.0, 1.0, length), Vector3(0.0, -12.5, -_total_length * 0.5 + 10.0), Color(0.35, 0.65, 0.3), "Field")
+	CourseBuilder.add_decor_box(holder, Vector3(300.0, 1.0, length), Vector3(0.0, -12.5, -_total_length * 0.5 + 10.0), Color(0.05, 0.06, 0.07), "Field")
 	for i in range(10):
 		var z := -10.0 - float(i) * (_total_length / 10.0)
 		for side: float in [-1.0, 1.0]:
 			var x := side * (30.0 + float((i * 7) % 20))
-			CourseBuilder.add_decor_box(holder, Vector3(4.0, 3.0, 7.0), Vector3(x, -10.5, z), CourseBuilder.rainbow(i), "Wagon")
-			CourseBuilder.add_decor_box(holder, Vector3(4.4, 0.8, 7.4), Vector3(x, -8.8, z), Color.WHITE, "WagonRoof")
+			CourseBuilder.add_decor_box(holder, Vector3(4.0, 3.0, 7.0), Vector3(x, -10.5, z), Color(0.12, 0.12, 0.15), "Wagon")
+			CourseBuilder.add_neon_strip(holder, Vector3(4.4, 0.25, 7.4), Vector3(x, -8.9, z), CourseBuilder.accent(i), "WagonRoof")

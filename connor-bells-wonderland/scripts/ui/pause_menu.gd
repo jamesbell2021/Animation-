@@ -78,7 +78,7 @@ func _build() -> void:
 	title.text = "PAUSED" if pause_tree else "MENU"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", 36)
-	title.add_theme_color_override("font_color", Color(1.0, 0.85, 0.2))
+	title.add_theme_color_override("font_color", CourseBuilder.accent(0))
 	box.add_child(title)
 	box.add_child(_button("Resume", func() -> void: set_open(false)))
 	_music_button = _button("Music: On" if music_enabled else "Music: Off", _on_music_pressed)

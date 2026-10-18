@@ -12,9 +12,20 @@ var manager: ItemManager
 var kind: int = ItemKinds.Kind.NONE
 var uses: int = 0
 
+## True for the racer this screen belongs to: shows the catapult aim arc.
+var preview_owner: bool = false
+
 var _cooldown: float = 0.0
 var _icon: Node3D
 var _pop: float = 0.0
+var _charging: bool = false
+var _charge: float = 0.0
+var _charge_age: float = 0.0
+var _local_charge: float = 0.0
+var _dots: Array[MeshInstance3D] = []
+
+const AUTO_RELEASE := 2.5
+const ARC_DOTS := 16
 
 
 func _ready() -> void:
@@ -39,7 +50,17 @@ func give(new_kind: int) -> void:
 
 
 func clear() -> void:
+	_cancel_charge()
 	set_item(ItemKinds.Kind.NONE, 0)
+
+
+func is_charging() -> bool:
+	return _charging
+
+
+## Catapult pull-back, 0..1.
+func get_charge() -> float:
+	return _charge
 
 
 ## Sets what is held (host, or a client mirroring the host) and rebuilds the icon.
@@ -60,10 +81,19 @@ func _physics_process(delta: float) -> void:
 	if contestant == null:
 		return
 	_cooldown -= delta
+	if _charging and multiplayer.is_server():
+		_update_charge(delta)
 	if not contestant.use_requested:
 		return
 	contestant.use_requested = false
-	if not multiplayer.is_server() or manager == null or not can_use():
+	if not multiplayer.is_server() or manager == null or not can_use() or _charging:
+		return
+	if ItemKinds.mode_of(kind) == "launch":
+		_charging = true
+		_charge = 0.0
+		_charge_age = 0.0
+		contestant.charging = true
+		manager.set_charging(contestant, true)
 		return
 	var used_kind := kind
 	if manager.use_item(contestant, used_kind):
@@ -72,7 +102,37 @@ func _physics_process(delta: float) -> void:
 		set_item(used_kind, uses - 1)
 
 
+func _update_charge(delta: float) -> void:
+	if kind != ItemKinds.Kind.CATAPULT or not contestant.controls_enabled or contestant.is_stumbling():
+		_cancel_charge()
+		return
+	_charge_age += delta
+	var charge_time := float(ItemKinds.get_def(kind).get("charge_time", 1.0))
+	_charge = clampf(_charge_age / charge_time, 0.0, 1.0)
+	if contestant.use_held and _charge_age < AUTO_RELEASE:
+		return
+	var launched_charge := _charge
+	_charging = false
+	contestant.charging = false
+	manager.set_charging(contestant, false)
+	if manager.launch(contestant, launched_charge):
+		_cooldown = ItemKinds.cooldown_for(kind)
+		set_item(kind, uses - 1)
+
+
+func _cancel_charge() -> void:
+	if not _charging:
+		return
+	_charging = false
+	_charge = 0.0
+	if contestant != null:
+		contestant.charging = false
+	if manager != null:
+		manager.set_charging(contestant, false)
+
+
 func _process(delta: float) -> void:
+	_update_arc(delta)
 	if _icon == null:
 		return
 	_icon.rotation.y = wrapf(_icon.rotation.y + delta * 2.0, 0.0, TAU)
@@ -89,7 +149,7 @@ func _rebuild_icon() -> void:
 		return
 	_icon = Node3D.new()
 	_icon.name = "HeldItem"
-	_icon.position = Vector3(0.0, 2.45, 0.0)
+	_icon.position = Vector3(0.0, 2.0, 0.0)
 	contestant.add_child(_icon)
 	var colour := ItemKinds.colour_for(kind)
 	match kind:
@@ -127,3 +187,43 @@ func _ball(colour: Color, radius: float, pos: Vector3) -> void:
 	mi.mesh = sphere
 	mi.position = pos
 	_icon.add_child(mi)
+
+
+## The aim arc for the catapult, drawn only for the racer this screen belongs to.
+func _update_arc(delta: float) -> void:
+	var charge := -1.0
+	if preview_owner and kind == ItemKinds.Kind.CATAPULT:
+		if multiplayer.is_server():
+			charge = _charge if _charging else -1.0
+		elif InputMap.has_action("use_item") and Input.is_action_pressed("use_item"):
+			_local_charge = minf(_local_charge + delta / float(ItemKinds.get_def(kind).get("charge_time", 1.0)), 1.0)
+			charge = _local_charge
+	if charge < 0.0:
+		_local_charge = 0.0
+		for dot in _dots:
+			dot.visible = false
+		return
+	if _dots.is_empty():
+		var mat := CourseBuilder.make_neon_material(CourseBuilder.accent(0), 3.0)
+		var sphere := SphereMesh.new()
+		sphere.radius = 0.11
+		sphere.height = 0.22
+		sphere.radial_segments = 8
+		sphere.rings = 4
+		sphere.material = mat
+		for i in range(ARC_DOTS):
+			var dot := MeshInstance3D.new()
+			dot.mesh = sphere
+			dot.top_level = true
+			contestant.add_child(dot)
+			_dots.append(dot)
+	var def := ItemKinds.get_def(ItemKinds.Kind.CATAPULT)
+	var velocity := ItemManager.launch_velocity(contestant.get_facing(), charge, def)
+	var origin := contestant.global_position + Vector3.UP * 0.7
+	for i in range(_dots.size()):
+		var t := float(i + 1) * 0.09
+		var p := origin + velocity * t + Vector3.DOWN * 0.5 * contestant.gravity * t * t
+		_dots[i].global_position = p
+		_dots[i].visible = p.y > contestant.global_position.y - 6.0
+		var s := 0.6 + 0.6 * charge
+		_dots[i].scale = Vector3(s, s, s)

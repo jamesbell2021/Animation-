@@ -37,6 +37,7 @@ var _gap_jump: bool = false
 var _air_target: MovingPlatform
 var _box_target: ItemBox
 var _item_hold: float = 0.0
+var _launch_target: float = 0.0
 
 
 func setup(p_contestant: Contestant, p_navigation: BotNavigation, p_profile: Dictionary) -> void:
@@ -271,10 +272,17 @@ func _think_items(pos: Vector3, delta: float) -> void:
 		_item_hold = 0.0
 		return
 	_item_hold += delta
+	if holder.is_charging():
+		contestant.use_held = holder.get_charge() < _launch_target
+		return
+	contestant.use_held = false
 	if _item_hold < float(profile.get("item_delay", 1.2)) or not holder.can_use():
 		return
 	var def := ItemKinds.get_def(holder.kind)
 	var facing := contestant.get_facing()
+	if ItemKinds.mode_of(holder.kind) == "launch":
+		_think_catapult(pos, facing, def)
+		return
 	var want := false
 	match ItemKinds.mode_of(holder.kind):
 		"self":
@@ -290,6 +298,55 @@ func _think_items(pos: Vector3, delta: float) -> void:
 	if want or _item_hold > item_patience:
 		contestant.use_requested = true
 		_item_hold = 0.0
+
+
+## Catapult: aim at a rival 6-19 m ahead (or just fling forward after a while),
+## but only if there is solid ground where the launch would land.
+func _think_catapult(pos: Vector3, facing: Vector3, def: Dictionary) -> void:
+	if not contestant.is_on_floor():
+		return
+	var aim_distance := -1.0
+	for node in get_tree().get_nodes_in_group("contestants"):
+		var other := node as Contestant
+		if other == null or other == contestant:
+			continue
+		var offset := other.global_position - pos
+		if absf(offset.y) > 1.5:
+			continue
+		offset.y = 0.0
+		var dist := offset.length()
+		if dist < 6.0 or dist > 19.0 or offset.normalized().dot(facing) < 0.85:
+			continue
+		aim_distance = dist
+		break
+	if aim_distance < 0.0 and _item_hold > 12.0:
+		aim_distance = 30.0
+	if aim_distance < 0.0:
+		return
+	var best_charge := -1.0
+	var best_error := INF
+	for i in range(11):
+		var charge := float(i) / 10.0
+		var landing := pos + facing * _launch_distance(charge, def)
+		if not _ground_at(landing):
+			continue
+		var error := absf(_launch_distance(charge, def) - aim_distance)
+		if error < best_error:
+			best_error = error
+			best_charge = charge
+	if best_charge < 0.0:
+		return
+	_launch_target = best_charge
+	contestant.use_requested = true
+	contestant.use_held = true
+	_item_hold = 0.0
+
+
+## Flat distance a catapult launch of [param charge] travels before landing at the same height.
+func _launch_distance(charge: float, def: Dictionary) -> float:
+	var v := ItemManager.launch_velocity(Vector3.FORWARD, charge, def)
+	var flight := 2.0 * v.y / contestant.gravity
+	return Vector2(v.x, v.z).length() * flight
 
 
 ## Is another contestant between [param min_dist] and [param reach] away, roughly in

@@ -59,7 +59,7 @@ func _decorate_sides(section: CourseSection, index: int) -> void:
 		var x: float = item[0]
 		var z: float = item[1]
 		var pos: Vector3 = section.position + Vector3(x, 0.0, z)
-		var colour := CourseBuilder.rainbow(index * 2 + int(absf(x + z)))
+		var colour := CourseBuilder.accent(index * 2 + int(absf(x + z)))
 		match String(item[2]):
 			"wagon":
 				_add_wagon(pos, colour)
@@ -74,22 +74,22 @@ func _add_wagon(pos: Vector3, colour: Color) -> void:
 	w.name = "Wagon"
 	w.position = pos
 	add_child(w)
-	CourseBuilder.add_decor_box(w, Vector3(2.6, 2.2, 5.0), Vector3(0.0, 2.1, 0.0), colour, "Body")
+	CourseBuilder.add_decor_box(w, Vector3(2.6, 2.2, 5.0), Vector3(0.0, 2.1, 0.0), CourseBuilder.surface(colour), "Body")
 	CourseBuilder.add_decor_box(w, Vector3(2.0, 0.4, 4.6), Vector3(0.0, 0.9, 0.0), Color(0.35, 0.25, 0.15), "Chassis")
-	var roof := CourseBuilder.make_cylinder_mesh(1.45, 5.2, Color(0.97, 0.97, 0.95))
+	var roof := CourseBuilder.make_cylinder_mesh(1.45, 5.2, Color(0.1, 0.1, 0.12))
 	roof.rotation.x = PI * 0.5
 	roof.position = Vector3(0.0, 3.1, 0.0)
 	w.add_child(roof)
-	CourseBuilder.add_decor_box(w, Vector3(2.8, 0.12, 5.1), Vector3(0.0, 3.2, 0.0), Color(1.0, 0.8, 0.1), "Trim")
+	CourseBuilder.add_neon_strip(w, Vector3(2.8, 0.12, 5.1), Vector3(0.0, 3.2, 0.0), colour, "Trim")
 	for x: float in [-1.5, 1.5]:
 		for z: float in [-1.6, 1.6]:
-			var wheel := CourseBuilder.make_cylinder_mesh(0.55, 0.25, Color(1.0, 0.75, 0.1))
+			var wheel := CourseBuilder.make_cylinder_mesh(0.55, 0.25, Color(0.08, 0.08, 0.09))
 			wheel.rotation.z = PI * 0.5
 			wheel.position = Vector3(x, 0.55, z)
 			w.add_child(wheel)
 	for x: float in [-1.31, 1.31]:
 		for z: float in [-1.2, 1.2]:
-			CourseBuilder.add_decor_box(w, Vector3(0.05, 0.7, 0.7), Vector3(x, 2.4, z), Color(0.7, 0.9, 1.0), "Window")
+			CourseBuilder.add_decor_box(w, Vector3(0.05, 0.7, 0.7), Vector3(x, 2.4, z), Color(1.0, 0.75, 0.4), "Window")
 	CourseBuilder.add_decor_box(w, Vector3(1.0, 1.6, 0.06), Vector3(0.0, 1.9, -2.51), Color(0.3, 0.15, 0.1), "Door")
 	CourseBuilder.add_decor_box(w, Vector3(0.9, 0.15, 0.5), Vector3(0.0, 0.5, -2.8), Color(0.35, 0.25, 0.15), "Step")
 	CourseBuilder.add_decor_cylinder(w, 0.12, 0.8, Vector3(0.8, 3.9, -1.5), Color(0.1, 0.1, 0.1), "Chimney")
@@ -100,9 +100,9 @@ func _add_caravan(pos: Vector3, colour: Color) -> void:
 	c.name = "Caravan"
 	c.position = pos
 	add_child(c)
-	CourseBuilder.add_decor_box(c, Vector3(2.4, 2.0, 4.4), Vector3(0.0, 1.6, 0.0), Color(0.96, 0.96, 0.94), "Body")
-	CourseBuilder.add_decor_box(c, Vector3(2.45, 0.35, 4.45), Vector3(0.0, 1.5, 0.0), colour, "Stripe")
-	var roof := CourseBuilder.make_cylinder_mesh(1.25, 4.5, colour.lightened(0.4))
+	CourseBuilder.add_decor_box(c, Vector3(2.4, 2.0, 4.4), Vector3(0.0, 1.6, 0.0), Color(0.2, 0.21, 0.24), "Body")
+	CourseBuilder.add_neon_strip(c, Vector3(2.45, 0.15, 4.45), Vector3(0.0, 1.5, 0.0), colour, "Stripe")
+	var roof := CourseBuilder.make_cylinder_mesh(1.25, 4.5, Color(0.14, 0.14, 0.17))
 	roof.rotation.x = PI * 0.5
 	roof.position = Vector3(0.0, 2.6, 0.0)
 	c.add_child(roof)
@@ -125,7 +125,7 @@ func _add_light_strings(section: CourseSection) -> void:
 			var top := section.position + Vector3(x, 4.0, z)
 			CourseBuilder.add_decor_cylinder(self, 0.1, 4.0, top - Vector3(0.0, 2.0, 0.0), Color(0.3, 0.3, 0.35), "LightPole")
 			_bulb_transforms.append(Transform3D(Basis().scaled(Vector3(2.0, 2.0, 2.0)), top))
-			_bulb_colours.append(Color(1.0, 0.95, 0.6))
+			_bulb_colours.append(Color(1.0, 0.85, 0.6) * 2.0)
 			if previous != Vector3.INF:
 				_string_bulbs(previous, top)
 			previous = top
@@ -139,7 +139,7 @@ func _string_bulbs(from: Vector3, to: Vector3) -> void:
 		var p := from.lerp(to, t)
 		p.y -= sin(t * PI) * 0.5
 		_bulb_transforms.append(Transform3D(Basis(), p))
-		_bulb_colours.append(CourseBuilder.rainbow(i))
+		_bulb_colours.append(CourseBuilder.accent(i % 2) * 2.2)
 
 
 func _commit_bulbs() -> void:

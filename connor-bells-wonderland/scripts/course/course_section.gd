@@ -37,7 +37,7 @@ func add_floor(z_start: float, z_end: float, width: float, colour: Color, node_n
 	var length := absf(z_start - z_end)
 	var size := Vector3(width, thickness, length)
 	var pos := Vector3(x_centre, top_y - thickness * 0.5, (z_start + z_end) * 0.5)
-	return CourseBuilder.add_box(self, size, pos, colour, node_name)
+	return CourseBuilder.add_box(self, size, pos, CourseBuilder.surface(colour), node_name)
 
 
 ## Low walls on both sides of a floor strip so contestants are not knocked off too easily.
@@ -46,8 +46,11 @@ func add_side_rails(z_start: float, z_end: float, width: float, height: float = 
 	var z_mid := (z_start + z_end) * 0.5
 	var half := width * 0.5 - 0.15
 	var size := Vector3(0.3, height, length)
-	CourseBuilder.add_box(self, size, Vector3(x_centre - half, top_y + height * 0.5, z_mid), Color(0.95, 0.95, 0.95), "RailLeft")
-	CourseBuilder.add_box(self, size, Vector3(x_centre + half, top_y + height * 0.5, z_mid), Color(0.95, 0.95, 0.95), "RailRight")
+	var rail := Color(0.24, 0.25, 0.29)
+	var glow := CourseBuilder.accent(colour_index)
+	for side: float in [-1.0, 1.0]:
+		CourseBuilder.add_box(self, size, Vector3(x_centre + side * half, top_y + height * 0.5, z_mid), rail, "Rail")
+		CourseBuilder.add_neon_strip(self, Vector3(0.34, 0.06, length), Vector3(x_centre + side * half, top_y + height + 0.03, z_mid), glow, "RailNeon")
 
 
 ## A thin trigger strip across the course. Respawn is placed at the strip by default.
@@ -64,27 +67,28 @@ func add_checkpoint(local_pos: Vector3, local_respawn: Vector3 = Vector3.INF, wi
 
 ## Floating title above the section entrance.
 func add_title_sign(height: float = 7.0) -> void:
-	CourseBuilder.add_sign(self, section_title, Vector3(0.0, height, -2.0), CourseBuilder.rainbow(colour_index))
+	CourseBuilder.add_sign(self, section_title, Vector3(0.0, height, -2.0), CourseBuilder.accent(colour_index))
 
 
 ## Two posts and a crossbar, like a fairground gateway.
-func add_gateway(z: float, width: float, height: float = 4.5, colour: Color = Color(0.9, 0.2, 0.5)) -> void:
+func add_gateway(z: float, width: float, height: float = 4.5, colour: Color = Color(0.22, 0.23, 0.27)) -> void:
 	var half := width * 0.5
 	CourseBuilder.add_box(self, Vector3(0.4, height, 0.4), Vector3(-half, height * 0.5, z), colour, "GatePostL")
 	CourseBuilder.add_box(self, Vector3(0.4, height, 0.4), Vector3(half, height * 0.5, z), colour, "GatePostR")
-	CourseBuilder.add_decor_box(self, Vector3(width + 0.4, 0.6, 0.4), Vector3(0.0, height + 0.3, z), CourseBuilder.rainbow(colour_index + 2), "GateBar")
+	CourseBuilder.add_decor_box(self, Vector3(width + 0.4, 0.6, 0.4), Vector3(0.0, height + 0.3, z), Color(0.2, 0.21, 0.24), "GateBar")
+	CourseBuilder.add_neon_strip(self, Vector3(width + 0.4, 0.12, 0.44), Vector3(0.0, height + 0.05, z), CourseBuilder.accent(colour_index), "GateNeon")
 	CourseBuilder.add_bunting(self, Vector3(-half, height, z - 0.5), Vector3(half, height, z - 0.5), 10)
 
 
 ## Striped tent-style canopy (decorative) centred at pos.
 func add_tent(pos: Vector3, radius: float, height: float, colour: Color) -> void:
-	CourseBuilder.add_decor_cylinder(self, radius, 0.3, pos + Vector3(0.0, height, 0.0), Color.WHITE, "TentRim")
+	CourseBuilder.add_decor_cylinder(self, radius, 0.3, pos + Vector3(0.0, height, 0.0), Color(0.12, 0.12, 0.14), "TentRim")
 	var cone := MeshInstance3D.new()
 	var mesh := CylinderMesh.new()
 	mesh.top_radius = 0.1
 	mesh.bottom_radius = radius
 	mesh.height = height * 0.6
-	mesh.material = CourseBuilder.make_material(colour)
+	mesh.material = CourseBuilder.make_material(colour.darkened(0.45))
 	cone.mesh = mesh
 	cone.position = pos + Vector3(0.0, height + height * 0.3, 0.0)
 	cone.name = "TentCone"

@@ -14,6 +14,8 @@ var _item_swatch: ColorRect
 var _item_label: Label
 var _item_kind: int = -1
 var _item_uses: int = -1
+var _effects_label: Label
+var _overlay: SplatOverlay
 var _position_label: Label
 var _progress_label: Label
 var _countdown_label: Label
@@ -61,6 +63,29 @@ func set_item(kind: int, uses: int, hint: String = "") -> void:
 	var count := " x%d" % uses if uses > 1 else ""
 	var press := "   [%s]" % hint if not hint.is_empty() else ""
 	_item_label.text = "%s%s%s" % [ItemKinds.display_name(kind), count, press]
+
+
+## Active effects as [[name, seconds_left, colour], ...] shown under the item slot.
+func set_effects(effects: Array) -> void:
+	if effects.is_empty():
+		_effects_label.text = ""
+		return
+	var parts: PackedStringArray = []
+	for e: Array in effects:
+		parts.append("%s %.1fs" % [str(e[0]), float(e[1])])
+	_effects_label.text = "   ".join(parts)
+	var first: Array = effects[0]
+	_effects_label.add_theme_color_override("font_color", first[2])
+
+
+## Custard over the screen for [param seconds] (hit by a pie).
+func splat(seconds: float = 2.2) -> void:
+	_overlay.splat(seconds)
+
+
+## Quick full-screen flash (explosions, zaps, hard hits).
+func flash(colour: Color, strength: float = 0.45) -> void:
+	_overlay.flash(colour, strength)
 
 
 func set_position(rank: int, total: int) -> void:
@@ -150,7 +175,17 @@ func _build() -> void:
 	_item_label = _make_label(28, Color(1.0, 1.0, 1.0))
 	_item_box.add_child(_item_label)
 
-	_position_label = _make_label(44, Color(0.6, 1.0, 0.7))
+	_effects_label = _make_label(24, CourseBuilder.accent(1))
+	_effects_label.name = "EffectsLabel"
+	_effects_label.position = Vector2(20.0, 140.0)
+	add_child(_effects_label)
+
+	_overlay = SplatOverlay.new()
+	_overlay.name = "SplatOverlay"
+	add_child(_overlay)
+	move_child(_overlay, 0)
+
+	_position_label = _make_label(44, CourseBuilder.accent(1))
 	_position_label.name = "PositionLabel"
 	_position_label.anchor_left = 1.0
 	_position_label.anchor_right = 1.0
@@ -160,7 +195,7 @@ func _build() -> void:
 	_position_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	add_child(_position_label)
 
-	_progress_label = _make_label(24, Color(1.0, 0.95, 0.6))
+	_progress_label = _make_label(24, Color(0.85, 0.88, 0.95))
 	_progress_label.name = "ProgressLabel"
 	_progress_label.anchor_left = 1.0
 	_progress_label.anchor_right = 1.0
@@ -170,7 +205,7 @@ func _build() -> void:
 	_progress_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	add_child(_progress_label)
 
-	_countdown_label = _make_label(110, Color(1.0, 0.9, 0.2))
+	_countdown_label = _make_label(120, CourseBuilder.accent(0))
 	_countdown_label.name = "CountdownLabel"
 	_countdown_label.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
 	_countdown_label.grow_horizontal = Control.GROW_DIRECTION_BOTH
@@ -199,7 +234,7 @@ func _build() -> void:
 	_results_box.add_theme_constant_override("separation", 10)
 	_results_panel.add_child(_results_box)
 
-	var title := _make_label(44, Color(1.0, 0.85, 0.2))
+	var title := _make_label(44, CourseBuilder.accent(0))
 	title.name = "Title"
 	title.text = Branding.RESULTS_TITLE
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

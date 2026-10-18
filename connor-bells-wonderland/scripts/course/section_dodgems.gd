@@ -22,7 +22,7 @@ func _build_geometry() -> void:
 	_build_floor_stripes()
 	add_side_rails(0.0, -section_length, section_width, 1.0)
 	add_title_sign()
-	add_gateway(-1.0, section_width - 1.0, 5.0, CourseBuilder.rainbow(1))
+	add_gateway(-1.0, section_width - 1.0, 5.0, CourseBuilder.accent(1))
 	_build_ceiling()
 	_build_cross_cars()
 	_build_long_cars()
@@ -52,12 +52,12 @@ func _build_ceiling() -> void:
 	var i := 0
 	while z >= -section_length:
 		for side: float in [-1.0, 1.0]:
-			CourseBuilder.add_box(self, Vector3(0.3, CEILING_HEIGHT, 0.3), Vector3(side * half, CEILING_HEIGHT * 0.5, z), CourseBuilder.rainbow(i), "Post")
+			CourseBuilder.add_box(self, Vector3(0.3, CEILING_HEIGHT, 0.3), Vector3(side * half, CEILING_HEIGHT * 0.5, z), Color(0.22, 0.23, 0.27), "Post")
 			var lamp := MeshInstance3D.new()
 			var sphere := SphereMesh.new()
 			sphere.radius = 0.3
 			sphere.height = 0.6
-			sphere.material = CourseBuilder.make_material(CourseBuilder.rainbow(i + 3))
+			sphere.material = CourseBuilder.make_neon_material(CourseBuilder.accent(i % 2), 2.5)
 			lamp.mesh = sphere
 			lamp.position = Vector3(side * half, CEILING_HEIGHT + 0.3, z)
 			add_child(lamp)
@@ -75,7 +75,7 @@ func _build_cross_cars() -> void:
 		var start_x := -half if from_left else half
 		var travel := Vector3(half * 2.0, 0.0, 0.0) if from_left else Vector3(-half * 2.0, 0.0, 0.0)
 		var phase := fmod(float(i) * 0.37, 1.0)
-		PusherObstacle.create(self, Vector3(start_x, 0.0, z), travel, car_speed + float(i) * 0.3, CourseBuilder.rainbow(i), phase)
+		PusherObstacle.create(self, Vector3(start_x, 0.0, z), travel, car_speed + float(i) * 0.3, CourseBuilder.accent(i), phase)
 
 
 func _build_long_cars() -> void:
@@ -87,8 +87,8 @@ func _build_long_cars() -> void:
 func _build_booths() -> void:
 	for side: float in [-1.0, 1.0]:
 		var x := side * (section_width * 0.5 + 3.0)
-		CourseBuilder.add_decor_box(self, Vector3(3.0, 2.6, 2.2), Vector3(x, 1.3, -12.0), CourseBuilder.rainbow(4), "Booth")
+		CourseBuilder.add_decor_box(self, Vector3(3.0, 2.6, 2.2), Vector3(x, 1.3, -12.0), Color(0.16, 0.16, 0.2), "Booth")
 		CourseBuilder.add_decor_box(self, Vector3(3.4, 0.4, 2.6), Vector3(x, 2.8, -12.0), Color.WHITE, "BoothRoof")
-		CourseBuilder.add_sign(self, "TOKENS", Vector3(x, 3.6, -12.0), Color(1.0, 0.9, 0.2), 64)
-		CourseBuilder.add_decor_box(self, Vector3(2.4, 1.4, 2.0), Vector3(x, 0.7, -32.0), CourseBuilder.rainbow(0), "ParkedCar")
-		CourseBuilder.add_decor_box(self, Vector3(2.4, 1.4, 2.0), Vector3(x, 0.7, -35.0), CourseBuilder.rainbow(2), "ParkedCar")
+		CourseBuilder.add_sign(self, "TOKENS", Vector3(x, 3.6, -12.0), CourseBuilder.accent(1), 64)
+		CourseBuilder.add_decor_box(self, Vector3(2.4, 1.4, 2.0), Vector3(x, 0.7, -32.0), CourseBuilder.accent(0), "ParkedCar")
+		CourseBuilder.add_decor_box(self, Vector3(2.4, 1.4, 2.0), Vector3(x, 0.7, -35.0), CourseBuilder.accent(2), "ParkedCar")
