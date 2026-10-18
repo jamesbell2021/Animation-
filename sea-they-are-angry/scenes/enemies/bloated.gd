@@ -9,7 +9,7 @@ const BURST_PLAYER_DMG := 30
 const LIGHT_SLOW := 0.6
 const MAX_PULSE := 0.3
 const BURST_FX_TIME := 0.25
-const BODY_COLOR := Color(0.55, 0.65, 0.5)
+const BODY_COLOR := Color(0.50, 0.58, 0.46)
 const GLOW_COLOR := Color(0.8, 1.0, 0.6)
 const HIT_COLOR := Color(0.95, 0.95, 0.9)
 const LIT_COLOR := Color(0.9, 0.86, 0.62)
@@ -36,15 +36,51 @@ func _init() -> void:
 	mass = 2.0
 	reach = 3.5
 
+func _part_sphere(r: float, scale: Vector3, pos: Vector3, mat: Material) -> MeshInstance3D:
+	var mi := MeshInstance3D.new()
+	var m := SphereMesh.new()
+	m.radius = r
+	m.height = r * 2.0
+	m.radial_segments = 8
+	m.rings = 5
+	mi.mesh = m
+	mi.material_override = mat
+	mi.scale = scale
+	mi.position = pos
+	_visual.add_child(mi)
+	return mi
+
 func _build() -> void:
 	_visual = Node3D.new()
 	add_child(_visual)
-	var body := Geo.cyl(_visual, 0.55, 1.7, BODY_COLOR, Vector3(0.0, 0.85, 0.0), 0.45)
-	_body_mat = body.material_override
-	Geo.sphere(_visual, 0.32, Color(0.5, 0.58, 0.46), Vector3(0.0, 1.95, -0.05))
-	var arm := Geo.box(_visual, Vector3(0.16, 0.8, 0.16), Color(0.48, 0.56, 0.44), Vector3(0.58, 1.05, -0.1))
-	arm.rotation.z = deg_to_rad(12.0)
-	Geo.box(_visual, Vector3(0.14, 0.5, 0.14), Color(0.48, 0.56, 0.44), Vector3(-0.55, 1.25, 0.0))
+	_body_mat = Look.flat_mat(BODY_COLOR, 0.6)
+	var limb := Look.flat_mat(Color(0.42, 0.49, 0.38), 0.7)
+	var weed := Look.flat_mat(Color(0.12, 0.20, 0.10), 0.9)
+	# Swollen, hunched torso and a sagging belly.
+	_part_sphere(0.6, Vector3(1.0, 1.25, 0.9), Vector3(0.0, 1.0, 0.0), _body_mat)
+	_part_sphere(0.45, Vector3(1.0, 0.85, 1.0), Vector3(0.0, 0.72, -0.18), _body_mat)
+	# Head slumped forward, with two dim drowned-lantern eyes.
+	_part_sphere(0.27, Vector3(1.0, 0.9, 1.05), Vector3(0.0, 1.72, -0.28), limb)
+	var eye := Look.glow_mat(Color(0.85, 0.95, 0.45), 2.5)
+	_part_sphere(0.05, Vector3.ONE, Vector3(-0.1, 1.76, -0.52), eye)
+	_part_sphere(0.05, Vector3.ONE, Vector3(0.1, 1.76, -0.52), eye)
+	# Long arms hanging to the knees, stubby legs.
+	for side in [-1.0, 1.0]:
+		var arm := Geo.box(_visual, Vector3(0.16, 0.95, 0.16), Color.WHITE, Vector3(side * 0.62, 0.95, -0.12))
+		arm.material_override = limb
+		arm.rotation.z = side * deg_to_rad(10.0)
+		arm.rotation.x = deg_to_rad(-12.0)
+		var leg := Geo.cyl(_visual, 0.15, 0.5, Color.WHITE, Vector3(side * 0.24, 0.25, 0.0), 0.12)
+		leg.material_override = limb
+	# Strands of kelp and a few barnacles.
+	for i in 5:
+		var a := float(i) * 1.3
+		var strand := Geo.box(_visual, Vector3(0.05, 0.55, 0.02), Color.WHITE, Vector3(sin(a) * 0.5, 0.9 + float(i % 2) * 0.35, cos(a) * 0.45))
+		strand.material_override = weed
+		strand.rotation.y = a
+	for i in 6:
+		var a := float(i) * 1.05 + 0.4
+		_part_sphere(0.05, Vector3.ONE, Vector3(sin(a) * 0.55, 0.85 + float(i % 3) * 0.25, cos(a) * 0.48), Look.flat_mat(Color(0.75, 0.72, 0.64)))
 	# Shape bottom sits 0.05 above the body origin so it never snags the island rim.
 	Geo.cyl_shape(self, 0.5, 1.7, Vector3(0.0, 0.9, 0.0))
 

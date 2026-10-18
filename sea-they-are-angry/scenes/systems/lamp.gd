@@ -21,10 +21,12 @@ const AIM_SHARPNESS := 6.0
 const TILT_DEG := -30.0
 const BOOST_TIME := 30.0
 const BOOST_MULT := 1.3
-const ENERGY_SCALE := 3.0
+const ENERGY_SCALE := 5.0
 const GUTTER_ENERGY := 0.35
 const LOW_HP_FLICKER := 0.3
-const CONE_ALPHA := 0.12
+const CONE_INTENSITY := 0.09
+const FOG_ENERGY := 0.45
+const GLOW_RANGE := 5.0
 
 var lighthouse: Structure
 var state: int = State.OFF
@@ -37,7 +39,8 @@ var _pivot: Node3D
 var _light: SpotLight3D
 var _cone: MeshInstance3D
 var _cone_mesh: CylinderMesh
-var _cone_mat: StandardMaterial3D
+var _cone_mat: ShaderMaterial
+var _glow: OmniLight3D
 var _gutter_t := 0.0
 var _boost_t := 0.0
 var _flicker_t := 0.0
@@ -51,14 +54,18 @@ func _ready() -> void:
 	_light.light_color = Color(1.0, 0.8, 0.5)
 	_light.shadow_enabled = true
 	_light.spot_attenuation = 0.6
+	_light.light_volumetric_fog_energy = FOG_ENERGY
 	_pivot.add_child(_light)
+	_glow = OmniLight3D.new()
+	_glow.light_color = Color(1.0, 0.72, 0.4)
+	_glow.omni_range = GLOW_RANGE
+	_glow.light_volumetric_fog_energy = 2.0
+	add_child(_glow)
 	_cone_mesh = CylinderMesh.new()
 	_cone_mesh.top_radius = 0.05
-	_cone_mat = StandardMaterial3D.new()
-	_cone_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	_cone_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	_cone_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
-	_cone_mat.albedo_color = Color(1.0, 0.8, 0.4, CONE_ALPHA)
+	_cone_mat = ShaderMaterial.new()
+	_cone_mat.shader = load("res://shaders/beam.gdshader")
+	_cone_mat.set_shader_parameter("intensity", CONE_INTENSITY)
 	_cone = MeshInstance3D.new()
 	_cone.mesh = _cone_mesh
 	_cone.material_override = _cone_mat
@@ -185,7 +192,10 @@ func _flicker(delta: float) -> void:
 	if _boost_t > 0.0:
 		base *= BOOST_MULT
 	_light.light_energy = base * ENERGY_SCALE
-	_cone_mat.albedo_color.a = CONE_ALPHA * base
+	_glow.light_energy = base * 1.6
+	_cone_mat.set_shader_parameter("intensity", CONE_INTENSITY * base)
+	if lighthouse and lighthouse.has_method("set_lantern"):
+		lighthouse.set_lantern(base)
 
 func refuel_clean(units: float) -> void:
 	fuel = minf(FUEL_MAX, fuel + units)
@@ -215,6 +225,9 @@ func _set_state(s: int) -> void:
 func _update_visibility() -> void:
 	_light.visible = is_lit()
 	_cone.visible = is_lit()
+	_glow.visible = is_lit()
+	if lighthouse and lighthouse.has_method("set_lantern"):
+		lighthouse.set_lantern(1.0 if is_lit() else 0.0)
 
 func gutter_left() -> float:
 	if state != State.GUTTERING:

@@ -35,7 +35,8 @@ var _attack_t := 0.0
 func _ready() -> void:
 	add_to_group("enemies")
 	collision_layer = 8
-	collision_mask = 1 | 2 | 4
+	# No ground layer: creatures follow Terrain.height_at instead, so the beach slope never snags them.
+	collision_mask = 2 | 4
 	hp = max_hp
 	Cycle.phase_changed.connect(_on_phase_changed)
 	_build()
@@ -101,15 +102,19 @@ func face(dir: Vector3) -> void:
 
 # ---- shared states ----
 
+func ground_y() -> float:
+	return Terrain.height_at(global_position.x, global_position.z)
+
 func _enter_Emerge() -> void:
 	velocity = Vector3.ZERO
-	position.y = EMERGE_DEPTH
+	position.y = ground_y() + EMERGE_DEPTH
 
 func _tick_Emerge(_delta: float) -> void:
 	velocity = Vector3.ZERO
-	position.y = lerpf(EMERGE_DEPTH, 0.0, clampf(state_t / EMERGE_TIME, 0.0, 1.0))
+	var g := ground_y()
+	position.y = lerpf(g + EMERGE_DEPTH, g, clampf(state_t / EMERGE_TIME, 0.0, 1.0))
 	if state_t >= EMERGE_TIME:
-		position.y = 0.0
+		position.y = g
 		change_state(&"Approach")
 
 func _enter_Approach() -> void:
@@ -135,7 +140,7 @@ func _tick_Approach(_delta: float) -> void:
 	var dir := to.normalized()
 	face(dir)
 	velocity = dir * speed * speed_mult
-	position.y = 0.0
+	position.y = ground_y()
 
 func _enter_AttackFence() -> void:
 	_attack_t = 0.0
@@ -158,7 +163,7 @@ func _enter_Retreat() -> void:
 	collision_mask = 0
 	attack_target = null
 
-func _tick_Retreat(delta: float) -> void:
+func _tick_Retreat(_delta: float) -> void:
 	var away := Vector3(global_position.x, 0.0, global_position.z)
 	if away.length() < 0.01:
 		away = Vector3(1.0, 0.0, 0.0)
@@ -169,8 +174,8 @@ func _tick_Retreat(delta: float) -> void:
 	var dir := away.normalized()
 	face(dir)
 	velocity = dir * speed * RETREAT_MULT
-	if r > SHORE_RADIUS:
-		position.y = maxf(EMERGE_DEPTH * 2.0, position.y - SINK_RATE * delta * speed * RETREAT_MULT)
+	# Walk down the beach and keep sinking once past the shore.
+	position.y = ground_y() - maxf(0.0, r - SHORE_RADIUS) * SINK_RATE
 
 # ---- damage ----
 

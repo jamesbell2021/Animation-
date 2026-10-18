@@ -13,8 +13,12 @@ const SWING_TIME := 0.2
 const INTERACT_RANGE := 2.2
 const OPERATE_RANGE := 3.8
 const FALL_SPEED := -5.0
-const ISLAND_RADIUS := 13.5
+const ISLAND_RADIUS := 12.9
 const BODY_COLOR := Color(0.85, 0.65, 0.2)
+const MODEL_PATH := "res://art/characters/callum_keeper.glb"
+const HOOK_PATH := "res://art/props/boat_hook.glb"
+# The keeper GLBs are 2.05 m tall; scaled so the keeper stands about 1.75 m.
+const MODEL_SCALE := 0.85
 
 var hp := 100
 var max_hp := 100
@@ -34,15 +38,61 @@ func _ready() -> void:
 	add_to_group("player")
 	collision_layer = 2
 	collision_mask = 1 | 4 | 8
-	Geo.cyl(self, 0.35, 1.2, BODY_COLOR, Vector3(0.0, 0.6, 0.0))
-	Geo.cyl(self, 0.22, 0.32, Color(0.9, 0.75, 0.62), Vector3(0.0, 1.38, 0.0))
-	Geo.cyl(self, 0.25, 0.1, Color(0.15, 0.18, 0.3), Vector3(0.0, 1.57, 0.0))
 	_hook_pivot = Node3D.new()
 	_hook_pivot.position = Vector3(0.4, 0.9, 0.0)
 	add_child(_hook_pivot)
-	Geo.box(_hook_pivot, Vector3(0.06, 0.06, 1.6), Color(0.18, 0.15, 0.12), Vector3(0.0, 0.0, -0.6))
-	Geo.box(_hook_pivot, Vector3(0.06, 0.25, 0.06), Color(0.3, 0.3, 0.32), Vector3(0.0, -0.1, -1.4))
+	if not _build_model():
+		Geo.cyl(self, 0.35, 1.2, BODY_COLOR, Vector3(0.0, 0.6, 0.0))
+		Geo.cyl(self, 0.22, 0.32, Color(0.9, 0.75, 0.62), Vector3(0.0, 1.38, 0.0))
+		Geo.cyl(self, 0.25, 0.1, Color(0.15, 0.18, 0.3), Vector3(0.0, 1.57, 0.0))
+	if not _build_hook():
+		Geo.box(_hook_pivot, Vector3(0.06, 0.06, 1.6), Color(0.18, 0.15, 0.12), Vector3(0.0, 0.0, -0.6))
+		Geo.box(_hook_pivot, Vector3(0.06, 0.25, 0.06), Color(0.3, 0.3, 0.32), Vector3(0.0, -0.1, -1.4))
 	Geo.cyl_shape(self, 0.35, 1.6, Vector3(0.0, 0.8, 0.0))
+
+# Loads a Z-up, vertex-coloured GLB from art/ and stands it upright. Returns null if
+# the file is missing or not imported yet, so the primitive fallback is used.
+static func load_art(path: String) -> Node3D:
+	if not ResourceLoader.exists(path):
+		return null
+	var scene := load(path) as PackedScene
+	if scene == null:
+		return null
+	var node := scene.instantiate() as Node3D
+	if node == null:
+		return null
+	var mat := Look.vertex_mat(0.9)
+	var stack: Array[Node] = [node]
+	while not stack.is_empty():
+		var n: Node = stack.pop_back()
+		if n is MeshInstance3D:
+			n.material_override = mat
+		stack.append_array(n.get_children())
+	return node
+
+func _build_model() -> bool:
+	var m := load_art(MODEL_PATH)
+	if m == null:
+		return false
+	var holder := Node3D.new()
+	holder.name = "Model"
+	# Z-up to Y-up, then turn the model's front (-Y in the file) to face -Z, Godot's forward.
+	holder.rotation = Vector3(deg_to_rad(-90.0), PI, 0.0)
+	holder.scale = Vector3.ONE * MODEL_SCALE
+	holder.add_child(m)
+	add_child(holder)
+	return true
+
+func _build_hook() -> bool:
+	var h := load_art(HOOK_PATH)
+	if h == null:
+		return false
+	# The hook's shaft runs along +Z in the file; point it forward along -Z.
+	h.rotation.y = PI
+	h.position = Vector3(0.0, 0.0, 0.45)
+	h.scale = Vector3.ONE * 1.25
+	_hook_pivot.add_child(h)
+	return true
 
 func aim_yaw() -> float:
 	return atan2(-_aim.x, -_aim.z)

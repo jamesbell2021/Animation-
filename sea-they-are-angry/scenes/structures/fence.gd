@@ -1,7 +1,7 @@
 class_name Fence
 extends Structure
 
-const WOOD := Color(0.45, 0.33, 0.2)
+const WOOD := Color(0.40, 0.30, 0.20)
 const ROT := Color(0.2, 0.15, 0.1)
 const HEIGHT := 1.4
 const THICKNESS := 0.3
@@ -22,7 +22,12 @@ func _build() -> void:
 	var step := length / float(posts - 1)
 	for i in posts:
 		var x := -length * 0.5 + step * float(i)
-		_meshes.append(Geo.box(self, Vector3(0.18, 1.3, 0.18), WOOD, Vector3(x, 0.65, 0.0)))
+		var g := to_global(Vector3(x, 0.0, 0.0))
+		var dy := Terrain.height_at(g.x, g.z) - global_position.y
+		var h := 1.2 + 0.18 * float((i * 5) % 3) / 2.0
+		var post := Geo.box(self, Vector3(0.16, h, 0.16), WOOD, Vector3(x, h * 0.5 + dy - 0.05, 0.0))
+		post.rotation = Vector3(0.06 * float((i * 7) % 3 - 1), 0.0, 0.05 * float((i * 3) % 3 - 1))
+		_meshes.append(post)
 	_meshes.append(Geo.box(self, Vector3(length, 0.12, 0.08), WOOD, Vector3(0.0, 0.45, 0.0)))
 	_meshes.append(Geo.box(self, Vector3(length, 0.12, 0.08), WOOD, Vector3(0.0, 0.95, 0.0)))
 	for m in _meshes:
