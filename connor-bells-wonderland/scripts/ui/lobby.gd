@@ -13,6 +13,7 @@ var _bots_spin: SpinBox
 var _difficulty_option: OptionButton
 var _countdown_spin: SpinBox
 var _items_check: CheckButton
+var _mode_option: OptionButton
 var _start_button: Button
 var _ready_button: Button
 var _status: Label
@@ -37,8 +38,10 @@ func _ready() -> void:
 
 
 func _build() -> void:
+	add_child(MenuBackdrop.new())
 	var bg := ColorRect.new()
-	bg.color = Color(0.04, 0.045, 0.07)
+	bg.color = Color(0.0, 0.0, 0.03, 0.55)
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
 	var panel := PanelContainer.new()
@@ -74,6 +77,12 @@ func _build() -> void:
 	right.custom_minimum_size = Vector2(340.0, 0.0)
 	right.add_theme_constant_override("separation", 10)
 	columns.add_child(right)
+	_mode_option = OptionButton.new()
+	_mode_option.add_item("Tower Race", 0)
+	_mode_option.add_item("Paintball Battle", 1)
+	_mode_option.disabled = not _is_host
+	_mode_option.item_selected.connect(func(_i: int) -> void: _push_settings())
+	right.add_child(_row("Mode", _mode_option))
 	_sections_spin = _spin(1, 6, 6)
 	right.add_child(_row("Sections", _sections_spin))
 	_bots_spin = _spin(0, 7, 3)
@@ -172,6 +181,7 @@ func _apply_settings(settings: Dictionary) -> void:
 	_difficulty_option.selected = clampi(int(settings.get("difficulty", 1)), 0, 2)
 	_countdown_spin.value = int(settings.get("countdown", 3))
 	_items_check.button_pressed = bool(settings.get("items", true))
+	_mode_option.selected = 1 if str(settings.get("mode", "race")) == "paintball" else 0
 	_updating = false
 
 
@@ -184,6 +194,7 @@ func _push_settings() -> void:
 		"difficulty": _difficulty_option.selected,
 		"countdown": int(_countdown_spin.value),
 		"items": _items_check.button_pressed,
+		"mode": "paintball" if _mode_option.selected == 1 else "race",
 	})
 
 

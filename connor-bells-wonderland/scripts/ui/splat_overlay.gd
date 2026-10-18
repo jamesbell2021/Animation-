@@ -7,6 +7,7 @@ var _blobs: Array = []
 var _splat_left: float = 0.0
 var _splat_total: float = 1.0
 var _flash_colour: Color = Color(1.0, 1.0, 1.0, 0.0)
+var _paint: Color = Color(1.0, 0.86, 0.35)
 
 
 func _ready() -> void:
@@ -14,12 +15,14 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 
-func splat(seconds: float) -> void:
+## Splats the screen for [param seconds]; custard yellow unless [param colour] is given.
+func splat(seconds: float, colour: Color = Color(1.0, 0.86, 0.35), blob_count: int = 9) -> void:
+	_paint = colour
 	_splat_total = seconds
 	_splat_left = seconds
 	_blobs.clear()
 	var area := size if size.x > 0.0 else Vector2(1280.0, 720.0)
-	for i in range(9):
+	for i in range(blob_count):
 		var centre := Vector2(randf_range(0.1, 0.9) * area.x, randf_range(0.1, 0.85) * area.y)
 		var radius := randf_range(0.07, 0.16) * area.y
 		var drips: Array = []
@@ -53,8 +56,8 @@ func _draw() -> void:
 		return
 	var alpha := clampf(_splat_left / (_splat_total * 0.4), 0.0, 1.0) * 0.93
 	var slide := (1.0 - _splat_left / _splat_total) * 40.0
-	var custard := Color(1.0, 0.86, 0.35, alpha)
-	var crust := Color(0.85, 0.65, 0.2, alpha)
+	var custard := Color(_paint.r, _paint.g, _paint.b, alpha)
+	var crust := Color(_paint.r * 0.8, _paint.g * 0.75, _paint.b * 0.6, alpha)
 	for blob in _blobs:
 		var centre: Vector2 = blob[0] + Vector2(0.0, slide)
 		var radius: float = blob[1]

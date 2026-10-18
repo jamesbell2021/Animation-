@@ -516,8 +516,15 @@ func _play_fx(user_name: String, kind: int, origin: Vector3, dir: Vector3) -> vo
 			FX.ring(self, origin, 2.0, CourseBuilder.accent(0))
 			SoundManager.world(self, "twang", origin, 1.0, 2.0)
 		ItemKinds.Kind.SWORD:
-			_swoosh(origin, dir, ItemKinds.colour_for(kind), 2.2)
-			SoundManager.world(self, "swish", origin)
+			var user := _find(user_name)
+			if user != null:
+				SwordSwipe.spawn(user, dir, ItemKinds.colour_for(kind))
+				var visuals := user.get_visuals()
+				if visuals != null:
+					visuals.swing_arm()
+			else:
+				_swoosh(origin, dir, ItemKinds.colour_for(kind), 2.2)
+			SoundManager.world(self, "slash", origin, randf_range(0.9, 1.1), 2.0)
 		ItemKinds.Kind.ZAPPER:
 			_zap(origin, dir, float(ItemKinds.get_def(kind).get("range", 3.5)))
 			SoundManager.world(self, "zap", origin)

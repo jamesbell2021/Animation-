@@ -4,9 +4,11 @@
 8 contestants: you, friends on the same Wi-Fi, and AI leprechauns. Six fairground
 sections end at Connor's Crown on top of the Grand Finale Tower.
 
-It's a neon night fair: a dark steel course lit by orange, cyan, crimson and lime
-light strips, with a disco soundtrack, particle effects and sound on every jump,
-hit, pickup and item. Everything (course, characters, HUD, menus, music, sound
+It's a neon night fair under a starry sky with a big moon, shooting stars and
+distant fireworks, and Belfast on the horizon: Cave Hill and the Harland & Wolff
+cranes. The course is dark steel lit by orange, cyan, crimson and lime light
+strips, with a pumping fairground dance soundtrack and particle effects and sound
+on every jump, hit, pickup and item. There's also a **Paintball Battle** mode. Everything (course, characters, HUD, menus, music, sound
 effects and particles) is built in code, so the project has no art or audio files.
 
 ## Run it
@@ -31,10 +33,18 @@ declared`. To do it by hand, run `godot --path . --import` once (and again after
 | Move | WASD or arrow keys | Left half of the screen (joystick appears under your thumb) |
 | Jump | Space | Right half of the screen |
 | Use item | E or F (hold for the Catapult) | USE button above JUMP (hold for the Catapult) |
+| Fire paintballs (Paintball Battle) | Hold E or F | Hold USE |
 | Pause / menu | MENU button | MENU button or Android Back |
 
 To try the touch controls on a PC, tick **Force Touch Controls** on the `Main` node in
 `scenes/main/main.tscn`, or enable *Project Settings → Input Devices → Emulate Touch From Mouse*.
+
+## Start screen
+
+The menu sits over a live night fair: contestants dance on a flashing dance floor
+under a disco ball in time with the music, a Ferris wheel turns, searchlights
+sweep, rockets go up behind the big top and shooting stars cross the sky. Pick
+**Tower Race** or **Paintball Battle** under **Mode**.
 
 ## The course
 
@@ -48,6 +58,28 @@ To try the touch controls on a PC, tick **Force Touch Controls** on the `Main` n
 | 6 | The Grand Finale Tower | Spiral ledges, sweeping arms, Connor's Crown |
 
 Coins are worth 1 gold and shamrocks 5. Falling returns you to your last checkpoint.
+
+When the race ends, a fireworks display goes up over the winner, a drumroll plays,
+and a present above their head bursts open with their prize, picked at random from
+40 ridiculous ones ("PLAYER, YOU WON... A BRAND NEW TOASTER!", a wheelie bin cover,
+a llama called Gary...). Everyone in a Wi-Fi race sees the same prize.
+
+## Paintball Battle
+
+Everyone starts round the edge of a walled, floodlit arena full of crates, bunkers
+and low walls, with 5 lives and 12 paintballs. Hold the use button to fire: it
+aims for a rival roughly in front of you that you can see. Each hit knocks a life
+off and leaves your paint on them (and the screen goes your colour for whoever got
+hit); after a hit you flash and can't be hit for a moment. Paint comes back slowly
+on its own, or grab a glowing PAINT crate for a full refill. Lose all 5 lives and
+you're out and watch the rest. After 2:30 it's sudden death (one life each), and
+at 4:00 whoever has the most lives left wins.
+
+The last one standing wins **a year's Fruit of the Month subscription: free fruit
+delivered to your home every month!** (it's a joke prize), with the same fireworks
+and present. Bots fight too: they keep their distance, strafe, stop to aim and
+shoot, and go for paint crates when they run low. Paintball Battle works over
+Wi-Fi as well; the host picks the mode in the lobby.
 
 ## Fairground Mayhem items
 
@@ -69,7 +101,7 @@ particles, a sound and, if it's you, a screen flash and camera shake.
 | Slippery Oil | Trap that stays 12 s: everyone who crosses it slides about for 4 s |
 | Big Fatty Cake | Trap: the victim goes big, round and slow for 6 s |
 | Shrink Potion | Trap: the victim goes tiny for 6 s |
-| Plastic Sword | 3 swings: whacks racers just in front of you |
+| Plastic Sword | 3 swings: a giant sword sweeps across in front of you with a glowing trail and whacks whoever it catches |
 | Zapper | 3 zaps: stuns racers in front of you, and the bolt jumps to one more rival standing next to each victim |
 | Balloon | 2 uses: racers in front float up helplessly, then drop |
 | Custard Pie | 2 throws: lobbed about 9 m ahead; whoever it hits gets custard all over their screen |
@@ -110,15 +142,17 @@ set separately.
 ```
 scenes/          five tiny scenes, each just a root node with a script
 scripts/game/    game manager, race rules, checkpoints, ranking, roster, quality tiers, branding
-scripts/course/  course builder, section base class, the six sections, scenery and coins
+scripts/course/  course builder, section base class, the six sections, scenery and coins,
+                 night sky (stars, moon, shooting stars) and the Belfast skyline
 scripts/obstacles/ spinners, moving platforms, dodgem cars, bounce pads
 scripts/player/  contestant, leprechaun model, stumbles, camera, touch controls, status effects, item slot
 scripts/ai/      bot personalities, route, driver
 scripts/network/ ENet lobby (autoload), per-contestant sync, race event sync
-scripts/ui/      HUD, custard splat overlay, main menu, lobby, pause menu
+scripts/ui/      HUD, splat overlay, main menu, lobby, pause menu, the live 3D menu backdrop
 scripts/items/   coins, item boxes, item rules, traps, custard pie
-scripts/fx/      particle bursts, trails and shock rings
-scripts/audio/   synthesised sound effects and disco music
+scripts/paintball/ Paintball Battle: arena, rules, paintballs, paint splats, crates, bots
+scripts/fx/      particles, fireworks shows, the prize present, the sword swipe
+scripts/audio/   synthesised sound effects and hard dance music
 tools/           headless bot race and item tests (not exported)
 studio/          3BL_Indie splash (first autoload) and credits screen, shared with the other games
 ```
@@ -145,4 +179,12 @@ magnet stealing gold, gold theft on hits and the shield reflecting an attack):
 
 ```
 godot --headless --path . --fixed-fps 60 -s res://tools/item_test.gd
+```
+
+A Paintball Battle with 7 bots (and an idle player, who is usually first out), then
+Play Again and a second battle. It prints who knocks out whom, the results, and how
+many shots, hits and crate refills there were. Battles usually last 30–55 s:
+
+```
+godot --headless --path . --fixed-fps 60 -s res://tools/paintball_test.gd -- diff=1
 ```

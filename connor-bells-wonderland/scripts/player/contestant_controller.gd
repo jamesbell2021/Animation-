@@ -146,6 +146,10 @@ func _physics_process(delta: float) -> void:
 
 
 ## Horizontal unit vector the contestant is facing.
+func get_visuals() -> ContestantVisuals:
+	return _visual
+
+
 func get_facing() -> Vector3:
 	var yaw := _visual.rotation.y if _visual != null else 0.0
 	return Vector3(-sin(yaw), 0.0, -cos(yaw))

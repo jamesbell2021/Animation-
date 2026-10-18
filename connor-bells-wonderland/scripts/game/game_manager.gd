@@ -38,6 +38,9 @@ var decorator: SceneryDecorator
 var navigation: BotNavigation
 var items: ItemManager
 var sync: RaceSync
+## Paintball Battle mode (instead of a race) when the "mode" setting is "paintball".
+var paintball: PaintballManager
+var battle: bool = false
 var touch: TouchControls
 var pause_menu: PauseMenu
 var player: Contestant
@@ -47,6 +50,9 @@ var _contestants: Array[Contestant] = []
 var _spawn_points: Array[Vector3] = []
 var _coins: Dictionary = {}
 var _ranking_timer: float = 0.0
+var _fireworks: FireworksShow
+var _present: PrizePresent
+var _finale_token: int = 0
 
 
 func _ready() -> void:
@@ -54,15 +60,24 @@ func _ready() -> void:
 	if _net != null and bool(_net.get("is_multiplayer_session")):
 		mode = Mode.HOST if _net.is_host() else Mode.CLIENT
 	var settings := _resolve_settings()
+	battle = str(settings.get("mode", "race")) == "paintball"
 
-	course = _instantiate_scene(COURSE_SCENE_PATH) as FairgroundCourse
+	if battle:
+		course = PaintballArena.new()
+	else:
+		course = _instantiate_scene(COURSE_SCENE_PATH) as FairgroundCourse
 	if course == null:
 		course = FairgroundCourse.new()
 	course.name = "Course"
 	add_child(course)
 	course.enabled_sections = int(settings["sections"])
 	course.build()
-	if scenery_enabled:
+	if battle:
+		paintball = PaintballManager.new()
+		paintball.name = "PaintballManager"
+		add_child(paintball)
+		paintball.setup(self, course as PaintballArena)
+	if scenery_enabled and not battle:
 		decorator = SceneryDecorator.new()
 		course.add_child(decorator)
 		decorator.decorate(course, coins_enabled)
@@ -70,11 +85,12 @@ func _ready() -> void:
 			decorator.coin_collected.connect(_on_coin_collected)
 	_spawn_points = course.get_spawn_positions(max_contestants)
 	navigation = BotNavigation.new()
-	navigation.build(course)
+	if not battle:
+		navigation.build(course)
 	items = ItemManager.new()
 	items.name = "ItemManager"
 	add_child(items)
-	items.setup(self, course, bool(settings["items"]))
+	items.setup(self, course, bool(settings["items"]) and not battle)
 	var tier := MobileSettings.detect() if quality < 0 else (quality as MobileSettings.Tier)
 	MobileSettings.apply(tier, get_viewport(), self)
 
@@ -85,7 +101,10 @@ func _ready() -> void:
 		race_manager.ranking_provider = func() -> Array: return RaceRanking.compute(_contestants, race_manager, course.checkpoint_manager)
 		add_child(race_manager)
 		var finish := course.get_finish_area()
-		if finish == null:
+		if battle:
+			race_manager.max_race_seconds = PaintballManager.TIME_LIMIT + 30.0
+			race_manager.needs_finish_area = false
+		elif finish == null:
 			push_error("GameManager: course has no finish area.")
 		else:
 			race_manager.register_finish_area(finish)
@@ -119,6 +138,16 @@ func _ready() -> void:
 	if player != null:
 		camera.set_target(player)
 		_connect_player_sounds(player)
+	if battle:
+		camera.distance = 10.0
+		camera.height = 8.5
+		paintball.splatted.connect(_on_paint_splatted)
+		paintball.eliminated.connect(_on_paint_eliminated)
+		paintball.announcement.connect(func(text: String) -> void:
+			hud.show_message(text, 3.0)
+			sound.play("airhorn", 1.0, -4.0))
+		if mode != Mode.CLIENT:
+			paintball.battle_over.connect(func(results: Array) -> void: race_manager.end_with_results(results))
 	_connect_signals()
 	items.hit.connect(_on_item_hit)
 	items.item_fx.connect(_on_item_fx)
@@ -142,6 +171,11 @@ func _process(delta: float) -> void:
 	if hud == null or player == null:
 		return
 	hud.set_time(sync.race_time if mode == Mode.CLIENT else race_manager.race_time)
+	if battle:
+		var me := str(player.name)
+		hud.set_battle(paintball.get_lives(me), paintball.get_ammo(me), PaintballManager.MAX_AMMO, paintball.get_hits(me), paintball.alive_count(), _contestants.size(), paintball.is_alive(me))
+		touch.set_item_state(paintball.is_alive(me), PaintballManager.paint_colour(player))
+		return
 	hud.set_coins(int(_coins.get(str(player.name), 0)))
 	var cm := course.checkpoint_manager
 	if cm != null:
@@ -170,7 +204,7 @@ func _process(delta: float) -> void:
 
 
 func _resolve_settings() -> Dictionary:
-	var s := {"sections": enabled_sections, "bots": bot_count, "difficulty": int(bot_difficulty), "countdown": countdown_seconds, "items": items_enabled}
+	var s := {"sections": enabled_sections, "bots": bot_count, "difficulty": int(bot_difficulty), "countdown": countdown_seconds, "items": items_enabled, "mode": "race"}
 	if _net != null:
 		var shared: Dictionary = _net.get("settings")
 		for key in s.keys():
@@ -187,7 +221,12 @@ func _spawn_roster(roster: Array[Dictionary]) -> void:
 		var c := spawn_contestant(str(entry["name"]), entry["colour"], local, entry["hat"])
 		if c == null:
 			continue
-		if bool(entry["bot"]) and mode != Mode.CLIENT:
+		if bool(entry["bot"]) and mode != Mode.CLIENT and battle:
+			var gunner := PaintballBot.new()
+			gunner.name = "PaintballBot"
+			c.add_child(gunner)
+			gunner.setup(c, paintball, int(_resolve_settings()["difficulty"]))
+		elif bool(entry["bot"]) and mode != Mode.CLIENT:
 			var brain := BotController.new()
 			brain.name = "BotController"
 			c.add_child(brain)
@@ -226,6 +265,8 @@ func spawn_contestant(contestant_name: String, colour: Color, local: bool, hat: 
 	contestant.add_child(holder)
 	if items != null:
 		items.register_contestant(contestant)
+	if paintball != null:
+		paintball.register(contestant)
 	_contestants.append(contestant)
 	if race_manager != null:
 		race_manager.register_contestant(contestant)
@@ -267,6 +308,15 @@ func _reset_local_state() -> void:
 	hud.hide_results()
 	hud.clear_message()
 	camera.set_orbit(false)
+	if player != null:
+		camera.set_target(player)
+	_finale_token += 1
+	if paintball != null:
+		paintball.reset()
+	if _fireworks != null:
+		_fireworks.stop_show()
+	if is_instance_valid(_present):
+		_present.queue_free()
 	_coins.clear()
 	if decorator != null:
 		decorator.reset_coins()
@@ -337,6 +387,11 @@ func on_countdown_tick(seconds_left: int) -> void:
 
 
 func on_race_started() -> void:
+	if battle:
+		paintball.begin()
+		hud.show_message("PAINTBALL BATTLE! Last one standing wins!", 2.5)
+		sound.play("airhorn", 1.0, -3.0)
+		return
 	hud.show_message("Race to %s's Crown!" % Branding.HERO_NAME, 2.0)
 
 
@@ -442,5 +497,93 @@ func _on_gold_stolen(from_name: String, to_name: String, amount: int) -> void:
 func on_race_finished(results: Array) -> void:
 	for entry in results:
 		entry["coins"] = int(_coins.get(str(entry.get("name", "")), 0))
-	hud.show_results(results)
 	camera.set_orbit(true)
+	if results.is_empty():
+		hud.show_results(results)
+		return
+	_start_finale(results)
+
+
+## Everyone's done: a big fireworks display over the winner, a drumroll, and the
+## winner's ridiculous prize bursts out of a present. Then the results.
+func _start_finale(results: Array) -> void:
+	_finale_token += 1
+	var token := _finale_token
+	var top: Dictionary = results[0]
+	var winner := find_contestant(str(top.get("name", "")))
+	var focus: Node3D = winner if winner != null else player
+	var display := winner.display_name if winner != null else str(top.get("name", "Someone"))
+	if focus != null:
+		camera.set_finale(focus)
+		if _fireworks == null:
+			_fireworks = FireworksShow.new()
+			_fireworks.name = "FinaleFireworks"
+			_fireworks.spread = 12.0
+			_fireworks.height = Vector2(18.0, 30.0)
+			add_child(_fireworks)
+		_fireworks.global_position = focus.global_position
+		_fireworks.start_show(15.0, 3.0)
+		_present = PrizePresent.new()
+		_present.name = "PrizePresent"
+		_present.target = focus
+		add_child(_present)
+	var prize := Prizes.pick("%s|%.2f|%d" % [str(top.get("name", "")), float(top.get("time", 0.0)), results.size()])
+	var subline := ""
+	var lead := "%s WON..." % display.to_upper()
+	if winner != null and winner == player:
+		lead = "%s, YOU WON..." % display.to_upper()
+	if battle:
+		prize = Prizes.BATTLE_PRIZE
+		subline = Prizes.BATTLE_PRIZE_DETAIL
+		lead = "LAST ONE STANDING: %s! %s" % [display.to_upper(), "YOU WIN..." if winner == player else "THEY WIN..."]
+	elif not bool(top.get("finished", false)):
+		lead = "NOBODY FINISHED! BOOBY PRIZE FOR %s..." % display.to_upper()
+	sound.play("drumroll")
+	hud.set_results_title("PAINTBALL BATTLE RESULTS" if battle else Branding.RESULTS_TITLE)
+	hud.show_prize(lead, prize + "!", 2.2, subline, func() -> void:
+		if is_instance_valid(_present):
+			_present.pop()
+		sound.play("tada")
+		sound.play("airhorn", 1.0, -2.0)
+		sound.play("cheer", 1.0, -2.0)
+		camera.add_shake(0.35))
+	get_tree().create_timer(6.5, false).timeout.connect(func() -> void:
+		if token != _finale_token:
+			return
+		hud.hide_prize_banner()
+		hud.show_results(results))
+
+
+func _on_paint_splatted(victim_name: String, shooter_name: String, lives: int) -> void:
+	if player == null:
+		return
+	var me := str(player.name)
+	if victim_name == me:
+		var shooter := find_contestant(shooter_name)
+		hud.splat(1.2, PaintballManager.paint_colour(shooter), 4)
+		camera.add_shake(0.45)
+		if lives > 0:
+			hud.show_message("%s splatted you! %d %s left" % [shooter_name, lives, "life" if lives == 1 else "lives"], 1.5)
+	elif shooter_name == me:
+		sound.play("coin", 1.4, -6.0)
+		hud.show_message("Splat! You got %s" % victim_name, 1.0)
+
+
+func _on_paint_eliminated(victim_name: String, shooter_name: String, remaining: int) -> void:
+	if player == null:
+		return
+	var me := str(player.name)
+	if victim_name == me:
+		hud.show_message("YOU'RE OUT! %s got you. Spectating..." % shooter_name, 3.0)
+		sound.play("fall")
+		var alive := paintball.alive_contestants()
+		if not alive.is_empty():
+			camera.set_target(alive[0])
+	else:
+		var who := "You" if shooter_name == me else shooter_name
+		hud.show_message("%s knocked out %s! %d left" % [who, victim_name, remaining], 2.0)
+		# Keep spectating someone who's still in.
+		if not paintball.is_alive(me) and camera.get_target() == find_contestant(victim_name):
+			var alive := paintball.alive_contestants()
+			if not alive.is_empty():
+				camera.set_target(alive[0])

@@ -6,6 +6,8 @@ const GAME_SCENE := "res://scenes/main/main.tscn"
 const LOBBY_SCENE := "res://scenes/menus/lobby.tscn"
 const COLOUR_NAMES: Array[String] = CourseBuilder.PLAYER_COLOUR_NAMES
 const DIFFICULTY_NAMES: Array[String] = ["Easy", "Medium", "Hard"]
+const MODES: Array[String] = ["race", "paintball"]
+const MODE_NAMES: Array[String] = ["Tower Race", "Paintball Battle"]
 
 var _net: Node
 var _name_edit: LineEdit
@@ -14,9 +16,28 @@ var _sections_spin: SpinBox
 var _bots_spin: SpinBox
 var _difficulty_option: OptionButton
 var _items_check: CheckButton
+var _mode_option: OptionButton
 var _ip_edit: LineEdit
 var _status: Label
 var _buttons: Array[Button] = []
+var _tip: Label
+var _play_button: Button
+var _credits_button: Button
+var _tip_left: float = 0.0
+var _tip_index: int = -1
+
+const TIPS: Array[String] = [
+	"Hold E to aim the Catapult, let go to launch yourself",
+	"Every item hit steals 1 gold off your victim",
+	"The Giant Magnet drags rivals in and nicks their gold",
+	"Shield Bubble bounces attacks back at whoever threw them",
+	"Rocket Boots: barge straight through the pack",
+	"Mega Bomb blasts everyone near you off their feet",
+	"Win the race to win a ridiculous prize",
+	"Falling behind? The back of the pack gets the best items",
+	"Paintball Battle: last one standing wins Fruit of the Month!",
+	"Paintball: hold E to fire, grab PAINT crates to reload",
+]
 
 
 func _ready() -> void:
@@ -36,56 +57,62 @@ func _ready() -> void:
 		_bots_spin.value = int(_net.settings.get("bots", 3))
 		_difficulty_option.selected = clampi(int(_net.settings.get("difficulty", 1)), 0, 2)
 		_items_check.button_pressed = bool(_net.settings.get("items", true))
+		_mode_option.selected = maxi(MODES.find(str(_net.settings.get("mode", "race"))), 0)
+	_update_mode_rows()
 
 
 func _build() -> void:
-	var bg := ColorRect.new()
-	bg.color = Color(0.04, 0.045, 0.07)
-	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(bg)
-	for i in range(7):
-		var stripe := ColorRect.new()
-		stripe.color = CourseBuilder.accent(i % 2) if i % 3 != 2 else Color(0.04, 0.045, 0.07)
-		stripe.anchor_right = 1.0
-		stripe.offset_top = 10.0 + float(i) * 8.0
-		stripe.offset_bottom = 18.0 + float(i) * 8.0
-		add_child(stripe)
+	add_child(MenuBackdrop.new())
+	# Darken the left side so the menu reads clearly over the fair.
+	var shade := TextureRect.new()
+	var gradient := Gradient.new()
+	gradient.offsets = PackedFloat32Array([0.0, 0.42, 0.62])
+	gradient.colors = PackedColorArray([Color(0.0, 0.0, 0.02, 0.75), Color(0.0, 0.0, 0.02, 0.55), Color(0.0, 0.0, 0.02, 0.0)])
+	var shade_tex := GradientTexture2D.new()
+	shade_tex.gradient = gradient
+	shade_tex.width = 256
+	shade_tex.height = 4
+	shade.texture = shade_tex
+	shade.stretch_mode = TextureRect.STRETCH_SCALE
+	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(shade)
+
+	var title := WaveTitle.new()
+	title.text = Branding.title_upper()
+	title.font_size = 62
+	title.glow_colour = CourseBuilder.accent(0)
+	title.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	title.offset_top = 4.0
+	title.offset_bottom = 96.0
+	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(title)
+	var subtitle := Label.new()
+	subtitle.text = Branding.SUBTITLE.to_upper()
+	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	subtitle.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	subtitle.offset_top = 92.0
+	subtitle.offset_bottom = 124.0
+	subtitle.add_theme_font_size_override("font_size", 20)
+	subtitle.add_theme_color_override("font_color", CourseBuilder.accent(1))
+	subtitle.add_theme_color_override("font_outline_color", Color.BLACK)
+	subtitle.add_theme_constant_override("outline_size", 6)
+	add_child(subtitle)
 
 	var panel := PanelContainer.new()
-	panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
-	panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	panel.grow_vertical = Control.GROW_DIRECTION_BOTH
+	panel.position = Vector2(24.0, 136.0)
+	panel.custom_minimum_size = Vector2(470.0, 0.0)
+	panel.add_theme_stylebox_override("panel", _box_style(Color(0.03, 0.035, 0.06, 0.85), CourseBuilder.accent(1), 2, 16))
 	add_child(panel)
-	var outer := VBoxContainer.new()
-	outer.add_theme_constant_override("separation", 14)
-	panel.add_child(outer)
-
-	var title := Label.new()
-	title.text = Branding.title_upper()
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 40)
-	title.add_theme_color_override("font_color", CourseBuilder.accent(0))
-	title.add_theme_color_override("font_outline_color", Color.BLACK)
-	title.add_theme_constant_override("outline_size", 8)
-	outer.add_child(title)
-	var subtitle := Label.new()
-	subtitle.text = Branding.SUBTITLE
-	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	subtitle.add_theme_font_size_override("font_size", 22)
-	outer.add_child(subtitle)
-
-	var columns := HBoxContainer.new()
-	columns.add_theme_constant_override("separation", 30)
-	outer.add_child(columns)
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 10)
-	box.custom_minimum_size = Vector2(400.0, 0.0)
-	columns.add_child(box)
-	var actions := VBoxContainer.new()
-	actions.add_theme_constant_override("separation", 10)
-	actions.custom_minimum_size = Vector2(380.0, 0.0)
-	columns.add_child(actions)
+	box.add_theme_constant_override("separation", 7)
+	panel.add_child(box)
 
+	_mode_option = OptionButton.new()
+	for i in range(MODE_NAMES.size()):
+		_mode_option.add_item(MODE_NAMES[i], i)
+	_mode_option.item_selected.connect(func(_i: int) -> void: _update_mode_rows())
+	box.add_child(_row("Mode", _mode_option))
 	_name_edit = LineEdit.new()
 	_name_edit.max_length = 14
 	_name_edit.placeholder_text = "Your name"
@@ -104,39 +131,96 @@ func _build() -> void:
 	_difficulty_option.selected = 1
 	box.add_child(_row("Difficulty", _difficulty_option))
 	_items_check = CheckButton.new()
-	_items_check.text = "Gift boxes"
+	_items_check.text = "Item boxes"
 	_items_check.button_pressed = true
 	box.add_child(_row("Items", _items_check))
 
-	actions.add_child(_button("Play Solo", _on_play_solo))
-	actions.add_child(_button("Host Wi-Fi Game", _on_host))
+	var play := _button("PLAY SOLO", _on_play_solo, true)
+	_play_button = play
+	play.custom_minimum_size = Vector2(0.0, 58.0)
+	play.add_theme_font_size_override("font_size", 28)
+	box.add_child(play)
+	var host_row := HBoxContainer.new()
+	host_row.add_theme_constant_override("separation", 8)
+	box.add_child(host_row)
+	var host := _button("Host Wi-Fi Game", _on_host)
+	host.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	host_row.add_child(host)
+	_credits_button = _button("Credits", _on_credits)
+	_credits_button.custom_minimum_size = Vector2(110.0, 46.0)
+	host_row.add_child(_credits_button)
+	var quit := _button("Quit", func() -> void: get_tree().quit())
+	quit.custom_minimum_size = Vector2(110.0, 46.0)
+	host_row.add_child(quit)
+	var join_row := HBoxContainer.new()
+	join_row.add_theme_constant_override("separation", 8)
+	box.add_child(join_row)
 	_ip_edit = LineEdit.new()
 	_ip_edit.placeholder_text = "Host IP, e.g. 192.168.1.20"
-	_ip_edit.custom_minimum_size = Vector2(0.0, 44.0)
-	actions.add_child(_ip_edit)
-	actions.add_child(_button("Join Wi-Fi Game", _on_join))
-	actions.add_child(_button("Credits", _on_credits))
-	actions.add_child(_button("Quit", func() -> void: get_tree().quit()))
+	_ip_edit.custom_minimum_size = Vector2(0.0, 46.0)
+	_ip_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	join_row.add_child(_ip_edit)
+	var join := _button("Join", _on_join)
+	join.custom_minimum_size = Vector2(110.0, 46.0)
+	join_row.add_child(join)
 
 	_status = Label.new()
 	_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_status.custom_minimum_size = Vector2(380.0, 0.0)
 	_status.add_theme_color_override("font_color", CourseBuilder.accent(1))
-	actions.add_child(_status)
+	box.add_child(_status)
+
+	_tip = Label.new()
+	_tip.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+	_tip.offset_left = -640.0
+	_tip.offset_top = -48.0
+	_tip.offset_right = -20.0
+	_tip.offset_bottom = -14.0
+	_tip.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_tip.add_theme_font_size_override("font_size", 20)
+	_tip.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
+	_tip.add_theme_color_override("font_outline_color", Color.BLACK)
+	_tip.add_theme_constant_override("outline_size", 6)
+	_tip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_tip)
+	_next_tip()
+
+
+func _process(delta: float) -> void:
+	_tip_left -= delta
+	if _tip_left <= 0.0:
+		_next_tip()
+
+
+func _next_tip() -> void:
+	_tip_left = 4.5
+	_tip_index = (_tip_index + 1) % TIPS.size()
+	_tip.text = TIPS[_tip_index]
+	_tip.modulate.a = 0.0
+	_tip.create_tween().tween_property(_tip, "modulate:a", 1.0, 0.4)
 
 
 func _row(label_text: String, control: Control) -> HBoxContainer:
 	var row := HBoxContainer.new()
 	var label := Label.new()
 	label.text = label_text
-	label.custom_minimum_size = Vector2(130.0, 0.0)
-	label.add_theme_font_size_override("font_size", 22)
+	label.custom_minimum_size = Vector2(120.0, 0.0)
+	label.add_theme_font_size_override("font_size", 20)
 	row.add_child(label)
 	control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	control.custom_minimum_size = Vector2(0.0, 44.0)
+	control.custom_minimum_size = Vector2(0.0, 40.0)
 	row.add_child(control)
 	return row
+
+
+static func _box_style(bg: Color, border: Color, border_width: int, margin: float) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = bg
+	style.border_color = border
+	style.set_border_width_all(border_width)
+	style.set_corner_radius_all(10)
+	style.set_content_margin_all(margin)
+	return style
 
 
 func _spin(min_value: int, max_value: int, value: int) -> SpinBox:
@@ -148,11 +232,22 @@ func _spin(min_value: int, max_value: int, value: int) -> SpinBox:
 	return spin
 
 
-func _button(text: String, callback: Callable) -> Button:
+func _button(text: String, callback: Callable, main: bool = false) -> Button:
 	var button := Button.new()
 	button.text = text
-	button.custom_minimum_size = Vector2(0.0, 52.0)
-	button.add_theme_font_size_override("font_size", 24)
+	button.custom_minimum_size = Vector2(0.0, 46.0)
+	button.add_theme_font_size_override("font_size", 22)
+	var accent := CourseBuilder.accent(0) if main else CourseBuilder.accent(1)
+	var fill := accent.darkened(0.55) if main else Color(0.06, 0.07, 0.1, 0.9)
+	button.add_theme_stylebox_override("normal", _box_style(fill, accent, 2, 6))
+	button.add_theme_stylebox_override("hover", _box_style(accent.darkened(0.25), Color.WHITE, 2, 6))
+	button.add_theme_stylebox_override("pressed", _box_style(accent, Color.WHITE, 3, 6))
+	button.add_theme_stylebox_override("focus", _box_style(Color(0, 0, 0, 0), Color.WHITE, 2, 6))
+	button.add_theme_color_override("font_hover_color", Color.WHITE)
+	button.pressed.connect(func() -> void:
+		var sm := get_tree().get_first_node_in_group("sound_manager") as SoundManager
+		if sm != null:
+			sm.play("click"))
 	button.pressed.connect(callback)
 	_buttons.append(button)
 	return button
@@ -187,12 +282,23 @@ func _apply_identity_and_settings() -> void:
 		"difficulty": _difficulty_option.selected,
 		"countdown": 3,
 		"items": _items_check.button_pressed,
+		"mode": MODES[_mode_option.selected],
 	}
 
 
 func _on_credits() -> void:
 	var c := preload("res://studio/credits.gd").open(self, Branding.GAME_TITLE)
-	c.closed.connect(func() -> void: _buttons[_buttons.size() - 2].grab_focus())
+	c.closed.connect(func() -> void: _credits_button.grab_focus())
+
+
+## Sections and items only matter for the race.
+func _update_mode_rows() -> void:
+	var race := _mode_option.selected == 0
+	_sections_spin.get_parent().visible = race
+	_items_check.get_parent().visible = race
+	if _play_button != null:
+		_play_button.text = "PLAY SOLO" if race else "PAINTBALL BATTLE!"
+
 
 func _on_play_solo() -> void:
 	_apply_identity_and_settings()

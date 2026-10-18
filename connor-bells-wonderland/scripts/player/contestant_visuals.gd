@@ -22,6 +22,7 @@ var _body: MeshInstance3D
 var _phase: float = 0.0
 var _idle_time: float = 0.0
 var _blend: float = 0.0
+var _swing_left: float = 0.0
 
 
 ## [param _hat_colour] is kept for callers but unused: contestants have no hats.
@@ -44,10 +45,20 @@ func setup(body_colour: Color, _hat_colour: Color = Color(0.1, 0.6, 0.2)) -> voi
 	_leg_r = _build_leg(0.17)
 
 
+## Big right-arm slash (the sword swipe).
+func swing_arm() -> void:
+	_swing_left = 0.4
+
+
 ## Call every frame with the horizontal speed and grounded state.
 func update_motion(speed: float, on_floor: bool, delta: float) -> void:
 	if rig == null:
 		return
+	if _swing_left > 0.0:
+		_swing_left -= delta
+		_update_swing()
+		if _swing_left <= 0.0 and _arm_r != null:
+			_arm_r.rotation.y = 0.0
 	rig.rotation.x = lerp_angle(rig.rotation.x, -1.25 if diving else 0.0, 10.0 * delta)
 	if diving:
 		_set_x(_arm_l, -3.0, delta)
@@ -77,6 +88,49 @@ func update_motion(speed: float, on_floor: bool, delta: float) -> void:
 		rig.position.y = -BODY_CENTRE_Y
 		if _body != null:
 			_body.scale = Vector3(0.95, 1.08, 0.95)
+
+
+## Dance pose for the start screen. [param beat] counts music beats; styles:
+## 0 disco point, 1 rave arms-up pump, 2 running man.
+func dance(beat: float, style: int) -> void:
+	if rig == null:
+		return
+	var ph := beat * PI
+	var bounce := absf(sin(ph))
+	rig.position.y = -BODY_CENTRE_Y + bounce * 0.18
+	rig.rotation.x = 0.0
+	match style % 3:
+		0:
+			var up := fmod(beat, 2.0) < 1.0
+			_arm_r.rotation = Vector3(-2.7 if up else -0.5, 0.0, 0.6 if up else 0.1)
+			_arm_l.rotation = Vector3(-0.3, 0.0, -0.4)
+			_leg_l.rotation.x = 0.0
+			_leg_r.rotation.x = -0.25 * bounce
+			pivot.rotation = Vector3(0.0, 0.0, sin(ph) * 0.12)
+		1:
+			var a := -2.9 + bounce * 0.6
+			_arm_l.rotation = Vector3(a, 0.0, -0.3)
+			_arm_r.rotation = Vector3(a, 0.0, 0.3)
+			_leg_l.rotation.x = 0.0
+			_leg_r.rotation.x = 0.0
+			pivot.rotation = Vector3(-0.1 * bounce, 0.0, 0.0)
+		_:
+			var sw := sin(ph)
+			_leg_l.rotation.x = sw * 0.7
+			_leg_r.rotation.x = -sw * 0.7
+			_arm_l.rotation = Vector3(-sw * 1.2 - 0.3, 0.0, -0.1)
+			_arm_r.rotation = Vector3(sw * 1.2 - 0.3, 0.0, 0.1)
+			pivot.rotation = Vector3(0.0, sin(ph * 0.5) * 0.4, 0.0)
+
+
+func _update_swing() -> void:
+	if _arm_r == null:
+		return
+	# Arm sweeps from out to the right across to the left, held up and forward.
+	var k := clampf(1.0 - _swing_left / 0.4, 0.0, 1.0)
+	_arm_r.rotation = Vector3(-1.5, lerpf(-1.2, 1.4, minf(k * 2.0, 1.0)), 0.0)
+	if pivot != null:
+		pivot.rotation.y = lerpf(-0.35, 0.35, minf(k * 2.0, 1.0)) * (1.0 - k)
 
 
 func _set_x(node: Node3D, target: float, delta: float) -> void:

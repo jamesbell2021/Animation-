@@ -6,8 +6,8 @@ extends Node
 ## Anything in the game can call SoundManager.world(node, "name", pos).
 
 const MIX_RATE := 22050
-const BPM := 124.0
-const BARS := 8
+const BPM := 142.0
+const BARS := 16
 
 @export var sfx_volume_db: float = -4.0
 @export var music_volume_db: float = -8.0
@@ -18,6 +18,7 @@ const BARS := 8
 static var _sounds: Dictionary = {}
 static var _music: AudioStreamWAV
 static var _music_building: bool = false
+static var _music_task: int = -1
 static var _noise: PackedFloat32Array
 
 var _pool: Array[AudioStreamPlayer] = []
@@ -58,6 +59,13 @@ func _ready() -> void:
 	add_child(_music_player)
 	if music_enabled:
 		_start_music()
+
+
+func _exit_tree() -> void:
+	# The worker task must be waited on (and must not outlive the script when quitting).
+	if _music_task >= 0:
+		WorkerThreadPool.wait_for_task_completion(_music_task)
+		_music_task = -1
 
 
 func _process(_delta: float) -> void:
@@ -101,6 +109,13 @@ func play_at(sound_name: String, pos: Vector3, pitch: float = 1.0, volume_offset
 	player.play()
 
 
+## Seconds into the music loop, or -1 if it isn't playing (for beat-synced visuals).
+func music_position() -> float:
+	if _music_player == null or not _music_player.playing:
+		return -1.0
+	return _music_player.get_playback_position()
+
+
 func set_music_enabled(enabled: bool) -> void:
 	music_enabled = enabled
 	if _music_player == null:
@@ -120,7 +135,7 @@ func _start_music() -> void:
 			_music_player.play()
 	elif not _music_building:
 		_music_building = true
-		WorkerThreadPool.add_task(_build_music_threaded)
+		_music_task = WorkerThreadPool.add_task(_build_music_threaded)
 
 
 static func _build_music_threaded() -> void:
@@ -166,6 +181,13 @@ func _build_sounds() -> void:
 	s["shield"] = _make(0.5, func(t: float) -> float: return (sin(TAU * 880.0 * t) + sin(TAU * 1320.0 * t) * 0.5) * _env(t, 0.5) * 0.35)
 	s["shield_break"] = _make(0.4, func(t: float) -> float: return (_n(t) * 0.6 + sin(TAU * 1760.0 * t) * 0.4) * _env(t, 0.4) * 0.7)
 	s["steal"] = _make(0.3, func(t: float) -> float: return _arp([88, 84, 79], t, 0.08) * 0.5)
+	s["whistle"] = _make(1.0, func(t: float) -> float: return (sin(TAU * (500.0 + 900.0 * t) * t) * 0.35 + _n(t) * 0.12) * minf(t * 10.0, 1.0) * clampf((1.0 - t) * 6.0, 0.0, 1.0))
+	s["crackle"] = _make(1.2, func(t: float) -> float: return _n(t) * (1.0 if fmod(t * 41.0 + sin(t * 97.0) * 3.0, 1.0) < 0.14 else 0.0) * _env(t, 1.2) * 0.9)
+	s["drumroll"] = _make(1.9, func(t: float) -> float: return _n(t) * (0.45 + 0.55 * absf(sin(TAU * 15.0 * t))) * minf(0.25 + t / 1.6, 1.0) * 0.6)
+	s["tada"] = _make(1.6, func(t: float) -> float: return _clip(_arp([72, 72, 72, 79], t, 0.11) * 0.5 + (_sq(523.0, t) + _sq(659.0, t) + _sq(784.0, t)) * 0.13 * (1.0 if t > 0.33 else 0.0) * _env(t - 0.33, 1.27)))
+	s["airhorn"] = _make(1.1, func(t: float) -> float: return _horn_sample(fmod(t, 0.22) if t < 0.44 else t - 0.44, 0.2 if t < 0.44 else 0.66) * 0.8)
+	s["paintgun"] = _make(0.16, func(t: float) -> float: return (_n(t) * 0.7 * _env(t, 0.06) + sin(TAU * (260.0 - 900.0 * t) * t) * 0.6 * _env(t, 0.16)) * 0.8)
+	s["slash"] = _make(0.32, func(t: float) -> float: return ((_n(t) - _n(t - 0.0004)) * 0.6 + sin(TAU * (300.0 - 600.0 * t) * t) * 0.3) * sin(PI * t / 0.32))
 	s["firework"] = _make(0.8, func(t: float) -> float: return _n(t) * _env(t - 0.15, 0.65) * (1.0 if t > 0.15 else 0.15) * 0.8 + sin(TAU * (1500.0 - 1200.0 * t) * t) * 0.15 * (1.0 if t < 0.15 else 0.0))
 
 
@@ -237,9 +259,10 @@ static func _wav(data: PackedByteArray, frames: int, loop: bool) -> AudioStreamW
 
 # --- Disco loop -----------------------------------------------------------------
 
-## 8 bars at 124 BPM: four-on-the-floor kick, offbeat open hats, 16th closed hats,
-## claps on 2 and 4, octave-bouncing bass, syncopated chord stabs and (bars 5-8)
-## a lead riff. Am - Am - Dm - E, twice.
+## 16 bars of fairground hard dance at 142 BPM, Am - F - C - G:
+## bars 1-4 pounding kick, rolling off-beat bass and a plucked arp; bars 5-8 add the
+## supersaw hook; bars 9-12 an air horn and a hoover lead; bars 13-16 everything at
+## once with a snare roll into the loop.
 static func _build_disco() -> AudioStreamWAV:
 	_ensure_noise()
 	var beat := 60.0 / BPM
@@ -248,41 +271,61 @@ static func _build_disco() -> AudioStreamWAV:
 	var buf := PackedFloat32Array()
 	buf.resize(frames)
 	var saw := _saw_table()
-	var roots: Array[int] = [45, 45, 50, 52, 45, 45, 50, 52]
-	var chords: Array = [[57, 60, 64, 67], [57, 60, 64, 67], [62, 65, 69, 72], [56, 59, 62, 64], [57, 60, 64, 67], [57, 60, 64, 67], [62, 65, 69, 72], [56, 59, 62, 64]]
-	var lead: Array[int] = [76, 0, 72, 76, 79, 0, 76, 72, 77, 0, 74, 77, 81, 0, 77, 74, 76, 0, 72, 76, 79, 0, 81, 79, 80, 0, 76, 80, 83, 0, 80, 76]
+	var roots: Array[int] = [45, 41, 48, 43]
+	var arp: Array = [[69, 72, 76, 72, 81, 76, 72, 76], [65, 69, 72, 69, 77, 72, 69, 72],
+		[67, 72, 76, 72, 79, 76, 72, 76], [67, 71, 74, 71, 79, 74, 71, 74]]
+	var hook: Array = [[76, 76, 79, 76, 81, 79, 76, 74], [77, 77, 81, 77, 84, 81, 77, 76],
+		[79, 79, 84, 79, 88, 84, 79, 76], [79, 79, 83, 79, 86, 83, 79, 74]]
+	var hoover: Array[int] = [57, 53, 60, 55]
 	for b in range(BARS):
 		var bar_start := float(b) * bar
+		var chord := b % 4
+		var section := b / 4
+		if b % 4 == 0:
+			_crash(buf, bar_start, 0.35 if section != 1 else 0.2)
 		for q in range(4):
 			var t0 := bar_start + float(q) * beat
 			_kick(buf, t0)
-			_hat(buf, t0 + beat * 0.5, 0.11, 0.32)
-			for s16 in [0.25, 0.75]:
-				_hat(buf, t0 + beat * s16, 0.03, 0.12)
+			_hat(buf, t0 + beat * 0.5, 0.09, 0.34)
+			for s16: float in [0.25, 0.75]:
+				_hat(buf, t0 + beat * s16, 0.025, 0.11)
 			if q == 1 or q == 3:
 				_clap(buf, t0)
+			# Rolling bass on the off-beats (the kick owns the beat).
+			_tone(buf, saw, t0 + beat * 0.5, beat * 0.42, _freq(roots[chord] - 12), 0.34, 0.003, 2)
+			_tone(buf, saw, t0 + beat * 0.75, beat * 0.2, _freq(roots[chord]), 0.14, 0.003, 1)
+		var notes: Array = arp[chord]
+		var lead: Array = hook[chord]
 		for e in range(8):
-			var note := roots[b] + (12 if e % 2 == 1 else 0)
-			_tone(buf, saw, bar_start + float(e) * beat * 0.5, beat * 0.49, _freq(note), 0.32, 0.004, 3)
-		for n in chords[b]:
-			_tone(buf, saw, bar_start, bar * 0.98, _freq(int(n) - 12), 0.03, 0.25, 1)
-		for stab in [1.5, 2.5, 3.25]:
-			for n in chords[b]:
-				_tone(buf, saw, bar_start + beat * stab, beat * 0.3, _freq(int(n)), 0.07, 0.003, 1)
-		if b >= 4:
-			for i in range(8):
-				var midi: int = lead[(b - 4) * 8 + i]
-				if midi > 0:
-					_tone(buf, saw, bar_start + float(i) * beat * 0.5, beat * 0.45, _freq(midi), 0.11, 0.01, 1)
+			var t_e := bar_start + float(e) * beat * 0.5
+			if section != 2:
+				_tone(buf, saw, t_e, beat * 0.3, _freq(int(notes[e])), 0.06 if section == 0 else 0.045, 0.002, 1)
+			if section == 1 or section == 3:
+				_supersaw(buf, saw, t_e, beat * 0.46, _freq(int(lead[e])), 0.05)
+		if section == 2:
+			if b == 8:
+				_airhorn(buf, bar_start, beat * 0.4)
+				_airhorn(buf, bar_start + beat * 0.5, beat * 0.4)
+				_airhorn(buf, bar_start + beat * 1.0, beat * 0.9)
+			for half in range(2):
+				_hoover(buf, saw, bar_start + float(half) * beat * 2.0, beat * 1.9, _freq(hoover[chord]), 0.07)
+		if b == BARS - 1:
+			# Snare roll into the loop: 8ths, then 16ths, then 32nds.
+			var step := 0.5
+			var t_beats := 0.0
+			while t_beats < 4.0:
+				_snare(buf, bar_start + t_beats * beat, 0.16 + 0.1 * t_beats)
+				step = 0.5 if t_beats < 2.0 else (0.25 if t_beats < 3.5 else 0.125)
+				t_beats += step
 	var peak := 0.001
 	for i in range(frames):
 		peak = maxf(peak, absf(buf[i]))
-	var gain := 0.95 / peak
+	var gain := 1.1 / peak
 	var data := PackedByteArray()
 	data.resize(frames * 2)
 	for i in range(frames):
 		var v := buf[i] * gain
-		v = v / (1.0 + absf(v) * 0.15)
+		v = v / (1.0 + absf(v) * 0.25)
 		data.encode_s16(i * 2, int(clampf(v, -1.0, 1.0) * 32767.0))
 	return _wav(data, frames, true)
 
@@ -299,19 +342,22 @@ static func _saw_table() -> PackedFloat32Array:
 	return table
 
 
+## Hard dance kick: a fast pitch drop with some distortion so it punches through.
 static func _kick(buf: PackedFloat32Array, start: float) -> void:
 	var s0 := int(start * MIX_RATE)
-	var n := int(0.24 * MIX_RATE)
+	var n := int(0.3 * MIX_RATE)
 	var phase := 0.0
 	for i in range(n):
 		var idx := s0 + i
 		if idx >= buf.size():
 			return
 		var t := float(i) / MIX_RATE
-		var f := 48.0 + 110.0 * exp(-t * 35.0)
+		var f := 50.0 + 190.0 * exp(-t * 30.0)
 		phase += f / MIX_RATE
-		var amp := exp(-t * 11.0)
-		buf[idx] += sin(TAU * phase) * amp * 0.95 + (_noise[i % _noise.size()] * 0.25 if i < 60 else 0.0)
+		var amp := exp(-t * 7.5)
+		var v := sin(TAU * phase) * 2.6
+		v = v / (1.0 + absf(v))
+		buf[idx] += v * amp * 1.25 + (_noise[i % _noise.size()] * 0.35 if i < 80 else 0.0)
 
 
 static func _hat(buf: PackedFloat32Array, start: float, length: float, amp: float) -> void:
@@ -340,6 +386,78 @@ static func _clap(buf: PackedFloat32Array, start: float) -> void:
 		var x := _noise[(i * 3 + 777) % _noise.size()]
 		buf[idx] += (x - prev * 0.6) * 0.42 * bursts * exp(-t * 18.0)
 		prev = x
+
+
+static func _snare(buf: PackedFloat32Array, start: float, amp: float) -> void:
+	var s0 := int(start * MIX_RATE)
+	var n := int(0.12 * MIX_RATE)
+	for i in range(n):
+		var idx := s0 + i
+		if idx >= buf.size():
+			return
+		var t := float(i) / MIX_RATE
+		buf[idx] += (_noise[(i * 5 + 99) % _noise.size()] * 0.8 + sin(TAU * 190.0 * t) * 0.5) * amp * exp(-t * 28.0)
+
+
+static func _crash(buf: PackedFloat32Array, start: float, amp: float) -> void:
+	var s0 := int(start * MIX_RATE)
+	var n := int(1.4 * MIX_RATE)
+	var prev := 0.0
+	for i in range(n):
+		var idx := s0 + i
+		if idx >= buf.size():
+			return
+		var x := _noise[(i * 11 + 5) % _noise.size()]
+		buf[idx] += (x - prev) * amp * exp(-float(i) / MIX_RATE * 2.8)
+		prev = x
+
+
+## Three detuned saws plus a sub-octave: the big trance/hard dance lead.
+static func _supersaw(buf: PackedFloat32Array, table: PackedFloat32Array, start: float, length: float, freq: float, amp: float) -> void:
+	for detune: float in [0.993, 1.0, 1.007]:
+		_tone(buf, table, start, length, freq * detune, amp, 0.004, 1)
+	_tone(buf, table, start, length, freq * 0.5, amp * 0.6, 0.004, 1)
+
+
+## Rave "hoover": detuned saws that swoop down into the note.
+static func _hoover(buf: PackedFloat32Array, table: PackedFloat32Array, start: float, length: float, freq: float, amp: float) -> void:
+	var s0 := int(start * MIX_RATE)
+	var n := int(length * MIX_RATE)
+	var phases := [0.0, 0.0, 0.0, 0.0]
+	var ratios := [1.0, 1.012, 0.988, 0.5]
+	for i in range(n):
+		var idx := s0 + i
+		if idx >= buf.size():
+			return
+		var t := float(i) / MIX_RATE
+		var glide := 1.0 + 0.12 * exp(-t * 14.0) + 0.01 * sin(TAU * 5.5 * t)
+		var env := minf(t / 0.01, 1.0) * clampf((length - t) / 0.08, 0.0, 1.0)
+		var v := 0.0
+		for k in range(4):
+			phases[k] = float(phases[k]) + freq * float(ratios[k]) * glide / MIX_RATE * float(table.size())
+			v += table[int(phases[k]) % table.size()]
+		buf[idx] += v * amp * env
+
+
+## Rave air horn: three detuned square-ish saws with a pitch dip.
+static func _airhorn(buf: PackedFloat32Array, start: float, length: float) -> void:
+	var s0 := int(start * MIX_RATE)
+	var n := int(length * MIX_RATE)
+	for i in range(n):
+		var idx := s0 + i
+		if idx >= buf.size():
+			return
+		var t := float(i) / MIX_RATE
+		buf[idx] += _horn_sample(t, length) * 0.4
+
+
+static func _horn_sample(t: float, length: float) -> float:
+	var f := 466.0 * (1.0 - 0.06 * minf(t / 0.05, 1.0))
+	var v := 0.0
+	for d: float in [1.0, 1.006, 0.994, 1.5]:
+		v += 2.0 * fmod(t * f * d, 1.0) - 1.0
+	var env := minf(t / 0.01, 1.0) * clampf((length - t) / 0.04, 0.0, 1.0)
+	return clampf(v * 0.6, -1.0, 1.0) * env
 
 
 static func _tone(buf: PackedFloat32Array, table: PackedFloat32Array, start: float, length: float, freq: float, amp: float, attack: float, octave_layers: int) -> void:

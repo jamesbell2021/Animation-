@@ -22,6 +22,11 @@ var _countdown_label: Label
 var _message_label: Label
 var _results_panel: PanelContainer
 var _results_box: VBoxContainer
+var _prize_line: Label
+var _prize_lead: Label
+var _prize_label: Label
+var _prize_sub: Label
+var _prize_token: int = 0
 var _message_time_left: float = 0.0
 var _countdown_time_left: float = 0.0
 
@@ -39,6 +44,7 @@ func _process(delta: float) -> void:
 		_countdown_time_left -= delta
 		if _countdown_time_left <= 0.0:
 			_countdown_label.text = ""
+	_process_prize(delta)
 
 
 func set_time(seconds: float) -> void:
@@ -79,8 +85,8 @@ func set_effects(effects: Array) -> void:
 
 
 ## Custard over the screen for [param seconds] (hit by a pie).
-func splat(seconds: float = 2.2) -> void:
-	_overlay.splat(seconds)
+func splat(seconds: float = 2.2, colour: Color = Color(1.0, 0.86, 0.35), blob_count: int = 9) -> void:
+	_overlay.splat(seconds, colour, blob_count)
 
 
 ## Quick full-screen flash (explosions, zaps, hard hits).
@@ -127,6 +133,10 @@ func show_results(results: Array) -> void:
 			ordinal(int(entry.get("place", 0))), str(entry.get("name", "?")), time_text,
 			int(entry.get("falls", 0)), int(entry.get("coins", 0)),
 		]
+		if entry.has("hits"):
+			row.text = "%s   %s   lasted %s   hits: %d" % [
+				ordinal(int(entry.get("place", 0))), str(entry.get("name", "?")), time_text, int(entry.get("hits", 0)),
+			]
 		_results_box.add_child(row)
 		if button != null:
 			_results_box.move_child(button, _results_box.get_child_count() - 1)
@@ -135,6 +145,81 @@ func show_results(results: Array) -> void:
 
 func hide_results() -> void:
 	_results_panel.visible = false
+	_prize_token += 1
+	_prize_lead.visible = false
+	_prize_label.visible = false
+	_prize_sub.visible = false
+	_prize_line.text = ""
+
+
+## Big centre-screen prize reveal: [param lead] first ("Connor won..."), then
+## after [param reveal_after] seconds the prize pops in. It also goes on the
+## results panel. Calls [param on_reveal] at the moment of the reveal.
+func show_prize(lead: String, prize: String, reveal_after: float, subline: String = "", on_reveal: Callable = Callable()) -> void:
+	_prize_token += 1
+	var token := _prize_token
+	clear_message()
+	_prize_lead.text = lead
+	_prize_lead.visible = true
+	_prize_label.visible = false
+	_prize_line.text = "%s %s" % [lead, prize.to_upper()]
+	if not subline.is_empty():
+		_prize_line.text += "\n" + subline
+	_prize_sub.text = subline
+	_prize_sub.visible = false
+	_pop(_prize_lead, 0.4)
+	get_tree().create_timer(reveal_after, false).timeout.connect(func() -> void:
+		if token != _prize_token:
+			return
+		_prize_label.text = prize.to_upper()
+		_prize_label.visible = true
+		_pop(_prize_label, 0.6)
+		_prize_sub.visible = not _prize_sub.text.is_empty()
+		if on_reveal.is_valid():
+			on_reveal.call())
+
+
+## Hides the big prize text (the prize stays on the results panel).
+func hide_prize_banner() -> void:
+	_prize_lead.visible = false
+	_prize_label.visible = false
+	_prize_sub.visible = false
+
+
+func set_results_title(text: String) -> void:
+	var title := _results_box.get_node_or_null("Title") as Label
+	if title != null:
+		title.text = text
+
+
+## Paintball Battle status: lives, paint and how many are still in.
+func set_battle(lives: int, ammo: int, max_ammo: int, hits: int, alive: int, total: int, in_game: bool) -> void:
+	_position_label.text = "%d / %d LEFT" % [alive, total]
+	_coins_label.text = "Hits: %d" % hits
+	_item_box.visible = false
+	if not in_game:
+		_progress_label.text = "Spectating"
+		_progress_label.add_theme_color_override("font_color", Color(0.85, 0.88, 0.95))
+		return
+	_progress_label.text = "Lives: %d   Paint: %d/%d" % [lives, ammo, max_ammo]
+	var warn := ammo == 0 or lives == 1
+	_progress_label.add_theme_color_override("font_color", CourseBuilder.accent(2) if warn else Color(0.85, 0.88, 0.95))
+
+
+func _pop(label: Label, seconds: float) -> void:
+	var wraps := label.autowrap_mode != TextServer.AUTOWRAP_OFF
+	label.pivot_offset = (label.size if wraps else label.get_combined_minimum_size()) * 0.5
+	label.scale = Vector2(0.1, 0.1)
+	var tween := label.create_tween()
+	tween.tween_property(label, "scale", Vector2.ONE, seconds).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
+
+
+func _process_prize(_delta: float) -> void:
+	if _prize_label.visible:
+		var t := Time.get_ticks_msec() / 1000.0
+		_prize_label.rotation = sin(t * 3.0) * 0.04
+		_prize_label.pivot_offset = _prize_label.size * 0.5
+		_prize_label.add_theme_color_override("font_color", CourseBuilder.accent(0).lerp(Color(1.0, 0.9, 0.3), 0.5 + 0.5 * sin(t * 8.0)))
 
 
 func format_time(seconds: float) -> String:
@@ -227,7 +312,47 @@ func _build() -> void:
 	_results_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_results_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
 	_results_panel.visible = false
+	var panel_style := StyleBoxFlat.new()
+	panel_style.bg_color = Color(0.03, 0.035, 0.06, 0.82)
+	panel_style.border_color = CourseBuilder.accent(1)
+	panel_style.set_border_width_all(3)
+	panel_style.set_corner_radius_all(12)
+	panel_style.set_content_margin_all(22)
+	_results_panel.add_theme_stylebox_override("panel", panel_style)
 	add_child(_results_panel)
+
+	_prize_lead = _make_label(40, Color.WHITE)
+	_prize_lead.name = "PrizeLead"
+	_prize_lead.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	_prize_lead.offset_top = -150.0
+	_prize_lead.offset_bottom = -90.0
+	_prize_lead.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_prize_lead.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_prize_lead.add_theme_constant_override("outline_size", 10)
+	_prize_lead.visible = false
+	add_child(_prize_lead)
+	_prize_label = _make_label(64, CourseBuilder.accent(0))
+	_prize_label.name = "PrizeLabel"
+	_prize_label.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	_prize_label.offset_left = -600.0
+	_prize_label.offset_right = 600.0
+	_prize_label.offset_top = -80.0
+	_prize_label.offset_bottom = 60.0
+	_prize_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_prize_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_prize_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_prize_label.add_theme_constant_override("outline_size", 14)
+	_prize_label.visible = false
+	add_child(_prize_label)
+	_prize_sub = _make_label(30, Color(0.6, 1.0, 0.4))
+	_prize_sub.name = "PrizeSub"
+	_prize_sub.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	_prize_sub.offset_top = 100.0
+	_prize_sub.offset_bottom = 145.0
+	_prize_sub.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_prize_sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_prize_sub.visible = false
+	add_child(_prize_sub)
 
 	_results_box = VBoxContainer.new()
 	_results_box.name = "ResultsBox"
@@ -240,9 +365,16 @@ func _build() -> void:
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_results_box.add_child(title)
 
+	_prize_line = _make_label(24, Color(1.0, 0.85, 0.3))
+	_prize_line.name = "PrizeLine"
+	_prize_line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_prize_line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_prize_line.custom_minimum_size = Vector2(640.0, 0.0)
+	_results_box.add_child(_prize_line)
+
 	var button := Button.new()
 	button.name = "RaceAgainButton"
-	button.text = "Race Again"
+	button.text = "Play Again"
 	button.custom_minimum_size = Vector2(240.0, 60.0)
 	button.add_theme_font_size_override("font_size", 28)
 	button.pressed.connect(func() -> void: restart_requested.emit())
