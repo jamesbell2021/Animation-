@@ -22,6 +22,10 @@ The chosen look is the one in `docs/concept/keepers_reference_sheet.png`: stylis
 |---|---|
 | ![co-op night](screenshots/coop_night_lanterns.png) | ![effects](screenshots/effects_closeup.png) |
 
+| Night: fog walls round the rock | Dusk: the fog rolling in |
+|---|---|
+| ![night fog](screenshots/night_fog.png) | ![dusk fog](screenshots/dusk_fog.png) |
+
 | The homestead by day | The homestead at night |
 |---|---|
 | ![homestead](screenshots/homestead_day.png) | ![homestead at night](screenshots/homestead_night.png) |

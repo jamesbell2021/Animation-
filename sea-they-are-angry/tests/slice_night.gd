@@ -37,6 +37,10 @@ func _go() -> void:
 	Cycle._enter(Cycle.Phase.NIGHT)
 	main.lighthouse.lamp._set_state(Lamp.State.BURNING)
 	main.lighthouse.lamp.fuel = 100.0
+	var waves := [0]
+	main.spawner.wave_incoming.connect(func(_p, _c): waves[0] += 1)
+	var compass_ok: bool = main.compass(Vector3(0, 0, -10)) == "north" and main.compass(Vector3(10, 0, 0)) == "east" and main.compass(Vector3(0, 0, 10)) == "south" and main.compass(Vector3(-7, 0, -7)) == "north-west"
+	check(compass_ok, "compass directions match the camera (north is up-screen)")
 	Engine.time_scale = 20.0
 	var seen := 0
 	while Cycle.phase == Cycle.Phase.NIGHT and Run.active:
@@ -46,6 +50,7 @@ func _go() -> void:
 	var killed_or_present := seen
 	print("   max enemies alive at once during night 1: ", seen, "   run active ", Run.active, "  lighthouse hp ", main.lighthouse.hp)
 	check(seen >= 2, "enemies spawn during the night")
+	check(waves[0] == 3, "a foghorn warning for each of night 1's three waves (%d)" % waves[0])
 	check(Cycle.phase == Cycle.Phase.DAWN, "night ends in dawn")
 	var retreating := 0
 	for e in get_nodes_in_group("enemies"):

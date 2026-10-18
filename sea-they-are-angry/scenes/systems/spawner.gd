@@ -11,6 +11,9 @@ const NIGHT_TABLES := {
 	4: [[0.05, 3], [0.25, 3], [0.45, 4], [0.65, 4], [0.85, 4]],
 }
 
+## A group is about to come out of the sea at this point.
+signal wave_incoming(point: Vector3, count: int)
+
 var points: Array[Vector3] = []
 var enemies_root: Node
 var lighthouse: Node3D
@@ -59,6 +62,7 @@ func _queue_group(entry: Dictionary) -> void:
 		idx = randi() % points.size()
 	# Co-op: more keepers, more creatures (x1.5 per extra keeper, rounded up).
 	var count := ceili(float(entry["count"]) * (1.0 + 0.5 * float(Players.count() - 1)))
+	wave_incoming.emit(points[idx], count)
 	for i in count:
 		_pending.append({"at": points[idx], "delay": STAGGER * float(i)})
 

@@ -206,6 +206,10 @@ func _show_warning(text: String) -> void:
 	_warn_label.modulate.a = 1.0
 	_warn_t = WARN_TIME
 
+## A centred warning, used by the foghorn alarms.
+func warn(text: String) -> void:
+	_show_warning(text)
+
 func _on_phase_changed(p: int) -> void:
 	if p == Cycle.Phase.DUSK:
 		_show_warning("The fog is coming.")

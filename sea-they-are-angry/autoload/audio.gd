@@ -7,7 +7,7 @@ extends Node
 ## Audio.loop("wind", true, -12)  start or stop an ambient loop
 
 const RATE := 16000
-const CACHE_DIR := "user://audio_cache_v2"
+const CACHE_DIR := "user://audio_cache_v3"
 const POOL_3D := 14
 const POOL_2D := 6
 
@@ -35,10 +35,15 @@ const SOUNDS := {
 	"gutter": ["_s_gutter", false],
 	"dark": ["_s_dark", false],
 	"foghorn": ["_s_foghorn", false],
+	"foghorn_short": ["_s_foghorn_short", false],
 	"night_sting": ["_s_night_sting", false],
 	"hurt": ["_s_hurt", false],
 	"ui_move": ["_s_ui_move", false],
 	"ui_accept": ["_s_ui_accept", false],
+	"bell": ["_s_bell", false],
+	"creak": ["_s_creak", false],
+	"whisper": ["_s_whisper", false],
+	"thunder": ["_s_thunder", false],
 	"wind": ["_s_wind", true],
 	"waves": ["_s_waves", true],
 	"drone": ["_s_drone", true],
@@ -128,7 +133,8 @@ func start_ambience() -> void:
 func _on_phase(p: int) -> void:
 	match p:
 		Cycle.Phase.DUSK:
-			sfx("foghorn", Vector3.INF, -4.0, 0.0)
+			# Two long blasts: fog is coming in.
+			horn([3.0, 3.0], -3.0)
 			loop("wind", true, -11.0, 6.0)
 		Cycle.Phase.NIGHT:
 			sfx("night_sting", Vector3.INF, -6.0, 0.0)
@@ -381,6 +387,30 @@ func _s_foghorn() -> PackedFloat32Array:
 		b[i] = v * env * 0.8
 	return _lowpass(b, 1200.0)
 
+func _s_foghorn_short() -> PackedFloat32Array:
+	var n := _n(1.3)
+	var b := PackedFloat32Array()
+	b.resize(n)
+	var ph := 0.0
+	for i in n:
+		var t := float(i) / RATE
+		var f := 104.0 + 1.0 * sin(t * TAU * 6.0)
+		ph += TAU * f / RATE
+		var v := sin(ph) * 0.55 + sin(ph * 2.0) * 0.3 + sin(ph * 3.0) * 0.16 + sin(ph * 5.0) * 0.05
+		b[i] = v * smoothstep(0.0, 0.12, t) * (1.0 - smoothstep(0.9, 1.3, t)) * 0.8
+	return _lowpass(b, 1200.0)
+
+## Play a horn pattern: e.g. [2.6, 0.0] is one long blast, [1.0, 1.0, 1.0] three short.
+func horn(pattern: Array, volume_db: float = -4.0) -> void:
+	var delay := 0.0
+	for length in pattern:
+		var key := "foghorn" if float(length) > 2.0 else "foghorn_short"
+		if delay <= 0.0:
+			sfx(key, Vector3.INF, volume_db, 0.0)
+		else:
+			get_tree().create_timer(delay).timeout.connect(func() -> void: sfx(key, Vector3.INF, volume_db, 0.0))
+		delay += (3.4 if key == "foghorn" else 1.5)
+
 func _s_night_sting() -> PackedFloat32Array:
 	var n := _n(2.8)
 	var a := _tone(n, 55.0, 52.0, 1)
@@ -401,6 +431,51 @@ func _s_ui_move() -> PackedFloat32Array:
 func _s_ui_accept() -> PackedFloat32Array:
 	var a := _env(_tone(_n(0.2), 523.0, 523.0), 0.003, 18.0)
 	return _gain(_mix(a, _env(_tone(_n(0.18), 784.0, 784.0), 0.003, 18.0), 0.8, _n(0.06)), 0.3)
+
+func _s_bell() -> PackedFloat32Array:
+	# A bell buoy: inharmonic partials with a long ring, slightly detuned.
+	var n := _n(3.5)
+	var b := PackedFloat32Array()
+	b.resize(n)
+	for p in [[220.0, 1.0, 1.2], [440.5, 0.5, 1.6], [583.0, 0.45, 2.0], [748.0, 0.3, 2.6], [1043.0, 0.18, 3.4]]:
+		var t := _env(_tone(n, p[0], p[0] * 0.998), 0.002, p[2])
+		_mix(b, t, p[1])
+	return _gain(_lowpass(b, 2400.0), 0.35)
+
+func _s_creak() -> PackedFloat32Array:
+	# Timber under strain: a slow, wavering resonance driven by rough pulses.
+	var n := _n(1.4)
+	var b := PackedFloat32Array()
+	b.resize(n)
+	var ph := 0.0
+	var r := RandomNumberGenerator.new()
+	r.seed = 33
+	for i in n:
+		var t := float(i) / float(n)
+		var f := 140.0 + 90.0 * sin(t * PI * 1.3) + r.randf_range(-12.0, 12.0)
+		ph += TAU * f / RATE
+		var pulse := 1.0 if fmod(ph, TAU) < 0.6 else 0.0
+		b[i] = pulse * sin(t * PI)
+	return _gain(_lowpass(_highpass(b, 120.0), 1400.0), 0.9)
+
+func _s_whisper() -> PackedFloat32Array:
+	# Breathy, half-heard: band-limited noise in syllable-like swells.
+	var n := _n(2.2)
+	var b := _highpass(_lowpass(_noise(n, 34), 3200.0), 900.0)
+	for i in n:
+		var t := float(i) / RATE
+		var syll := pow(maxf(0.0, sin(t * TAU * 2.6 + sin(t * 3.0))), 2.0)
+		b[i] *= syll * sin(t / 2.2 * PI) * 1.6
+	return b
+
+func _s_thunder() -> PackedFloat32Array:
+	var n := _n(4.0)
+	var b := _lowpass(_noise(n, 35), 180.0)
+	var r := _lowpass(_noise(n, 36), 3.0)
+	for i in n:
+		var t := float(i) / RATE
+		b[i] *= 7.0 * (smoothstep(0.0, 0.15, t) * exp(-t * 0.9)) * (0.6 + r[i] * 10.0)
+	return b
 
 func _s_wind() -> PackedFloat32Array:
 	var n := _n(7.0)

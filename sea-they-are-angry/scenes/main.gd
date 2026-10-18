@@ -37,7 +37,7 @@ const SCAVENGE := [
 var _lighting := [
 	{"bg": Color(0.60, 0.67, 0.72), "amb": Color(0.62, 0.68, 0.76), "amb_e": 0.55, "sun": Color(1.0, 0.92, 0.78), "sun_e": 1.3, "fog": 0.002, "vfog": 0.005, "tint": Color(0.70, 0.75, 0.80)},
 	{"bg": Color(0.34, 0.31, 0.38), "amb": Color(0.52, 0.44, 0.52), "amb_e": 0.38, "sun": Color(1.0, 0.58, 0.36), "sun_e": 0.8, "fog": 0.008, "vfog": 0.03, "tint": Color(0.52, 0.42, 0.44)},
-	{"bg": Color(0.03, 0.05, 0.08), "amb": Color(0.26, 0.36, 0.52), "amb_e": 0.42, "sun": Color(0.55, 0.68, 0.95), "sun_e": 0.5, "fog": 0.01, "vfog": 0.03, "tint": Color(0.10, 0.14, 0.20)},
+	{"bg": Color(0.03, 0.05, 0.08), "amb": Color(0.26, 0.36, 0.52), "amb_e": 0.5, "sun": Color(0.55, 0.68, 0.95), "sun_e": 0.62, "fog": 0.012, "vfog": 0.038, "tint": Color(0.10, 0.14, 0.20)},
 	{"bg": Color(0.52, 0.50, 0.55), "amb": Color(0.60, 0.55, 0.60), "amb_e": 0.42, "sun": Color(1.0, 0.74, 0.58), "sun_e": 0.95, "fog": 0.006, "vfog": 0.02, "tint": Color(0.62, 0.56, 0.58)},
 ]
 
@@ -48,11 +48,16 @@ var title: CanvasLayer
 var _title_cam: Camera3D
 var _title_t := 0.0
 var _spray_t := 0.0
+var _gutter_horn_t := 0.0
+var _warned_low := false
+const HORN_GUTTER_EVERY := 7.0
 var camera: Camera3D
 var spawner: Node
 var hud: CanvasLayer
 var _env: Environment
 var _sky_mat: ProceduralSkyMaterial
+var _sea_mat: ShaderMaterial
+var atmosphere: Atmosphere
 var _sun: DirectionalLight3D
 var _enemies: Node3D
 var _tween: Tween
@@ -72,6 +77,11 @@ func _ready() -> void:
 	_enemies.name = "Enemies"
 	add_child(_enemies)
 	_build_spawner()
+	atmosphere = Atmosphere.new()
+	atmosphere.env = _env
+	atmosphere.sky_mat = _sky_mat
+	atmosphere.sea_mat = _sea_mat
+	add_child(atmosphere)
 	hud = HudScript.new()
 	hud.lighthouse = lighthouse
 	hud.lamp = lighthouse.lamp
@@ -93,6 +103,7 @@ func _show_title() -> void:
 	Run.active = false
 	hud.visible = false
 	_apply_lighting(Cycle.Phase.DUSK, 0.0)
+	atmosphere.apply(Cycle.Phase.NIGHT, 0.0)
 	_title_cam = Camera3D.new()
 	_title_cam.fov = 50.0
 	add_child(_title_cam)
@@ -136,6 +147,7 @@ func begin_run(continue_save: bool, n: int) -> void:
 		Run.start_new()
 	lighthouse.lamp.fuel = Run.lamp_fuel
 	_apply_lighting(Cycle.Phase.DAY, 0.0)
+	atmosphere.apply(Cycle.Phase.DAY, 0.0)
 	Cycle.start(Cycle.Phase.DAY)
 
 func _process(delta: float) -> void:
@@ -151,6 +163,36 @@ func _process(delta: float) -> void:
 		FX.sea_spray(self, Vector3(sin(a2) * r, Terrain.SEA_LEVEL, cos(a2) * r))
 	if Run.active and Input.is_action_just_pressed("skip"):
 		Cycle.skip()
+	_alarms(delta)
+
+static func compass(p: Vector3) -> String:
+	# The camera looks north (-Z), so +Z is south and +X is east.
+	var names := ["north", "north-east", "east", "south-east", "south", "south-west", "west", "north-west"]
+	var a := fposmod(atan2(p.x, -p.z), TAU)
+	return names[int(round(a / (TAU / 8.0))) % 8]
+
+func _on_wave_incoming(point: Vector3, count: int) -> void:
+	Audio.horn([1.0], -5.0)
+	var what := "Something stirs" if count < 4 else "Many things stir"
+	hud.warn("%s in the water — %s." % [what, compass(point)])
+
+# Foghorn alarms: a guttering lamp blasts every few seconds; a failing lighthouse warns once a night.
+func _alarms(delta: float) -> void:
+	if not Run.active:
+		return
+	var lamp := lighthouse.lamp
+	if lamp.state == Lamp.State.GUTTERING:
+		_gutter_horn_t -= delta
+		if _gutter_horn_t <= 0.0:
+			_gutter_horn_t = HORN_GUTTER_EVERY
+			Audio.horn([1.0, 1.0, 1.0], -2.0)
+			hud.warn("The lamp is guttering! Refuel it!")
+	else:
+		_gutter_horn_t = 0.0
+	if lighthouse.health_ratio() < 0.3 and not _warned_low and lighthouse.hp > 0:
+		_warned_low = true
+		Audio.horn([1.0, 3.0], -2.0)
+		hud.warn("The lighthouse is failing!")
 
 # ---- world ----
 
@@ -331,6 +373,7 @@ func _build_sea() -> void:
 	var mat := ShaderMaterial.new()
 	mat.shader = load("res://shaders/sea.gdshader")
 	sea.material_override = mat
+	_sea_mat = mat
 	sea.position = Vector3(0.0, Terrain.SEA_LEVEL, 0.0)
 	sea.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(sea)
@@ -376,6 +419,7 @@ func _build_spawner() -> void:
 	spawner.enemies_root = _enemies
 	spawner.lighthouse = lighthouse
 	add_child(spawner)
+	spawner.wave_incoming.connect(_on_wave_incoming)
 
 # ---- cycle ----
 
@@ -411,6 +455,8 @@ func _apply_lighting(p: int, duration: float) -> void:
 
 func _on_phase_changed(p: int) -> void:
 	_apply_lighting(p, LIGHT_TWEEN)
+	if p == Cycle.Phase.DAWN:
+		_warned_low = false
 	if p == Cycle.Phase.DAWN and Run.active:
 		var damaged := 0
 		for s in get_tree().get_nodes_in_group("structures"):

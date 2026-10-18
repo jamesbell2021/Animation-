@@ -8,6 +8,8 @@ uniform vec3 foam_color : source_color = vec3(0.66, 0.71, 0.70);
 uniform float shore_radius = 13.2;
 uniform float foam_width = 0.4;
 uniform float swell = 0.09;
+// 0 by day, 1 at night: faint bioluminescent specks in the swell.
+uniform float night_glow = 0.0;
 
 varying vec3 world_pos;
 
@@ -55,6 +57,11 @@ void fragment() {
 	float fres = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 4.0);
 	ALBEDO = col + fres * 0.06;
 	ROUGHNESS = mix(0.12, 0.85, clamp(foam + caps, 0.0, 1.0));
+	// Sparse, small, slowly pulsing specks; brightest in the wake of the swell.
+	float specks = smoothstep(0.955, 0.99, noise(world_pos.xz * 9.0 + vec2(TIME * 0.12, -TIME * 0.09)));
+	specks *= smoothstep(0.3, 0.9, noise(world_pos.xz * 0.35 + vec2(TIME * 0.05, 0.0)));
+	specks *= 0.5 + 0.5 * sin(TIME * 1.3 + world_pos.x * 0.9 + world_pos.z * 0.7);
+	EMISSION = vec3(0.15, 0.8, 0.7) * specks * night_glow * 0.9;
 	SPECULAR = 0.55;
 	METALLIC = 0.0;
 }

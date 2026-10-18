@@ -26,6 +26,10 @@ static func _meshes() -> void:
 	c.size = Vector3(0.1, 0.06, 0.08)
 	_chunk_mesh = c
 
+static func _puff_mesh_ref() -> Mesh:
+	_meshes()
+	return _puff_mesh
+
 static func _mat(emissive: float = 0.0, unshaded: bool = false) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
 	m.vertex_color_use_as_albedo = true

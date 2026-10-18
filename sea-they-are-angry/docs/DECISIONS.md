@@ -79,3 +79,12 @@ Judgement calls made where the spec was open, contradictory, or would not work a
 - **Creatures only take hit spray from boathook hits**, not from the beam's burn ticks, which have their own steam.
 - **Set dressing:** a procedural sky that follows the phase, screen-space reflections on the sea, a rippled water surface, flower clumps, a jetty and rowboat at the landing, lobster pots, crates, barrels, a washing line, and gulls by day.
 - **Tests wait for the scene** to exist instead of a fixed five physics steps. After a slow first frame, Godot can run several physics steps before the scene swap. `tests/slice_coop.gd` covers co-op.
+
+## Fog, dread and foghorn warnings (owner's requests)
+
+- **`scenes/world/atmosphere.gd` owns the mood.** Twelve ellipsoid fog banks circle the island over the sea and drift slowly round it. A low mist volume and drifting mist puffs cover the rock at night. All of it rolls in over 15 s at dusk and thins over 8 s at dawn. The fog has a faint grey-blue emission, so it reads as pale walls of mist by moonlight instead of only darkening the scene.
+- **The grade drains at night:** saturation falls to 0.68 and contrast rises to 1.16. A vignette with faint film grain (CanvasLayer 5, under the HUD) closes in from 0.18 by day to 0.6 at night.
+- **Night sounds:** a bell buoy out at sea (with a red light) tolls every 7 to 14 s, and creaks, whispers and distant moans come from random directions out in the dark every 9 to 20 s. Distant lightning flashes every 25 to 50 s, with thunder 1 to 2.5 s later. The flash is a separate directional light, so it never fights the phase lighting tween.
+- **Bioluminescence:** at night the sea shows small, sparse, slowly pulsing cyan specks. The first version was too large and bright and read as confetti.
+- **The foghorn is the alarm system.** Two long blasts at dusk, and one short blast for each spawn group, with a centred warning naming the compass direction (north is up-screen). Three short blasts every 7 s while the lamp is guttering, and a short-long blast once a night when the lighthouse drops below 30%. `Spawner.wave_incoming(point, count)` drives the wave warnings.
+- **The title screen opens in the night fog,** with the dusk lighting.
