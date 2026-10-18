@@ -28,6 +28,7 @@ Judgement calls made where the spec was open, contradictory, or would not work a
 - **Integer divisions** in the night table use `floori(x / 2.0)` to avoid integer-division warnings.
 
 ### Presentation
+- **Lit Bloated reaction.** Playtest feedback: "the light doesn't seem to do anything to the enemy". The 40% slow worked but had no visible cue. A Bloated in the beam now eases to a pale yellow and squats (scale 1.12 × 0.84 × 1.12) while lit, fading back over about a sixth of a second. No balance numbers changed.
 - Bio scavenge boxes use an unshaded material so they read as glowing at night.
 - The Bloated flashes pale for 0.1 s when hit. During Bloat it also gains emission as it brightens.
 - The keeper has a dark knit-cap disc on top of the head, a nod to the concept art.

@@ -12,10 +12,16 @@ const BURST_FX_TIME := 0.25
 const BODY_COLOR := Color(0.55, 0.65, 0.5)
 const GLOW_COLOR := Color(0.8, 1.0, 0.6)
 const HIT_COLOR := Color(0.95, 0.95, 0.9)
+const LIT_COLOR := Color(0.9, 0.86, 0.62)
+const LIT_HOLD := 0.15
+const LIT_FADE := 6.0
+const COWER_SCALE := Vector3(1.12, 0.84, 1.12)
 
 var _visual: Node3D
 var _body_mat: StandardMaterial3D
 var _hit_t := 0.0
+var _lit_t := 0.0
+var _lit_k := 0.0
 var _burst_done := false
 
 func _init() -> void:
@@ -43,12 +49,23 @@ func pick_target() -> Node3D:
 func in_light(_mode: int, _delta: float) -> void:
 	# Either beam mode slows the Bloated; focus does nothing extra (deliberate).
 	speed_mult = LIGHT_SLOW
+	_lit_t = LIT_HOLD
 
 func _physics_process(delta: float) -> void:
 	super._physics_process(delta)
-	if _hit_t > 0.0 and state != &"Bloat":
-		_hit_t = maxf(0.0, _hit_t - delta)
-		_body_mat.albedo_color = BODY_COLOR.lerp(HIT_COLOR, _hit_t / 0.1)
+	if is_bursting() or not is_inside_tree():
+		return
+	_hit_t = maxf(0.0, _hit_t - delta)
+	_lit_t = maxf(0.0, _lit_t - delta)
+	# Ease in and out of the lit look so a sweeping beam reads as a wash, not a flicker.
+	var lit_target := 1.0 if _lit_t > 0.0 else 0.0
+	_lit_k = move_toward(_lit_k, lit_target, LIT_FADE * delta)
+	var c := BODY_COLOR.lerp(LIT_COLOR, _lit_k)
+	if _hit_t > 0.0:
+		c = c.lerp(HIT_COLOR, _hit_t / 0.1)
+	_body_mat.albedo_color = c
+	# Cower: squat and swell while the light is on it.
+	_visual.scale = Vector3.ONE.lerp(COWER_SCALE, _lit_k)
 
 func _on_hit() -> void:
 	_hit_t = 0.1

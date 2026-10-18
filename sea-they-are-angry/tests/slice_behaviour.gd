@@ -201,6 +201,12 @@ func _run() -> void:
 	print("   after manual sweep speed_mult ", s.speed_mult)
 	print("   Bloated speed unlit ", snappedf(dark_speed, 0.01), "  lit ", snappedf(lit_speed, 0.01))
 	check(dark_speed > 1.4 and lit_speed > 0.8 and lit_speed < 1.1, "beam slows a Bloated from 1.6 to ~0.96 m/s")
+	check(s._lit_k > 0.9 and s._visual.scale.y < 0.9, "lit Bloated visibly pales and cowers")
+	lamp.yaw = PI
+	lamp.set_operator(null)
+	lamp.yaw = PI
+	await frames(2)
+	lamp.yaw = PI
 	lamp.set_operator(null)
 	s.queue_free()
 
