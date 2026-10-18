@@ -1,0 +1,7 @@
+# Godot 4 generated folders
+.godot/
+/android/
+*.import
+builds/
+build/
+override.cfg
