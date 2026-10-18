@@ -19,6 +19,8 @@ To start the next session, open Claude Code in `sea-they-are-angry/` and say:
 
 ## How to verify
 
+On a fresh clone, run `./play.sh` (or `play.bat`) or open the project in the editor once first. Launching with `godot --path` before any import fails with "Could not find type Lighthouse", because the class list lives in the git-ignored `.godot/` folder. Any headless test run needs `godot --headless --editor --quit --path sea-they-are-angry` once beforehand for the same reason.
+
 ```
 godot --headless --quit --path sea-they-are-angry
 godot --headless --path sea-they-are-angry --script res://tests/slice_behaviour.gd
