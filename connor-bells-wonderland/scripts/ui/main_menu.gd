@@ -6,8 +6,9 @@ const GAME_SCENE := "res://scenes/main/main.tscn"
 const LOBBY_SCENE := "res://scenes/menus/lobby.tscn"
 const COLOUR_NAMES: Array[String] = CourseBuilder.PLAYER_COLOUR_NAMES
 const DIFFICULTY_NAMES: Array[String] = ["Easy", "Medium", "Hard"]
-const MODES: Array[String] = ["race", "paintball"]
-const MODE_NAMES: Array[String] = ["Tower Race", "Paintball Battle"]
+const MODES: Array[String] = ["race", "tower", "paintball", "dodgems"]
+const MODE_NAMES: Array[String] = ["Fairground Race", "Tower Climb", "Paintball Battle", "Dodgem Derby"]
+const PLAY_TEXT: Array[String] = ["PLAY SOLO", "TOWER CLIMB!", "PAINTBALL BATTLE!", "DODGEM DERBY!"]
 
 var _net: Node
 var _name_edit: LineEdit
@@ -37,6 +38,10 @@ const TIPS: Array[String] = [
 	"Falling behind? The back of the pack gets the best items",
 	"Paintball Battle: last one standing wins Fruit of the Month!",
 	"Paintball: hold E to fire, grab PAINT crates to reload",
+	"Dodgem Derby: ram them into the Irish Sea, SPACE to boost",
+	"Tower Climb: fall off and it's back to the last landing!",
+	"Tower Climb: every weapon is in the boxes - use them!",
+	"Dodgem Derby: hit them from the middle so they fly off the edge",
 ]
 
 
@@ -276,13 +281,13 @@ func _on_credits() -> void:
 	c.closed.connect(func() -> void: _credits_button.grab_focus())
 
 
-## Sections and items only matter for the race.
+## Sections only matter for the race; items for the race and Dodgem Derby.
 func _update_mode_rows() -> void:
-	var race := _mode_option.selected == 0
-	_sections_spin.get_parent().visible = race
-	_items_check.get_parent().visible = race
+	var chosen := MODES[_mode_option.selected]
+	_sections_spin.get_parent().visible = chosen == "race"
+	_items_check.get_parent().visible = chosen != "paintball"
 	if _play_button != null:
-		_play_button.text = "PLAY SOLO" if race else "PAINTBALL BATTLE!"
+		_play_button.text = PLAY_TEXT[_mode_option.selected]
 
 
 func _on_play_solo() -> void:

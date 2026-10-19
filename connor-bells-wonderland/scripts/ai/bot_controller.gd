@@ -33,6 +33,7 @@ var _coin_timer: float = 0.0
 var _coin_target: CoinPickup
 ## Patience is rolled once per edge (not every frame); -1 = not at an edge.
 var _edge_roll: float = -1.0
+var _assist_target: Vector3 = Vector3.INF
 var _gap_jump: bool = false
 var _air_target: MovingPlatform
 var _box_target: ItemBox
@@ -49,6 +50,7 @@ func setup(p_contestant: Contestant, p_navigation: BotNavigation, p_profile: Dic
 		return
 	contestant.is_local_player = false
 	contestant.respawned.connect(_on_respawned)
+	contestant.jumped.connect(_on_jumped)
 	_index = navigation.nearest_index(contestant.global_position)
 	_last_pos = contestant.global_position
 	_time = randf() * 10.0
@@ -63,10 +65,16 @@ func _physics_process(delta: float) -> void:
 	_time += delta
 	_update_steer_noise(delta)
 	_update_stuck(delta)
+	_update_jump_assist()
 
 	var pos := contestant.global_position
 	var wp := navigation.get_waypoint(_index)
 	var target: Vector3 = wp["pos"]
+	# Landed well below the route (fell but didn't respawn): pick it up again from here.
+	if contestant.is_on_floor() and target.y - pos.y > 4.0:
+		_index = navigation.nearest_index(pos)
+		wp = navigation.get_waypoint(_index)
+		target = wp["pos"]
 	var reach := float(wp["radius"])
 	if bool(wp["wait"]):
 		reach = maxf(reach, absf(target.x - pos.x) + 0.5)
@@ -164,6 +172,49 @@ func _has_run_up(pos: Vector3, dir: Vector3) -> bool:
 	if dir == Vector3.ZERO or horizontal.length() >= contestant.move_speed * 0.6:
 		return true
 	return not _ground_at(pos + dir * 0.45)
+
+
+## Tower Climb: aim the jump that just started at the jump waypoint ahead. The
+## aim kicks in once the bot has risen level with the target (so it doesn't
+## slam into the side of a step), then it coasts there with an error that
+## shrinks with difficulty.
+func _on_jumped() -> void:
+	_assist_target = Vector3.INF
+	if not navigation.assist_jumps:
+		return
+	var wp := navigation.get_waypoint(_index)
+	if not bool(wp["jump"]):
+		return
+	var target: Vector3 = wp["pos"]
+	var pos := contestant.global_position
+	var dist := Vector2(target.x - pos.x, target.z - pos.z).length()
+	if dist > 0.2 and dist < 4.5:
+		_assist_target = target
+
+
+func _update_jump_assist() -> void:
+	if _assist_target == Vector3.INF:
+		return
+	if contestant.is_on_floor() and contestant.velocity.y <= 0.0:
+		_assist_target = Vector3.INF
+		return
+	var pos := contestant.global_position
+	if pos.y < _assist_target.y - 0.05:
+		if contestant.velocity.y <= 0.0:
+			_assist_target = Vector3.INF
+		return
+	var flat := Vector3(_assist_target.x - pos.x, 0.0, _assist_target.z - pos.z)
+	var dist := flat.length()
+	var v := contestant.velocity.y
+	var g := contestant.gravity
+	var t := (v + sqrt(maxf(v * v - 2.0 * g * (_assist_target.y - pos.y), 0.0))) / g
+	if t > 0.02 and dist > 0.05:
+		var error: float = [0.15, 0.08, 0.03][clampi(int(profile.get("difficulty", 1)), 0, 2)]
+		var speed := minf(dist / t * randf_range(1.0 - error, 1.0 + error), contestant.move_speed * 1.4)
+		contestant.velocity.x = flat.x / dist * speed
+		contestant.velocity.z = flat.z / dist * speed
+		contestant.coast()
+	_assist_target = Vector3.INF
 
 
 func get_waypoint_index() -> int:

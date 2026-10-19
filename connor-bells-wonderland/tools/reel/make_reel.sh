@@ -11,18 +11,21 @@ OUT="${1:-reel.mp4}"
 WORK="${WORK:-build/reel}"
 mkdir -p "$WORK"
 RUN=()
+GFX=()
 if [ -z "${DISPLAY:-}" ] && command -v xvfb-run >/dev/null; then
+	# No screen: a virtual one, which only does OpenGL.
 	RUN=(xvfb-run -a -s "-screen 0 1080x1920x24")
+	GFX=(--rendering-driver opengl3 --rendering-method gl_compatibility)
 fi
 
 "$GODOT" --headless --path . --import >/dev/null 2>&1 || true
 "$GODOT" --headless --path . -s res://tools/reel/export_music.gd -- "out=$PWD/$WORK/music.wav"
 
-SHOTS=(title race paintball finale end)
+SHOTS=(title race paintball dodgems tower seagull finale end)
 if [ "${SKIP_RECORD:-0}" != "1" ]; then
 	for shot in "${SHOTS[@]}"; do
 		echo "Recording $shot..."
-		"${RUN[@]}" "$GODOT" --path . --resolution 1080x1920 --write-movie "$WORK/$shot.avi" --fixed-fps 30 \
+		"${RUN[@]}" "$GODOT" --path . "${GFX[@]}" --resolution 1080x1920 --write-movie "$WORK/$shot.avi" --fixed-fps 30 \
 			-s res://tools/reel/reel_director.gd -- --no-splash "shot=$shot" > "$WORK/$shot.log" 2>&1
 	done
 fi

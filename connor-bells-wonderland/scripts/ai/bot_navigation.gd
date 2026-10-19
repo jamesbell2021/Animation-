@@ -5,6 +5,8 @@ extends RefCounted
 ## "jump" = gaps/steps here need a jump; "wait" = wait for a moving platform.
 
 var waypoints: Array[Dictionary] = []
+## Tower Climb: bots aim each jump at the waypoint they're jumping to.
+var assist_jumps: bool = false
 
 
 func build(course: FairgroundCourse) -> void:
@@ -50,7 +52,9 @@ func _wp(x: float, y: float, z: float, jump: bool = false, wait: bool = false, r
 
 func _section_waypoints(section: CourseSection) -> Array[Dictionary]:
 	var route: Array[Dictionary] = []
-	if section is SectionBigTop:
+	if section.has_method("bot_route"):
+		route.assign(section.call("bot_route"))
+	elif section is SectionBigTop:
 		route = [_wp(0.0, 0.0, -10.0), _wp(0.0, 0.0, -16.0, true), _wp(0.0, 0.0, -22.0, true), _wp(0.0, 0.0, -30.0), _wp(0.0, 0.0, -38.0)]
 	elif section is SectionDodgems:
 		route = [_wp(0.0, 0.0, -8.0), _wp(1.0, 0.0, -18.0), _wp(-1.0, 0.0, -28.0), _wp(0.0, 0.0, -38.0), _wp(0.0, 0.0, -46.0)]

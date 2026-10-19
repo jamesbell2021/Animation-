@@ -142,8 +142,9 @@ func show_results(results: Array) -> void:
 			int(entry.get("falls", 0)), int(entry.get("coins", 0)),
 		]
 		if entry.has("hits"):
-			row.text = "%s   %s   lasted %s   hits: %d" % [
-				ordinal(int(entry.get("place", 0))), str(entry.get("name", "?")), time_text, int(entry.get("hits", 0)),
+			row.text = "%s   %s   lasted %s   %s: %d" % [
+				ordinal(int(entry.get("place", 0))), str(entry.get("name", "?")), time_text,
+				str(entry.get("stat", "hits")), int(entry.get("hits", 0)),
 			]
 		_results_box.add_child(row)
 		if button != null:
@@ -200,17 +201,16 @@ func set_results_title(text: String) -> void:
 		title.text = text
 
 
-## Paintball Battle status: lives, paint and how many are still in.
-func set_battle(lives: int, ammo: int, max_ammo: int, hits: int, alive: int, total: int, in_game: bool) -> void:
+## Arena mode status (Paintball Battle, Dodgem Derby): a status line (lives,
+## paint or boost), a score line, and how many are still in.
+func set_battle(status: String, warn: bool, score: String, alive: int, total: int, in_game: bool) -> void:
 	_position_label.text = "%d / %d LEFT" % [alive, total]
-	_coins_label.text = "Hits: %d" % hits
-	_item_box.visible = false
+	_coins_label.text = score
 	if not in_game:
 		_progress_label.text = "Spectating"
 		_progress_label.add_theme_color_override("font_color", Color(0.85, 0.88, 0.95))
 		return
-	_progress_label.text = "Lives: %d   Paint: %d/%d" % [lives, ammo, max_ammo]
-	var warn := ammo == 0 or lives == 1
+	_progress_label.text = status
 	_progress_label.add_theme_color_override("font_color", CourseBuilder.accent(2) if warn else Color(0.85, 0.88, 0.95))
 
 

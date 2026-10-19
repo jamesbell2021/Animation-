@@ -17,6 +17,7 @@ var _tick_timer: float = 0.0
 var _acknowledged: bool = true
 var _report_timer: float = 0.0
 var _client_racing: bool = false
+var _gull_timer: float = 0.0
 
 
 func setup(p_game: GameManager) -> void:
@@ -70,6 +71,12 @@ func _process(delta: float) -> void:
 			if _tick_timer <= 0.0:
 				_tick_timer = tick_interval
 				_rpc_tick.rpc(game.race_manager.race_time, ranking_names)
+		if game.seagull != null and not multiplayer.get_peers().is_empty():
+			_gull_timer -= delta
+			if _gull_timer <= 0.0:
+				_gull_timer = 0.05
+				var state := game.seagull.get_state()
+				_rpc_gull_state.rpc(state[0], state[1], state[2])
 	else:
 		if _client_racing:
 			race_time += delta
@@ -101,8 +108,10 @@ func _connect_host_signals() -> void:
 		game.course.checkpoint_manager.checkpoint_reached.connect(func(c: Contestant, i: int) -> void: _rpc_checkpoint.rpc(str(c.name), i))
 	if game.items != null:
 		game.items.net_event.connect(func(event: String, args: Array) -> void: _rpc_item_event.rpc(event, args))
-	if game.paintball != null:
-		game.paintball.net_event.connect(func(event: String, args: Array) -> void: _rpc_paint_event.rpc(event, args))
+	if game.battle:
+		game._arena_game().net_event.connect(func(event: String, args: Array) -> void: _rpc_battle_event.rpc(event, args))
+	if game.seagull != null:
+		game.seagull.net_event.connect(func(event: String, args: Array) -> void: _rpc_gull_event.rpc(event, args))
 	if game.decorator != null:
 		var children := game.decorator.get_children()
 		for i in range(children.size()):
@@ -188,9 +197,21 @@ func _rpc_item_event(event: String, args: Array) -> void:
 
 
 @rpc("authority", "call_remote", "reliable")
-func _rpc_paint_event(event: String, args: Array) -> void:
-	if game.paintball != null:
-		game.paintball.apply_remote_event(event, args)
+func _rpc_battle_event(event: String, args: Array) -> void:
+	if game.battle:
+		game._arena_game().apply_remote_event(event, args)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _rpc_gull_event(event: String, args: Array) -> void:
+	if game.seagull != null:
+		game.seagull.apply_remote_event(event, args)
+
+
+@rpc("authority", "call_remote", "unreliable_ordered")
+func _rpc_gull_state(pos: Vector3, yaw: float, diving: bool) -> void:
+	if game.seagull != null:
+		game.seagull.apply_state(pos, yaw, diving)
 
 
 @rpc("authority", "call_remote", "unreliable_ordered")

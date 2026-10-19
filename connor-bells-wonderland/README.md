@@ -50,7 +50,8 @@ To try the touch controls on a PC, tick **Force Touch Controls** on the `Main` n
 The menu sits over a live night fair: contestants dance on a flashing dance floor
 under a disco ball in time with the music, a Ferris wheel turns, searchlights
 sweep, rockets go up behind the big top and shooting stars cross the sky. Pick
-**Tower Race** or **Paintball Battle** under **Mode**.
+**Fairground Race**, **Tower Climb**, **Paintball Battle** or **Dodgem Derby**
+under **Mode**.
 
 ## The course
 
@@ -69,6 +70,43 @@ When the race ends, a fireworks display goes up over the winner, a drumroll play
 and a present above their head bursts open with their prize, picked at random from
 40 ridiculous ones ("PLAYER, YOU WON... A BRAND NEW TOASTER!", a wheelie bin cover,
 a llama called Gary...). Everyone in a Wi-Fi race sees the same prize.
+
+## Tower Climb
+
+An extreme obby race up a 120 m neon tower. The path spirals round the outside in
+eight stages, each starting on a numbered checkpoint landing:
+
+1. **Stepping Stones**: zig-zag jumps up floating blocks
+2. **Sweeper Stairs**: ramps up to railed pads with spinning sweeper arms
+3. **Vanishing Tiles**: tiles shake and drop away moments after you land
+4. **Spin City**: spinning discs between small stepping blocks
+5. **Pusher Beams**: narrow ramps and pads with pushers trying to shove you off
+6. **Bounce House**: bounce pads launch you up from ledge to ledge
+7. **Meltdown**: vanishing tiles either side of a three-armed sweeper
+8. **The Crown Climb**: small, far-apart blocks up to the golden summit
+
+There are no walls: fall more than a few metres below your last landing and you're
+back on it. Item boxes sit on every landing and along each stage, and every item is
+in play (catapult yourself up a level, Mega Bomb the pack off a ledge, oil the
+stepping stones...). The camera swings round to follow you up the spiral.
+
+Watch out for the **giant Belfast seagull**. About 25 seconds in, it flies over
+from Belfast harbour and circles the tower just above the climbers. Every so often
+it picks someone (it likes picking on whoever's in the lead), a red **!** appears
+over them with a screech, and it dives:
+
+- If it gets you, you're knocked flying and it nicks whatever item you were holding.
+- Keep moving and it can miss.
+- A Shield Bubble bops it on the beak.
+
+In between attacks it drops poo bombs (SPLAT!).
+
+The first to reach Connor's Crown on the summit sets off a fireworks display over
+the tower straight away; everyone else then has 45 seconds to finish. The winner
+gets a big, crazy prize ("A SOLID GOLD TOILET (IT'S ACTUALLY CHOCOLATE)!", "A PET
+GIRAFFE CALLED TOWER!", "A ZIP LINE FROM YOUR BED TO THE FRIDGE!"...). Bots climb
+too (aiming their jumps); on Hard the best of them reach the top in about two
+minutes. Works over Wi-Fi.
 
 ## Paintball Battle
 
@@ -122,6 +160,28 @@ Traps can only be dropped on solid, still ground; on a ride or over a gap the it
 kept until you can. Bots grab boxes they pass (and detour for one nearby), use items
 when a rival is in reach, and aim the Catapult at gaps and rivals ahead.
 
+## Dodgem Derby
+
+Everyone drives a dodgem car on a round neon rink built on a pier out in the Irish
+Sea, with Belfast across the water. Ram your rivals off the edge: the faster you
+hit, the further they fly, and hitting them from the middle sends them outwards.
+**JUMP is a boost** (it recharges in under two seconds) for the big hits. Item
+boxes are on the rink too, and every item helps: the Mega Bomb, Boxing Glove and
+Big Springer can launch a car right over the rail, Slippery Oil sends them
+sliding, the Giant Magnet drags them in, the Shield bounces rammers off, Big
+Fatty Cake makes you heavy and hard to shift, Shrink Potion makes you fly further.
+
+A rubber rail runs round the outer ring with six gaps marked by red posts, so at
+first you have to shove people through a gap or blast them over. Fall in the sea
+and you lose one of your 3 lives and drop back into the middle (safe for a
+moment). The rink shrinks: the outer ring (rail and all) sinks at 1:00, the next
+at 1:35 and the last at 2:10, leaving the centre disc. At 3:10 the most lives wins.
+
+The derby has its own music: 150 BPM hardstyle with distorted kicks, a reverse
+bass, a screeching lead and air horns. The last driver left wins a daft prize
+("A PEDALO TO CROSS THE IRISH SEA!", "A JELLYFISH CALLED JEFF!"...). Bots ram,
+boost, use items and steer back from the edge. It works over Wi-Fi too.
+
 ## Wi-Fi multiplayer
 
 One device presses **Host Wi-Fi Game**; the lobby shows its IP address. Others type that
@@ -161,6 +221,9 @@ scripts/ui/      HUD, splat overlay, main menu, lobby, pause menu, the live 3D m
 fonts/           Bungee and Russo One with their licences
 scripts/items/   coins, item boxes, item rules, traps, custard pie
 scripts/paintball/ Paintball Battle: arena, rules, paintballs, paint splats, crates, bots
+scripts/dodgems/ Dodgem Derby: rink over the sea, rules and bumping, dodgem cars, bots
+scripts/tower/   Tower Climb: the tower course, its eight obby stages, vanishing tiles,
+                 the Belfast seagull
 scripts/fx/      particles, fireworks shows, the prize present, the sword swipe
 scripts/audio/   synthesised sound effects and hard dance music
 tools/           headless bot race and item tests (not exported)
@@ -209,4 +272,12 @@ It uses Godot's Movie Maker (frame by frame, so it takes a while) and ffmpeg:
 
 ```
 GODOT=godot tools/reel/make_reel.sh reel.mp4
+```
+
+A Dodgem Derby with 7 bots and an idle player, then Play Again and a second derby.
+It prints every splash into the Irish Sea, the results, and counts bumps, boosts and
+item uses. Derbies usually last 70–110 s:
+
+```
+godot --headless --path . --fixed-fps 60 -s res://tools/dodgems_test.gd -- diff=1
 ```

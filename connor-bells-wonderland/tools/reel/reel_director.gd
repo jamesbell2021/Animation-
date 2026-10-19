@@ -28,8 +28,11 @@ func _initialize() -> void:
 		"race", "finale":
 			net.settings = {"sections": 6, "bots": 7, "difficulty": 2, "countdown": 3, "items": true, "mode": "race"}
 			change_scene_to_file("res://scenes/main/main.tscn")
-		"paintball":
-			net.settings = {"sections": 6, "bots": 7, "difficulty": 2, "countdown": 1, "items": true, "mode": "paintball"}
+		"paintball", "dodgems":
+			net.settings = {"sections": 6, "bots": 7, "difficulty": 2, "countdown": 1, "items": true, "mode": shot}
+			change_scene_to_file("res://scenes/main/main.tscn")
+		"tower", "seagull":
+			net.settings = {"sections": 6, "bots": 7, "difficulty": 2, "countdown": 1, "items": true, "mode": "tower"}
 			change_scene_to_file("res://scenes/main/main.tscn")
 
 
@@ -87,6 +90,23 @@ func _setup() -> void:
 			_bot_connor()
 			g.camera.fov = 86.0
 			_end_after(8.5)
+		"dodgems":
+			var driver := DodgemBot.new()
+			g.player.add_child(driver)
+			driver.setup(g.player, g.dodgems, 2)
+			g.camera.fov = 78.0
+			g.dodgems._state[str(g.player.name)]["lives"] = 99
+			g.hud._progress_label.visible = false
+			_end_after(10.0)
+		"tower":
+			_bot_connor()
+			g.camera.fov = 80.0
+			_end_after(9.0)
+		"seagull":
+			g.camera.fov = 80.0
+			g.hud._progress_label.visible = false
+			g.hud._message_label.visible = false
+			_end_after(9.2)
 
 
 func _bot_connor() -> void:
@@ -105,7 +125,26 @@ func _direct(f: int) -> void:
 				_caption("", "A 3BL_INDIE GAME")
 		"end":
 			if f == 5:
-				_caption("COMING SOON", "RACE  •  BATTLE  •  WIN STUPID PRIZES")
+				_caption("COMING SOON", "RACE  •  PAINTBALL  •  DODGEMS  •  TOWER CLIMB")
+		"dodgems":
+			if f == 10:
+				_caption("DODGEM DERBY!", "KNOCK THEM INTO THE IRISH SEA")
+			if f == 100:
+				# Skip ahead to the first time the floor sinks.
+				g.dodgems.battle_time = DodgemsManager.COLLAPSE_TIMES[0] - 3.2
+			if f == 196:
+				_caption("SPLASH!")
+		"tower":
+			if f == -20:
+				_everyone_to_checkpoint(5)
+			if f == 10:
+				_caption("TOWER CLIMB!", "120 M OF EXTREME OBBY")
+			if f == 60:
+				g.player.get_node("ItemHolder").give(ItemKinds.Kind.ROCKET_BOOTS)
+			if f == 150:
+				_caption("NO WALLS. NO MERCY.")
+		"seagull":
+			_direct_seagull(f)
 		"race":
 			if f == 100:
 				_caption("RACE TO THE CROWN!")
@@ -155,6 +194,56 @@ func _direct(f: int) -> void:
 				g.hud._prize_label.add_theme_font_size_override("font_size", 92)
 				g.hud._prize_label.offset_left = -560.0
 				g.hud._prize_label.offset_right = 560.0
+
+
+## Tower: everyone onto checkpoint [param index]'s landing, bots re-routed from there.
+func _everyone_to_checkpoint(index: int) -> void:
+	var cm: CheckpointManager = g.course.checkpoint_manager
+	var spot: Vector3 = cm.get_respawn_point(index)
+	var i := 0
+	for c in g._contestants:
+		c.global_position = spot + Vector3(float(i % 3) - 1.0, 0.6, float(i / 3) - 1.0) * 0.9
+		c.velocity = Vector3.ZERO
+		c.set_respawn_point(spot)
+		c.fall_limit_y = spot.y - TowerClimbCourse.FALL_DEPTH
+		var brain := c.get_node_or_null("BotController") as BotController
+		if brain != null:
+			brain._index = g.navigation.nearest_index(c.global_position)
+		i += 1
+
+
+## The Belfast seagull goes for Connor (holding a custard pie), then poos on him.
+func _direct_seagull(f: int) -> void:
+	var p: Contestant = g.player
+	var gull: TowerSeagull = g.seagull
+	if f == -20:
+		var cm: CheckpointManager = g.course.checkpoint_manager
+		var spot: Vector3 = cm.get_respawn_point(1)
+		p.global_position = spot + Vector3.UP * 0.5
+		p.set_respawn_point(spot)
+		p.fall_limit_y = spot.y - TowerClimbCourse.FALL_DEPTH
+		p.get_node("ItemHolder").give(ItemKinds.Kind.PIE)
+		gull.begin()
+		gull._mode = TowerSeagull.Mode.CIRCLE
+		gull._attack_timer = 999.0
+		gull._poo_timer = 999.0
+		gull.global_position = p.global_position + Vector3(22.0, 10.0, 6.0)
+	if f == 8:
+		_caption("LOOK OUT!", "THE GIANT BELFAST SEAGULL")
+	if f == 40:
+		gull._target = p
+		gull._set_mode(TowerSeagull.Mode.WARN)
+	# Slow motion for the swoop.
+	if gull._mode == TowerSeagull.Mode.DIVE and Engine.time_scale > 0.5:
+		Engine.time_scale = 0.35
+	if gull._mode == TowerSeagull.Mode.ESCAPE and Engine.time_scale < 1.0:
+		Engine.time_scale = 1.0
+		_caption("SQUAWK!", "IT NICKED HIS CUSTARD PIE!")
+	if f == 175:
+		gull._attack_timer = 999.0
+		gull._spawn_poo(gull.global_position + Vector3.DOWN, p.global_position + Vector3.UP, str(p.name), true)
+	if f == 208:
+		_caption("SPLAT!", "SEAGULL POO!")
 
 
 ## A finishing time that makes Prizes.pick() give the toaster (it's seeded).
