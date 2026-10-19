@@ -33,7 +33,11 @@ def main() -> None:
         match = re.search(r"^REC ([0-9.]+)", log, re.M)
         start = float(match.group(1)) if match else 1.5
         starts.append(start)
-        lengths.append(duration(work / f"{shot}.avi") - start - 0.05)
+        length = duration(work / f"{shot}.avi") - start - 0.05
+        match = re.search(r"^LEN ([0-9.]+)", log, re.M)
+        if match:
+            length = min(length, float(match.group(1)))
+        lengths.append(length)
     total = sum(lengths) - T * (len(SHOTS) - 1)
 
     cmd = ["ffmpeg", "-y", "-loglevel", "error"]

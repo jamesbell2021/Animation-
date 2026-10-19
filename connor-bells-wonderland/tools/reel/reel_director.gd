@@ -4,7 +4,8 @@ extends SceneTree
 ## tools/reel/make_reel.sh runs every shot and joins them into a vertical MP4.
 ##   godot --path . --write-movie out.avi --fixed-fps 30 --resolution 1080x1920 \
 ##     -s res://tools/reel/reel_director.gd -- --no-splash shot=race
-## Each shot prints "REC <seconds>": where the usable footage starts.
+## Each shot prints "REC <seconds>": where the usable footage starts, and
+## "LEN <seconds>": how much of it to use.
 
 const WARMUP := 45
 
@@ -52,6 +53,7 @@ func _process(_delta: float) -> bool:
 ## Frame (from the start of the usable footage) to stop at.
 func _end_after(seconds: float) -> void:
 	_done_at = WARMUP + int(seconds * 30.0)
+	print("LEN %.3f" % seconds)
 
 
 func _setup() -> void:
@@ -101,9 +103,12 @@ func _setup() -> void:
 		"tower":
 			_bot_connor()
 			g.camera.fov = 80.0
-			_end_after(9.0)
+			_end_after(7.8)
 		"seagull":
 			g.camera.fov = 80.0
+			# Further back so the big bird fits in the picture.
+			g.camera.distance = 12.5
+			g.camera.height = 6.5
 			g.hud._progress_label.visible = false
 			g.hud._message_label.visible = false
 			_end_after(9.2)
@@ -239,8 +244,15 @@ func _direct_seagull(f: int) -> void:
 	if gull._mode == TowerSeagull.Mode.ESCAPE and Engine.time_scale < 1.0:
 		Engine.time_scale = 1.0
 		_caption("SQUAWK!", "IT NICKED HIS CUSTARD PIE!")
-	if f == 175:
+	if f == 165:
+		# Back overhead (in shot) for a poo bomb, then off it goes.
+		var cam := g.get_viewport().get_camera_3d()
 		gull._attack_timer = 999.0
+		gull._mode = TowerSeagull.Mode.ESCAPE
+		gull._mode_time = 0.0
+		gull.global_position = p.global_position + Vector3.UP * 8.0 - cam.global_basis.x * 3.0
+		gull._velocity = cam.global_basis.x * 6.0
+	if f == 175:
 		gull._spawn_poo(gull.global_position + Vector3.DOWN, p.global_position + Vector3.UP, str(p.name), true)
 	if f == 208:
 		_caption("SPLAT!", "SEAGULL POO!")
