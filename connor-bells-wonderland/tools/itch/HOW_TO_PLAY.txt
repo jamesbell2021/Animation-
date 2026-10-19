@@ -1,0 +1,28 @@
+CONNOR'S CARNIVAL CHAOS
+Designed by Connor, age 13 - his first game!
+A 3BL_Indie game, made by James, Aaron, Connor and Bonnie.
+
+STARTING THE GAME
+  Windows: double-click ConnorsCarnivalChaos.exe. If Windows says "Windows
+           protected your PC", click "More info" then "Run anyway" (the game
+           isn't signed, that's all).
+  Linux:   double-click ConnorsCarnivalChaos.x86_64, or run
+           ./ConnorsCarnivalChaos.x86_64 in a terminal.
+
+CONTROLS
+  Move .................. WASD or arrow keys
+  Jump .................. Space (boost in Dodgem Derby)
+  Use item / fire paint . E or F (hold for the Catapult)
+  Menu .................. MENU button
+
+PLAYING WITH FRIENDS (same Wi-Fi)
+  1. One person picks a mode and presses "Host Wi-Fi Game". The lobby
+     shows their IP address (like 192.168.1.20).
+  2. Everyone else types that IP address into the box and presses "Join".
+  3. The host presses "Start Race".
+  Windows and Linux players can play together. Everyone needs the same
+  version of the game. On Windows, click "Allow" when the firewall asks
+  (tick "Private networks"). School and public Wi-Fi often block it, so
+  play at home.
+
+Have fun, and leave Connor a comment on the itch.io page!

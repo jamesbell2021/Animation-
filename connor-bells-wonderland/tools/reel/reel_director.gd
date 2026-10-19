@@ -15,12 +15,16 @@ var g: Node
 var caption: Label
 var sub_caption: Label
 var _done_at := -1
+## captions=off records clean footage (for store screenshots).
+var _captions := true
 
 
 func _initialize() -> void:
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("shot="):
 			shot = a.substr(5)
+		if a == "captions=off":
+			_captions = false
 	var net := root.get_node("NetworkManager")
 	net.local_name = "Connor"
 	match shot:
@@ -130,7 +134,7 @@ func _direct(f: int) -> void:
 				_caption("", "A 3BL_INDIE GAME")
 		"end":
 			if f == 5:
-				_caption("COMING SOON", "RACE  •  PAINTBALL  •  DODGEMS  •  TOWER CLIMB")
+				_caption("FREE ON ITCH.IO", "DESIGNED BY CONNOR, AGE 13 - HIS FIRST GAME!")
 		"dodgems":
 			if f == 10:
 				_caption("DODGEM DERBY!", "KNOCK THEM INTO THE IRISH SEA")
@@ -315,6 +319,8 @@ func _label(size: int, colour: Color) -> Label:
 
 
 func _caption(text: String, sub: String = "") -> void:
+	if not _captions:
+		return
 	for pair in [[caption, text], [sub_caption, sub]]:
 		var label: Label = pair[0]
 		label.text = pair[1]

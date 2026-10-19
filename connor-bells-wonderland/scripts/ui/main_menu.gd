@@ -149,14 +149,20 @@ func _build() -> void:
 	var host_row := HBoxContainer.new()
 	host_row.add_theme_constant_override("separation", 8)
 	box.add_child(host_row)
+	# The browser version can't do Wi-Fi games (or quit): just Credits there.
+	var web := OS.has_feature("web")
 	var host := _button("Host Wi-Fi Game", _on_host)
 	host.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	host.visible = not web
 	host_row.add_child(host)
 	_credits_button = _button("Credits", _on_credits)
 	_credits_button.custom_minimum_size = Vector2(110.0, 46.0)
+	if web:
+		_credits_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	host_row.add_child(_credits_button)
 	var quit := _button("Quit", func() -> void: get_tree().quit())
 	quit.custom_minimum_size = Vector2(110.0, 46.0)
+	quit.visible = not web
 	host_row.add_child(quit)
 	var join_row := HBoxContainer.new()
 	join_row.add_theme_constant_override("separation", 8)
@@ -169,12 +175,28 @@ func _build() -> void:
 	var join := _button("Join", _on_join)
 	join.custom_minimum_size = Vector2(110.0, 46.0)
 	join_row.add_child(join)
+	join_row.visible = not web
 
 	_status = Label.new()
 	_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_status.add_theme_color_override("font_color", CourseBuilder.accent(1))
 	box.add_child(_status)
+
+	var designer := Label.new()
+	designer.text = Branding.DESIGNER_CREDIT
+	designer.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+	designer.offset_left = -640.0
+	designer.offset_top = -84.0
+	designer.offset_right = -20.0
+	designer.offset_bottom = -52.0
+	designer.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	designer.add_theme_font_size_override("font_size", 20)
+	designer.add_theme_color_override("font_color", CourseBuilder.accent(1))
+	designer.add_theme_color_override("font_outline_color", Color.BLACK)
+	designer.add_theme_constant_override("outline_size", 6)
+	designer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(designer)
 
 	_tip = Label.new()
 	_tip.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)

@@ -164,6 +164,8 @@ func _ready() -> void:
 	sync.setup(self)
 
 	_spawn_roster(RaceRoster.build(_net, settings, player_name, player_colour, max_contestants))
+	if WebCuller.wanted() and not battle:
+		_add_web_culler()
 	if player != null:
 		camera.set_target(player)
 		_connect_player_sounds(player)
@@ -776,3 +778,24 @@ func _on_gull_event(event: String, target_name: String, detail: String) -> void:
 			if mine:
 				hud.splat(1.6, Color(0.95, 0.95, 0.9), 7)
 				hud.show_message("SPLAT! Seagull poo!", 1.5)
+
+
+## Browser builds: hide far-away scenery so WebGL keeps drawing (see WebCuller).
+func _add_web_culler() -> void:
+	var pieces: Array[Node3D] = []
+	for section in course.sections:
+		for child in section.get_children():
+			if child is Node3D:
+				pieces.append(child)
+	for holder in course.get_children():
+		# The sky, the skyline and the tower itself always stay.
+		if holder is Node3D and str(holder.name).begins_with("Scenery") and not str(holder.name) in ["SceneryEnvironment", "SceneryTower"]:
+			for child in holder.get_children():
+				if child is Node3D:
+					pieces.append(child)
+	for box in get_tree().get_nodes_in_group("item_boxes"):
+		pieces.append(box as Node3D)
+	var culler := WebCuller.new()
+	culler.name = "WebCuller"
+	add_child(culler)
+	culler.setup(self, pieces)

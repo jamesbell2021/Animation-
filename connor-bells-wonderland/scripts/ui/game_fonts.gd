@@ -8,6 +8,7 @@ extends RefCounted
 const TITLE := "res://fonts/Bungee-Regular.ttf"
 const BODY := "res://fonts/RussoOne-Regular.ttf"
 const CREDIT_LINES: Array[String] = [
+	Branding.DESIGNER_CREDIT,
 	"Fonts: Bungee (The Bungee Project Authors) and Russo One (Jovanny Lemonad), SIL OFL 1.1",
 ]
 
