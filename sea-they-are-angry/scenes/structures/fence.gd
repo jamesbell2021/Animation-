@@ -18,6 +18,13 @@ var _braces: Array[MeshInstance3D] = []
 var _top_rail: MeshInstance3D
 var _low_rail: MeshInstance3D
 
+# Stakes are quick to drive back in: one driftwood mends half a fence, so a day's
+# beachcombing can stand most of the line back up.
+const MEND := 50
+
+func repair_amount() -> int:
+	return MEND
+
 func _init(p_length: float = 4.0) -> void:
 	length = p_length
 	id = "fence"

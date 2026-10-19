@@ -12,7 +12,7 @@ const BAND_COLOR := Color(0.62, 0.12, 0.10)
 const IRON := Color(0.14, 0.15, 0.16)
 const GLASS_DARK := Color(0.10, 0.13, 0.16)
 const GLASS_LIT := Color(1.0, 0.78, 0.45)
-const REFUEL_UNITS := 25.0
+const REFUEL_UNITS := 40.0
 const REFUEL_COST := {"bio": 1}
 
 var lamp: Lamp

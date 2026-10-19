@@ -26,9 +26,11 @@ godot --headless --quit --path sea-they-are-angry
 godot --headless --path sea-they-are-angry --script res://tests/slice_behaviour.gd
 godot --headless --path sea-they-are-angry --script res://tests/slice_night.gd
 godot --headless --path sea-they-are-angry --script res://tests/slice_retreat.gd
+godot --headless --path sea-they-are-angry --script res://tests/slice_coop.gd
+godot --headless --path sea-they-are-angry --script res://tests/slice_ledge.gd
 ```
 
-On Windows use `Godot_v4.3-stable_win64_console.exe` in place of `godot`. All three tests ended in PASS on Godot 4.3 stable. `slice_behaviour.gd` covers every item of the slice's verify list, from W moving up-screen to New Run restarting at night 1.
+On Windows use `Godot_v4.3-stable_win64_console.exe` in place of `godot`. All five tests ended in PASS on Godot 4.3 stable. Run them one at a time: they share `user://run.json`. For balance, `tools/playtest.gd` plays several nights with a bot and prints a line per night (see README). `slice_behaviour.gd` covers every item of the slice's verify list, from W moving up-screen to New Run restarting at night 1.
 
 Two kinds of console noise are expected and harmless:
 
@@ -40,12 +42,14 @@ Two kinds of console noise are expected and harmless:
 ## Things Phase A must reconcile
 
 - **Parts of later phases already exist:** 3-player co-op and a simplified downed/revive (Phase D), the title and pause menus (Phase E), synthesised sound with `.ogg` overrides (Phase F), particle effects (Phase I) and the cottage, shed and garden buildings (Phase C). Extend these rather than rebuilding them; DECISIONS lists exactly what each covers and what is missing.
-- **The lamp tests a real 3D cone** against `Enemy.light_probe_points()` and is tilted 30°, so it cannot reach near its own base. Plan item B4 asks for `light_probe_position()`; use the existing `light_probe_points()` instead and have the Eel return its head. See DECISIONS.
+- **The island was rebuilt Bad North style** (owner's request, see DECISIONS "The crag, the ledge and the beaches"). Creatures land only on three beaches and walk a waypoint graph (`scenes/util/nav.gd`) up the ledge that winds round the crag. New enemies should follow `Enemy.route` too. Phase B's Wall-Crawling Squid is the obvious exception: let it climb straight up the crag walls. That shortcut is its threat. Traps (Phase C) belong at the chokepoints: the beach heads, the track and the ledge.
+- **The lamp tests a real 3D cone** against `Enemy.light_probe_points()` and is tilted 38°, so it cannot reach near its own base. Plan item B4 asks for `light_probe_position()`; use the existing `light_probe_points()` instead and have the Eel return its head. See DECISIONS.
 - **The focused beam now burns the Bloated** at 10 hp per second instead of slowing it, by the owner's decision after playtesting. The appendix still lists only "light slow ×0.6" for the Bloated, so add the burn to `Balance` alongside it. See DECISIONS.
 - **The appendix changes slice numbers.** Plan 2 says "solo still plays exactly as before", but its appendix sets Day 120 s, Dusk 30 s, Night min(150 + 10(n−1), 240) and Dawn 60 s. The slice uses 60, 15, min(120 + 10(n−1), 210) and 30. The appendix is the newer design, so move to it when building `Balance` and record that in DECISIONS.
 - **`autoload/cycle.gd` and the other autoloads were written verbatim from plan 1.** Moving their numbers into `Balance` is expected; keep their signals and method names.
-- **Camera.** FOV is 47 and the camera looks at (0, 0, 3.8), because FOV 45 cannot fit the island from (0, 22, 18). Phase D3 says the island must fit with every player on screen, so keep this.
-- **Fences** are chord-length sections with 0.92 m gaps that a keeper fits through and a Bloated does not. Phase B's Squid climbs fences, and Phase B's Eel surge breaks any fence on its line. Neither needs the gaps changed.
+- **Camera.** FOV 45 from (0, 41, 27), looking at (0, 3, 1), frames the whole coast and every landing (tested). Phase D3 says the island must fit with every player on screen, so keep this.
+- **Fences** are five sections across the chokepoints (beach heads and the ledge), each leaving a 0.9 m gap that a keeper fits through and a Bloated does not. Phase B's Squid climbs fences, and Phase B's Eel surge breaks any fence on its line. Neither needs the gaps changed.
+- **Balance numbers changed with the new island:** lamp burn 0.35 / 1.0 per second, refuel 40 per bio, fence mend 50 per driftwood, Bloated 1.15 m/s, and earlier night tables in `spawner.gd`. Move them into `Balance` with the rest.
 - **Structures have `surface_distance(point)`.** Use it for anything measured to a structure: interact range, burst splash, the Crab's slam arc, trap placement checks.
 - **Light slow.** Enemies reset `speed_mult` after moving, not before, because the lamp processes first in the tree. Keep that order when adding the Squid's `lit_this_frame`: set it in `in_light`, read it in the tick, clear it after `move_and_slide`.
 - **Spawner stagger** is counted down in `_process` rather than with `await`, so a scene reload cannot resume a coroutine on a freed node. Phase D's count scaling and Phase B's spawn-rate multiplier both slot into `_queue_group`.

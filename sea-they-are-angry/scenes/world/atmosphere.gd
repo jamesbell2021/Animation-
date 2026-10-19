@@ -5,11 +5,11 @@ extends Node3D
 ## buoy tolling, and whispers and creaks from the dark.
 
 const BANKS := 12
-const BANK_RING := 17.5
-const BANK_SIZE := Vector3(15.0, 7.0, 15.0)
+const BANK_RING := 25.0
+const BANK_SIZE := Vector3(19.0, 8.0, 19.0)
 const ROLL_IN := 15.0
 const ROLL_OUT := 8.0
-const BUOY_POS := Vector3(15.5, 0.0, -14.0)
+const BUOY_POS := Vector3(20.5, 0.0, -19.0)
 
 # Per phase: fog bank density, ground mist density, vignette, saturation, contrast, sea glow.
 # Fog glow ("fog_e") lets the banks read as pale walls of mist even by moonlight.
@@ -86,12 +86,12 @@ func _build_fog() -> void:
 	_mist_mat.density_texture = _noise_texture(77, 0.14)
 	var mist := FogVolume.new()
 	mist.shape = RenderingServer.FOG_VOLUME_SHAPE_ELLIPSOID
-	mist.size = Vector3(34.0, 3.0, 34.0)
+	mist.size = Vector3(44.0, 3.0, 44.0)
 	mist.material = _mist_mat
 	mist.position = Vector3(0.0, Terrain.PLATEAU_HEIGHT + 0.4, 0.0)
 	add_child(mist)
 	_mist_particles = FX.emitter(self, Vector3(0.0, Terrain.PLATEAU_HEIGHT + 0.5, 0.0), FX._puff_mesh_ref(), Color(0.55, 0.6, 0.66, 0.16),
-		70, 11.0, Vector3(1.0, 0.05, 0.3).normalized(), 25.0, 0.25, 0.6, 0.0, 3.0, 5.5, false, true, 0.0, Vector3(12.0, 0.3, 12.0))
+		90, 11.0, Vector3(1.0, 0.05, 0.3).normalized(), 25.0, 0.25, 0.6, 0.0, 3.0, 5.5, false, true, 0.0, Vector3(16.0, 0.3, 16.0))
 	if _mist_particles:
 		_mist_particles.emitting = false
 

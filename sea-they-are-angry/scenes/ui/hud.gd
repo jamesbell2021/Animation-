@@ -5,6 +5,7 @@ const FONT := 18
 const MSG_TIME := 2.5
 const MSG_FADE := 0.6
 const WARN_TIME := 3.0
+const REPORT_TIME := 7.0
 const RED := Color(1.0, 0.35, 0.3)
 const AMBER := Color(1.0, 0.8, 0.45)
 const PALE := Color(0.92, 0.94, 0.96)
@@ -25,6 +26,8 @@ var _beam_label: Label
 var _prompt_label: Label
 var _msg_label: Label
 var _warn_label: Label
+var _report_label: Label
+var _report_t := 0.0
 var _over: Control
 var _over_reason: Label
 var _over_stats: Label
@@ -85,6 +88,12 @@ func _ready() -> void:
 	_warn_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_warn_label.offset_top = -160.0
 	_warn_label.visible = false
+	_report_label = _label(root, 24)
+	_report_label.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_report_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_report_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_report_label.offset_top = 40.0
+	_report_label.visible = false
 
 	_build_game_over(root)
 
@@ -172,6 +181,11 @@ func _process(delta: float) -> void:
 	if _msg_t > 0.0:
 		_msg_t = maxf(0.0, _msg_t - delta)
 		_msg_label.modulate.a = clampf(_msg_t / MSG_FADE, 0.0, 1.0)
+	if _report_t > 0.0:
+		_report_t = maxf(0.0, _report_t - delta)
+		_report_label.modulate.a = clampf(_report_t / MSG_FADE, 0.0, 1.0)
+		if _report_t <= 0.0:
+			_report_label.visible = false
 	if _warn_t > 0.0:
 		_warn_t = maxf(0.0, _warn_t - delta)
 		_warn_label.modulate.a = clampf(_warn_t / MSG_FADE, 0.0, 1.0)
@@ -184,8 +198,13 @@ func _update_lamp_label() -> void:
 		Lamp.State.OFF:
 			_lamp_label.text = "Lamp: unlit (lights at dusk)"
 		Lamp.State.BURNING:
-			_lamp_label.text = "Lamp: BURNING"
-			color = AMBER
+			# Say which beam, and that the focused one drinks oil, so it isn't left on by accident.
+			if lamp.mode == Lamp.Mode.FOCUSED:
+				_lamp_label.text = "Lamp: FOCUSED — burns oil fast"
+				color = Color(1.0, 0.55, 0.25)
+			else:
+				_lamp_label.text = "Lamp: BURNING" + ("" if lamp.operator != null else " — sweeping, unmanned")
+				color = AMBER
 		Lamp.State.GUTTERING:
 			_lamp_label.text = "Lamp: GUTTERING — refuel in %ds" % ceili(lamp.gutter_left())
 			color = RED
@@ -212,6 +231,15 @@ func _show_warning(text: String) -> void:
 ## A centred warning, used by the foghorn alarms.
 func warn(text: String) -> void:
 	_show_warning(text)
+
+## The keeper's log for the night just survived: a heading and a few lines under it.
+func report(heading: String, lines: Array[String]) -> void:
+	_show_warning(heading)
+	_warn_t = REPORT_TIME
+	_report_label.text = "\n".join(lines)
+	_report_label.visible = true
+	_report_label.modulate.a = 1.0
+	_report_t = REPORT_TIME
 
 func _on_phase_changed(p: int) -> void:
 	if p == Cycle.Phase.DUSK:

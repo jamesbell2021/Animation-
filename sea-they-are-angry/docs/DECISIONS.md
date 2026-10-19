@@ -98,3 +98,26 @@ Judgement calls made where the spec was open, contradictory, or would not work a
 
 - **3BL_Indie splash on every game.** `studio/splash.gd` is the first autoload in Sea They Are Angry, Neon Mega Tank and Connor Bell's Wonderland. It covers the screen from the first frame, so the island being built underneath is hidden, then fades the logo in and out over about three seconds. Any key, click, tap or button skips it. Its timeline waits for the game to settle and steps at most 0.1 s per frame, so a long first frame can't skip it. Headless runs (the tests) and `--no-splash` leave it out. The capture tools free it.
 - **Credits screen.** `studio/credits.gd` opens from the title menu's Credits button. It names the studio and the team (James, Aaron, Connor, Bonnie), the font licences, and Godot. Each game passes its own title, extra lines and font. Both files are identical in every game; change them everywhere together.
+
+## The crag, the ledge and the beaches (owner's request: "look at Bad North")
+
+- **The owner's notes:** the lighthouse should sit higher on a rock, the island should be a bit bigger, and creatures got past the light too quickly. They should be slow and have to come up a path.
+- **Layout (`scenes/util/terrain.gd`):** a meadow about 15 m in radius, ringed by sheer cliffs about 66° steep. Three shingle beaches (east, north, west) are the only ways ashore. In the middle is a crag 4.6 m above the meadow with the lighthouse on top. The only way up for creatures is a ledge path, 2.6 m wide, that winds 300° round the crag from its foot in the north. The homestead sits on the south meadow, toward the camera, where creatures don't walk.
+- **Creatures follow a waypoint graph (`scenes/util/nav.gd`):** up their beach, round the worn track at the crag's foot, then up the ledge. They still don't collide with the ground, so the graph is what keeps them off the cliffs. From the north beach the way up is 56 m, about a minute's walk. At dawn they walk back down the way they came and out by the nearest beach.
+- **The Bloated is slower:** 1.15 m/s, down from 1.6.
+- **Keepers stay on walkable ground.** `Terrain.walkable` refuses moves into the sea or onto ground steeper than about 48°. A keeper slides along a cliff edge rather than walking off it. The boathook and Use only reach things within 1.5 m of the keeper's own height, so nothing is struck or repaired through the crag's walls.
+- **The lamp reaches the beaches.** The light sits 4.6 m higher, so the beam is tipped down 38° (was 30°). Ranges are now 26 m wide and 29 m focused (were 20 and 18). The focused beam lands on the beaches and the water just off them. The wide beam covers the meadow and the ledge. Creatures near the top are below the beam, so close in it's the boathook.
+- **Fences close the chokepoints:** one across the head of each beach gully, and two across the ledge (at its foot and halfway up). That makes five fences, down from eight. Each leaves a 0.9 m gap on one side: a keeper fits through it, a Bloated doesn't.
+- **Shove them off the ledge.** A boathook blow aimed outward on the ledge throws a creature over the edge. It falls, takes 14 damage per metre fallen past the first 1.2 m, and has to walk all the way round again. The higher up the ledge, the harder it lands.
+- **Keepers' ladders (`scenes/structures/ladder.gd`)** go down the east-south-east face, top to ledge and ledge to meadow, so the lamp keeper can get down to fight fast. They aren't in the creatures' graph, so creatures never use them. They're placed clear of the lighthouse door, so Refuel and Operate win there.
+- **Landings are telegraphed.** The water churns at a landing for 4 s before anything surfaces, so the keeper at the lamp has time to swing the beam round. From night 2, groups of three or more split between two beaches ("north and east"), so one beam can't cover everything.
+- **Balance, from `tools/playtest.gd` runs:**
+  - With the longer approach, the focused beam is on far more, so the old fuel rates emptied the lamp on night 1. Fuel burn is now 0.35/s wide and 1.0/s focused (was 0.5 and 1.5), and a bio refuel gives 40 (was 25).
+  - Waves come earlier in the night so the last one still reaches the fences.
+  - One driftwood now mends 50 hp of fence, because at 25 every fence was down from night 3 and never came back.
+  - A bot that never leaves the lamp now holds about seven nights.
+- **Feedback:**
+  - The HUD says when the focused beam is on ("burns oil fast") and when the lamp is sweeping unmanned.
+  - At dawn a keeper's log reports what came ashore, how each one was stopped (burned, over the edge, boathook), what it cost, and one tip for the next night.
+- **Camera and mood:** the camera sits further back (0, 41, 27) to frame the bigger island. Fog densities are scaled down to match the longer view, and night ambient and moonlight are raised a little so the island still reads in the dark.
+

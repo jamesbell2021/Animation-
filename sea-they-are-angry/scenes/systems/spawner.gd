@@ -4,15 +4,24 @@ extends Node
 const STAGGER := 0.3
 const JITTER := 1.0
 const SPAWN_Y := -0.6
+# The water churns at a landing this long before the first creature surfaces,
+# so the keeper at the lamp has time to swing the beam round.
+const OMEN_TIME := 4.0
+const OMEN_EVERY := 0.6
+# From this night, big groups split between two beaches.
+const SPLIT_FROM_NIGHT := 2
+const SPLIT_MIN := 3
+# Waves come early enough that the last one still reaches the fences before dawn:
+# the walk from a beach to the lighthouse is close to a minute.
 const NIGHT_TABLES := {
-	1: [[0.10, 2], [0.45, 2], [0.75, 3]],
-	2: [[0.10, 2], [0.30, 2], [0.60, 3], [0.80, 3]],
-	3: [[0.10, 3], [0.35, 3], [0.55, 3], [0.75, 4]],
-	4: [[0.05, 3], [0.25, 3], [0.45, 4], [0.65, 4], [0.85, 4]],
+	1: [[0.06, 2], [0.32, 2], [0.58, 3]],
+	2: [[0.06, 2], [0.24, 3], [0.44, 3], [0.62, 3]],
+	3: [[0.05, 3], [0.22, 3], [0.40, 4], [0.60, 4]],
+	4: [[0.04, 3], [0.18, 3], [0.34, 4], [0.50, 4], [0.66, 5]],
 }
 
-## A group is about to come out of the sea at this point.
-signal wave_incoming(point: Vector3, count: int)
+## A group is about to come out of the sea at these landing points.
+signal wave_incoming(points: Array, count: int)
 
 var points: Array[Vector3] = []
 var enemies_root: Node
@@ -21,6 +30,8 @@ var lighthouse: Node3D
 var _queue: Array[Dictionary] = []
 # Individual spawns waiting out their stagger delay: {at: Vector3, delay: float}.
 var _pending: Array[Dictionary] = []
+# Landings about to happen: {at: Vector3, left: float, tick: float}.
+var _omens: Array[Dictionary] = []
 
 func _ready() -> void:
 	Cycle.phase_changed.connect(_on_phase_changed)
@@ -48,6 +59,7 @@ func _on_phase_changed(p: int) -> void:
 	elif p == Cycle.Phase.DAWN:
 		_queue.clear()
 		_pending.clear()
+		_omens.clear()
 
 func _on_night_progress(t: float) -> void:
 	while not _queue.is_empty() and float(_queue[0]["t"]) <= t:
@@ -62,12 +74,22 @@ func _queue_group(entry: Dictionary) -> void:
 		idx = randi() % points.size()
 	# Co-op: more keepers, more creatures (x1.5 per extra keeper, rounded up).
 	var count := ceili(float(entry["count"]) * (1.0 + 0.5 * float(Players.count() - 1)))
-	wave_incoming.emit(points[idx], count)
+	var landings: Array = [points[idx]]
+	if Run.night >= SPLIT_FROM_NIGHT and count >= SPLIT_MIN and points.size() > 2:
+		# A second landing at a different beach (points come in pairs, one pair per beach).
+		var other := (idx + 2 + 2 * (randi() % maxi(1, points.size() / 2 - 1))) % points.size()
+		landings.append(points[other])
+	wave_incoming.emit(landings, count)
+	for l in landings:
+		_omens.append({"at": l, "left": OMEN_TIME, "tick": 0.0})
 	for i in count:
-		_pending.append({"at": points[idx], "delay": STAGGER * float(i)})
+		_pending.append({"at": landings[i % landings.size()], "delay": OMEN_TIME + STAGGER * float(i)})
 
 func _process(delta: float) -> void:
-	if _pending.is_empty() or not Run.active:
+	if not Run.active:
+		return
+	_churn(delta)
+	if _pending.is_empty():
 		return
 	var still: Array[Dictionary] = []
 	for p in _pending:
@@ -77,6 +99,20 @@ func _process(delta: float) -> void:
 		else:
 			still.append(p)
 	_pending = still
+
+# Bubbles and slaps of water where something is about to come up.
+func _churn(delta: float) -> void:
+	var still: Array[Dictionary] = []
+	for o in _omens:
+		o["left"] = float(o["left"]) - delta
+		o["tick"] = float(o["tick"]) - delta
+		if float(o["tick"]) <= 0.0:
+			o["tick"] = OMEN_EVERY
+			var at: Vector3 = o["at"] + Vector3(randf_range(-1.5, 1.5), 0.0, randf_range(-1.5, 1.5))
+			FX.splash(get_parent(), Vector3(at.x, Terrain.SEA_LEVEL, at.z), 0.45)
+		if float(o["left"]) > 0.0:
+			still.append(o)
+	_omens = still
 
 func _spawn_one(at: Vector3) -> void:
 	if enemies_root == null:

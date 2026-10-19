@@ -11,9 +11,11 @@ const ATTACK_CD := 0.6
 const ATTACK_ARC_DEG := 60.0
 const SWING_TIME := 0.2
 const INTERACT_RANGE := 2.2
+# The boathook and interactions only reach things on roughly the keeper's own level,
+# so nothing is struck or repaired through the crag's walls.
+const REACH_HEIGHT := 1.5
 const OPERATE_RANGE := 3.8
 const FALL_SPEED := -5.0
-const ISLAND_RADIUS := 12.9
 const BODY_COLOR := Color(0.85, 0.65, 0.2)
 const MODEL_DIR := "res://art/characters/%s.glb"
 const REVIVE_TIME := 3.0
@@ -68,12 +70,17 @@ var _lantern_glass: StandardMaterial3D
 var _ring: MeshInstance3D
 var _tag: Label3D
 var _flicker := 0.0
+# Climbing a ladder: carried from one end to the other, no control meanwhile.
+var _climb_from := Vector3.ZERO
+var _climb_to := Vector3.ZERO
+var _climb_t := -1.0
+var _climb_len := 1.0
 
 func _ready() -> void:
 	add_to_group("player")
 	collision_layer = 2
 	collision_mask = 1 | 4 | 8
-	# The island's rocky slopes are steep; let the keeper scramble up them.
+	# Faceted ground: let the keeper step over small rises. Terrain.walkable keeps them off cliffs.
 	floor_max_angle = deg_to_rad(60.0)
 	_pose = Node3D.new()
 	_pose.name = "Pose"
@@ -287,6 +294,9 @@ func _physics_process(delta: float) -> void:
 		velocity = Vector3(0.0, 0.0 if is_on_floor() else FALL_SPEED, 0.0)
 		move_and_slide()
 		return
+	if _climb_t >= 0.0:
+		_climbing(delta)
+		return
 	_attack_cd = maxf(0.0, _attack_cd - delta)
 	_aim_face_t = maxf(0.0, _aim_face_t - delta)
 	_update_aim()
@@ -303,8 +313,9 @@ func _physics_process(delta: float) -> void:
 		if Input.is_action_just_pressed(_act("attack")) and _attack_cd <= 0.0:
 			_attack()
 	velocity.y = 0.0 if is_on_floor() else FALL_SPEED
+	var before := global_position
 	move_and_slide()
-	_clamp_to_island()
+	_clamp_to_island(before)
 	_update_facing(delta)
 	_animate(delta)
 	var mate := _downed_mate()
@@ -404,12 +415,19 @@ func _move(delta: float) -> void:
 	velocity.x = dir.x * spd
 	velocity.z = dir.z * spd
 
-func _clamp_to_island() -> void:
-	var flat := Vector2(global_position.x, global_position.z)
-	if flat.length() > ISLAND_RADIUS:
-		flat = flat.normalized() * ISLAND_RADIUS
-		global_position.x = flat.x
-		global_position.z = flat.y
+# Keepers don't wade into the sea or step off a cliff or the ledge. If a move would,
+# keep whichever half of it is safe so they slide along the edge instead of sticking.
+func _clamp_to_island(before: Vector3) -> void:
+	var p := global_position
+	if Terrain.walkable(p.x, p.z) or not Terrain.walkable(before.x, before.z):
+		return
+	if Terrain.walkable(p.x, before.z):
+		global_position.z = before.z
+	elif Terrain.walkable(before.x, p.z):
+		global_position.x = before.x
+	else:
+		global_position.x = before.x
+		global_position.z = before.z
 
 func _attack() -> void:
 	_attack_cd = ATTACK_CD
@@ -422,6 +440,8 @@ func _attack() -> void:
 		if not (e is Node3D) or not e.has_method("take_damage"):
 			continue
 		var to: Vector3 = e.global_position - global_position
+		if absf(to.y) > REACH_HEIGHT:
+			continue
 		to.y = 0.0
 		var d := to.length()
 		if d > ATTACK_RANGE:
@@ -430,6 +450,32 @@ func _attack() -> void:
 		if rad_to_deg(_aim.angle_to(dir_to)) > ATTACK_ARC_DEG:
 			continue
 		e.take_damage(ATTACK_DMG, dir_to, self)
+
+## Climb from where the keeper stands to `to` over `time` seconds (ladders).
+func climb(to: Vector3, time: float) -> void:
+	if operating:
+		_toggle_operate()
+	_climb_from = global_position
+	_climb_to = to
+	_climb_len = time
+	_climb_t = 0.0
+	velocity = Vector3.ZERO
+	Audio.sfx("creak", global_position, -4.0, 0.1)
+
+func is_climbing() -> bool:
+	return _climb_t >= 0.0
+
+func _climbing(delta: float) -> void:
+	_climb_t += delta
+	var k := clampf(_climb_t / _climb_len, 0.0, 1.0)
+	# Up or down the rungs first, then step off.
+	var up := _climb_to.y > _climb_from.y
+	var kv := smoothstep(0.0, 0.8, k) if up else smoothstep(0.2, 1.0, k)
+	var kh := smoothstep(0.6, 1.0, k) if up else smoothstep(0.0, 0.4, k)
+	global_position = Vector3(lerpf(_climb_from.x, _climb_to.x, kh), lerpf(_climb_from.y, _climb_to.y, kv), lerpf(_climb_from.z, _climb_to.z, kh))
+	_animate(delta)
+	if k >= 1.0:
+		_climb_t = -1.0
 
 func _update_swing(delta: float) -> void:
 	if _swing_t > 0.0:
@@ -468,6 +514,8 @@ func _find_interactable() -> Node:
 	var best_d := INTERACT_RANGE
 	for n in get_tree().get_nodes_in_group("interactable"):
 		if not (n is Node3D) or not n.has_method("interact_prompt"):
+			continue
+		if absf(n.global_position.y - global_position.y) > REACH_HEIGHT:
 			continue
 		var d := 0.0
 		if n is Structure:

@@ -41,6 +41,10 @@ func health_ratio() -> float:
 func repair_cost() -> Dictionary:
 	return {"driftwood": 1}
 
+## Health restored per repair.
+func repair_amount() -> int:
+	return REPAIR_AMOUNT
+
 func display_name() -> String:
 	return id
 
@@ -84,7 +88,7 @@ func interact(_player: Node) -> bool:
 	if not is_damaged():
 		return false
 	if Stock.spend(repair_cost()):
-		repair(REPAIR_AMOUNT)
+		repair(repair_amount())
 		Events.message.emit("Repaired %s  (%d/%d)" % [display_name(), hp, max_hp])
 		return true
 	Events.message.emit("Need " + Stock.cost_str(repair_cost()))

@@ -52,39 +52,42 @@ func _run() -> void:
 	var player = main.player
 	var cam: Camera3D = main.camera
 
-	# Camera framing: whole island rim and lighthouse top in view.
+	# Camera framing: the whole coast, every beach where creatures land, and the lighthouse top in view.
 	var all_in := true
 	for i in 24:
-		var a := TAU * i / 24.0
-		var p := Vector3(sin(a) * 14.0, 0.0, cos(a) * 14.0)
+		var a := 360.0 * i / 24.0
+		var p := Terrain.at_angle(a, Terrain.coast_radius(a) + 1.0)
 		if not cam.is_position_in_frustum(p):
 			all_in = false
-			print("   off-screen rim point at ", p)
-	check(all_in, "island rim r14 fully on screen")
+			print("   off-screen coast point at ", p)
+	for i in Terrain.BEACHES.size():
+		if not cam.is_position_in_frustum(Terrain.beach_point(i, 0.3)):
+			all_in = false
+			print("   off-screen beach ", i)
+	check(all_in, "coast and beaches fully on screen")
 	check(cam.is_position_in_frustum(lh.global_position + Vector3(0, 10.4, 0)), "lighthouse top on screen")
+	check(lh.global_position.y > Terrain.PLATEAU_HEIGHT + 4.0, "lighthouse stands on the crag, %.1f m above the meadow" % (lh.global_position.y - Terrain.PLATEAU_HEIGHT))
 
-	# Fence ring: eight fences, adjacent ends separated by a keeper-sized gap.
+	# Fences close the chokepoints: each beach head and the ledge twice, each leaving a keeper-sized gap.
 	var fences := []
 	for s in get_nodes_in_group("structures"):
 		if s is Fence:
 			fences.append(s)
-	check(fences.size() == 8, "eight fences")
-	var f0: Fence = fences[0]
-	var tangent: Vector3 = f0.global_transform.basis.x
-	var radial := Vector3(f0.global_position.x, 0, f0.global_position.z).normalized()
-	check(absf(tangent.dot(radial)) < 0.01, "fence 0 is tangent to the ring")
-	var ends := []
+	check(fences.size() == 5, "five fences (%d)" % fences.size())
+	var gaps_ok := true
 	for f in fences:
-		ends.append(f.to_global(Vector3(f.length * 0.5, 0, 0)))
-		ends.append(f.to_global(Vector3(-f.length * 0.5, 0, 0)))
-	var min_gap := 99.0
-	for i in ends.size():
-		for j in range(i + 1, ends.size()):
-			if int(i / 2) == int(j / 2):
-				continue
-			min_gap = minf(min_gap, Geo.flat_dist(ends[i], ends[j]))
-	print("   smallest gap between fence ends: ", snappedf(min_gap, 0.01))
-	check(min_gap > 0.75 and min_gap < 1.05, "gaps fit a keeper (0.7) but not a Bloated (1.0)")
+		var on_ledge := Terrain.on_ledge(f.global_position.x, f.global_position.z)
+		var width := Terrain.LEDGE_HALF * 2.0 if on_ledge else Terrain.beach_half_width(0.9) * 2.0
+		var gap: float = width - f.length
+		if gap < 0.75 or gap > 1.0:
+			gaps_ok = false
+			print("   fence at ", f.global_position, " leaves ", snappedf(gap, 0.01))
+	check(gaps_ok, "gaps fit a keeper (0.7) but not a Bloated (1.0)")
+	# The route up crosses every fence: each one sits across a leg of the path.
+	var route: Array[Vector3] = Nav.route_to_light(Terrain.beach_point(1, 0.0))
+	print("   route from the north beach: %d waypoints, %.0f m" % [route.size(), Nav.route_length(Terrain.beach_point(1, 0.0), route)])
+	check(Nav.route_length(Terrain.beach_point(1, 0.0), route) > 45.0, "the way up from a beach is a long walk")
+	check(route[route.size() - 2].y > Terrain.CRAG_TOP - 0.5, "the route climbs the ledge to the top")
 
 	# Movement: W moves up-screen (-Z).
 	var z0: float = player.global_position.z
@@ -111,7 +114,7 @@ func _run() -> void:
 	# Boathook attack on an emerged Bloated.
 	var b := Bloated.new()
 	b.lighthouse = lh
-	b.position = Vector3(0, 0, 11.5)
+	b.position = Terrain.at_angle(60.0, 10.5)
 	main.get_node("Enemies").add_child(b)
 	await wait_until(func(): return b.state == &"Approach", 120)
 	b.process_mode = Node.PROCESS_MODE_DISABLED
@@ -121,7 +124,7 @@ func _run() -> void:
 	player._attack()
 	check(b.hp == 40, "boathook hit takes 20 hp (hp now %d)" % b.hp)
 	b.process_mode = Node.PROCESS_MODE_INHERIT
-	player.global_position = on_ground(Vector3(4, 0.1, 4))
+	player.global_position = on_ground(Vector3(2.6, 0.1, 2.4))
 	b.take_damage(20, Vector3.ZERO, player)
 	b.take_damage(20, Vector3.ZERO, player)
 	check(b.state == &"Bloat", "killing a Bloated starts Bloat")
@@ -130,27 +133,38 @@ func _run() -> void:
 	await wait_until(func(): return not is_instance_valid(b), 200)
 	check(not is_instance_valid(b) and killed[0] == 1, "Bloat then Burst frees it and emits enemy_killed once")
 
-	# Fence: Bloated walking in from the sea at angle 0 meets the fence centred at angle 0.
+	# Fence: a Bloated landing on the east beach meets the fence at the head of its gully.
 	var fence: Fence = null
+	var east := Terrain.beach_point(0, 0.9)
 	for f in fences:
-		if absf(f.global_position.x) < 0.1 and f.global_position.z > 0:
+		if Geo.flat_dist(f.global_position, east) < 1.5:
 			fence = f
+	# Open the ledge so this one goes all the way up.
+	for f in fences:
+		if f != fence:
+			f.take_damage(1000)
 	var e := Bloated.new()
 	e.lighthouse = lh
-	e.position = Vector3(0, -0.6, 17)
+	e.position = Terrain.beach_point(0, 0.0)
 	main.get_node("Enemies").add_child(e)
 	Engine.time_scale = 6.0
 	await wait_until(func(): return e.state == &"AttackFence", 3000)
-	check(e.state == &"AttackFence" and e.attack_target == fence, "Bloated stops at the fence and attacks it")
+	check(e.state == &"AttackFence" and e.attack_target == fence, "Bloated comes up the beach and attacks the fence at its head")
 	await wait_until(func(): return fence.is_destroyed(), 3000)
 	check(fence.is_destroyed() and not fence._meshes[0].visible, "fence destroyed and hidden after 10 hits")
 	var lh_hp: int = lh.hp
-	await wait_until(func(): return not is_instance_valid(e), 4000)
-	check(not is_instance_valid(e), "Bloated walks through the broken fence and bursts")
+	var climbed := [false]
+	await wait_until(func():
+		if is_instance_valid(e) and Terrain.on_ledge(e.global_position.x, e.global_position.z) and e.global_position.y > 4.0:
+			climbed[0] = true
+		return not is_instance_valid(e), 8000)
+	check(climbed[0], "Bloated climbs the ledge path")
+	check(not is_instance_valid(e), "Bloated walks through the broken fence, up to the light and bursts")
 	check(lh.hp == lh_hp - 40, "burst at the lighthouse deals 40 (hp %d -> %d)" % [lh_hp, lh.hp])
 
-	# Repair the broken fence.
-	player.global_position = on_ground(fence.global_position + Vector3(0, 0.1, -1.0))
+	# Repair the broken fence from the meadow side.
+	var inward := -Vector3(fence.global_position.x, 0, fence.global_position.z).normalized()
+	player.global_position = on_ground(fence.global_position + inward * 1.0)
 	await frames(3)
 	var dw: int = Stock.get_amount("driftwood")
 	check(player.interact_prompt().begins_with("[E] Repair fence"), "repair prompt: " + player.interact_prompt())
@@ -158,7 +172,7 @@ func _run() -> void:
 	await frames(2)
 	Input.action_release("interact")
 	await frames(2)
-	check(fence.hp == 25 and Stock.get_amount("driftwood") == dw - 1 and fence._meshes[0].visible, "E repairs fence 25 for 1 driftwood")
+	check(fence.hp == 50 and Stock.get_amount("driftwood") == dw - 1 and fence._meshes[0].visible, "E repairs fence 50 for 1 driftwood")
 
 	# Cycle: skip day -> dusk lights the lamp.
 	Engine.time_scale = 1.0
@@ -189,7 +203,7 @@ func _run() -> void:
 	# Lamp slows enemies in the cone.
 	var s := Bloated.new()
 	s.lighthouse = lh
-	s.position = Vector3(7.6, 0, 0)
+	s.position = Terrain.at_angle(90.0, 7.8)
 	main.get_node("Enemies").add_child(s)
 	await wait_until(func(): return s.state == &"Approach", 120)
 	lamp.yaw = PI
@@ -205,7 +219,7 @@ func _run() -> void:
 	await frames(30)
 	var lit_speed: float = Geo.flat_dist(p0, s.global_position) / 0.5
 	print("   Bloated speed unlit ", snappedf(dark_speed, 0.01), "  lit ", snappedf(lit_speed, 0.01))
-	check(dark_speed > 1.4 and lit_speed > 0.8 and lit_speed < 1.1, "beam slows a Bloated from 1.6 to ~0.96 m/s")
+	check(dark_speed > 1.05 and lit_speed > 0.55 and lit_speed < 0.8, "beam slows a Bloated from 1.15 to ~0.69 m/s")
 	check(s._lit_k > 0.9 and s._visual.scale.y < 0.9, "lit Bloated visibly pales and cowers")
 	# Focused beam: dead zone near the lighthouse, burns 10/s further out.
 	lamp.toggle_mode()
@@ -216,16 +230,19 @@ func _run() -> void:
 	s.queue_free()
 	var s2 := Bloated.new()
 	s2.lighthouse = lh
-	s2.position = Vector3(13.0, 0, 0)
+	s2.position = Terrain.beach_point(0, 0.75)
 	main.get_node("Enemies").add_child(s2)
 	await wait_until(func(): return s2.state == &"Approach", 120)
+	player._aim = Vector3(s2.global_position.x, 0, s2.global_position.z).normalized()
+	lamp.yaw = player.aim_yaw()
+	await frames(2)
 	var hp0: int = s2.hp
 	p0 = s2.global_position
 	await frames(60)
 	var f_speed: float = Geo.flat_dist(p0, s2.global_position) / 1.0
-	print("   focused at ~12 m: hp ", hp0, " -> ", s2.hp, " in 1 s, speed ", snappedf(f_speed, 0.01))
-	check(s2.hp <= hp0 - 9 and s2.hp >= hp0 - 11, "focused beam burns ~10 hp per second out past the fences")
-	check(f_speed > 1.4, "focused beam burns without slowing")
+	print("   focused on the east beach: hp ", hp0, " -> ", s2.hp, " in 1 s, speed ", snappedf(f_speed, 0.01))
+	check(s2.hp <= hp0 - 9 and s2.hp >= hp0 - 11, "focused beam burns ~10 hp per second down on the beaches")
+	check(f_speed > 0.9, "focused beam burns without slowing")
 	check(s2._burn_k > 0.9, "burning Bloated glows orange")
 	s2.queue_free()
 	lamp.toggle_mode()

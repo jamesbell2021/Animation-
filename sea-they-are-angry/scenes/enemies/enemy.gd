@@ -9,9 +9,18 @@ const EMERGE_DEPTH := -0.6
 const FENCE_HIT_INTERVAL := 1.0
 const FENCE_HIT_DMG := 10
 const RETREAT_MULT := 2.0
-const DESPAWN_RADIUS := 20.0
-const SHORE_RADIUS := 14.0
-const SINK_RATE := 0.25
+const DESPAWN_RADIUS := 30.0
+const SINK_RATE := 0.6
+const WAYPOINT_REACHED := 0.7
+const REPATH_EVERY := 0.5
+const OFF_ROUTE_HEIGHT := 1.2
+const FALL_RATE := 9.0
+# A boathook blow pointing out over the ledge's edge shoves a creature off it.
+const SHOVE_SPEED := 6.5
+const SHOVE_DOT := 0.35
+# Falls longer than this hurt, more the further they drop.
+const FALL_HURT_FROM := 1.2
+const FALL_DMG_PER_M := 14.0
 const KNOCKBACK := 3.0
 const KNOCKBACK_DECAY := 8.0
 const DETOUR_TIME := 0.8
@@ -29,6 +38,10 @@ var lighthouse: Node3D
 var state: StringName = &""
 var state_t := 0.0
 var attack_target: Structure
+## Waypoints still to walk (from Nav). Filled on landing and again at dawn.
+var route: Array[Vector3] = []
+## What last hurt it: "beam", "hook", "fall", or "reached" once it gets to the light.
+var last_hit := ""
 
 var _knock := Vector3.ZERO
 var _detour_t := 0.0
@@ -36,6 +49,10 @@ var _groan_t := 0.0
 var _in_water := true
 var _detour_dir := Vector3.ZERO
 var _attack_t := 0.0
+var _repath_t := 0.0
+var _sink_t := 0.0
+var _fall_top := -INF
+var _last_wp := Vector3.INF
 
 func _ready() -> void:
 	add_to_group("enemies")
@@ -129,6 +146,39 @@ func _tick_Emerge(_delta: float) -> void:
 
 func _enter_Approach() -> void:
 	target = pick_target()
+	if _last_wp == Vector3.INF:
+		# First time ashore: plot the way up unless the spawner already did.
+		if route.is_empty():
+			set_route(Nav.route_to_light(global_position))
+		else:
+			_last_wp = global_position
+
+func set_route(r: Array[Vector3]) -> void:
+	route = r
+	_last_wp = global_position
+
+## Next point to walk to: the route's head, then the target itself.
+func _steer_point() -> Vector3:
+	while not route.is_empty() and Geo.flat_dist(global_position, route[0]) < WAYPOINT_REACHED:
+		_last_wp = route.pop_front()
+	if not route.is_empty():
+		return route[0]
+	return target.global_position if target != null and is_instance_valid(target) else global_position
+
+# Knocked off the ledge or out of the gully: find a way back on from here.
+func _check_route(delta: float) -> void:
+	_repath_t -= delta
+	if _repath_t > 0.0 or route.is_empty() or _last_wp == Vector3.INF:
+		return
+	_repath_t = REPATH_EVERY
+	var a := _last_wp
+	var b := route[0]
+	var ab := Vector2(b.x - a.x, b.z - a.z)
+	var k := 0.0
+	if ab.length_squared() > 0.001:
+		k = clampf(Vector2(global_position.x - a.x, global_position.z - a.z).dot(ab) / ab.length_squared(), 0.0, 1.0)
+	if absf(ground_y() - lerpf(a.y, b.y, k)) > OFF_ROUTE_HEIGHT:
+		set_route(Nav.route_to_light(global_position))
 
 func _tick_Approach(delta: float) -> void:
 	if target == null or not is_instance_valid(target):
@@ -141,6 +191,12 @@ func _tick_Approach(delta: float) -> void:
 	if to.length() < reach:
 		change_state(&"Arrived")
 		return
+	_check_route(delta)
+	to = _steer_point() - global_position
+	to.y = 0.0
+	if to.length() < 0.01:
+		to = target.global_position - global_position
+		to.y = 0.0
 	var dir := to.normalized()
 	_groan_t -= delta
 	if _groan_t <= 0.0:
@@ -168,7 +224,33 @@ func _tick_Approach(delta: float) -> void:
 		dir = _detour_dir
 	face(dir)
 	velocity = dir * speed * speed_mult
-	position.y = ground_y()
+	_follow_ground(delta)
+
+# Stick to the ground, but drop rather than teleport when knocked off a ledge.
+func _follow_ground(delta: float) -> void:
+	var g := ground_y()
+	if position.y > g + 0.05:
+		if _fall_top == -INF:
+			_fall_top = position.y
+		position.y = maxf(g, position.y - FALL_RATE * delta)
+		if position.y <= g:
+			_landed(_fall_top - g)
+	else:
+		position.y = g
+		_fall_top = -INF
+
+func _landed(drop: float) -> void:
+	_fall_top = -INF
+	if drop < FALL_HURT_FROM or state == &"Retreat":
+		return
+	FX.spray(get_parent(), global_position + Vector3(0.0, 0.3, 0.0), Vector3.UP, Color(0.33, 0.27, 0.2))
+	Audio.sfx("hit", global_position, -2.0, 0.1)
+	Audio.sfx("groan", global_position, -4.0, 0.2)
+	Events.message.emit("Over the edge!")
+	last_hit = "fall"
+	take_damage(int(drop * FALL_DMG_PER_M), Vector3.ZERO, null)
+	# Find the way back round from down here.
+	_repath_t = 0.0
 
 func _enter_AttackFence() -> void:
 	_attack_t = 0.0
@@ -176,7 +258,13 @@ func _enter_AttackFence() -> void:
 
 func _tick_AttackFence(delta: float) -> void:
 	velocity = Vector3.ZERO
-	if attack_target == null or not is_instance_valid(attack_target) or attack_target.is_destroyed():
+	_follow_ground(delta)
+	var gone := attack_target == null or not is_instance_valid(attack_target) or attack_target.is_destroyed()
+	# Shoved away from it (or off the ledge below it): back to walking.
+	if not gone and (Geo.flat_dist(global_position, attack_target.global_position) > attack_target.length * 0.5 + 1.5 \
+			or absf(global_position.y - attack_target.global_position.y) > 1.0):
+		gone = true
+	if gone:
 		attack_target = null
 		change_state(&"Approach")
 		return
@@ -190,33 +278,50 @@ func _enter_Retreat() -> void:
 	# Walk through fences and keepers on the way out; nothing should wedge a retreating creature.
 	collision_mask = 0
 	attack_target = null
+	set_route(Nav.route_to_sea(global_position))
 
-func _tick_Retreat(_delta: float) -> void:
-	var away := Vector3(global_position.x, 0.0, global_position.z)
-	if away.length() < 0.01:
-		away = Vector3(1.0, 0.0, 0.0)
-	var r := away.length()
-	if r > DESPAWN_RADIUS:
-		queue_free()
-		return
-	var dir := away.normalized()
+func _tick_Retreat(delta: float) -> void:
+	# Back down the way they came, to the nearest beach, and under.
+	while not route.is_empty() and Geo.flat_dist(global_position, route[0]) < WAYPOINT_REACHED:
+		route.pop_front()
+	var flat := Vector3(global_position.x, 0.0, global_position.z)
+	var dir: Vector3
+	if route.is_empty():
+		dir = flat.normalized() if flat.length() > 0.01 else Vector3.RIGHT
+	else:
+		dir = Vector3(route[0].x - global_position.x, 0.0, route[0].z - global_position.z).normalized()
+	if route.is_empty() and (_in_water or flat.length() > DESPAWN_RADIUS):
+		_sink_t += delta
+		if _sink_t > 2.0 or flat.length() > DESPAWN_RADIUS:
+			queue_free()
+			return
 	face(dir)
 	velocity = dir * speed * RETREAT_MULT
-	if global_position.y < Terrain.SEA_LEVEL and not _in_water:
+	var g := ground_y()
+	if g < Terrain.SEA_LEVEL - 0.6 and not _in_water:
 		_in_water = true
 		var surface := Vector3(global_position.x, Terrain.SEA_LEVEL, global_position.z)
 		FX.splash(get_parent(), surface, 0.7)
 		Audio.sfx("splash", surface, -8.0)
-	# Walk down the beach and keep sinking once past the shore.
-	position.y = ground_y() - maxf(0.0, r - SHORE_RADIUS) * SINK_RATE
+	# Walk down the beach and sink once the water closes over them.
+	_follow_ground(delta)
+	if _in_water:
+		position.y = g - _sink_t * SINK_RATE * 2.0 - SINK_RATE
 
 # ---- damage ----
 
 func take_damage(amount: int, from_dir: Vector3 = Vector3.ZERO, source: Node = null) -> void:
 	if state == &"Emerge" or hp <= 0:
 		return
+	if source is Player:
+		last_hit = "hook"
 	hp -= amount
 	_knock += Vector3(from_dir.x, 0.0, from_dir.z) * (KNOCKBACK / mass)
+	# On the ledge, a blow aimed outward sends it over the edge.
+	if source != null and hp > 0 and Terrain.on_ledge(global_position.x, global_position.z):
+		var out := Vector3(global_position.x, 0.0, global_position.z).normalized()
+		if Vector3(from_dir.x, 0.0, from_dir.z).dot(out) > SHOVE_DOT:
+			_knock = out * SHOVE_SPEED
 	if source != null:
 		FX.spray(get_parent(), global_position + Vector3(0.0, 1.1, 0.0), from_dir, Color(0.55, 0.65, 0.45))
 		Audio.sfx("hit", global_position)

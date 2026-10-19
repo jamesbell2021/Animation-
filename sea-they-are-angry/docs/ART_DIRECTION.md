@@ -30,13 +30,23 @@ The chosen look is the one in `docs/concept/keepers_reference_sheet.png`: stylis
 |---|---|
 | ![homestead](screenshots/homestead_day.png) | ![homestead at night](screenshots/homestead_night.png) |
 
+The crag and its ledge path (Bad North layout; the shots above are of the earlier, smaller island):
+
+| The island by day | Night: the focused beam on the east beach |
+|---|---|
+| ![crag day](screenshots/crag_day.png) | ![crag night](screenshots/crag_night.png) |
+
+| A Bloated climbing the ledge; the keepers' ladder on the right |
+|---|
+| ![ledge](screenshots/crag_ledge.png) |
+
 Regenerate with `tools/screenshot.gd`.
 
 The owner's brief is "a Valheim look". In practice that means simple, faceted low-poly shapes with flat colour, carried by modern, moody lighting. It is the lighting and atmosphere that make Valheim read as beautiful, not texture detail. The checklist the game now follows:
 
 | Valheim trait | How this game does it |
 |---|---|
-| Chunky faceted terrain | `scenes/util/terrain.gd`: a raised rocky island, the lighthouse on a gravel knoll, mossy rock slopes to the sea; a jittered grid, flat-shaded, one painted colour per triangle |
+| Chunky faceted terrain | `scenes/util/terrain.gd`: a meadow on sheer cliffs, shingle beaches, the lighthouse on a crag with a ledge path winding up it; a jittered grid, flat-shaded, one painted colour per triangle |
 | A lived-in homestead | Whitewashed cottage with slate roof and glowing windows, a stone store shed, a drystone-walled garden, gravel paths |
 | Dense grass swaying in the wind | `shaders/grass.gdshader`: 4,200 vertex-coloured tufts in a MultiMesh, gusting wind, up-facing normals so the field shades softly |
 | Living water | `shaders/sea.gdshader`: layered swells, shallow-to-deep colour, a breathing foam line at the shore, sparse whitecaps |

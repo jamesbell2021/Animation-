@@ -7,38 +7,44 @@ const TitleScript := preload("res://scenes/ui/title.gd")
 const PauseScript := preload("res://scenes/ui/pause.gd")
 const TITLE_ORBIT_SPEED := 0.05
 const SPRAY_EVERY := 1.6
-# Where each keeper appears when a run starts, around the lighthouse door.
-const SPAWNS := [Vector3(2.5, 0.0, 4.0), Vector3(-1.5, 0.0, 4.5), Vector3(1.0, 0.0, 5.6)]
+# Where each keeper appears when a run starts: the crag top, round the lighthouse door.
+const SPAWNS := [Vector3(-1.6, 0.0, 2.7), Vector3(-2.9, 0.0, 0.8), Vector3(0.4, 0.0, 3.2)]
 
-const FENCE_RING := 9.0
-const FENCE_SECTIONS := 8
-const FENCE_GAP := 1.0
-const SCAVENGE_RING := 12.3
-const SPAWN_RING := 17.0
-const SPAWN_POINTS := 6
-const CAMERA_POS := Vector3(0.0, 26.0, 19.0)
-const CAMERA_TARGET := Vector3(0.0, 2.0, 4.0)
-const CAMERA_FOV := 47.0
+# Fences close the chokepoints: the head of each beach gully, and the ledge path
+# at its foot and halfway up. Each leaves a gap a keeper fits through but a Bloated doesn't.
+const FENCE_GAP := 0.9
+const BEACH_FENCE_T := 0.9
+const LEDGE_FENCES := [0.08, 0.58]
+# Creatures land offshore of each beach, either side of its centre line.
+const LANDING_OFFSET := 1.8
+const CAMERA_POS := Vector3(0.0, 41.0, 27.0)
+const CAMERA_TARGET := Vector3(0.0, 3.0, 1.0)
+const CAMERA_FOV := 45.0
 const LIGHT_TWEEN := 2.0
-const GRASS_TUFTS := 4200
+const GRASS_TUFTS := 9500
+const JETTY_LATERAL := 4.2
+# Keepers' ladders down the east-south-east face, from the top to the ledge and the ledge
+# to the meadow: above the upper ledge fence, so they land on the defended side of it,
+# and clear of the lighthouse door so the lamp and refuel prompts win there.
+const LADDER_ANGLE := 66.0
 
-# Scavenge layout: [angle_deg, kind, amount]. Angle 0 points toward the camera (+Z).
+# Scavenge washes up on the beaches: [beach index, t up the beach, lateral offset, kind, amount].
 const SCAVENGE := [
-	[40.0, "driftwood", 2],
-	[160.0, "driftwood", 2],
-	[280.0, "driftwood", 2],
-	[100.0, "scrap", 1],
-	[220.0, "bio", 1],
-	[330.0, "bio", 1],
+	[0, 0.55, 2.0, "driftwood", 2],
+	[0, 0.62, -2.0, "scrap", 1],
+	[1, 0.55, 2.0, "driftwood", 2],
+	[1, 0.62, -2.0, "bio", 1],
+	[2, 0.55, -2.0, "driftwood", 2],
+	[2, 0.62, 2.0, "bio", 1],
 ]
 
 # Per phase: background, ambient colour and energy, sun colour and energy,
 # distance fog density, volumetric fog density, fog glow tint.
 var _lighting := [
-	{"bg": Color(0.60, 0.67, 0.72), "amb": Color(0.62, 0.68, 0.76), "amb_e": 0.55, "sun": Color(1.0, 0.92, 0.78), "sun_e": 1.3, "fog": 0.002, "vfog": 0.005, "tint": Color(0.70, 0.75, 0.80)},
-	{"bg": Color(0.34, 0.31, 0.38), "amb": Color(0.52, 0.44, 0.52), "amb_e": 0.38, "sun": Color(1.0, 0.58, 0.36), "sun_e": 0.8, "fog": 0.008, "vfog": 0.03, "tint": Color(0.52, 0.42, 0.44)},
-	{"bg": Color(0.03, 0.05, 0.08), "amb": Color(0.26, 0.36, 0.52), "amb_e": 0.5, "sun": Color(0.55, 0.68, 0.95), "sun_e": 0.62, "fog": 0.012, "vfog": 0.038, "tint": Color(0.10, 0.14, 0.20)},
-	{"bg": Color(0.52, 0.50, 0.55), "amb": Color(0.60, 0.55, 0.60), "amb_e": 0.42, "sun": Color(1.0, 0.74, 0.58), "sun_e": 0.95, "fog": 0.006, "vfog": 0.02, "tint": Color(0.62, 0.56, 0.58)},
+	{"bg": Color(0.60, 0.67, 0.72), "amb": Color(0.62, 0.68, 0.76), "amb_e": 0.55, "sun": Color(1.0, 0.92, 0.78), "sun_e": 1.3, "fog": 0.0013, "vfog": 0.0035, "tint": Color(0.70, 0.75, 0.80)},
+	{"bg": Color(0.34, 0.31, 0.38), "amb": Color(0.52, 0.44, 0.52), "amb_e": 0.38, "sun": Color(1.0, 0.58, 0.36), "sun_e": 0.8, "fog": 0.005, "vfog": 0.019, "tint": Color(0.52, 0.42, 0.44)},
+	{"bg": Color(0.03, 0.05, 0.08), "amb": Color(0.26, 0.36, 0.52), "amb_e": 0.72, "sun": Color(0.55, 0.68, 0.95), "sun_e": 0.85, "fog": 0.0075, "vfog": 0.024, "tint": Color(0.10, 0.14, 0.20)},
+	{"bg": Color(0.52, 0.50, 0.55), "amb": Color(0.60, 0.55, 0.60), "amb_e": 0.42, "sun": Color(1.0, 0.74, 0.58), "sun_e": 0.95, "fog": 0.004, "vfog": 0.013, "tint": Color(0.62, 0.56, 0.58)},
 ]
 
 var lighthouse: Lighthouse
@@ -50,6 +56,8 @@ var _title_t := 0.0
 var _spray_t := 0.0
 var _gutter_horn_t := 0.0
 var _warned_low := false
+# This night's tally for the dawn report.
+var _tally := {}
 const HORN_GUTTER_EVERY := 7.0
 var camera: Camera3D
 var spawner: Node
@@ -71,6 +79,7 @@ func _ready() -> void:
 	add_child(lighthouse)
 	_build_homestead()
 	_build_fences()
+	_build_ladders()
 	_build_scavenge()
 	_build_camera()
 	_enemies = Node3D.new()
@@ -90,6 +99,9 @@ func _ready() -> void:
 
 	Cycle.phase_changed.connect(_on_phase_changed)
 	Events.run_ended.connect(_on_run_ended)
+	# Bound methods, not lambdas: Events outlives this scene, and only methods disconnect themselves when it's freed.
+	Events.enemy_killed.connect(_on_enemy_killed)
+	Events.structure_destroyed.connect(_on_structure_destroyed)
 	Audio.start_ambience()
 
 	# Tests and CI run headless and start straight away; so does New Run from game over.
@@ -154,13 +166,13 @@ func _process(delta: float) -> void:
 	if _title_cam != null:
 		_title_t += delta * TITLE_ORBIT_SPEED
 		var a := _title_t * TAU + 0.6
-		_title_cam.look_at_from_position(Vector3(sin(a) * 27.0, 10.0, cos(a) * 27.0), Vector3(-4.0, 3.5, 0.0), Vector3.UP)
+		_title_cam.look_at_from_position(Vector3(sin(a) * 38.0, 15.0, cos(a) * 38.0), Vector3(-3.0, 6.0, 0.0), Vector3.UP)
 	_spray_t -= delta
 	if _spray_t <= 0.0:
 		_spray_t = SPRAY_EVERY * randf_range(0.5, 1.5)
-		var a2 := randf() * TAU
-		var r := 13.2 + randf() * 0.8
-		FX.sea_spray(self, Vector3(sin(a2) * r, Terrain.SEA_LEVEL, cos(a2) * r))
+		var a2 := randf() * 360.0
+		var r := Terrain.coast_radius(a2) + Terrain.CLIFF_WIDTH * 0.8
+		FX.sea_spray(self, Vector3(sin(deg_to_rad(a2)) * r, Terrain.SEA_LEVEL, cos(deg_to_rad(a2)) * r))
 	if Run.active and Input.is_action_just_pressed("skip"):
 		Cycle.skip()
 	_alarms(delta)
@@ -171,10 +183,25 @@ static func compass(p: Vector3) -> String:
 	var a := fposmod(atan2(p.x, -p.z), TAU)
 	return names[int(round(a / (TAU / 8.0))) % 8]
 
-func _on_wave_incoming(point: Vector3, count: int) -> void:
-	Audio.horn([1.0], -5.0)
+func _on_enemy_killed(e: Node) -> void:
+	var how = e.get("last_hit")
+	_count(String(how) if how else "hook")
+
+func _on_structure_destroyed(s: Node) -> void:
+	if s is Fence:
+		_count("fence")
+
+func _count(key: String, n: int = 1) -> void:
+	_tally[key] = int(_tally.get(key, 0)) + n
+
+func _on_wave_incoming(points: Array, count: int) -> void:
+	_count("ashore", count)
+	Audio.horn([1.0] if points.size() == 1 else [1.0, 1.0], -5.0)
 	var what := "Something stirs" if count < 4 else "Many things stir"
-	hud.warn("%s in the water — %s." % [what, compass(point)])
+	var where: Array[String] = []
+	for p in points:
+		where.append(compass(p))
+	hud.warn("%s in the water — %s." % [what, " and ".join(where)])
 
 # Foghorn alarms: a guttering lamp blasts every few seconds; a failing lighthouse warns once a night.
 func _alarms(delta: float) -> void:
@@ -225,7 +252,7 @@ func _build_environment() -> void:
 	_env.volumetric_fog_albedo = Color(0.9, 0.92, 0.95)
 	_env.volumetric_fog_emission_energy = 1.0
 	_env.volumetric_fog_anisotropy = 0.45
-	_env.volumetric_fog_length = 48.0
+	_env.volumetric_fog_length = 64.0
 	_env.adjustment_enabled = true
 	_env.adjustment_saturation = 1.0
 	_env.adjustment_contrast = 1.08
@@ -235,7 +262,7 @@ func _build_environment() -> void:
 	_sun = DirectionalLight3D.new()
 	_sun.rotation_degrees = Vector3(-42.0, 35.0, 0.0)
 	_sun.shadow_enabled = true
-	_sun.directional_shadow_max_distance = 60.0
+	_sun.directional_shadow_max_distance = 80.0
 	add_child(_sun)
 
 func _build_ground() -> void:
@@ -254,44 +281,65 @@ func _build_ground() -> void:
 	ground.add_child(cs)
 	_build_rocks()
 	_build_grass()
-	Props.flowers(self, 150)
-	Props.jetty(self, deg_to_rad(22.4))
-	Props.lobster_pot(self, _on_pad(3.9, 10.9) + Vector3(0.0, -0.05, 0.0), 0.4)
-	Props.lobster_pot(self, _on_pad(5.0, 10.5) + Vector3(0.0, -0.05, 0.0), 1.3)
-	Props.crate(self, _on_pad(-3.7, -1.9), 0.3)
-	Props.crate(self, _on_pad(-3.3, -2.6), 1.1, 0.45)
-	Props.barrel(self, _on_pad(-4.0, -4.3))
-	Props.barrel(self, _on_pad(-3.5, -4.6), Color(0.18, 0.2, 0.22))
-	Props.washing_line(self, _on_pad(-7.2, 0.4), _on_pad(-6.3, -0.9))
+	Props.flowers(self, 240)
+	Props.ledge_rope(self, 0.12, 0.97, 16)
+	# The landing: a jetty off the east beach, with pots stacked on the shingle.
+	var east := float(Terrain.BEACHES[0])
+	Props.jetty(self, _shore_point(0, JETTY_LATERAL), deg_to_rad(east))
+	Props.lobster_pot(self, Terrain.beach_point(0, 0.66, JETTY_LATERAL - 0.6) + Vector3(0.0, -0.05, 0.0), 0.4)
+	Props.lobster_pot(self, Terrain.beach_point(0, 0.7, JETTY_LATERAL + 0.5) + Vector3(0.0, -0.05, 0.0), 1.3)
+	var shed: Vector3 = _on_pad(Terrain.PADS[2][0], Terrain.PADS[2][1])
+	Props.crate(self, _on_pad(shed.x + 1.9, shed.z - 0.4), 0.3)
+	Props.crate(self, _on_pad(shed.x + 2.3, shed.z + 0.4), 1.1, 0.45)
+	Props.barrel(self, _on_pad(shed.x - 1.9, shed.z - 0.5))
+	Props.barrel(self, _on_pad(shed.x - 2.3, shed.z + 0.2), Color(0.18, 0.2, 0.22))
+	var cottage: Vector3 = _on_pad(Terrain.PADS[0][0], Terrain.PADS[0][1])
+	Props.washing_line(self, _on_pad(cottage.x + 3.2, cottage.z + 0.6), _on_pad(cottage.x + 2.4, cottage.z + 2.4))
 	for i in 5:
 		Props.gull(self, 31 + i * 17)
 
+# Where the sea meets beach i's shingle, offset sideways.
+func _shore_point(i: int, lateral: float) -> Vector3:
+	var t := 0.0
+	while t < 1.0 and Terrain.beach_point(i, t, lateral).y < Terrain.SEA_LEVEL + 0.4:
+		t += 0.01
+	return Terrain.beach_point(i, t, lateral)
+
 func _build_rocks() -> void:
-	# Crags all round the cliffs, a few boulders on the plateau, and sea stacks in the swell.
+	# Crags along the foot of the cliffs and round the crag, a few boulders on the meadow, and sea stacks in the swell.
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 77
-	var scav_angles: Array[float] = []
-	for s in SCAVENGE:
-		scav_angles.append(deg_to_rad(float(s[0])))
-	for i in 46:
-		var a := rng.randf() * TAU
-		var clear := true
-		for sa in scav_angles:
-			if absf(wrapf(a - sa, -PI, PI)) < 0.16:
-				clear = false
-		if not clear:
+	var placed := 0
+	for i in 160:
+		if placed >= 70:
+			break
+		var a := rng.randf() * 360.0
+		var r := Terrain.coast_radius(a) + rng.randf_range(0.6, 2.6)
+		var p := Terrain.at_angle(a, r)
+		if Terrain.beach_weight(p.x, p.z) > 0.05:
 			continue
-		var r := rng.randf_range(10.6, 14.0)
-		var p := Vector3(sin(a) * r, 0.0, cos(a) * r)
-		var s := rng.randf_range(0.6, 1.5)
-		p.y = Terrain.height_at_v(p) - s * 0.2
-		Look.rock(self, 40 + i * 7, Vector3(s * 1.4, s * 1.1, s * 1.2), p, Color(0.34, 0.33, 0.31), 0.45)
-	var boulders := [Vector3(-2.5, 0, -7.0), Vector3(7.4, 0, 1.5), Vector3(-8.2, 0, 0.5), Vector3(2.5, 0, -8.0)]
+		var s := rng.randf_range(0.7, 1.7)
+		p.y -= s * 0.25
+		Look.rock(self, 40 + i * 7, Vector3(s * 1.4, s * 1.3, s * 1.2), p, Color(0.34, 0.33, 0.31), 0.45)
+		placed += 1
+	# Fallen rock at the crag's foot, clear of the track.
+	for i in 14:
+		var a := Terrain.LEDGE_START + Terrain.LEDGE_SWEEP * 0.15 + rng.randf() * Terrain.LEDGE_SWEEP * 0.95
+		var s_at := Terrain.ledge_s(sin(deg_to_rad(a)), cos(deg_to_rad(a)))
+		if s_at < 0.0:
+			s_at = 1.0
+		var r := Terrain.ledge_radius(s_at) + Terrain.LEDGE_HALF + Terrain.CRAG_BLEND + rng.randf_range(0.1, 0.5)
+		if r > Terrain.RING_R - 1.0:
+			continue
+		var p := Terrain.at_angle(a, r)
+		var s := rng.randf_range(0.5, 1.0)
+		Look.rock(self, 700 + i * 11, Vector3(s * 1.2, s, s * 1.1), p - Vector3(0.0, s * 0.2, 0.0), Color(0.36, 0.35, 0.33), 0.6)
+	var boulders := [Terrain.at_angle(60.0, 12.6), Terrain.at_angle(140.0, 12.2), Terrain.at_angle(220.0, 12.4), Terrain.at_angle(300.0, 12.8), Terrain.at_angle(325.0, 11.5)]
 	for i in boulders.size():
 		var p: Vector3 = boulders[i]
-		p.y = Terrain.height_at_v(p) - 0.1
+		p.y -= 0.1
 		Look.rock(self, 500 + i * 13, Vector3(0.9, 0.6, 0.8), p, Look.STONE, 0.8)
-	var stacks := [Vector3(-19.0, 0, -11.0), Vector3(20.5, 0, -8.0), Vector3(-8.0, 0, -20.0), Vector3(13.0, 0, -18.0), Vector3(-21.5, 0, 4.0), Vector3(22.0, 0, 6.5)]
+	var stacks := [Vector3(-25.0, 0, -13.0), Vector3(24.5, 0, -11.0), Vector3(-10.0, 0, -27.0), Vector3(15.0, 0, -24.0), Vector3(-26.5, 0, 9.0), Vector3(25.0, 0, 12.5), Vector3(-16.0, 0, 22.0)]
 	for i in stacks.size():
 		var p: Vector3 = stacks[i]
 		var h := 2.5 + float(i % 3) * 1.4
@@ -304,7 +352,7 @@ func _build_grass() -> void:
 	var xforms: Array[Transform3D] = []
 	for i in GRASS_TUFTS:
 		var a := rng.randf() * TAU
-		var r := sqrt(rng.randf_range(3.2 * 3.2, 10.6 * 10.6))
+		var r := sqrt(rng.randf_range(3.6 * 3.6, 15.5 * 15.5))
 		var p := Vector3(sin(a) * r, 0.0, cos(a) * r)
 		if not Terrain.is_grassy(p.x, p.z):
 			continue
@@ -366,9 +414,9 @@ func _build_shed(at: Vector3) -> void:
 func _build_sea() -> void:
 	var sea := MeshInstance3D.new()
 	var plane := PlaneMesh.new()
-	plane.size = Vector2(90.0, 90.0)
-	plane.subdivide_width = 110
-	plane.subdivide_depth = 110
+	plane.size = Vector2(150.0, 150.0)
+	plane.subdivide_width = 160
+	plane.subdivide_depth = 160
 	sea.mesh = plane
 	var mat := ShaderMaterial.new()
 	mat.shader = load("res://shaders/sea.gdshader")
@@ -379,25 +427,45 @@ func _build_sea() -> void:
 	add_child(sea)
 
 func _build_fences() -> void:
-	# Eight straight sections on chords of the ring, with keeper-width gaps between them.
-	var step := TAU / float(FENCE_SECTIONS)
-	var chord := 2.0 * FENCE_RING * sin(step * 0.5)
-	var mid_radius := FENCE_RING * cos(step * 0.5)
-	for i in FENCE_SECTIONS:
-		var a := step * float(i)
-		var f := Fence.new(chord - FENCE_GAP)
-		f.position = Vector3(sin(a), 0.0, cos(a)) * mid_radius
-		f.position.y = Terrain.height_at_v(f.position)
-		# Local +X becomes (cos a, 0, -sin a): the tangent of the ring at this angle.
-		f.rotation.y = a
+	# Across the head of each beach gully. Local +X becomes (cos a, 0, -sin a): across the beach.
+	var neck := Terrain.beach_half_width(BEACH_FENCE_T)
+	for i in Terrain.BEACHES.size():
+		var f := Fence.new(neck * 2.0 - FENCE_GAP)
+		f.position = Terrain.beach_point(i, BEACH_FENCE_T, FENCE_GAP * 0.5)
+		f.rotation.y = deg_to_rad(float(Terrain.BEACHES[i]))
 		add_child(f)
+	# Across the ledge, gap on the inside against the crag wall.
+	for s in LEDGE_FENCES:
+		var a := deg_to_rad(Terrain.LEDGE_START + float(s) * Terrain.LEDGE_SWEEP)
+		var r := Terrain.ledge_radius(float(s)) + FENCE_GAP * 0.5
+		var f := Fence.new(Terrain.LEDGE_HALF * 2.0 - FENCE_GAP)
+		f.position = Vector3(sin(a) * r, Terrain.ledge_height(float(s)), cos(a) * r)
+		# Local +X along the radius.
+		f.rotation.y = a - PI * 0.5
+		add_child(f)
+
+func _build_ladders() -> void:
+	var a := LADDER_ANGLE
+	var s := Terrain.ledge_s(sin(deg_to_rad(a)), cos(deg_to_rad(a)))
+	var rho := Terrain.ledge_radius(s)
+	var ledge := Terrain.ledge_height(s)
+	var inner := rho - Terrain.LEDGE_HALF
+	var outer := rho + Terrain.LEDGE_HALF
+	var blend := Terrain.CRAG_BLEND
+	var upper := Ladder.new(Terrain.at_angle(a, inner - blend - 0.5), Terrain.at_angle(a, inner + 0.4),
+		_at(a, inner - blend, Terrain.CRAG_TOP + 0.05), _at(a, inner + 0.1, ledge))
+	add_child(upper)
+	var lower := Ladder.new(Terrain.at_angle(a, outer - 0.4), Terrain.at_angle(a, outer + blend + 0.6),
+		_at(a, outer - 0.05, ledge + 0.05), _at(a, outer + blend + 0.1, Terrain.PLATEAU_HEIGHT))
+	add_child(lower)
+
+func _at(a_deg: float, r: float, y: float) -> Vector3:
+	return Vector3(sin(deg_to_rad(a_deg)) * r, y, cos(deg_to_rad(a_deg)) * r)
 
 func _build_scavenge() -> void:
 	for s in SCAVENGE:
-		var a := deg_to_rad(float(s[0]))
-		var sp := ScavengePoint.new(String(s[1]), int(s[2]))
-		sp.position = Vector3(sin(a), 0.0, cos(a)) * SCAVENGE_RING
-		sp.position.y = Terrain.height_at_v(sp.position)
+		var sp := ScavengePoint.new(String(s[3]), int(s[4]))
+		sp.position = Terrain.beach_point(int(s[0]), float(s[1]), float(s[2]))
 		add_child(sp)
 
 func _build_camera() -> void:
@@ -412,9 +480,9 @@ func _build_spawner() -> void:
 	spawner = SpawnerScript.new()
 	spawner.name = "Spawner"
 	var pts: Array[Vector3] = []
-	for i in SPAWN_POINTS:
-		var a := TAU * (float(i) + 0.5) / float(SPAWN_POINTS)
-		pts.append(Vector3(sin(a), 0.0, cos(a)) * SPAWN_RING)
+	for i in Terrain.BEACHES.size():
+		for side in [-1.0, 1.0]:
+			pts.append(Terrain.beach_point(i, 0.0, side * LANDING_OFFSET))
 	spawner.points = pts
 	spawner.enemies_root = _enemies
 	spawner.lighthouse = lighthouse
@@ -457,13 +525,51 @@ func _on_phase_changed(p: int) -> void:
 	_apply_lighting(p, LIGHT_TWEEN)
 	if p == Cycle.Phase.DAWN:
 		_warned_low = false
+	if p == Cycle.Phase.DUSK:
+		_tally = {}
 	if p == Cycle.Phase.DAWN and Run.active:
+		_dawn_report()
 		var damaged := 0
 		for s in get_tree().get_nodes_in_group("structures"):
 			if s is Structure and s.is_damaged():
 				damaged += 1
 		Run.lamp_fuel = lighthouse.lamp.fuel
 		Run.advance_night(damaged)
+
+# The keeper's log: what came, what stopped it, what it cost, and one thing to try next.
+func _dawn_report() -> void:
+	var t := _tally
+	var g := func(k: String) -> int: return int(t.get(k, 0))
+	var how: Array[String] = []
+	if g.call("beam") > 0:
+		how.append("%d burned" % g.call("beam"))
+	if g.call("fall") > 0:
+		how.append("%d over the edge" % g.call("fall"))
+	if g.call("hook") > 0:
+		how.append("%d to the boathook" % g.call("hook"))
+	var lines: Array[String] = []
+	lines.append("%d came ashore%s" % [g.call("ashore"), (" · " + " · ".join(how)) if not how.is_empty() else ""])
+	var cost: Array[String] = []
+	if g.call("reached") > 0:
+		cost.append("%d reached the light" % g.call("reached"))
+	if g.call("fence") > 0:
+		cost.append("%d fence%s broken" % [g.call("fence"), "" if g.call("fence") == 1 else "s"])
+	cost.append("lighthouse %d/%d" % [lighthouse.hp, lighthouse.max_hp])
+	cost.append("fuel %d%%" % roundi(lighthouse.lamp.fuel))
+	lines.append(" · ".join(cost))
+	var tip := ""
+	if lighthouse.lamp.fuel < 30.0:
+		tip = "Fuel is low: gather bio on the beaches and refuel at the lighthouse door."
+	elif g.call("reached") > 0:
+		tip = "Meet climbers on the ledge: a blow aimed outward knocks them over the edge."
+	elif g.call("fence") > 0:
+		tip = "Mend broken fences with driftwood before dark."
+	elif g.call("beam") < g.call("ashore") / 2:
+		tip = "The focused beam (Q) burns them on the beaches, long before they climb."
+	if tip != "":
+		lines.append("")
+		lines.append(tip)
+	hud.report("Night %d held." % Run.night, lines)
 
 func _on_run_ended(_reason: String, _night: int) -> void:
 	Cycle.stop()

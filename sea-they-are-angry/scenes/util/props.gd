@@ -22,12 +22,11 @@ static func _cyl(parent: Node, r: float, h: float, color: Color, pos: Vector3, s
 	parent.add_child(mi)
 	return mi
 
-## A short timber jetty running out from the landing, with a rowboat tied alongside.
-static func jetty(parent: Node, angle: float) -> void:
+## A short timber jetty running out to sea from a point on the shore, with a rowboat tied alongside.
+static func jetty(parent: Node, start: Vector3, angle: float) -> void:
 	var root := Node3D.new()
 	root.name = "Jetty"
-	var start_r := 12.2
-	root.position = Vector3(sin(angle) * start_r, Terrain.height_at(sin(angle) * start_r, cos(angle) * start_r) - 0.05, cos(angle) * start_r)
+	root.position = start + Vector3(0.0, -0.05, 0.0)
 	root.rotation.y = angle
 	parent.add_child(root)
 	var deck_y := Terrain.SEA_LEVEL + 0.45 - root.position.y
@@ -153,7 +152,7 @@ static func flowers(parent: Node, count: int) -> void:
 		var clumps := count / palette.size()
 		for c in clumps:
 			var ca := rng.randf() * TAU
-			var cr := rng.randf_range(4.0, 10.2)
+			var cr := rng.randf_range(4.0, 14.2)
 			var centre := Vector3(sin(ca) * cr, 0.0, cos(ca) * cr)
 			for f in 7:
 				var p := centre + Vector3(rng.randf_range(-0.6, 0.6), 0.0, rng.randf_range(-0.6, 0.6))
@@ -181,3 +180,23 @@ static func gull(parent: Node, seed_value: int) -> Node3D:
 	g.seed_value = seed_value
 	parent.add_child(g)
 	return g
+
+## Stakes and a sagging rope along the outer edge of the crag ledge, so the way up reads from above.
+static func ledge_rope(parent: Node, from_s: float, to_s: float, posts: int) -> void:
+	var wood := Color(0.36, 0.27, 0.18)
+	var prev := Vector3.INF
+	for i in posts:
+		var s := lerpf(from_s, to_s, float(i) / float(posts - 1))
+		var a := deg_to_rad(Terrain.LEDGE_START + s * Terrain.LEDGE_SWEEP)
+		var r := Terrain.ledge_radius(s) + Terrain.LEDGE_HALF - 0.2
+		var base := Vector3(sin(a) * r, Terrain.ledge_height(s), cos(a) * r)
+		_cyl(parent, 0.07, 0.9, wood, base + Vector3(0.0, 0.45, 0.0), 5)
+		var top := base + Vector3(0.0, 0.8, 0.0)
+		if prev != Vector3.INF:
+			var mid := (prev + top) * 0.5 - Vector3(0.0, 0.12, 0.0)
+			for seg in [[prev, mid], [mid, top]]:
+				var p0: Vector3 = seg[0]
+				var p1: Vector3 = seg[1]
+				var line := _box(parent, Vector3(0.035, 0.035, p0.distance_to(p1)), Color(0.62, 0.53, 0.36), (p0 + p1) * 0.5)
+				line.look_at_from_position(line.position, p1, Vector3.UP)
+		prev = top

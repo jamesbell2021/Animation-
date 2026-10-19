@@ -41,16 +41,17 @@ func _go() -> void:
 	if phase == 1 or phase == 2:
 		lamp._set_state(1)
 	var bscript = load("res://scenes/enemies/bloated.gd")
-	for pos in [Vector3(-7.5, 0, 9.5), Vector3(10.5, 0, 2.0), Vector3(-3, 0, -11), Vector3(5.5, 0, 9.0)]:
+	# One coming up each beach, one on the track and one climbing the ledge.
+	for pos in [Terrain.beach_point(0, 0.7), Terrain.beach_point(1, 0.62), Terrain.beach_point(2, 0.75), Terrain.at_angle(215.0, Terrain.RING_R), Terrain.ledge_point(0.42)]:
 		var b = bscript.new()
 		b.lighthouse = main.lighthouse
 		b.position = pos
 		main.get_node("Enemies").add_child(b)
-	main.player.global_position = Vector3(3.0, Terrain.height_at(3.0, 4.5) + 0.1, 4.5)
+	main.player.global_position = Vector3(-1.6, Terrain.CRAG_TOP + 0.1, 2.7)
 	if keepers > 1:
-		main.players[1].global_position = Vector3(-1.5, Terrain.height_at(-1.5, 6.0) + 0.1, 6.0)
+		main.players[1].global_position = Terrain.ledge_point(0.62) + Vector3(0.0, 0.1, 0.0)
 	if keepers > 2:
-		main.players[2].global_position = Vector3(5.5, Terrain.height_at(5.5, 1.0) + 0.1, 1.0)
+		main.players[2].global_position = Terrain.at_angle(25.0, 11.0) + Vector3(0.0, 0.1, 0.0)
 	main.player.camera = null
 	main.player._aim = Vector3(0.5, 0, 1).normalized()
 	if focused:
@@ -58,7 +59,7 @@ func _go() -> void:
 		lamp.mode = 1
 		lamp._apply_mode()
 	for i in 50:
-		lamp.yaw = deg_to_rad(150.0)
+		lamp.yaw = deg_to_rad(10.0)
 		await process_frame
 	if args.has("warn"):
 		main.hud.warn("Something stirs in the water — north-east.")
@@ -90,8 +91,8 @@ func _go() -> void:
 		main.hud.visible = false
 		var c2 := Camera3D.new()
 		main.add_child(c2)
-		var at: Vector3 = Vector3(-2.0, Terrain.height_at(-2.0, 1.0) + 1.0, 1.0)
-		c2.look_at_from_position(at + Vector3(5.5, 4.5, 8.0), at, Vector3.UP)
+		var at: Vector3 = Terrain.at_angle(-10.0, 9.0) + Vector3(0.0, 1.5, 0.0)
+		c2.look_at_from_position(at + Vector3(4.0, 6.0, 12.0), at, Vector3.UP)
 		c2.fov = 50.0
 		c2.current = true
 		for i in 10:
@@ -100,12 +101,12 @@ func _go() -> void:
 		main.hud.visible = false
 		var c3 := Camera3D.new()
 		main.add_child(c3)
-		var at3 := Vector3(4.0, Terrain.height_at(4.0, 6.0) + 0.8, 6.0)
+		var at3 := Terrain.at_angle(30.0, 10.5) + Vector3(0.0, 0.8, 0.0)
 		c3.look_at_from_position(at3 + Vector3(2.5, 3.0, 6.5), at3, Vector3.UP)
 		c3.fov = 50.0
 		c3.current = true
 		FX.burst(main, at3)
-		FX.splash(main, Vector3(6.5, Terrain.SEA_LEVEL, 11.8), 1.2)
+		FX.splash(main, Terrain.beach_point(0, 0.35), 1.2)
 		FX.steam(main, at3 + Vector3(-1.5, 0.6, 0.5))
 		for i in 3:
 			await process_frame

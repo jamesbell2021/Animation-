@@ -33,7 +33,7 @@ var _sizzle_t := 0.0
 func _init() -> void:
 	max_hp = 60
 	hp = 60
-	speed = 1.6
+	speed = 1.15
 	mass = 2.0
 	reach = 3.5
 
@@ -100,6 +100,7 @@ func in_light(mode: int, delta: float) -> void:
 		var dmg := floori(_burn_acc)
 		if dmg > 0:
 			_burn_acc -= float(dmg)
+			last_hit = "beam"
 			take_damage(dmg, Vector3.ZERO, null)
 			# The burn has its own glow; skip the white hit flash it would trigger every tick.
 			_hit_t = 0.0
@@ -137,6 +138,7 @@ func _on_hit() -> void:
 	_hit_t = 0.1
 
 func _enter_Arrived() -> void:
+	last_hit = "reached"
 	change_state(&"Bloat")
 
 func is_bursting() -> bool:
