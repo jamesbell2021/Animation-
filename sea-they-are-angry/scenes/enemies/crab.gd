@@ -49,6 +49,12 @@ var _hit_t := 0.0
 ## Seconds left flipped by a chain plate: the boathook bites twice as deep.
 var exposed_t := 0.0
 const EXPOSED_MULT := 2.0
+# Ragdoll bodies for the crab's own skeleton: shell, legs, claws.
+const PHYS := {
+	"body": [0.42, 0, 0], "leg0": [0.06, 35, 10], "leg1": [0.06, 35, 10], "leg2": [0.06, 35, 10],
+	"claw_arm": [0.1, 40, 10], "claw": [0.13, 35, 10],
+}
+var _flipping := false
 
 func _init() -> void:
 	max_hp = BASE_HP
@@ -65,6 +71,13 @@ func _ready() -> void:
 func _build() -> void:
 	_visual = Node3D.new()
 	add_child(_visual)
+	if _load_rig("crab", _visual):
+		rig.physics = PHYS
+		rig.mass = 8.0
+		_rig_eye("eye.L", Color(1.0, 0.6, 0.2), 0.32)
+		_rig_eye("eye.R", Color(1.0, 0.6, 0.2), 0.32)
+		Geo.box_shape(self, Vector3(1.5, 0.9, 1.2), Vector3(0.0, 0.6, 0.0))
+		return
 	_shell_mat = Look.flat_mat(SHELL, 0.45)
 	var dark := Look.flat_mat(SHELL_DARK, 0.6)
 	var body := Geo.box(_visual, Vector3(1.6, 0.5, 1.2), Color.WHITE, Vector3(0.0, 0.5, 0.0))
@@ -124,6 +137,41 @@ func at_target() -> bool:
 		return Geo.flat_dist(global_position, target.global_position) < reach
 	return super.at_target()
 
+# ---- the claw and legs, on the rig or the primitive ----
+
+# Raise the big claw (0 at rest, 1.3 cocked high, negative slammed down), with a lift.
+func _set_claw(raise: float, lift: float = 0.0) -> void:
+	if rig != null:
+		if not rig.is_ragdoll():
+			rig.pose("claw_arm.R", Vector3(-raise * 0.9, 0.0, -lift))
+			rig.pose("claw.R", Vector3(-raise * 0.5, 0.0, 0.0))
+		return
+	_claw.rotation.x = raise
+	_claw.position.y = 0.6 + lift
+
+# The wind-up tell: the claw reddens and glows as it rises.
+func _set_claw_hot(k: float) -> void:
+	if rig != null:
+		rig.tint(Color.WHITE.lerp(Color(1.35, 1.05, 1.0), k), CLAW_HOT, k * 0.5)
+		return
+	_claw_mat.albedo_color = SHELL.lerp(CLAW_HOT, k)
+	_claw_mat.emission_enabled = k > 0.0
+	_claw_mat.emission = CLAW_HOT * k * 0.5
+
+## A chain plate turns it on its back: a ragdoll for `time`, wide open, then it rights itself.
+func flip(time: float) -> void:
+	if rig == null:
+		stagger(time)
+		return
+	_flipping = true
+	_set_claw_hot(0.0)
+	var side := Vector3(randf_range(-1.0, 1.0), 0.0, randf_range(-1.0, 1.0)).normalized()
+	knock_down(Vector3(0.0, 6.0, 0.0) * rig.mass * 3.0 + side * rig.mass * 4.0, time)
+	_flipping = false
+
+func can_ragdoll() -> bool:
+	return _flipping
+
 # ---- states ----
 
 func _tick_Approach(delta: float) -> void:
@@ -152,20 +200,15 @@ func _tick_WindUp(delta: float) -> void:
 		face(_slam_target.global_position - global_position)
 	# The tell: the claw rises and reddens.
 	var k := clampf(state_t / WINDUP_TIME, 0.0, 1.0)
-	_claw.rotation.x = lerpf(0.0, 1.3, k)
-	_claw.position.y = 0.6 + 0.4 * k
-	_claw_mat.albedo_color = SHELL.lerp(CLAW_HOT, k)
-	_claw_mat.emission_enabled = true
-	_claw_mat.emission = CLAW_HOT * k * 0.5
+	_set_claw(lerpf(0.0, 1.3, k), 0.4 * k)
+	_set_claw_hot(k)
 	if state_t >= WINDUP_TIME:
 		change_state(&"Slam")
 
 func _enter_Slam() -> void:
 	velocity = Vector3.ZERO
-	_claw.rotation.x = -0.3
-	_claw.position.y = 0.45
-	_claw_mat.albedo_color = SHELL
-	_claw_mat.emission_enabled = false
+	_set_claw(-0.3, -0.15)
+	_set_claw_hot(0.0)
 	var fwd := Vector3(-sin(rotation.y), 0.0, -cos(rotation.y))
 	var c := global_position
 	for s in get_tree().get_nodes_in_group("structures"):
@@ -199,8 +242,7 @@ func _tick_Slam(_delta: float) -> void:
 
 func _tick_Recover(_delta: float) -> void:
 	velocity = Vector3.ZERO
-	_claw.rotation.x = lerpf(-0.3, 0.0, clampf(state_t / RECOVER_TIME, 0.0, 1.0))
-	_claw.position.y = 0.6
+	_set_claw(lerpf(-0.3, 0.0, clampf(state_t / RECOVER_TIME, 0.0, 1.0)))
 	if state_t >= RECOVER_TIME:
 		# Keep smashing the same thing while it stands and is in reach; else move on.
 		var t := _slam_target
@@ -220,11 +262,11 @@ func _tick_Recover(_delta: float) -> void:
 func _tick_Rummage(delta: float) -> void:
 	velocity = Vector3.ZERO
 	_scuttle(delta)
-	_claw.rotation.x = 0.3 + 0.25 * sin(state_t * 9.0)
+	_set_claw(0.3 + 0.25 * sin(state_t * 9.0))
 	if fmod(state_t, 0.8) < delta and _slam_target != null and is_instance_valid(_slam_target):
 		FX.splinters(get_parent(), global_position.lerp(_slam_target.global_position, 0.5) + Vector3(0.0, 0.4, 0.0))
 	if state_t >= RUMMAGE_TIME:
-		_claw.rotation.x = 0.0
+		_set_claw(0.0)
 		change_state(&"WindUp")
 
 func _in_slam_reach(t: Node3D) -> bool:
@@ -235,8 +277,17 @@ func _in_slam_reach(t: Node3D) -> bool:
 func _scuttle(delta: float) -> void:
 	_scuttle_t -= delta
 	var moving := velocity.length() > 0.2
-	for i in _legs.size():
-		_legs[i].rotation.y = sin(state_t * 9.0 + float(i) * 1.7) * (0.35 if moving else 0.05)
+	if rig != null:
+		if not rig.is_ragdoll():
+			for i in 3:
+				for side in ["L", "R"]:
+					var ph := state_t * 9.0 + float(i) * 1.7 + (PI if side == "R" else 0.0)
+					var amt := 0.35 if moving else 0.05
+					var sgn := 1.0 if side == "L" else -1.0
+					rig.pose("leg%d.%s" % [i, side], Vector3(0.0, sin(ph) * amt, sgn * maxf(0.0, cos(ph)) * amt * 0.6))
+	else:
+		for i in _legs.size():
+			_legs[i].rotation.y = sin(state_t * 9.0 + float(i) * 1.7) * (0.35 if moving else 0.05)
 	if moving and _scuttle_t <= 0.0:
 		_scuttle_t = randf_range(0.8, 1.6)
 		Audio.sfx("crab_scuttle", global_position, -8.0, 0.15)
@@ -277,8 +328,8 @@ func in_light(mode: int, _delta: float) -> void:
 	# The shell shrugs off the beam; but in the eyes mid-wind-up, it reels.
 	if mode == Lamp.Mode.FOCUSED and state == &"WindUp" and _stagger_cd <= 0.0:
 		_stagger_cd = STAGGER_COOLDOWN
-		_claw.rotation.x = 0.0
-		_claw_mat.emission_enabled = false
+		_set_claw(0.0)
+		_set_claw_hot(0.0)
 		Audio.sfx("hit", global_position, -2.0, 0.1)
 		stagger(STAGGER_TIME)
 
@@ -294,7 +345,9 @@ func _physics_process(delta: float) -> void:
 	exposed_t = maxf(0.0, exposed_t - delta)
 	_hit_t = maxf(0.0, _hit_t - delta)
 	super._physics_process(delta)
-	if is_inside_tree() and _shell_mat:
+	if is_inside_tree() and rig != null and state != &"WindUp":
+		rig.tint(Color.WHITE.lerp(Color(1.8, 1.8, 1.8), _hit_t / 0.1 * 0.5) if state != &"Recover" else Color(1.3, 1.1, 1.0))
+	elif is_inside_tree() and _shell_mat:
 		_shell_mat.albedo_color = SHELL.lerp(Color(1, 1, 1), _hit_t / 0.1 * 0.6) if state != &"Recover" else SHELL.lerp(Color(0.85, 0.6, 0.45), 0.4)
 
 func _die() -> void:

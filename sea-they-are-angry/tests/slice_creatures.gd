@@ -171,11 +171,11 @@ func _run() -> void:
 		lamp.toggle_mode()
 	var t0 := Time.get_ticks_msec()
 	await wait_until(func():
-		if is_instance_valid(sq):
+		if is_instance_valid(sq) and sq.hp > 0:
 			sq.global_position = Terrain.beach_point(0, 0.6)
 			player._aim = Vector3(sq.global_position.x, 0, sq.global_position.z).normalized()
-		return not is_instance_valid(sq), 400)
-	check(not is_instance_valid(sq), "the focused beam burns a Squid down (%.1f s)" % ((Time.get_ticks_msec() - t0) / 1000.0))
+		return not is_instance_valid(sq) or sq.hp <= 0, 400)
+	check(not is_instance_valid(sq) or sq.hp <= 0, "the focused beam burns a Squid down (%.1f s)" % ((Time.get_ticks_msec() - t0) / 1000.0))
 	lamp.set_operator(null)
 	# Ink hides a Bloated unless the beam is on it.
 	var bl := spawn(Bloated.new(), Terrain.at_angle(60.0, 11.0)) as Bloated

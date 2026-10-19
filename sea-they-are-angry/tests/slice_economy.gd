@@ -179,8 +179,8 @@ func _run() -> void:
 	slot.wreck()
 	slot.arm("chain")
 	var crab := spawn(Crab.new(), slot.global_position) as Crab
-	await wait_until(func(): return crab.state == &"Stagger", 90)
-	check(crab.state == &"Stagger" and crab.exposed_t > 0.0, "the chain plate flips a Crab")
+	await wait_until(func(): return crab.state == &"Stagger" or crab.state == &"Ragdoll", 90)
+	check((crab.state == &"Stagger" or crab.state == &"Ragdoll") and crab.exposed_t > 0.0, "the chain plate flips a Crab (%s)" % crab.state)
 	var hp0 := crab.hp
 	crab.take_damage(20, Vector3.ZERO, player)
 	check(hp0 - crab.hp == 40, "flipped, the boathook bites twice as deep (%d)" % (hp0 - crab.hp))

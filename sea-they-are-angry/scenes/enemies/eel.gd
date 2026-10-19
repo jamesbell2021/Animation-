@@ -46,6 +46,7 @@ var _tube: MeshInstance3D
 var _tube_mesh: ImmediateMesh
 var _head: Node3D
 var _head_mat: StandardMaterial3D
+var _head_textured := false
 var _body_mat: StandardMaterial3D
 var _churn: Array[MeshInstance3D] = []
 var _path: Array[Vector3] = []
@@ -74,8 +75,22 @@ func _ready() -> void:
 	add_to_group("eel")
 
 func _build() -> void:
-	_body_mat = Look.flat_mat(BODY, 0.25)
+	_body_mat = Look.flat_mat(Color.WHITE, 0.25)
 	_body_mat.vertex_color_use_as_albedo = true
+	# Mottled skin along the body: a noise texture wrapped round the tube.
+	var noise := FastNoiseLite.new()
+	noise.frequency = 0.03
+	noise.fractal_octaves = 4
+	var tex := NoiseTexture2D.new()
+	tex.noise = noise
+	tex.seamless = true
+	tex.width = 256
+	tex.height = 256
+	var ramp := Gradient.new()
+	ramp.set_color(0, Color(0.55, 0.6, 0.55))
+	ramp.set_color(1, Color(1.25, 1.3, 1.2))
+	tex.color_ramp = ramp
+	_body_mat.albedo_texture = tex
 	var belly := Look.flat_mat(BELLY, 0.4)
 	for i in SEGMENTS:
 		var seg := Node3D.new()
@@ -94,6 +109,9 @@ func _build() -> void:
 	_head.visible = false
 	add_child(_head)
 	_head_mat = Look.flat_mat(BODY, 0.3)
+	if _build_head_model():
+		_build_churn()
+		return
 	# A blunt, tapering snout (narrow end forward, -Z) over a hanging jaw.
 	var skull := MeshInstance3D.new()
 	var sm := CylinderMesh.new()
@@ -126,6 +144,33 @@ func _build() -> void:
 		var e := Geo.sphere(_head, 0.12, Color.WHITE, Vector3(side * 0.38, 0.22, -0.55))
 		e.material_override = eye
 		Look.glint(_head, Vector3(side * 0.38, 0.22, -0.62), EYE, 0.7)
+	_build_churn()
+
+# The head from art/characters (built in Blender), with glowing eyes at its markers.
+func _build_head_model() -> bool:
+	var path := "res://art/characters/eel_head.glb"
+	if not ResourceLoader.exists(path):
+		return false
+	var inst := (load(path) as PackedScene).instantiate() as Node3D
+	inst.rotation.y = PI
+	_head.add_child(inst)
+	for m in inst.find_children("*", "MeshInstance3D", true, false):
+		var src: Material = m.get_active_material(0)
+		_head_mat = (src.duplicate() if src is StandardMaterial3D else StandardMaterial3D.new()) as StandardMaterial3D
+		m.material_override = _head_mat
+		m.extra_cull_margin = 4.0
+		_head_textured = true
+	var eye := Look.eye_mat(EYE, 12.0)
+	var data = JSON.parse_string(FileAccess.get_file_as_string(path.get_basename() + ".json")) if FileAccess.file_exists(path.get_basename() + ".json") else {}
+	for key in ["eye.L", "eye.R"]:
+		var a: Array = data.get(key, [0.3, 0.24, -0.37])
+		var at := Vector3(a[0], a[1], a[2])
+		var e := Geo.sphere(_head, 0.05, Color.WHITE, at)
+		e.material_override = eye
+		Look.glint(_head, at + Vector3(0.0, 0.0, -0.04), EYE, 0.7)
+	return true
+
+func _build_churn() -> void:
 	# The churn that gives it away: dark humps rolling in the swell.
 	var churn_mat := Look.flat_mat(Color(0.12, 0.18, 0.18, 0.75), 0.2)
 	churn_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
@@ -193,14 +238,35 @@ func _rebuild_tube() -> void:
 		var ca: Vector3 = rings[r][1]
 		var cb: Vector3 = rings[r + 1][1]
 		var band := BELLY.lerp(BODY, 0.75) if (r / 4) % 3 == 2 else BODY
+		var v0 := float(r) / 6.0
+		var v1 := float(r + 1) / 6.0
 		for k in TUBE_SIDES:
 			var k2 := (k + 1) % TUBE_SIDES
 			var quad := [a[k], b[k], b[k2], a[k], b[k2], a[k2]]
 			var cent := [ca, cb, cb, ca, cb, ca]
+			var uvs := [Vector2(float(k) / TUBE_SIDES, v0), Vector2(float(k) / TUBE_SIDES, v1), Vector2(float(k + 1) / TUBE_SIDES, v1),
+				Vector2(float(k) / TUBE_SIDES, v0), Vector2(float(k + 1) / TUBE_SIDES, v1), Vector2(float(k + 1) / TUBE_SIDES, v0)]
 			for q in 6:
-				_tube_mesh.surface_set_color(band)
-				_tube_mesh.surface_set_normal((quad[q] - cent[q]).normalized())
+				var n: Vector3 = (quad[q] - cent[q]).normalized()
+				# Pale belly underneath, dark back.
+				_tube_mesh.surface_set_color(band.lerp(BELLY, smoothstep(-0.1, -0.7, n.y)))
+				_tube_mesh.surface_set_normal(n)
+				_tube_mesh.surface_set_uv(uvs[q])
 				_tube_mesh.surface_add_vertex(quad[q])
+		# A ragged fin along the top of the back.
+		var ta: Vector3 = a[TUBE_SIDES / 4]
+		var tb: Vector3 = b[TUBE_SIDES / 4]
+		var t := float(r) / float(TUBE_RINGS - 1)
+		var fin := 0.38 * smoothstep(0.1, 0.3, t) * (1.0 - smoothstep(0.8, 0.95, t)) * (0.75 + 0.25 * sin(float(r) * 1.7))
+		if fin > 0.02:
+			var up_a := (ta - ca).normalized() * fin
+			var up_b := (tb - cb).normalized() * fin
+			var side := (tb - ta).cross(up_a).normalized()
+			for v in [ta, tb, tb + up_b, ta, tb + up_b, ta + up_a]:
+				_tube_mesh.surface_set_color(BODY * 0.7)
+				_tube_mesh.surface_set_normal(side)
+				_tube_mesh.surface_set_uv(Vector2(0.5, v0))
+				_tube_mesh.surface_add_vertex(v)
 	_tube_mesh.surface_end()
 
 func is_vulnerable() -> bool:
@@ -395,7 +461,10 @@ func _physics_process(delta: float) -> void:
 		return
 	_burn_t = maxf(0.0, _burn_t - delta)
 	var c := BODY.lerp(BURN, 0.7 + 0.3 * sin(state_t * 40.0)) if _burn_t > 0.0 else BODY
-	_head_mat.albedo_color = c
+	if _head_textured:
+		_head_mat.albedo_color = Color.WHITE.lerp(Color(2.0, 1.1, 0.7), 0.7 + 0.3 * sin(state_t * 40.0)) if _burn_t > 0.0 else Color.WHITE
+	else:
+		_head_mat.albedo_color = c
 	if _burn_t > 0.0 and fmod(state_t, 0.2) < delta:
 		FX.steam(get_parent(), _head.global_position)
 	if _tube.visible:

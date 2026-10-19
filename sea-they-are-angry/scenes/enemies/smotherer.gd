@@ -323,7 +323,7 @@ func _physics_process(delta: float) -> void:
 	# In the light it glistens and hunches.
 	var lit := _lit_t > 0.0
 	if rig != null:
-		rig.tint(Color(1.25, 1.25, 1.15) if lit else Color.WHITE)
+		rig.tint(Color(1.12, 1.12, 1.06) if lit else Color.WHITE)
 		if state == &"Approach" and not rig.is_ragdoll():
 			rig.pose("spine", Vector3(0.45 if lit else 0.27, 0, 0))
 		return

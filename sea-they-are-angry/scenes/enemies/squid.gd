@@ -38,6 +38,10 @@ var _burn_t := 0.0
 var _squeal_t := 0.0
 var _back_dir := Vector3.ZERO
 var _struck := false
+const PHYS := {
+	"mantle": [0.2, 0, 0], "arm0": [0.045, 50, 25], "arm1": [0.045, 50, 25], "arm2": [0.045, 50, 25],
+	"arm3": [0.045, 50, 25], "arm4": [0.045, 50, 25], "arm5": [0.045, 50, 25],
+}
 
 func _init() -> void:
 	max_hp = 35
@@ -52,6 +56,29 @@ func _build() -> void:
 	_body_mat = Look.flat_mat(BODY, 0.3)
 	_dot_mat = Look.glow_mat(DOTS, 2.0)
 	_dot_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	if _load_rig("squid", _visual):
+		rig.physics = PHYS
+		rig.mass = 0.8
+		rig.thickness = 1.0
+		var eye := Color(0.4, 1.0, 0.95)
+		_rig_eye("eye.L", eye, 0.3)
+		_rig_eye("eye.R", eye, 0.3)
+		# Bioluminescent dots down each arm: they flash before it lunges.
+		for i in 6:
+			for seg in ["b", "c"]:
+				var dot := MeshInstance3D.new()
+				var dm := SphereMesh.new()
+				dm.radius = 0.035
+				dm.height = 0.07
+				dm.radial_segments = 6
+				dm.rings = 3
+				dot.mesh = dm
+				dot.material_override = _dot_mat
+				dot.position = Vector3(0.0, 0.0, 0.03)
+				rig.attach("arm%d.%s" % [i, seg], dot)
+		_build_squeal()
+		Geo.cyl_shape(self, 0.45, 0.6, Vector3(0.0, 0.35, 0.0))
+		return
 	var body := MeshInstance3D.new()
 	var m := SphereMesh.new()
 	m.radius = 0.5
@@ -80,6 +107,10 @@ func _build() -> void:
 			var dot := Geo.sphere(arm, 0.035, Color.WHITE, Vector3(0.0, 0.05, -0.35 - 0.25 * float(k)))
 			dot.material_override = _dot_mat
 		_tentacles.append(arm)
+	_build_squeal()
+	Geo.cyl_shape(self, 0.45, 0.6, Vector3(0.0, 0.35, 0.0))
+
+func _build_squeal() -> void:
 	_squeal = Label3D.new()
 	_squeal.text = "!"
 	_squeal.billboard = BaseMaterial3D.BILLBOARD_ENABLED
@@ -92,7 +123,6 @@ func _build() -> void:
 	_squeal.position.y = 1.3
 	_squeal.visible = false
 	add_child(_squeal)
-	Geo.cyl_shape(self, 0.45, 0.6, Vector3(0.0, 0.35, 0.0))
 
 func light_probe_points() -> Array:
 	return [global_position + Vector3(0.0, 0.2, 0.0), global_position + Vector3(0.0, 0.5, 0.0)]
@@ -257,10 +287,18 @@ func _physics_process(delta: float) -> void:
 		c = c.lerp(LIT_TINT, 0.5)
 	if _burn_t > 0.0:
 		c = c.lerp(BURN_TINT, 0.6 + 0.3 * sin(state_t * 40.0))
-	_body_mat.albedo_color = c
 	_squeal.visible = _burn_t > 0.0 and visible
 	# Tentacles ripple, faster when dashing.
 	var rate := 14.0 if velocity.length() > 1.0 else 4.0
+	if rig != null:
+		rig.tint(Color(c.r / BODY.r, c.g / BODY.g, c.b / BODY.b).lerp(Color.WHITE, 0.4))
+		if not rig.is_ragdoll():
+			for i in 6:
+				for k in 3:
+					var w := sin(state_t * rate + float(i) * 1.1 + float(k) * 0.9) * (0.22 + 0.08 * float(k))
+					rig.pose("arm%d.%s" % [i, ["a", "b", "c"][k]], Vector3(w * 0.4, w, 0.0))
+		return
+	_body_mat.albedo_color = c
 	for i in _tentacles.size():
 		_tentacles[i].rotation.x = sin(state_t * rate + float(i) * 1.1) * 0.25
 

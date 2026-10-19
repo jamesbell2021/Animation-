@@ -156,7 +156,7 @@ func _spring(e: Enemy) -> bool:
 			FX.splash(get_parent(), at, 0.5)
 		"chain":
 			if e is Crab:
-				e.stagger(CHAIN_TIME * mult)
+				e.flip(CHAIN_TIME * mult)
 				e.exposed_t = CHAIN_EXPOSED
 			else:
 				e.stagger(OTHER_STAGGER)

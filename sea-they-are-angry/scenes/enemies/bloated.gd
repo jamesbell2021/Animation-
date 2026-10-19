@@ -152,7 +152,7 @@ func _physics_process(delta: float) -> void:
 		c = c.lerp(HIT_COLOR, _hit_t / 0.1)
 	if rig != null:
 		# The texture carries the colour: tint it by how far the look has moved.
-		rig.tint(Color(c.r / BODY_COLOR.r, c.g / BODY_COLOR.g, c.b / BODY_COLOR.b), BURN_COLOR, _burn_k * 0.6)
+		rig.tint(Color.WHITE.lerp(Color(c.r / BODY_COLOR.r, c.g / BODY_COLOR.g, c.b / BODY_COLOR.b), 0.45), BURN_COLOR, _burn_k * 0.6)
 		_animate_walk(delta, 2.2, 0.45, 0.25, 0.35 + _lit_k * 0.3, 0.15 + _lit_k * 0.6)
 		if not rig.is_ragdoll():
 			_visual.scale = Vector3.ONE.lerp(COWER_SCALE, _lit_k)

@@ -498,9 +498,13 @@ def preview(name, objs, height=1.8):
     sc = bpy.context.scene
     cam = link(bpy.data.objects.new("cam", bpy.data.cameras.new("cam")))
     cam.data.lens = 60
-    d = height * 1.9
-    cam.location = (d * 0.55, -d, height * 0.62)
-    direction = Vector((0, 0, height * 0.5)) - cam.location
+    # Frame the whole model: its bounds decide the distance.
+    pts = [objs[0].matrix_world @ Vector(c) for c in objs[0].bound_box]
+    size = max(max(p[i] for p in pts) - min(p[i] for p in pts) for i in range(3))
+    mid = sum(pts, Vector()) / len(pts)
+    d = max(height, size) * 1.9
+    cam.location = mid + Vector((d * 0.55, -d, d * 0.35))
+    direction = mid - cam.location
     cam.rotation_euler = direction.to_track_quat('-Z', 'Y').to_euler()
     sc.camera = cam
     sun = link(bpy.data.objects.new("sun", bpy.data.lights.new("sun", 'SUN')))
@@ -1202,7 +1206,242 @@ def build_smotherer():
     finish(name, body, rig, parts)
 
 
+# ---------------------------------------------------------------- crab and squid
+
+def bind_parts(parts, bone):
+    for o in parts:
+        bind_rigid(o, bone)
+    return parts
+
+
+def finish_rigid(name, rig, parts, preview_h=1.2):
+    """Join rigidly-bound parts (no automatic weights) into one mesh with an armature."""
+    body = parts[0]
+    body = join_into(body, parts[1:])
+    mod = body.modifiers.new("rig", 'ARMATURE')
+    mod.object = rig
+    body.parent = rig
+    smooth(body)
+    bake_textures(body)
+    export(name, rig, body)
+    if PREVIEW:
+        preview(name, [body], preview_h)
+
+
+def build_crab():
+    """The Armoured Crab: a broad domed carapace, spiked at the rim and grown over with
+    rusted scrap and barnacles, eyes on stalks, six jointed legs, one huge pincer on its
+    right and a small one on its left."""
+    name = "crab"
+    mats = {
+        "shell": pmat("shell", (0.2, 0.06, 0.04), (0.42, 0.17, 0.1), scale=10, detail=8, lo=0.25, hi=0.8, rough=0.4, form=2.0),
+        "under": pmat("under", (0.6, 0.5, 0.4), (0.78, 0.68, 0.55), scale=20, rough=0.6, form=1.5),
+        "tips": pmat("tips", (0.03, 0.03, 0.03), (0.1, 0.08, 0.07), rough=0.3, form=1.2),
+        "rust": pmat("rust", (0.3, 0.15, 0.07), (0.55, 0.3, 0.15), scale=30, detail=8, rough=0.7, form=1.8),
+        "barnacle": pmat("barnacle", (0.55, 0.53, 0.48), (0.8, 0.78, 0.7), scale=80, detail=8, rough=0.8, form=2.0),
+        "eye": pmat("eye", (0.02, 0.02, 0.02), (0.06, 0.05, 0.05), rough=0.1, form=0.0, grade=False),
+    }
+    P = {"body_h": Vector((0, 0.35, 0.58)), "body_t": Vector((0, -0.35, 0.58))}
+    bones = [("body", "body_h", "body_t", None)]
+    for s, side in ((1, "L"), (-1, "R")):
+        for i in range(3):
+            hip = Vector((s * 0.6, -0.28 + 0.3 * i, 0.5))
+            knee = Vector((s * 1.0, -0.34 + 0.34 * i, 0.78))
+            tip = Vector((s * 1.38, -0.42 + 0.4 * i, 0.02))
+            P[f"hip{i}{side}"], P[f"knee{i}{side}"], P[f"tip{i}{side}"] = hip, knee, tip
+            bones += [(f"leg{i}.{side}", f"hip{i}{side}", f"knee{i}{side}", "body"),
+                      (f"leg{i}.{side}.tip", f"knee{i}{side}", f"tip{i}{side}", f"leg{i}.{side}")]
+    big = -1
+    P["arm0R"], P["arm1R"], P["clawR"] = Vector((-0.5, -0.45, 0.55)), Vector((-0.78, -0.92, 0.62)), Vector((-0.74, -1.5, 0.6))
+    P["arm0L"], P["arm1L"], P["clawL"] = Vector((0.5, -0.45, 0.55)), Vector((0.66, -0.82, 0.55)), Vector((0.62, -1.08, 0.5))
+    for side in ("L", "R"):
+        bones += [(f"claw_arm.{side}", f"arm0{side}", f"arm1{side}", "body"), (f"claw.{side}", f"arm1{side}", f"claw{side}", f"claw_arm.{side}")]
+    rig = make_armature(name, P, bones)
+    parts = []
+    # Carapace: a wide dome flattened underneath, with a lip and spikes round the rim.
+    cara = blob("carapace", (0, 0.02, 0.62), (0.86, 0.66, 0.3), 32, 16, mats["shell"])
+    cara = roughen(cara, 0.02, 0.15)
+    under = blob("under", (0, 0.0, 0.48), (0.74, 0.56, 0.17), 24, 10, mats["under"])
+    parts += [cara, under]
+    for k in range(14):
+        a = 2 * math.pi * k / 14
+        rim = Vector((math.sin(a) * 0.84, math.cos(a) * 0.64 + 0.02, 0.6))
+        spike = tube("spike", rim, rim + Vector((math.sin(a) * 0.12, math.cos(a) * 0.1, 0.03)), 0.05, 0.005, 7, mats["shell"])
+        parts.append(spike)
+    # Scrap grown into the shell, and barnacles.
+    for c, sz, r in (((-0.3, 0.1, 0.88), (0.3, 0.2, 0.12), 0.4), ((0.28, -0.1, 0.87), (0.24, 0.18, 0.1), -0.6), ((0.05, 0.32, 0.86), (0.2, 0.14, 0.1), 1.0)):
+        parts.append(box("scrap", c, sz, mats["rust"], 0.015, rot=(0.1, 0.15, r)))
+    parts += barnacles([Vector((x, y, 0.85)) for x, y in ((0.45, 0.25), (-0.5, -0.2), (0.15, -0.35), (-0.15, 0.4), (0.55, -0.05))], mats["barnacle"], "body", seed=3)
+    # Eyes on stalks, and mouthparts.
+    for s in (1, -1):
+        st0 = Vector((s * 0.17, -0.52, 0.72))
+        st1 = Vector((s * 0.21, -0.6, 0.98))
+        parts.append(tube("stalk", st0, st1, 0.04, 0.03, 8, mats["shell"]))
+        parts.append(blob("eye", st1 + Vector((0, -0.01, 0.03)), (0.055, 0.055, 0.055), 12, 8, mats["eye"]))
+        mark("eye." + ("L" if s > 0 else "R"), st1 + Vector((0, -0.06, 0.03)))
+    parts.append(box("mouth", (0, -0.62, 0.5), (0.26, 0.06, 0.12), mats["under"], 0.02))
+    bind_parts(parts, "body")
+    # Legs: two tapering segments with knobbly joints and black tips.
+    for s, side in ((1, "L"), (-1, "R")):
+        for i in range(3):
+            hip, knee, tip = P[f"hip{i}{side}"], P[f"knee{i}{side}"], P[f"tip{i}{side}"]
+            up = tube("leg", hip, knee, 0.075, 0.062, 10, mats["shell"])
+            joint = blob("joint", knee, (0.075, 0.075, 0.075), 10, 8, mats["shell"])
+            lo = tube("leg", knee, tip + (knee - tip) * 0.2, 0.062, 0.04, 10, mats["shell"])
+            point = tube("tip", tip + (knee - tip) * 0.2, tip, 0.04, 0.004, 8, mats["tips"])
+            parts += bind_parts([up, joint], f"leg{i}.{side}") + bind_parts([lo, point], f"leg{i}.{side}.tip")
+    # The big claw: a thick arm, a swollen palm and a pair of crushing fingers.
+    for side, k in (("R", 1.0), ("L", 0.55)):
+        a0, a1, c = P[f"arm0{side}"], P[f"arm1{side}"], P[f"claw{side}"]
+        arm = tube("arm", a0, a1, 0.11 * k, 0.1 * k, 12, mats["shell"])
+        elbow = blob("elbow", a1, (0.11 * k, 0.11 * k, 0.11 * k), 12, 8, mats["shell"])
+        d = (c - a1)
+        palm = blob("palm", a1 + d * 0.38, (0.17 * k, 0.24 * k, 0.15 * k), 16, 10, mats["shell"])
+        palm = roughen(palm, 0.01, 0.1)
+        top = tube("finger", a1 + d * 0.62 + Vector((0, 0, 0.05 * k)), c + Vector((0, 0, 0.06 * k)), 0.08 * k, 0.012, 10, mats["shell"])
+        bot = tube("finger", a1 + d * 0.62 + Vector((0, 0, -0.05 * k)), c + Vector((0, -0.02, -0.05 * k)), 0.065 * k, 0.012, 10, mats["shell"])
+        tipt = blob("tip", c + Vector((0, 0, 0.06 * k)), (0.03, 0.04, 0.03), 8, 6, mats["tips"])
+        tipb = blob("tip", c + Vector((0, -0.02, -0.05 * k)), (0.025, 0.035, 0.025), 8, 6, mats["tips"])
+        parts += bind_parts([arm, elbow], f"claw_arm.{side}") + bind_parts([palm, top, bot, tipt, tipb], f"claw.{side}")
+    finish_rigid(name, rig, parts, 1.2)
+
+
+def build_squid():
+    """The Wall-Crawling Squid: a long mottled mantle with fins, big eyes on the sides of
+    its head, and six arms splayed out on the ground to crawl with."""
+    name = "squid"
+    mats = {
+        "skin": pmat("skin", (0.12, 0.16, 0.24), (0.3, 0.36, 0.48), scale=12, detail=8, lo=0.3, hi=0.8, rough=0.25, form=1.8),
+        "belly": pmat("belly", (0.45, 0.48, 0.55), (0.62, 0.66, 0.72), scale=20, rough=0.3, form=1.4),
+        "eye": pmat("eye", (0.02, 0.03, 0.04), (0.05, 0.06, 0.08), rough=0.05, form=0.0, grade=False),
+        "suckers": pmat("suckers", (0.6, 0.55, 0.6), (0.8, 0.75, 0.78), scale=40, rough=0.4, form=1.6),
+    }
+    P = {"m_h": Vector((0, 0.75, 0.55)), "m_t": Vector((0, -0.12, 0.34))}
+    bones = [("mantle", "m_h", "m_t", None)]
+    arms = []
+    for i in range(6):
+        a = 2 * math.pi * i / 6 + 0.5
+        d = Vector((math.sin(a), -math.cos(a), 0))
+        root = Vector((0, -0.12, 0.3)) + d * 0.18
+        pts = [root, root + d * 0.35 + Vector((0, 0, -0.12)), root + d * 0.68 + Vector((0, 0, -0.17)), root + d * 0.98 + Vector((0, 0, -0.2))]
+        for k in range(3):
+            P[f"t{i}_{k}"] = pts[k]
+            P[f"t{i}_{k + 1}"] = pts[k + 1]
+        arms.append(pts)
+        bones += [(f"arm{i}.a", f"t{i}_0", f"t{i}_1", "mantle"), (f"arm{i}.b", f"t{i}_1", f"t{i}_2", f"arm{i}.a"),
+                  (f"arm{i}.c", f"t{i}_2", f"t{i}_3", f"arm{i}.b")]
+    rig = make_armature(name, P, bones)
+    # Mantle: a long tapering body lifted behind the head, fins at the tail.
+    mj = [(Vector((0, -0.12, 0.32)), (0.24, 0.22)), (Vector((0, 0.25, 0.44)), (0.26, 0.24)), (Vector((0, 0.6, 0.55)), (0.15, 0.13)), (Vector((0, 0.82, 0.6)), (0.04, 0.04))]
+    mantle = skin_body("mantle", mj, [(0, 1), (1, 2), (2, 3)], levels=2)
+    add_mat(mantle, mats["skin"])
+    mantle = roughen(mantle, 0.008, 0.08)
+    # Arms: one smooth tapering limb each, weighted along its three bones.
+    limbs = []
+    for i, pts in enumerate(arms):
+        aj = [(pts[0], (0.075, 0.06)), (pts[1], (0.06, 0.045)), (pts[2], (0.042, 0.03)), (pts[3], (0.01, 0.008))]
+        arm = skin_body("arm", aj, [(0, 1), (1, 2), (2, 3)], levels=2)
+        add_mat(arm, mats["skin"])
+        limbs.append(arm)
+    mantle = join_into(mantle, limbs)
+    bind_auto(mantle, rig)
+    parts = [mantle]
+    for s in (1, -1):
+        fin = blob("fin", (s * 0.15, 0.62, 0.56), (0.16, 0.14, 0.02), 12, 6, mats["skin"])
+        parts.append(fin)
+        eye = blob("eye", (s * 0.2, -0.14, 0.38), (0.07, 0.08, 0.075), 14, 10, mats["eye"])
+        parts.append(eye)
+        mark("eye." + ("L" if s > 0 else "R"), Vector((s * 0.25, -0.2, 0.4)))
+    head = blob("head", (0, -0.15, 0.3), (0.22, 0.2, 0.17), 18, 10, mats["belly"])
+    parts.append(head)
+    bind_parts(parts, "mantle")
+    for i, pts in enumerate(arms):
+        for k, bone in enumerate(("a", "b", "c")):
+            for j in range(2):
+                q = pts[k].lerp(pts[k + 1], 0.3 + 0.4 * j) + Vector((0, 0, -0.035 + 0.01 * k))
+                sk = blob("sucker", q, (0.022 - 0.005 * k, 0.022 - 0.005 * k, 0.012), 8, 4, mats["suckers"])
+                parts.append(sk)
+                bind_rigid(sk, f"arm{i}.{bone}")
+    body = join_into(parts[0], parts[1:])
+    smooth(body)
+    bake_textures(body)
+    export(name, rig, body)
+    if PREVIEW:
+        preview(name, [body], 1.0)
+
+
+def export_static(name, ob):
+    os.makedirs(OUT, exist_ok=True)
+    if MARKERS:
+        with open(os.path.join(OUT, name + ".json"), "w") as f:
+            json.dump(MARKERS, f, indent=1)
+        MARKERS.clear()
+    activate(ob)
+    path = os.path.join(OUT, name + ".glb")
+    bpy.ops.export_scene.gltf(filepath=path, export_format='GLB', use_selection=True, export_apply=True,
+                              export_animations=False, export_yup=True, export_image_format='AUTO')
+    print("EXPORTED", path, len(ob.data.polygons), "faces")
+
+
+def build_eel_head():
+    """The Constrictor Eel's head: a long moray skull over a gaping lower jaw ringed with
+    needle teeth, a dark maw, gill slits, a heavy brow and trailing barbels. The body is
+    drawn in the game as a tube through its coils."""
+    name = "eel_head"
+    mats = {
+        "skin": pmat("skin", (0.08, 0.12, 0.1), (0.2, 0.28, 0.2), scale=8, detail=8, lo=0.3, hi=0.8, rough=0.25, form=2.0, grade=False),
+        "belly": pmat("belly", (0.42, 0.42, 0.26), (0.6, 0.58, 0.36), scale=16, rough=0.3, form=1.6, grade=False),
+        "maw": pmat("maw", (0.12, 0.02, 0.03), (0.25, 0.05, 0.06), scale=20, rough=0.2, form=1.0, grade=False),
+        "teeth": pmat("teeth", (0.75, 0.72, 0.62), (0.9, 0.88, 0.8), rough=0.3, form=1.2, grade=False),
+        "eye": pmat("eye", (0.02, 0.02, 0.02), (0.05, 0.05, 0.04), rough=0.05, form=0.0, grade=False),
+        "gill": pmat("gill", (0.03, 0.03, 0.03), (0.08, 0.06, 0.06), rough=0.5, form=0.4, grade=False),
+    }
+    skull = skin_body("skull", [(Vector((0, 0.7, 0.05)), (0.55, 0.5)), (Vector((0, 0.1, 0.12)), (0.46, 0.38)),
+                                (Vector((0, -0.5, 0.08)), (0.27, 0.22)), (Vector((0, -0.95, 0.05)), (0.12, 0.1))], [(0, 1), (1, 2), (2, 3)])
+    skull = roughen(skull, 0.015, 0.2)
+    for m in ("skin", "belly"):
+        add_mat(skull, mats[m])
+    paint_regions(skull, lambda c, n: "belly" if n.z < -0.35 else "skin", mats)
+    jaw = skin_body("jaw", [(Vector((0, 0.45, -0.22)), (0.42, 0.16)), (Vector((0, -0.3, -0.36)), (0.25, 0.1)),
+                            (Vector((0, -0.85, -0.4)), (0.1, 0.06))], [(0, 1), (1, 2)])
+    for m in ("skin", "belly"):
+        add_mat(jaw, mats[m])
+    paint_regions(jaw, lambda c, n: "belly" if n.z < 0.2 else "skin", mats)
+    maw = blob("maw", (0, -0.25, -0.15), (0.3, 0.6, 0.16), 16, 10, mats["maw"])
+    parts = [jaw, maw]
+    # Needle teeth along both jaws, raked back.
+    for k in range(9):
+        t = k / 8.0
+        for s in (1, -1):
+            up = Vector((s * (0.08 + 0.2 * t), -0.85 + 0.85 * t, -0.04))
+            parts.append(tube("tooth", up, up + Vector((0, 0.03, -0.11 + 0.03 * t)), 0.022, 0.002, 6, mats["teeth"]))
+            lo = Vector((s * (0.06 + 0.16 * t), -0.8 + 0.8 * t, -0.3))
+            parts.append(tube("tooth", lo, lo + Vector((0, 0.03, 0.1 - 0.03 * t)), 0.02, 0.002, 6, mats["teeth"]))
+    for s in (1, -1):
+        e = Vector((s * 0.29, -0.32, 0.24))
+        parts.append(blob("eye", e, (0.08, 0.09, 0.08), 14, 10, mats["eye"]))
+        mark("eye." + ("L" if s > 0 else "R"), e + Vector((s * 0.05, -0.05, 0)))
+        brow = skin_body("brow", [(e + Vector((-s * 0.06, 0.12, 0.08)), (0.05, 0.04)), (e + Vector((s * 0.02, -0.12, 0.07)), (0.03, 0.025))], [(0, 1)], levels=1)
+        add_mat(brow, mats["skin"])
+        parts.append(brow)
+        for g in range(3):
+            parts.append(box("gill", (s * 0.415, 0.28 + 0.1 * g, 0.04), (0.03, 0.025, 0.22), mats["gill"], 0.008, rot=(0, 0, s * 0.2)))
+        bar = skin_body("barbel", [(Vector((s * 0.1, -0.88, -0.05)), (0.025, 0.02)), (Vector((s * 0.2, -1.0, -0.25)), (0.016, 0.014)),
+                                   (Vector((s * 0.24, -0.95, -0.5)), (0.005, 0.005))], [(0, 1), (1, 2)], levels=1)
+        add_mat(bar, mats["skin"])
+        parts.append(bar)
+    head = join_into(skull, parts)
+    smooth(head)
+    bake_textures(head, 512)
+    export_static(name, head)
+    if PREVIEW:
+        preview(name, [head], 1.5)
+
+
 BUILDERS = {
+    "eel_head": build_eel_head,
+    "crab": build_crab,
+    "squid": build_squid,
     "bloated": build_bloated,
     "smotherer": build_smotherer,
     "callum_keeper": build_callum,
