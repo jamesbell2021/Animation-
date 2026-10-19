@@ -10,6 +10,11 @@ extends Camera3D
 @export var orbit_speed_degrees: float = 25.0
 @export var orbit_distance: float = 10.0
 
+## Paintball: the camera swings round to stay on the far side of the target
+## from [member arena_centre], so it always looks in towards the action.
+var arena_mode: bool = false
+var arena_centre: Vector3 = Vector3.ZERO
+
 var _target: Node3D
 var _yaw: float = 0.0
 var _orbit: bool = false
@@ -24,6 +29,10 @@ func _ready() -> void:
 func set_target(node: Node3D) -> void:
 	_target = node
 	if is_instance_valid(_target):
+		if arena_mode and not _orbit:
+			var out := _target.global_position - arena_centre
+			if Vector2(out.x, out.z).length() > 5.0:
+				_yaw = atan2(out.x, out.z)
 		global_position = _target.global_position + _offset()
 		_look_at_target()
 
@@ -65,8 +74,13 @@ func _process(delta: float) -> void:
 		return
 	if _orbit:
 		_yaw = wrapf(_yaw + deg_to_rad(orbit_speed_degrees) * delta, 0.0, TAU)
+	elif arena_mode:
+		var out := _target.global_position - arena_centre
+		out.y = 0.0
+		if out.length() > 5.0:
+			_yaw = lerp_angle(_yaw, atan2(out.x, out.z), clampf(1.5 * delta, 0.0, 1.0))
 	var desired := _target.global_position + _offset()
-	if _orbit:
+	if _orbit or arena_mode:
 		desired = _unblocked(desired)
 	var weight: float = clampf(smoothing * delta, 0.0, 1.0)
 	global_position = global_position.lerp(desired, weight)

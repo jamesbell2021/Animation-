@@ -189,6 +189,7 @@ static func add_sign(parent: Node, text: String, pos: Vector3, colour: Color = C
 	label.text = text
 	label.position = pos
 	label.font_size = size
+	label.font = GameFonts.title()
 	label.modulate = colour
 	label.outline_size = 12
 	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED

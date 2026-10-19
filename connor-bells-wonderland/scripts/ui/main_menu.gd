@@ -102,7 +102,7 @@ func _build() -> void:
 	var panel := PanelContainer.new()
 	panel.position = Vector2(24.0, 136.0)
 	panel.custom_minimum_size = Vector2(470.0, 0.0)
-	panel.add_theme_stylebox_override("panel", _box_style(Color(0.03, 0.035, 0.06, 0.85), CourseBuilder.accent(1), 2, 16))
+	panel.add_theme_stylebox_override("panel", UiStyle.box(Color(0.03, 0.035, 0.06, 0.85), CourseBuilder.accent(1), 2, 16))
 	add_child(panel)
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 7)
@@ -138,7 +138,8 @@ func _build() -> void:
 	var play := _button("PLAY SOLO", _on_play_solo, true)
 	_play_button = play
 	play.custom_minimum_size = Vector2(0.0, 58.0)
-	play.add_theme_font_size_override("font_size", 28)
+	play.add_theme_font_size_override("font_size", 26)
+	GameFonts.use_title(play)
 	box.add_child(play)
 	var host_row := HBoxContainer.new()
 	host_row.add_theme_constant_override("separation", 8)
@@ -213,16 +214,6 @@ func _row(label_text: String, control: Control) -> HBoxContainer:
 	return row
 
 
-static func _box_style(bg: Color, border: Color, border_width: int, margin: float) -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = bg
-	style.border_color = border
-	style.set_border_width_all(border_width)
-	style.set_corner_radius_all(10)
-	style.set_content_margin_all(margin)
-	return style
-
-
 func _spin(min_value: int, max_value: int, value: int) -> SpinBox:
 	var spin := SpinBox.new()
 	spin.min_value = min_value
@@ -237,13 +228,7 @@ func _button(text: String, callback: Callable, main: bool = false) -> Button:
 	button.text = text
 	button.custom_minimum_size = Vector2(0.0, 46.0)
 	button.add_theme_font_size_override("font_size", 22)
-	var accent := CourseBuilder.accent(0) if main else CourseBuilder.accent(1)
-	var fill := accent.darkened(0.55) if main else Color(0.06, 0.07, 0.1, 0.9)
-	button.add_theme_stylebox_override("normal", _box_style(fill, accent, 2, 6))
-	button.add_theme_stylebox_override("hover", _box_style(accent.darkened(0.25), Color.WHITE, 2, 6))
-	button.add_theme_stylebox_override("pressed", _box_style(accent, Color.WHITE, 3, 6))
-	button.add_theme_stylebox_override("focus", _box_style(Color(0, 0, 0, 0), Color.WHITE, 2, 6))
-	button.add_theme_color_override("font_hover_color", Color.WHITE)
+	UiStyle.style_button(button, main)
 	button.pressed.connect(func() -> void:
 		var sm := get_tree().get_first_node_in_group("sound_manager") as SoundManager
 		if sm != null:
@@ -287,7 +272,7 @@ func _apply_identity_and_settings() -> void:
 
 
 func _on_credits() -> void:
-	var c := preload("res://studio/credits.gd").open(self, Branding.GAME_TITLE)
+	var c := preload("res://studio/credits.gd").open(self, Branding.GAME_TITLE, GameFonts.CREDIT_LINES, GameFonts.title())
 	c.closed.connect(func() -> void: _credits_button.grab_focus())
 
 

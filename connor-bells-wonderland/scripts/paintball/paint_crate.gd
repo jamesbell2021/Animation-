@@ -30,6 +30,7 @@ func _ready() -> void:
 	var label := Label3D.new()
 	label.text = "PAINT"
 	label.font_size = 64
+	label.font = GameFonts.title()
 	label.pixel_size = 0.008
 	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	label.modulate = CourseBuilder.accent(1)

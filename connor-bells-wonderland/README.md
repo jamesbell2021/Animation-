@@ -10,6 +10,9 @@ cranes. The course is dark steel lit by orange, cyan, crimson and lime light
 strips, with a pumping fairground dance soundtrack and particle effects and sound
 on every jump, hit, pickup and item. There's also a **Paintball Battle** mode. Everything (course, characters, HUD, menus, music, sound
 effects and particles) is built in code, so the project has no art or audio files.
+The only assets are two fonts in `fonts/` (both SIL OFL 1.1): **Bungee**, chunky
+fairground-sign capitals for the title, signs, countdown and big HUD text, and
+**Russo One**, a sporty face for everything else.
 
 ## Run it
 
@@ -78,7 +81,8 @@ at 4:00 whoever has the most lives left wins.
 The last one standing wins **a year's Fruit of the Month subscription: free fruit
 delivered to your home every month!** (it's a joke prize), with the same fireworks
 and present. Bots fight too: they keep their distance, strafe, stop to aim and
-shoot, and go for paint crates when they run low. Paintball Battle works over
+shoot, and go for paint crates when they run low. The camera swings round to look in
+towards the middle of the arena from wherever you are. Paintball Battle works over
 Wi-Fi as well; the host picks the mode in the lobby.
 
 ## Fairground Mayhem items
@@ -148,7 +152,9 @@ scripts/obstacles/ spinners, moving platforms, dodgem cars, bounce pads
 scripts/player/  contestant, leprechaun model, stumbles, camera, touch controls, status effects, item slot
 scripts/ai/      bot personalities, route, driver
 scripts/network/ ENet lobby (autoload), per-contestant sync, race event sync
-scripts/ui/      HUD, splat overlay, main menu, lobby, pause menu, the live 3D menu backdrop
+scripts/ui/      HUD, splat overlay, main menu, lobby, pause menu, the live 3D menu backdrop,
+                 fonts and the shared panel/button style
+fonts/           Bungee and Russo One with their licences
 scripts/items/   coins, item boxes, item rules, traps, custard pie
 scripts/paintball/ Paintball Battle: arena, rules, paintballs, paint splats, crates, bots
 scripts/fx/      particles, fireworks shows, the prize present, the sword swipe

@@ -141,6 +141,9 @@ func _ready() -> void:
 	if battle:
 		camera.distance = 10.0
 		camera.height = 8.5
+		camera.arena_mode = true
+		if player != null:
+			camera.set_target(player)
 		paintball.splatted.connect(_on_paint_splatted)
 		paintball.eliminated.connect(_on_paint_eliminated)
 		paintball.announcement.connect(func(text: String) -> void:

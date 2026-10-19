@@ -126,6 +126,7 @@ func _build_crane(crane_name: String, origin: Vector3, scale: float) -> void:
 	var sign_label := Label3D.new()
 	sign_label.text = "H&W"
 	sign_label.font_size = 128
+	sign_label.font = GameFonts.title()
 	sign_label.pixel_size = 0.075
 	sign_label.modulate = Color(0.02, 0.02, 0.02)
 	sign_label.outline_size = 0

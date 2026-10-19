@@ -27,7 +27,9 @@ func _process(delta: float) -> void:
 func _draw() -> void:
 	if text.is_empty():
 		return
-	var font := ThemeDB.fallback_font
+	var font: Font = GameFonts.title()
+	if font == null:
+		font = ThemeDB.fallback_font
 	var fs := font_size
 	var width := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 	if width > size.x - 40.0 and width > 0.0:
@@ -40,7 +42,7 @@ func _draw() -> void:
 	for i in range(text.length()):
 		var ch := text[i]
 		var adv := font.get_char_size(ch.unicode_at(0), fs).x
-		var y := base_y - absf(sin(beat * PI * 0.5 + float(i) * 0.35)) * float(fs) * 0.18
+		var y := base_y - absf(sin(beat * PI * 0.5 + float(i) * 0.35)) * float(fs) * 0.11
 		var pos := Vector2(x, y)
 		var lit := not (i == _flicker_index and _flicker_left > 0.0 and fmod(_time * 20.0, 1.0) < 0.6)
 		if ch != " ":

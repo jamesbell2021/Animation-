@@ -31,6 +31,10 @@ window/handheld/orientation=0
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
 
+[gui]
+
+theme/custom_font="res://fonts/RussoOne-Regular.ttf"
+
 [input]
 
 move_left={

@@ -105,10 +105,18 @@ func set_progress(current: int, total: int) -> void:
 func show_countdown(seconds_left: int) -> void:
 	_countdown_label.text = str(seconds_left) if seconds_left > 0 else "GO!"
 	_countdown_time_left = 1.0
+	var colours := [CourseBuilder.accent(3), Color(1.0, 0.85, 0.1), CourseBuilder.accent(0), CourseBuilder.accent(2)]
+	_countdown_label.add_theme_color_override("font_color", colours[clampi(seconds_left, 0, 3)])
+	_pop(_countdown_label, 0.45)
 
 
 func show_message(text: String, seconds: float = -1.0) -> void:
+	var fresh := text != _message_label.text
 	_message_label.text = text
+	if fresh and not text.is_empty():
+		_message_label.pivot_offset = Vector2(_message_label.get_combined_minimum_size().x * 0.5, 20.0)
+		_message_label.scale = Vector2(0.7, 0.7)
+		_message_label.create_tween().tween_property(_message_label, "scale", Vector2.ONE, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	_message_time_left = seconds if seconds > 0.0 else message_default_seconds
 
 
@@ -237,7 +245,7 @@ func ordinal(place: int) -> String:
 
 
 func _build() -> void:
-	_timer_label = _make_label(30, Color.WHITE)
+	_timer_label = _make_label(28, Color.WHITE, true)
 	_timer_label.name = "TimerLabel"
 	_timer_label.position = Vector2(20.0, 16.0)
 	add_child(_timer_label)
@@ -270,7 +278,7 @@ func _build() -> void:
 	add_child(_overlay)
 	move_child(_overlay, 0)
 
-	_position_label = _make_label(44, CourseBuilder.accent(1))
+	_position_label = _make_label(40, CourseBuilder.accent(1), true)
 	_position_label.name = "PositionLabel"
 	_position_label.anchor_left = 1.0
 	_position_label.anchor_right = 1.0
@@ -290,7 +298,7 @@ func _build() -> void:
 	_progress_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	add_child(_progress_label)
 
-	_countdown_label = _make_label(120, CourseBuilder.accent(0))
+	_countdown_label = _make_label(130, CourseBuilder.accent(0), true)
 	_countdown_label.name = "CountdownLabel"
 	_countdown_label.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
 	_countdown_label.grow_horizontal = Control.GROW_DIRECTION_BOTH
@@ -298,10 +306,10 @@ func _build() -> void:
 	_countdown_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	add_child(_countdown_label)
 
-	_message_label = _make_label(36, Color.WHITE)
+	_message_label = _make_label(30, Color.WHITE, true)
 	_message_label.name = "MessageLabel"
 	_message_label.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
-	_message_label.offset_top = 90.0
+	_message_label.offset_top = 150.0
 	_message_label.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_message_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	add_child(_message_label)
@@ -312,16 +320,10 @@ func _build() -> void:
 	_results_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_results_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
 	_results_panel.visible = false
-	var panel_style := StyleBoxFlat.new()
-	panel_style.bg_color = Color(0.03, 0.035, 0.06, 0.82)
-	panel_style.border_color = CourseBuilder.accent(1)
-	panel_style.set_border_width_all(3)
-	panel_style.set_corner_radius_all(12)
-	panel_style.set_content_margin_all(22)
-	_results_panel.add_theme_stylebox_override("panel", panel_style)
+	UiStyle.style_panel(_results_panel, 22.0)
 	add_child(_results_panel)
 
-	_prize_lead = _make_label(40, Color.WHITE)
+	_prize_lead = _make_label(34, Color.WHITE, true)
 	_prize_lead.name = "PrizeLead"
 	_prize_lead.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
 	_prize_lead.offset_top = -150.0
@@ -331,7 +333,7 @@ func _build() -> void:
 	_prize_lead.add_theme_constant_override("outline_size", 10)
 	_prize_lead.visible = false
 	add_child(_prize_lead)
-	_prize_label = _make_label(64, CourseBuilder.accent(0))
+	_prize_label = _make_label(54, CourseBuilder.accent(0), true)
 	_prize_label.name = "PrizeLabel"
 	_prize_label.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
 	_prize_label.offset_left = -600.0
@@ -359,7 +361,7 @@ func _build() -> void:
 	_results_box.add_theme_constant_override("separation", 10)
 	_results_panel.add_child(_results_box)
 
-	var title := _make_label(44, CourseBuilder.accent(0))
+	var title := _make_label(38, CourseBuilder.accent(0), true)
 	title.name = "Title"
 	title.text = Branding.RESULTS_TITLE
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -377,12 +379,16 @@ func _build() -> void:
 	button.text = "Play Again"
 	button.custom_minimum_size = Vector2(240.0, 60.0)
 	button.add_theme_font_size_override("font_size", 28)
+	UiStyle.style_button(button, true)
+	GameFonts.use_title(button)
 	button.pressed.connect(func() -> void: restart_requested.emit())
 	_results_box.add_child(button)
 
 
-func _make_label(font_size: int, colour: Color) -> Label:
+func _make_label(font_size: int, colour: Color, title_font: bool = false) -> Label:
 	var label := Label.new()
+	if title_font:
+		GameFonts.use_title(label)
 	label.add_theme_font_size_override("font_size", font_size)
 	label.add_theme_color_override("font_color", colour)
 	label.add_theme_color_override("font_outline_color", Color.BLACK)
