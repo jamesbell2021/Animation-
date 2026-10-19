@@ -14,6 +14,7 @@ var race_mode := "race"
 var pickups := 0
 var hits := 0
 var uses := {}
+var gull := {}
 
 func _initialize() -> void:
 	for a in OS.get_cmdline_user_args():
@@ -45,6 +46,11 @@ func _process(_d: float) -> bool:
 			gm.items.picked_up.connect(func(_n: String, _k: int) -> void: pickups += 1)
 			gm.items.hit.connect(func(_v: String, _a: String, _k: int) -> void: hits += 1)
 			gm.items.item_fx.connect(func(_n: String, k: int, _o: Vector3) -> void: uses[ItemKinds.display_name(k)] = int(uses.get(ItemKinds.display_name(k), 0)) + 1)
+			if gm.seagull != null:
+				gm.seagull.gull_event.connect(func(e: String, who: String, detail: String) -> void:
+					gull[e] = int(gull.get(e, 0)) + 1
+					if e == "hit" or e == "arrive":
+						print("GULL t=%.0f %s %s %s" % [frame / 60.0, e, who, detail]))
 		return false
 	if frame % 1200 == 0:
 		var line := "t=%d " % (frame / 60)
@@ -58,4 +64,6 @@ func _on_finished(results: Array) -> void:
 	for r in results:
 		print("RESULT ", r)
 	print("ITEMS pickups=%d hits=%d uses=%s" % [pickups, hits, uses])
+	if not gull.is_empty():
+		print("SEAGULL ", gull)
 	quit()

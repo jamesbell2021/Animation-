@@ -90,6 +90,17 @@ back on it. Item boxes sit on every landing and along each stage, and every item
 in play (catapult yourself up a level, Mega Bomb the pack off a ledge, oil the
 stepping stones...). The camera swings round to follow you up the spiral.
 
+Watch out for the **giant Belfast seagull**. About 25 seconds in, it flies over
+from Belfast harbour and circles the tower just above the climbers. Every so often
+it picks someone (it likes picking on whoever's in the lead), a red **!** appears
+over them with a screech, and it dives:
+
+- If it gets you, you're knocked flying and it nicks whatever item you were holding.
+- Keep moving and it can miss.
+- A Shield Bubble bops it on the beak.
+
+In between attacks it drops poo bombs (SPLAT!).
+
 The first to reach Connor's Crown on the summit sets off a fireworks display over
 the tower straight away; everyone else then has 45 seconds to finish. The winner
 gets a big, crazy prize ("A SOLID GOLD TOILET (IT'S ACTUALLY CHOCOLATE)!", "A PET
@@ -211,7 +222,8 @@ fonts/           Bungee and Russo One with their licences
 scripts/items/   coins, item boxes, item rules, traps, custard pie
 scripts/paintball/ Paintball Battle: arena, rules, paintballs, paint splats, crates, bots
 scripts/dodgems/ Dodgem Derby: rink over the sea, rules and bumping, dodgem cars, bots
-scripts/tower/   Tower Climb: the tower course, its eight obby stages, vanishing tiles
+scripts/tower/   Tower Climb: the tower course, its eight obby stages, vanishing tiles,
+                 the Belfast seagull
 scripts/fx/      particles, fireworks shows, the prize present, the sword swipe
 scripts/audio/   synthesised sound effects and hard dance music
 tools/           headless bot race and item tests (not exported)

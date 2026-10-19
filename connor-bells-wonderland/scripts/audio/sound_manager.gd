@@ -211,7 +211,22 @@ func _build_sounds() -> void:
 	s["airhorn"] = _make(1.1, func(t: float) -> float: return _horn_sample(fmod(t, 0.22) if t < 0.44 else t - 0.44, 0.2 if t < 0.44 else 0.66) * 0.8)
 	s["paintgun"] = _make(0.16, func(t: float) -> float: return (_n(t) * 0.7 * _env(t, 0.06) + sin(TAU * (260.0 - 900.0 * t) * t) * 0.6 * _env(t, 0.16)) * 0.8)
 	s["slash"] = _make(0.32, func(t: float) -> float: return ((_n(t) - _n(t - 0.0004)) * 0.6 + sin(TAU * (300.0 - 600.0 * t) * t) * 0.3) * sin(PI * t / 0.32))
+	s["squawk"] = _make(0.8, _squawk_sample)
 	s["firework"] = _make(0.8, func(t: float) -> float: return _n(t) * _env(t - 0.15, 0.65) * (1.0 if t > 0.15 else 0.15) * 0.8 + sin(TAU * (1500.0 - 1200.0 * t) * t) * 0.15 * (1.0 if t < 0.15 else 0.0))
+
+
+## A herring gull's "KEE-ow KEE-ow": two harsh yelps that start high and drop,
+## with a rough nasal buzz and a wobble.
+func _squawk_sample(t: float) -> float:
+	var call_length := 0.36
+	var nt := fmod(t, call_length)
+	var f := 1500.0 - 1700.0 * nt + 140.0 * sin(TAU * 32.0 * nt)
+	if nt < 0.06:
+		f = 1150.0 + 5800.0 * nt
+	var voice := _sq(f, nt) * 0.35 + sin(TAU * f * nt) * 0.4 + sin(TAU * f * 2.0 * nt) * 0.2
+	var env := minf(nt / 0.01, 1.0) * clampf(1.0 - nt / (call_length * 0.95), 0.0, 1.0)
+	var level := 1.0 if t < call_length else 0.8
+	return _clip((voice + _n(t) * 0.25) * env * level * 1.2)
 
 
 func _env(t: float, duration: float) -> float:

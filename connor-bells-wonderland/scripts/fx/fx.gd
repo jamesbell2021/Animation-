@@ -24,6 +24,7 @@ const BURSTS := {
 	"peony": {"amount": 80, "life": 1.7, "speed": [8.0, 9.5], "spread": 180.0, "gravity": -3.0, "size": 0.09, "shape": "spark", "colours": [Color(1.6, 1.6, 1.6), Color(1.0, 1.0, 1.0), Color(0.6, 0.6, 0.6, 0.0)], "damping": 7.0, "radius": 0.2, "up": 0.0},
 	"willow": {"amount": 90, "life": 2.8, "speed": [6.0, 8.0], "spread": 180.0, "gravity": -3.0, "size": 0.11, "shape": "spark", "colours": [Color(3.0, 2.3, 0.9), Color(2.2, 1.2, 0.3, 0.9), Color(0.7, 0.25, 0.05, 0.0)], "damping": 5.0, "radius": 0.2, "up": 0.0},
 	"crackle": {"amount": 70, "life": 1.3, "speed": [5.0, 8.0], "spread": 180.0, "gravity": -2.0, "size": 0.08, "shape": "spark", "colours": [Color(3.0, 3.0, 3.0), Color(0.2, 0.2, 0.2), Color(3.0, 3.0, 3.0), Color(0.3, 0.3, 0.3), Color(2.5, 2.5, 2.5, 0.0)], "damping": 6.0, "radius": 0.6, "up": 0.0},
+	"feathers": {"amount": 34, "life": 2.2, "speed": [3.0, 7.0], "spread": 180.0, "gravity": -1.6, "size": 0.32, "shape": "feather", "colours": [Color(1.0, 1.0, 1.0), Color(0.9, 0.9, 0.92), Color(0.7, 0.72, 0.75, 0.0)], "damping": 4.0, "radius": 0.6, "up": 0.0},
 	"fireworks": {"amount": 90, "life": 1.8, "speed": [7.0, 10.0], "spread": 180.0, "gravity": -3.0, "size": 0.09, "shape": "spark", "colours": [], "damping": 6.5, "radius": 0.3, "up": 0.0},
 }
 
@@ -131,6 +132,12 @@ static func _particles(cfg: Dictionary, tint: Color, size: float, multicolour: b
 	curve.add_point(Vector2(1.0, 0.2))
 	p.scale_amount_curve = curve
 	p.mesh = _mesh(str(cfg["shape"]), float(cfg["size"]) * clampf(size, 0.5, 2.5))
+	if str(cfg["shape"]) == "feather":
+		# Feathers tumble as they drift down.
+		p.angle_min = -180.0
+		p.angle_max = 180.0
+		p.angular_velocity_min = -240.0
+		p.angular_velocity_max = 240.0
 	var gradient := Gradient.new()
 	var colours: Array = cfg["colours"]
 	if multicolour or colours.is_empty():
@@ -174,6 +181,12 @@ static func _mesh(shape: String, size: float) -> Mesh:
 			mat.billboard_mode = BaseMaterial3D.BILLBOARD_DISABLED
 			sphere.material = mat
 			mesh = sphere
+		"feather":
+			# A long thin flake facing the camera (not glowing).
+			var flake := QuadMesh.new()
+			flake.size = Vector2(size * 0.35, size)
+			flake.material = mat
+			mesh = flake
 		_:
 			# Soft round glow (stretched into a streak) rather than a hard rectangle.
 			mat.albedo_texture = _glow()

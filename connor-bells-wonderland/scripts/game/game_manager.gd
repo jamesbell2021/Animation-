@@ -46,6 +46,8 @@ var battle: bool = false
 var battle_kind: String = ""
 ## Tower Climb mode (mode "tower"): a race up a spiral obby tower.
 var climb: bool = false
+## Tower Climb's giant seagull from Belfast harbour.
+var seagull: TowerSeagull
 var touch: TouchControls
 var pause_menu: PauseMenu
 var player: Contestant
@@ -94,6 +96,11 @@ func _ready() -> void:
 		dodgems.name = "DodgemsManager"
 		add_child(dodgems)
 		dodgems.setup(self, course as DodgemArena)
+	elif climb:
+		seagull = TowerSeagull.new()
+		seagull.name = "Seagull"
+		seagull.setup(self)
+		add_child(seagull)
 	if scenery_enabled and not battle and not climb:
 		decorator = SceneryDecorator.new()
 		course.add_child(decorator)
@@ -188,6 +195,8 @@ func _ready() -> void:
 			if mode != Mode.CLIENT:
 				dodgems.watch_items(items)
 	_connect_signals()
+	if seagull != null:
+		seagull.gull_event.connect(_on_gull_event)
 	items.hit.connect(_on_item_hit)
 	items.item_fx.connect(_on_item_fx)
 	items.picked_up.connect(_on_item_picked_up)
@@ -377,6 +386,8 @@ func _reset_local_state() -> void:
 		paintball.reset()
 	if dodgems != null:
 		dodgems.reset()
+	if seagull != null:
+		seagull.reset()
 	if course.has_method("on_restart"):
 		course.call("on_restart", _contestants)
 	if _fireworks != null:
@@ -462,6 +473,8 @@ func on_race_started() -> void:
 		sound.play("airhorn", 1.0, -3.0)
 		return
 	hud.show_message("Race to %s's Crown!" % Branding.HERO_NAME, 2.0)
+	if seagull != null:
+		seagull.begin()
 
 
 func on_contestant_finished(contestant: Contestant, place: int, time: float) -> void:
@@ -727,3 +740,39 @@ func _on_bumped(rammer_name: String, victim_name: String, strength: float) -> vo
 	var me := str(player.name)
 	if rammer_name == me or victim_name == me:
 		camera.add_shake(clampf(strength / 14.0, 0.15, 0.7))
+
+
+## Tower Climb: what the Belfast seagull is up to.
+func _on_gull_event(event: String, target_name: String, detail: String) -> void:
+	var target := find_contestant(target_name)
+	var mine := player != null and target == player
+	var who := target.display_name if target != null else target_name
+	match event:
+		"arrive":
+			hud.show_message("A GIANT SEAGULL IS COMING FROM BELFAST HARBOUR!", 3.0)
+			sound.play("squawk", 0.9, -2.0)
+		"warn":
+			if mine:
+				hud.show_message("SEAGULL INCOMING! LEG IT!", 1.4)
+				sound.play("squawk", 1.05, -4.0)
+		"hit":
+			if mine:
+				camera.add_shake(0.7)
+				if detail.is_empty():
+					hud.show_message("THE BELFAST SEAGULL GOT YOU!", 2.0)
+				else:
+					hud.show_message("THE SEAGULL GOT YOU AND NICKED YOUR %s!" % detail.to_upper(), 2.4)
+			elif detail.is_empty():
+				hud.show_message("The seagull got %s!" % who, 1.5)
+			else:
+				hud.show_message("The seagull nicked %s's %s!" % [who, detail], 1.8)
+		"miss":
+			if mine:
+				hud.show_message("DODGED THE SEAGULL!", 1.4)
+		"blocked":
+			if mine:
+				hud.show_message("BOP! Your shield smacked the seagull on the beak!", 1.8)
+		"poo":
+			if mine:
+				hud.splat(1.6, Color(0.95, 0.95, 0.9), 7)
+				hud.show_message("SPLAT! Seagull poo!", 1.5)
