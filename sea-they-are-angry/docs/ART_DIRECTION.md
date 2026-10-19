@@ -58,6 +58,22 @@ The creatures and the hammer:
 |---|---|
 | ![storm](screenshots/storm_night.png) | ![flash](screenshots/storm_flash.png) |
 
+| The four keepers, built in Blender | Their faces |
+|---|---|
+| ![keepers](screenshots/characters_keepers.png) | ![heads](screenshots/characters_heads.png) |
+
+| The Bloated, the Smotherer and the Eel's head | The Crab and the Squid |
+|---|---|
+| ![drowned](screenshots/characters_drowned.png) | ![crab and squid](screenshots/characters_crab_squid.png) |
+
+| The keepers in the game | The creatures at the homestead on a clear night | The Eel coiled on the tower |
+|---|---|---|
+| ![in game](screenshots/characters_keepers_ingame.png) | ![creatures](screenshots/characters_creatures_night.png) | ![eel](screenshots/characters_eel_coil.png) |
+
+| Knocked flat and back up: walk, swing, knocked, down, getting up, up |
+|---|
+| ![ragdoll](screenshots/ragdoll_keeper.png) |
+
 | Clear, squalls and storm: each night's weather is rolled at dusk |
 |---|
 | ![weather](screenshots/weather_nights.png) |
@@ -85,7 +101,7 @@ The owner's brief is "a Valheim look". In practice that means simple, faceted lo
 | Filmic grade | ACES tonemapping, screen-blend bloom, SSAO, slight contrast lift |
 | Rugged props | Faceted rocks with moss on top (`Look.rock`), sea stacks, bleached driftwood, rusty scrap, weathered leaning fence posts |
 
-Weather is in: storm nights with rain, gusts, breakers and lightning (see DECISIONS). Still to do for the full look: real creature models, foliage variety (heather, thrift, kelp on the shingle), and a sky that shows at the horizon.
+Weather and real character models are in (see DECISIONS). Still to do for the full look: foliage variety (heather, thrift, kelp on the shingle), a sky that shows at the horizon, and pushing the character script further (cloth folds, more facial detail).
 
 ## The four keepers
 

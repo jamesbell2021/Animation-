@@ -218,3 +218,33 @@ Built to plan 2's Phase C, with these departures:
 - **Co-op:** a third keeper adds a driftwood point on the south beach.
 - **Revive time** follows the garden level (3/2.5/2 s).
 - **Tests:** `tests/slice_economy.gd` covers all of the above (37 checks).
+
+## Characters remade in Blender, with ragdolls (owner's request: "Valheim level", "ragdoll and get back up")
+
+- **One script builds every character:** `art/source/characters/build_characters.py`, run headless in Blender 4.2 (see `art/README.md`). Nothing is hand-edited, so a character can be changed and rebuilt in minutes. The four keepers, the Bloated, the Smotherer, the Crab, the Squid and the Eel's head all come from it. The old primitives remain as a fallback in each script if a model is missing.
+- **What gets it toward the Valheim look:**
+  - Heads sculpted with real structure: brow ridge, deep-set heavy-lidded eyes, cheekbones, a jaw and chin, a fleshy nose.
+  - Chunky beards made from a mass plus hanging clumps.
+  - Proper clothes: a cable gansey, a boiler suit, a waxed jacket, an oilskin coat and sou'wester, sea boots with soles, belts, buckles and pockets.
+  - Painterly baked textures: noise, cloth patterns, curvature shading and ambient occlusion.
+  - Stocky proportions: big hands, broad shoulders, shorter legs.
+
+  It is still procedural modelling, not hand sculpting: up close the forms are simpler than Valheim's. The script is where to push further (more head detail, cloth folds, a second texture pass).
+- **Animation is code, not clips.** `CharacterRig.pose(bone, euler)` rotates a bone about the model's own axes. The keeper's walk, swing, hammer and pour, the creatures' walks, the Smotherer's climb and lantern wrap, the Crab's scuttle and claw, and the Squid's rippling arms are all posed each frame. Tools sit in the keeper's right hand and the lantern hangs from the left, on bone attachments.
+- **Ragdolls (`CharacterRig.ragdoll()`):** on demand, the rig builds a `PhysicalBoneSimulator3D` with a capsule per bone and cone joints with swing and twist limits.
+  - **Collisions:** the bodies sit on their own collision layer (32) and collide only with the ground and buildings.
+  - **Speed cap:** speeds are capped at 7 m/s (and spin at 14 rad/s). Without the cap, a body that starts against the crag wall was flung 10 m into the air.
+  - **Getting up:** the owner moves to where the ragdoll lies, found with a ray down because the island has several levels, faces the way it fell, and the ragdoll blends back into the animated pose over 0.55 s. If the ragdoll is lying somewhere it can't stand (the sea), it snaps up on the last safe ground instead of stretching across the gap.
+  - **Lifetime:** the physics bodies are freed after getting up, so idle characters cost nothing.
+- **When keepers go down:**
+  - Any hit of 10 or more (a Squid's lunge, a Crab's slam, a Bloated's burst) knocks them flat for about a second.
+  - The Eel's surge knocks them flat for its prone time.
+  - Downed keepers lie as ragdolls until revived. The revive test now keeps the reviver beside the body, since it can slide.
+- **When creatures go down:**
+  - Every boathook hit knocks a Bloated, Smotherer or Squid down for 0.8 s. A blow aimed out over the ledge throws it off for real, and the fall damage (the usual 14/m) applies when it lands. Knocked into the sea, it's gone.
+  - The Crab is too heavy to knock down, but a chain plate now throws it on its back as a ragdoll, wide open.
+  - A Smotherer shaken loose falls from the tower as a dead weight and dies of the fall.
+  - The dead lie as ragdolls for five seconds, then sink away. The Bloated still bursts, and the Eel is a scripted giant with no ragdoll.
+- **The Eel** keeps its tube body (it has to wrap the tower) but gains a mottled texture, a pale belly, a ragged dorsal fin and a moray head modelled in Blender.
+- **Eyes** are placed from points the build script writes alongside each model (`*.json`), so the glows sit in the sockets.
+- **Character models go through Git LFS** (path rule for `sea-they-are-angry/art/**/*.glb`). The textures Godot extracts from them are git-ignored.

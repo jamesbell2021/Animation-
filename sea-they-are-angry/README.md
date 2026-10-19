@@ -2,7 +2,7 @@
 
 A lighthouse keeper on a tiny North Sea rock, late 1980s. By day you gather driftwood, scrap, kelp and bioluminescent matter from the shoreline, mend the fences, plant the garden, set traps and refuel the lamp. At dusk the fog and the storm roll in. At night things walk up out of the water toward the light. The lamp's beam slows them; your boathook does the rest. If the lamp goes dark, the run is over. There is no winning, only how many nights you last.
 
-This folder holds the **grey-box vertical slice**: every object is a primitive mesh built in code, with no art or audio yet.
+The island, buildings and effects are built in code. The characters are rigged models built by a Blender script. Sound is synthesised at start-up.
 
 ## How to run
 
@@ -51,6 +51,7 @@ Keepers face the way they walk and turn to their aim to swing. Each carries a pa
 ## What is in the slice
 
 - The island, after Bad North: a meadow ringed by cliffs, three beaches where the sea comes ashore, and the lighthouse on a crag in the middle. The only way up is a ledge path that winds round the crag. Fixed camera, day/dusk/night/dawn lighting with fog.
+- Characters modelled, rigged and textured in Blender by a script (`art/source/characters/build_characters.py`), animated in code. Hard hits knock keepers and creatures down as ragdolls, and they get back up.
 - Keeper movement, mouse aim, boathook attack. A blow aimed outward on the ledge knocks a creature over the edge. Keepers have their own ladders down the crag.
 - The lamp: fuel, wide and focused beams (the focused one reaches the beaches), auto-sweep when nobody operates it, Burning to Guttering to Dark.
 - Seven scavenge points on the beaches that refill at dawn (an eighth with three keepers), five fences at the chokepoints (beach heads and the ledge), repair, refuel.

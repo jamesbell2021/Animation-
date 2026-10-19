@@ -1,28 +1,44 @@
-# Art drop-ins (not wired into the game yet)
+# Art
 
-These are the first real models. The vertical slice still draws everything from primitives in code. Wiring these in is Phase F of `docs/prompts/02_first_release_phases_A-G.md`.
+## Characters (rigged, in the game)
 
-| File | What it is | Triangles | Size (metres) |
-|---|---|---|---|
-| characters/callum_keeper.glb | Callum MacLeod, lamp keeper | 1,748 | 1.0 wide, 2.06 tall |
-| characters/hamish_keeper.glb | Hamish Fraser, engineer | 1,660 | 1.0 wide, 2.04 tall |
-| characters/mairi_keeper.glb | Mairi Campbell, gardener and runner | 2,004 | 1.0 wide, 2.02 tall |
-| characters/ewan_keeper.glb | Ewan Reid, frontline | 1,648 | 1.1 wide, 2.05 tall |
-| characters/all_four_keepers.glb | All four in a lineup, for reference renders | 7,060 | 5.4 wide |
-| props/boat_hook.glb | Boathook | 96 | 1.21 long |
-| environment/island_environment.glb | Whole island blockout: cliffs, lighthouse, three buildings, garden, dock, rowboat, props | 12,192 | 31 × 22, lighthouse 9.2 tall |
+Every character is built by one Blender script, `source/characters/build_characters.py`, and loaded by `scenes/util/character_rig.gd`:
 
-## Facts to know before importing
+```
+blender -b -P art/source/characters/build_characters.py -- art/characters            # all of them
+blender -b -P art/source/characters/build_characters.py -- art/characters crab squid # just these
+blender -b -P art/source/characters/build_characters.py -- /tmp/out callum_keeper --preview  # with renders
+```
 
-- **Z is up.** All files were exported by trimesh with height along +Z, not glTF's +Y. In Godot they will lie on their backs. Rotate the imported root −90° about X, either in the import settings or in code when instancing.
-- **Origin.** Keepers stand with their feet at the origin. The island origin is near its centre at sea level.
-- **Colour.** Keepers and the boathook have no materials, only vertex colours (`COLOR_0`). Give them a `StandardMaterial3D` with `vertex_color_use_as_albedo = true`. The island has 15 simple PBR base-colour materials.
-- **No normals.** Godot will generate flat normals, which suits the faceted low-poly look.
-- **No rig, no animation.** The animation contract in Phase F (idle, walk, swing, downed and so on) will no-op until rigged versions arrive.
-- **Budgets.** Every keeper is under the 3k-triangle creature budget. The island is one assembled scene, so the gameplay rock (14 m radius, fences on a 9 m ring) and this model (31 × 22 m with its own lighthouse, buildings and garden) need reconciling before it replaces the primitive island.
+Blender 4.2 LTS. A full rebuild takes about two minutes on a CPU. After rebuilding, re-import in Godot (`godot --headless --editor --quit --path sea-they-are-angry`).
 
-## Source files
+| File | What it is | Rig |
+|---|---|---|
+| characters/callum_keeper.glb | Callum MacLeod, principal keeper: navy cable gansey, red watch cap, grey beard | humanoid |
+| characters/hamish_keeper.glb | Hamish Fraser, engineer: boiler suit, rolled sleeves, flat cap | humanoid |
+| characters/mairi_keeper.glb | Mairi Campbell, gardener and runner: waxed jacket, auburn braid, cords, wellies | humanoid |
+| characters/ewan_keeper.glb | Ewan Reid, frontline: yellow oilskin coat and sou'wester | humanoid |
+| characters/bloated.glb | The Bloated Dead | humanoid |
+| characters/smotherer.glb | The Smotherer | humanoid |
+| characters/crab.glb | The Armoured Crab | body, 6 two-part legs, 2 claws |
+| characters/squid.glb | The Wall-Crawling Squid | mantle, 6 three-part arms |
+| characters/eel_head.glb | The Constrictor Eel's head (the body is a tube drawn in code) | none |
+| characters/*.json | Points the game needs (eyes, mouth), in the game's model space | |
 
-- `source/setup_blender_scene.py` builds a Blender lineup scene from the keeper GLBs (see `source/BLENDER_README.txt`).
-- `source/stylized_character_material.py` is the two-tone painted shader the art direction is built on.
-- `source/ISLAND_README.txt` is the original note that came with the island.
+How the script works:
+
+- **Bodies** come from a joint graph through Blender's skin modifier, with a radius per joint and subdivision. The same joints place the armature's bones, so the skeleton always fits.
+- **Heads** are sculpted in code from a dense sphere: the jaw narrows to a chin, with a brow ridge, sunken eye sockets, cheekbones, and (for the drowned) hollow cheeks. Noses, eyelids, ears, brows, beards (a mass plus hanging clumps), hair and hats are added on top.
+- **Clothing** is painted by body region (jumper, trousers, boots, skin), with extra geometry for hems, cuffs, collars, belts, pockets, coat skirts that follow the thighs, boots and soles.
+- **Weights:** bodies get automatic weights; rigid parts are bound to one bone.
+- **Materials** are procedural: two-colour noise with a knit, cable, weave, rib or stripe pattern. Curvature lightens raised edges and darkens creases, the way a hand-painted texture does, and a vertical grade lightens toward the head. Each character is baked with ambient occlusion into one 1024² texture, so it draws with a single material.
+- **Coordinates:** Z up, facing -Y, left is +X (bones named `.L`). Godot sees +Y up, facing +Z; `CharacterRig` turns the model round to face -Z.
+
+The game animates the bones in code (`CharacterRig.pose()` takes rotations about the model's own axes) and turns them into physics for ragdolls on demand. There are no baked animations.
+
+## Older drop-ins
+
+- `characters/all_four_keepers.glb`: the original four keepers in a lineup, from before the Blender rebuild. Not used by the game.
+- `props/boat_hook.glb`: the boathook, Z-up, vertex-coloured; `Player.load_art()` stands it up.
+- `environment/island_environment.glb`: a whole-island blockout (31 × 22 m) from early on, not used; the game's island is built in code by `scenes/util/terrain.gd`.
+- `source/setup_blender_scene.py`, `source/stylized_character_material.py`, `source/ISLAND_README.txt`: notes and scripts from the first art drop.
