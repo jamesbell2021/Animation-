@@ -222,7 +222,7 @@ func _setup() -> void:
 		"dusk":
 			scene(PH_DAY, 0.3, false)
 			place(Vector3(-2.6, 0.0, 3.4))
-			camera(Vector3(4.0, Terrain.CRAG_TOP + 4.0, 10.5), Vector3(-0.6, Terrain.CRAG_TOP + 2.2, 1.0), 50.0)
+			camera(Vector3(5.5, Terrain.CRAG_TOP + 5.0, 14.0), Vector3(-0.6, Terrain.CRAG_TOP + 4.6, 0.5), 52.0)
 		"beam":
 			scene(PH_NIGHT, 1.0, true)
 			place(SPAWN)
