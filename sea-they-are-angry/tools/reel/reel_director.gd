@@ -280,7 +280,7 @@ func _setup() -> void:
 			var mid := (spot + cp) * 0.5
 			camera(mid + outdir * 7.0 + side * 2.5 + Vector3(0.0, 5.5, 0.0), mid + Vector3(0.0, 0.8, 0.0), 50.0)
 		"eel":
-			scene(PH_NIGHT, 1.0, false)
+			scene(PH_NIGHT, 0.7, false)
 			place(SPAWN)
 			player._toggle_operate()
 			var e := Eel.new()
@@ -289,7 +289,7 @@ func _setup() -> void:
 			e.origin = Vector3(o.x, Terrain.SEA_LEVEL, o.z)
 			main.get_node("Enemies").add_child(e)
 			_actors["e"] = e
-			camera(Vector3(-4.0, 26.0, 26.0), Vector3(4.0, 4.0, 0.0), 50.0)
+			camera(Vector3(15.0, 17.0, 20.0), Vector3(4.0, 5.0, 0.0), 50.0)
 		"smotherer":
 			scene(PH_NIGHT, 0.8, false)
 			place(Vector3(0.0, 0.0, Lighthouse.RADIUS + 0.7))
@@ -446,6 +446,8 @@ func _direct(t: float) -> void:
 			var e = _actors["e"]
 			if at(0.0, t, "skip") and is_instance_valid(e):
 				e.state_t = Eel.ANNOUNCE_TIME - 2.5
+			if at(2.6, t, "flash"):
+				weather().strike(false, false)
 			if is_instance_valid(e) and e.state == &"Coil":
 				if lamp.mode == Lamp.Mode.WIDE:
 					lamp.toggle_mode()
