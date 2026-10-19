@@ -141,12 +141,14 @@ func _physics_process(delta: float) -> void:
 				else:
 					_attack_timer = 4.0
 		Mode.WARN:
-			# Hover out from the target, screeching, then go.
+			# Hover up ahead of the target (where they can see it), screeching, then go.
 			if not _valid_target():
 				_set_mode(Mode.CIRCLE)
 			else:
-				var out := Vector3(_target.global_position.x, 0.0, _target.global_position.z).normalized()
-				goal = _target.global_position + out * 11.0 + Vector3.UP * 7.0
+				var p := _target.global_position
+				var out := Vector3(p.x, 0.0, p.z).normalized()
+				var ahead := Vector3(-p.z, 0.0, p.x).normalized()
+				goal = p + ahead * 6.0 + out * 2.5 + Vector3.UP * 6.5
 				speed = 18.0
 				if _mode_time >= WARN_TIME:
 					_dive_point = _target.global_position + Vector3.UP * 0.9
