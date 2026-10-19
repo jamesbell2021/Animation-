@@ -198,3 +198,15 @@ many shots, hits and crate refills there were. Battles usually last 30–55 s:
 ```
 godot --headless --path . --fixed-fps 60 -s res://tools/paintball_test.gd -- diff=1
 ```
+
+## Promo reel
+
+`tools/reel/make_reel.sh` records a ~35 s vertical (1080x1920) gameplay reel for
+Instagram Reels or sending to a phone: the title, a race start with item chaos, a
+Paintball Battle, the fireworks-and-prize finale and an end card. Connor is played
+by the AI, captions pop up in Bungee, and the game's dance track runs underneath.
+It uses Godot's Movie Maker (frame by frame, so it takes a while) and ffmpeg:
+
+```
+GODOT=godot tools/reel/make_reel.sh reel.mp4
+```
