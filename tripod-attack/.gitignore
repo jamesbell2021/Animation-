@@ -4,3 +4,4 @@ build/
 *.import
 *.uid
 launch/out/*.mp4
+__pycache__/
