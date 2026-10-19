@@ -265,13 +265,20 @@ func _setup() -> void:
 			camera(Vector3(9.0, Terrain.CRAG_TOP + 3.5, 11.0), Vector3(2.5, Terrain.CRAG_TOP - 1.5, 4.5), 55.0)
 		"crab":
 			scene(PH_NIGHT, 0.9, false)
+			# Beside the cottage's west gable, out on the meadow.
 			var cottage = _find(Cottage)
-			var spot: Vector3 = cottage.to_global(Vector3(0.0, 0.0, -Cottage.DEPTH * 0.5 - 2.4))
-			var c := spawn(Crab, ground(spot, 0.0))
+			var cp: Vector3 = cottage.global_position
+			var outdir := Vector3(cp.x, 0.0, cp.z).normalized()
+			var side := Vector3(outdir.z, 0.0, -outdir.x)
+			if side.x > 0.0:
+				side = -side
+			var spot: Vector3 = ground(cp + side * (Cottage.WIDTH * 0.5 + 2.2), 0.0)
+			var c := spawn(Crab, spot)
 			hold(c)
-			c.rotation.y = atan2(-(cottage.global_position - spot).x, -(cottage.global_position - spot).z)
+			c.rotation.y = atan2(side.x, side.z)
 			place(Vector3(2.0, 0.0, 2.6))
-			camera(spot + Vector3(3.5, 4.5, 4.5), spot + Vector3(-0.8, 0.8, -0.6), 55.0)
+			var mid := (spot + cp) * 0.5
+			camera(mid + outdir * 7.0 + side * 2.5 + Vector3(0.0, 5.5, 0.0), mid + Vector3(0.0, 0.8, 0.0), 50.0)
 		"eel":
 			scene(PH_NIGHT, 1.0, false)
 			place(SPAWN)
