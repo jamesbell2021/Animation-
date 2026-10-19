@@ -163,3 +163,10 @@ static func chimney_smoke(parent: Node, at: Vector3) -> GPUParticles3D:
 static func sea_spray(parent: Node, at: Vector3) -> void:
 	_meshes()
 	emitter(parent, at, _drop_mesh, Color(0.85, 0.92, 0.95, 0.85), 22, 1.1, Vector3.UP, 30.0, 2.0, 4.0, 7.0, 0.8, 1.6, true, false, 0.0, Vector3(0.6, 0.1, 0.6))
+
+## A wave breaking against the cliff foot: a tall burst of white water and drifting spume.
+static func breaker(parent: Node, at: Vector3, size: float = 1.0) -> void:
+	_meshes()
+	emitter(parent, at, _drop_mesh, Color(0.88, 0.93, 0.96, 0.9), int(40 * size), 1.4, Vector3(0.0, 1.0, 0.0), 22.0, 4.0 * size, 7.5 * size, 9.0, 1.0, 2.2, true, false, 0.0, Vector3(1.2, 0.2, 1.2))
+	emitter(parent, at + Vector3(0.0, 0.5, 0.0), _puff_mesh, Color(0.86, 0.9, 0.93, 0.22), int(3 + 2 * size), 1.4, Vector3(0.3, 1.0, 0.1).normalized(), 40.0, 1.0, 2.0 * size, -0.2, 0.35, 0.8, true, true)
+

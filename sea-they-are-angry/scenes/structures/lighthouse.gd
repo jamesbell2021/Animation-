@@ -55,6 +55,7 @@ func _cyl(r_bottom: float, r_top: float, h: float, y: float, mat: Material, segs
 	return mi
 
 func _build() -> void:
+	add_to_group("lighthouse")
 	var stone := Look.flat_mat(Color(0.46, 0.45, 0.42))
 	var iron := Look.flat_mat(IRON, 0.6)
 	var band := Look.flat_mat(BAND_COLOR, 0.8)

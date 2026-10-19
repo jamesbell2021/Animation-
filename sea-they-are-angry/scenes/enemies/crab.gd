@@ -79,7 +79,8 @@ func _build() -> void:
 		var stalk := Geo.box(_visual, Vector3(0.06, 0.3, 0.06), Color.WHITE, Vector3(side * 0.2, 0.95, -0.55))
 		stalk.material_override = dark
 		var eye := Geo.sphere(_visual, 0.07, Color.WHITE, Vector3(side * 0.2, 1.12, -0.55))
-		eye.material_override = Look.glow_mat(Color(0.9, 0.85, 0.4), 1.5)
+		eye.material_override = Look.eye_mat(Color(1.0, 0.6, 0.2))
+		Look.glint(_visual, Vector3(side * 0.2, 1.12, -0.6), Color(1.0, 0.6, 0.2))
 	# Six jointed legs: up and out from the shell, then down to a point.
 	for i in 6:
 		var side := -1.0 if i < 3 else 1.0

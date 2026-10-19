@@ -10,7 +10,7 @@ const KEYBOARD_ARROWS := -2
 const NAMES := ["Callum", "Hamish", "Mairi", "Ewan"]
 const MODELS := ["callum_keeper", "hamish_keeper", "mairi_keeper", "ewan_keeper"]
 const COLORS := [Color(1.0, 0.72, 0.25), Color(0.35, 0.85, 1.0), Color(1.0, 0.4, 0.8), Color(0.45, 1.0, 0.45)]
-const ACTIONS := ["move_left", "move_right", "move_up", "move_down", "aim_left", "aim_right", "aim_up", "aim_down", "attack", "interact", "operate", "beam_mode", "sprint"]
+const ACTIONS := ["move_left", "move_right", "move_up", "move_down", "aim_left", "aim_right", "aim_up", "aim_down", "attack", "interact", "operate", "beam_mode", "sprint", "flare", "use_dirty"]
 
 var wanted := 1
 var devices: Array[int] = [KEYBOARD_MOUSE]
@@ -70,7 +70,7 @@ func device_label(idx: int) -> String:
 	if d == KEYBOARD_MOUSE:
 		return "Keyboard + mouse"
 	if d == KEYBOARD_ARROWS:
-		return "Arrow keys (Ctrl swing, Shift use, / lamp, . beam)"
+		return "Arrow keys (Ctrl swing, Shift use, / lamp, . beam, ; flare)"
 	var pad_name := Input.get_joy_name(d)
 	return "Gamepad %d%s" % [d + 1, (": " + pad_name) if pad_name != "" else " (not connected)"]
 
@@ -90,6 +90,8 @@ func bind_device(idx: int, device: int) -> void:
 		_key(idx, "operate", KEY_SLASH)
 		_key(idx, "beam_mode", KEY_PERIOD)
 		_key(idx, "sprint", KEY_COMMA)
+		_key(idx, "flare", KEY_SEMICOLON)
+		_key(idx, "use_dirty", KEY_APOSTROPHE)
 		return
 	_axis(idx, "move_left", device, JOY_AXIS_LEFT_X, -1.0)
 	_axis(idx, "move_right", device, JOY_AXIS_LEFT_X, 1.0)
@@ -105,6 +107,8 @@ func bind_device(idx: int, device: int) -> void:
 	_button(idx, "operate", device, JOY_BUTTON_Y)
 	_button(idx, "beam_mode", device, JOY_BUTTON_B)
 	_button(idx, "sprint", device, JOY_BUTTON_RIGHT_SHOULDER)
+	_axis(idx, "flare", device, JOY_AXIS_TRIGGER_LEFT, 1.0)
+	_button(idx, "use_dirty", device, JOY_BUTTON_LEFT_SHOULDER)
 
 func _key(idx: int, a: String, key: Key) -> void:
 	var ev := InputEventKey.new()

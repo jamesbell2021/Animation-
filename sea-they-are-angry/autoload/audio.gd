@@ -58,6 +58,9 @@ const SOUNDS := {
 	"wind": ["_s_wind", true],
 	"waves": ["_s_waves", true],
 	"drone": ["_s_drone", true],
+	"rain": ["_s_rain", true],
+	"gust": ["_s_gust", false],
+	"wave_crash": ["_s_wave_crash", false],
 }
 
 func _ready() -> void:
@@ -138,6 +141,13 @@ func loop(key: String, on: bool, volume_db: float = -10.0, fade: float = 2.0) ->
 func start_ambience() -> void:
 	loop("wind", true, -16.0, 3.0)
 	loop("waves", true, -12.0, 3.0)
+	loop("rain", true, -60.0, 0.1)
+
+## Set a running loop's volume straight away (the weather drives rain and wind this way).
+func loop_volume(key: String, volume_db: float) -> void:
+	var p: AudioStreamPlayer = _loops.get(key)
+	if p != null and p.playing:
+		p.volume_db = volume_db
 
 # ---- reactions to the game ----
 
@@ -146,13 +156,11 @@ func _on_phase(p: int) -> void:
 		Cycle.Phase.DUSK:
 			# Two long blasts: fog is coming in.
 			horn([3.0, 3.0], -3.0)
-			loop("wind", true, -11.0, 6.0)
 		Cycle.Phase.NIGHT:
 			sfx("night_sting", Vector3.INF, -6.0, 0.0)
 			loop("drone", true, -14.0, 6.0)
 		Cycle.Phase.DAWN:
 			loop("drone", false, -14.0, 8.0)
-			loop("wind", true, -16.0, 8.0)
 
 func _on_lamp_state(s: int) -> void:
 	match s:
@@ -625,3 +633,44 @@ func _s_eel_coil() -> PackedFloat32Array:
 func _s_eel_hiss() -> PackedFloat32Array:
 	var b := _env(_highpass(_noise(_n(0.8), 63), 1800.0), 0.05, 4.0)
 	return _gain(b, 0.9)
+
+# ---- the storm ----
+
+# Heavy rain: a hiss of fine noise with a patter of drops through it. Loops.
+func _s_rain() -> PackedFloat32Array:
+	var n := _n(4.0)
+	var b := _highpass(_lowpass(_noise(n, 70), 5200.0), 700.0)
+	_gain(b, 0.55)
+	var r := RandomNumberGenerator.new()
+	r.seed = 71
+	for k in 260:
+		var drop := _env(_highpass(_noise(_n(0.02), 72 + k), 2200.0), 0.0005, 180.0)
+		_mix(b, drop, r.randf_range(0.15, 0.5), r.randi_range(0, n - _n(0.03)))
+	return _seamless(b, 0.4)
+
+# A gust: wind rising to a howl and falling away.
+func _s_gust() -> PackedFloat32Array:
+	var n := _n(2.4)
+	var b := _noise(n, 73)
+	var y := 0.0
+	for i in n:
+		var t := float(i) / float(n)
+		var cut := 250.0 + 900.0 * sin(t * PI)
+		var a := 1.0 - exp(-TAU * cut / RATE)
+		y += a * (b[i] - y)
+		b[i] = y * sin(t * PI) * 2.4
+	var howl := _tone(n, 180.0, 260.0)
+	for i in n:
+		var t := float(i) / float(n)
+		howl[i] *= sin(t * PI) * 0.12 * (0.6 + 0.4 * sin(t * 37.0))
+	return _mix(b, howl)
+
+# A wave smashing into rock: a deep boom, then the hiss of water falling back.
+func _s_wave_crash() -> PackedFloat32Array:
+	var n := _n(2.0)
+	var boom := _env(_lowpass(_noise(n, 74), 260.0), 0.02, 3.0)
+	_gain(boom, 3.0)
+	_mix(boom, _env(_tone(n, 55.0, 32.0), 0.01, 4.0), 0.8)
+	var hiss := _env(_highpass(_lowpass(_noise(n, 75), 4500.0), 600.0), 0.25, 2.2)
+	return _mix(boom, hiss, 0.9, _n(0.08))
+

@@ -10,7 +10,9 @@ func _ready() -> void:
 	_key("beam_mode", KEY_Q)
 	_key("sprint", KEY_SPACE)
 	_key("skip", KEY_ENTER)
+	_key("use_dirty", KEY_F)
 	_mouse("attack", MOUSE_BUTTON_LEFT)
+	_mouse("flare", MOUSE_BUTTON_RIGHT)
 
 func _key(action: String, key: Key) -> void:
 	if not InputMap.has_action(action):

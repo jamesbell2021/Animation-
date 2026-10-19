@@ -61,11 +61,13 @@ func _build() -> void:
 	# Swollen, hunched torso and a sagging belly.
 	_part_sphere(0.6, Vector3(1.0, 1.25, 0.9), Vector3(0.0, 1.0, 0.0), _body_mat)
 	_part_sphere(0.45, Vector3(1.0, 0.85, 1.0), Vector3(0.0, 0.72, -0.18), _body_mat)
-	# Head slumped forward, with two dim drowned-lantern eyes.
+	# Head slumped forward, with two drowned-lantern eyes that glint in the dark.
 	_part_sphere(0.27, Vector3(1.0, 0.9, 1.05), Vector3(0.0, 1.72, -0.28), limb)
-	var eye := Look.glow_mat(Color(0.85, 0.95, 0.45), 2.5)
-	_part_sphere(0.05, Vector3.ONE, Vector3(-0.1, 1.76, -0.52), eye)
-	_part_sphere(0.05, Vector3.ONE, Vector3(0.1, 1.76, -0.52), eye)
+	var eye := Look.eye_mat(Color(0.8, 1.0, 0.35))
+	_part_sphere(0.06, Vector3.ONE, Vector3(-0.1, 1.76, -0.53), eye)
+	_part_sphere(0.06, Vector3.ONE, Vector3(0.1, 1.76, -0.53), eye)
+	for side in [-1.0, 1.0]:
+		Look.glint(_visual, Vector3(side * 0.1, 1.76, -0.6), Color(0.8, 1.0, 0.35))
 	# Long arms hanging to the knees, stubby legs.
 	for side in [-1.0, 1.0]:
 		var arm := Geo.box(_visual, Vector3(0.16, 0.95, 0.16), Color.WHITE, Vector3(side * 0.62, 0.95, -0.12))

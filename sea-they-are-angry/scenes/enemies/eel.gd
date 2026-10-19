@@ -121,11 +121,11 @@ func _build() -> void:
 	jaw.scale = Vector3(1.0, 1.0, 0.5)
 	jaw.position = Vector3(0.0, -0.32, -0.3)
 	_head.add_child(jaw)
-	var eye := Look.glow_mat(EYE, 3.0)
-	eye.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	var eye := Look.eye_mat(EYE, 12.0)
 	for side in [-1.0, 1.0]:
 		var e := Geo.sphere(_head, 0.12, Color.WHITE, Vector3(side * 0.38, 0.22, -0.55))
 		e.material_override = eye
+		Look.glint(_head, Vector3(side * 0.38, 0.22, -0.62), EYE, 0.7)
 	# The churn that gives it away: dark humps rolling in the swell.
 	var churn_mat := Look.flat_mat(Color(0.12, 0.18, 0.18, 0.75), 0.2)
 	churn_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA

@@ -22,7 +22,7 @@ const STUN_TIME := 1.5
 const SKIN := Color(0.62, 0.68, 0.66)
 const SKIN_DARK := Color(0.4, 0.46, 0.45)
 const WEED := Color(0.12, 0.2, 0.1)
-const EYE := Color(0.05, 0.06, 0.06)
+const EYE := Color(0.75, 0.9, 1.0)
 
 var _visual: Node3D
 var _skin: StandardMaterial3D
@@ -59,7 +59,7 @@ func _build() -> void:
 	body.rotation.x = 0.15
 	var hips := Geo.box(_visual, Vector3(0.36, 0.25, 0.25), Color.WHITE, Vector3(0.0, 0.62, 0.0))
 	hips.material_override = dark
-	# A long skull with two black hollows for eyes, and a hood of kelp.
+	# A long skull with two pale pinpoints of light deep in its sockets, and a hood of kelp.
 	var head := MeshInstance3D.new()
 	var hm := SphereMesh.new()
 	hm.radius = 0.17
@@ -71,8 +71,11 @@ func _build() -> void:
 	head.position = Vector3(0.0, 1.85, -0.08)
 	_visual.add_child(head)
 	for side in [-1.0, 1.0]:
-		var e := Geo.sphere(_visual, 0.045, EYE, Vector3(side * 0.07, 1.9, -0.23))
-		e.material_override = Look.flat_mat(EYE, 1.0)
+		var socket := Geo.sphere(_visual, 0.055, Color.BLACK, Vector3(side * 0.07, 1.9, -0.22))
+		socket.material_override = Look.flat_mat(Color(0.03, 0.03, 0.04), 1.0)
+		var e := Geo.sphere(_visual, 0.028, EYE, Vector3(side * 0.07, 1.9, -0.26))
+		e.material_override = Look.eye_mat(EYE, 10.0)
+		Look.glint(_visual, Vector3(side * 0.07, 1.9, -0.3), EYE, 0.26)
 	for i in 6:
 		var a := float(i) * 1.05
 		var strand := Geo.box(_visual, Vector3(0.05, 0.7, 0.02), Color.WHITE, Vector3(sin(a) * 0.17, 1.65, cos(a) * 0.15 + 0.03))

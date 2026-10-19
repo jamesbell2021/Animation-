@@ -6,7 +6,6 @@ const HudScript := preload("res://scenes/ui/hud.gd")
 const TitleScript := preload("res://scenes/ui/title.gd")
 const PauseScript := preload("res://scenes/ui/pause.gd")
 const TITLE_ORBIT_SPEED := 0.05
-const SPRAY_EVERY := 1.6
 # Where each keeper appears when a run starts: the crag top, round the lighthouse door.
 const SPAWNS := [Vector3(-1.6, 0.0, 2.7), Vector3(-2.9, 0.0, 0.8), Vector3(0.4, 0.0, 3.2)]
 
@@ -55,7 +54,6 @@ var players: Array[Player] = []
 var title: CanvasLayer
 var _title_cam: Camera3D
 var _title_t := 0.0
-var _spray_t := 0.0
 var _gutter_horn_t := 0.0
 var _warned_low := false
 # This night's tally for the dawn report.
@@ -177,12 +175,6 @@ func _process(delta: float) -> void:
 		_title_t += delta * TITLE_ORBIT_SPEED
 		var a := _title_t * TAU + 0.6
 		_title_cam.look_at_from_position(Vector3(sin(a) * 38.0, 15.0, cos(a) * 38.0), Vector3(-3.0, 6.0, 0.0), Vector3.UP)
-	_spray_t -= delta
-	if _spray_t <= 0.0:
-		_spray_t = SPRAY_EVERY * randf_range(0.5, 1.5)
-		var a2 := randf() * 360.0
-		var r := Terrain.coast_radius(a2) + Terrain.CLIFF_WIDTH * 0.8
-		FX.sea_spray(self, Vector3(sin(deg_to_rad(a2)) * r, Terrain.SEA_LEVEL, cos(deg_to_rad(a2)) * r))
 	if Run.active and Input.is_action_just_pressed("skip"):
 		Cycle.skip()
 	_alarms(delta)

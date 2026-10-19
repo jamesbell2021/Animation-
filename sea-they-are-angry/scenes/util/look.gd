@@ -31,6 +31,50 @@ static func glow_mat(color: Color, energy: float) -> StandardMaterial3D:
 	m.emission_energy_multiplier = energy
 	return m
 
+## Creature eyes: unshaded and bright enough to bloom, so they glint through the dark and fog.
+static func eye_mat(color: Color, energy: float = 9.0) -> StandardMaterial3D:
+	var m := glow_mat(color, energy)
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.albedo_color = color.lightened(0.3)
+	return m
+
+static var _glints := {}
+
+## A soft glowing point that always faces the camera: how creatures' eyes read at a
+## distance and through fog. Additive, so it only ever adds light.
+static func glint(parent: Node3D, pos: Vector3, color: Color, size: float = 0.32) -> MeshInstance3D:
+	var key := color.to_html()
+	if not _glints.has(key):
+		var g := Gradient.new()
+		g.set_color(0, Color(1, 1, 1, 1))
+		g.set_color(1, Color(1, 1, 1, 0))
+		g.add_point(0.25, Color(1, 1, 1, 0.55))
+		var tex := GradientTexture2D.new()
+		tex.gradient = g
+		tex.fill = GradientTexture2D.FILL_RADIAL
+		tex.fill_from = Vector2(0.5, 0.5)
+		tex.fill_to = Vector2(1.0, 0.5)
+		tex.width = 32
+		tex.height = 32
+		var m := StandardMaterial3D.new()
+		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		m.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+		m.albedo_texture = tex
+		m.albedo_color = Color(color.r * 2.5, color.g * 2.5, color.b * 2.5, 1.0)
+		m.disable_receive_shadows = true
+		_glints[key] = m
+	var q := MeshInstance3D.new()
+	var qm := QuadMesh.new()
+	qm.size = Vector2(size, size)
+	q.mesh = qm
+	q.material_override = _glints[key]
+	q.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	q.position = pos
+	parent.add_child(q)
+	return q
+
 static func _hash3(p: Vector3, salt: int) -> float:
 	var h := int(p.x * 997.0) * 73856093 ^ int(p.y * 991.0) * 19349663 ^ int(p.z * 983.0) * 83492791 ^ salt * 2654435
 	h = (h ^ (h >> 13)) * 1274126177

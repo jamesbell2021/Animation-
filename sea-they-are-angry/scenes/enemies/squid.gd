@@ -64,8 +64,9 @@ func _build() -> void:
 	_visual.add_child(body)
 	# A ridge of eyes along the mantle, facing forward.
 	for side in [-1.0, 1.0]:
-		var eye := Geo.sphere(_visual, 0.06, Color.WHITE, Vector3(side * 0.18, 0.48, -0.36))
-		eye.material_override = _dot_mat
+		var eye := Geo.sphere(_visual, 0.07, Color.WHITE, Vector3(side * 0.18, 0.48, -0.36))
+		eye.material_override = Look.eye_mat(Color(0.4, 1.0, 0.95))
+		Look.glint(_visual, Vector3(side * 0.18, 0.5, -0.42), Color(0.4, 1.0, 0.95))
 	# Six splayed tentacles, each beaded with cyan dots.
 	for i in 6:
 		var a := TAU * float(i) / 6.0 + 0.5

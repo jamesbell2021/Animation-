@@ -34,3 +34,10 @@ theme/custom_font="res://fonts/SpecialElite.ttf"
 [rendering]
 
 renderer/rendering_method="forward_plus"
+
+[shader_globals]
+
+storm={
+"type": "float",
+"value": 0.0
+}

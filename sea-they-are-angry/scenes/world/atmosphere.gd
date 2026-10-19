@@ -1,8 +1,8 @@
 class_name Atmosphere
 extends Node3D
 ## The dread: fog banks that roll in from the sea at dusk, ground mist at night,
-## a draining colour grade with a vignette, distant lightning and thunder, a bell
-## buoy tolling, and whispers and creaks from the dark.
+## a draining colour grade with a vignette, a bell buoy tolling, and whispers and
+## creaks from the dark. The storm (rain, wind, waves, lightning) is its Weather child.
 
 const BANKS := 12
 const BANK_RING := 25.0
@@ -29,10 +29,9 @@ var _bank_mat: FogMaterial
 var _mist_mat: FogMaterial
 var _mist_particles: GPUParticles3D
 var _vignette: ShaderMaterial
-var _lightning: DirectionalLight3D
+var weather: Weather
 var _buoy: Node3D
 var _t := 0.0
-var _flash_t := 0.0
 var _creep_t := 8.0
 var _bell_t := 4.0
 var _glow := 0.0
@@ -41,7 +40,10 @@ var _phase := 0
 func _ready() -> void:
 	_build_fog()
 	_build_vignette()
-	_build_lightning()
+	weather = Weather.new()
+	weather.name = "Weather"
+	weather.vignette = _vignette
+	add_child(weather)
 	_build_buoy()
 	Cycle.phase_changed.connect(_on_phase)
 	apply(Cycle.phase, 0.0)
@@ -107,27 +109,26 @@ func _build_vignette() -> void:
 shader_type canvas_item;
 uniform float strength = 0.2;
 uniform float grain = 0.03;
+// 0 to 1: rain driving past the camera, as faint slanting streaks.
+uniform float rain = 0.0;
 float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
 void fragment() {
 	vec2 uv = UV - 0.5;
 	uv.x *= 1.6;
 	float v = smoothstep(0.35, 1.05, length(uv));
 	float g = (hash(UV * 900.0 + vec2(TIME * 37.0, TIME * 11.0)) - 0.5) * grain;
-	COLOR = vec4(vec3(0.0, 0.01, 0.03) + g, clamp(v * strength + abs(g), 0.0, 1.0));
+	vec2 r = vec2(UV.x * 140.0 + UV.y * 30.0, UV.y * 2.6 - TIME * 7.5);
+	float h = hash(vec2(floor(r.x), 3.0));
+	float d = fract(r.y + h * 9.0);
+	float streak = step(0.9, h) * smoothstep(0.0, 0.02, d) * (1.0 - smoothstep(0.02, 0.2, d)) * rain;
+	vec3 c = mix(vec3(0.0, 0.01, 0.03) + g, vec3(0.75, 0.8, 0.9), streak);
+	COLOR = vec4(c, clamp(v * strength + abs(g) + streak * 0.16, 0.0, 1.0));
 }
 """
 	_vignette = ShaderMaterial.new()
 	_vignette.shader = sh
 	rect.material = _vignette
 	layer.add_child(rect)
-
-func _build_lightning() -> void:
-	_lightning = DirectionalLight3D.new()
-	_lightning.light_color = Color(0.75, 0.82, 1.0)
-	_lightning.light_energy = 0.0
-	_lightning.rotation_degrees = Vector3(-35.0, -140.0, 0.0)
-	_lightning.shadow_enabled = false
-	add_child(_lightning)
 
 # A bell buoy bobbing out in the swell; it tolls in the dark.
 func _build_buoy() -> void:
@@ -195,6 +196,8 @@ func apply(p: int, duration: float) -> void:
 		_mist_particles.emitting = p == Cycle.Phase.DUSK or p == Cycle.Phase.NIGHT
 	var buoy_light: OmniLight3D = _buoy.get_node("BuoyLight")
 	buoy_light.light_energy = 1.2 if p == Cycle.Phase.DUSK or p == Cycle.Phase.NIGHT else 0.0
+	if weather:
+		weather.apply(p, duration)
 
 func _on_phase(p: int) -> void:
 	match p:
@@ -202,7 +205,6 @@ func _on_phase(p: int) -> void:
 			apply(p, ROLL_IN)
 		Cycle.Phase.NIGHT:
 			apply(p, ROLL_IN * 0.6)
-			_flash_t = randf_range(10.0, 25.0)
 		_:
 			apply(p, ROLL_OUT)
 
@@ -229,17 +231,4 @@ func _process(delta: float) -> void:
 		var at := Vector3(sin(a) * 22.0, 1.0, cos(a) * 22.0)
 		var key: String = ["creak", "whisper", "groan", "whisper"][randi() % 4]
 		Audio.sfx(key, at, -10.0, 0.25)
-	if _phase == Cycle.Phase.NIGHT:
-		_flash_t -= delta
-		if _flash_t <= 0.0:
-			_flash_t = randf_range(25.0, 50.0)
-			_strike()
 
-func _strike() -> void:
-	var tw := create_tween()
-	tw.tween_property(_lightning, "light_energy", 2.2, 0.04)
-	tw.tween_property(_lightning, "light_energy", 0.2, 0.08)
-	tw.tween_property(_lightning, "light_energy", 1.6, 0.05)
-	tw.tween_property(_lightning, "light_energy", 0.0, 0.35)
-	var t := get_tree().create_timer(randf_range(1.0, 2.5))
-	t.timeout.connect(func() -> void: Audio.sfx("thunder", Vector3.INF, -4.0, 0.1))
