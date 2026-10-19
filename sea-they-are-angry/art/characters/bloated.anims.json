@@ -22,6 +22,12 @@
    "loop": false,
    "length": 0.45
   },
+  "stagger_back": {
+   "travel": 0.35,
+   "slide": 0.45,
+   "loop": false,
+   "length": 0.9
+  },
   "getup_back": {
    "hips": [
     -0.0,

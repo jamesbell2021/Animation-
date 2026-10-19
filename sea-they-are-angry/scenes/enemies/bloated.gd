@@ -35,6 +35,8 @@ func _init() -> void:
 	hp = 60
 	speed = 1.15
 	mass = 2.0
+	# Heavy on its feet: three quick blows to floor it (it bursts on the third anyway).
+	poise_hits = 3
 	reach = 3.5
 
 func _part_sphere(r: float, scale: Vector3, pos: Vector3, mat: Material) -> MeshInstance3D:

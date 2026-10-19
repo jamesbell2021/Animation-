@@ -16,8 +16,8 @@ const SPAWN := Vector3(-1.6, 0.0, 2.7)
 const FPS := 30.0
 const SAVES := ["user://run.json", "user://profile.json"]
 const LENGTHS := {
-	"title": 6.0, "day": 12.0, "moves": 11.0, "dusk": 8.0, "beam": 12.0, "ledge": 8.0, "squid": 7.0, "crab": 7.0,
-	"eel": 13.0, "smotherer": 10.0, "storm": 9.0, "garden": 8.0, "cottage": 7.0, "trap": 7.0,
+	"title": 6.0, "day": 12.0, "moves": 12.5, "dusk": 8.0, "beam": 12.0, "ledge": 8.0, "squid": 7.0, "crab": 7.0,
+	"eel": 13.0, "smotherer": 11.0, "storm": 9.0, "garden": 8.0, "cottage": 7.0, "trap": 7.0,
 	"flare": 7.0, "dawn": 7.0, "end": 5.0,
 }
 
@@ -305,7 +305,8 @@ func _setup() -> void:
 			var a := 0.55
 			var s := spawn(Smotherer, lh.global_position + Vector3(sin(a) * 2.0, 0.0, cos(a) * 2.0))
 			_actors["s"] = s
-			camera(lh.global_position + Vector3(6.5, 5.0, 11.0), lh.global_position + Vector3(0.4, 5.0, 0.0), 50.0)
+			# Wide enough for the lantern and the keeper throwing from the crag top below.
+			camera(lh.global_position + Vector3(8.0, 4.2, 15.0), lh.global_position + Vector3(0.8, 4.0, 1.0), 52.0)
 		"storm":
 			scene(PH_NIGHT, 1.0, false)
 			place(SPAWN)
@@ -392,29 +393,30 @@ func _direct(t: float) -> void:
 				camera(p + Vector3(5.5, 7.0, 7.5), p + Vector3(0.0, 0.6, 0.0), 45.0)
 		"moves":
 			if at(0.0, t, "c"):
-				caption("Moving", "Clips solved in Blender: planted feet, real get-ups.")
+				caption("Blows land", "A swing staggers them back a step; a heavy blow shows, then floors you.")
 			var mb: Enemy = _actors["b"]
 			var bp: Vector3 = mb.global_position if is_instance_valid(mb) else Terrain.beach_point(0, 0.45)
-			if t < 2.3:
+			if t < 1.9:
 				var to := bp - player.global_position
 				to.y = 0.0
-				walk_to(bp - to.normalized() * 1.6, 0.2)
-			elif at(2.3, t, "swing"):
+				walk_to(bp - to.normalized() * 1.5, 0.2)
+			elif at(1.9, t, "swing1") or at(3.1, t, "swing2"):
 				walk_to(player.global_position)
 				aim_at(bp)
+				player._attack_cd = 0.0
 				tap("attack")
-			elif at(5.2, t, "floored"):
-				var away := player.global_position - bp
-				away.y = 0.0
-				player.knock((away.normalized() + Vector3(0.0, 0.5, 0.0)) * 30.0 * 3.5, 0.9)
-			elif t > 8.2 and t < 10.8:
+			elif at(4.4, t, "staggered"):
+				player.take_damage(15, bp)
+			elif at(6.0, t, "floored"):
+				player.take_damage(30, bp)
+			elif t > 9.4 and t < 11.8:
 				# A slow walk back up the beach: a gentle push on the stick.
 				var up := Terrain.beach_point(0, 0.9) - player.global_position
 				up.y = 0.0
 				up = up.normalized() * 0.28
 				_axis("move_right", "move_left", up.x)
 				_axis("move_down", "move_up", up.z)
-			elif at(10.8, t, "stop"):
+			elif at(11.8, t, "stop"):
 				walk_to(player.global_position)
 			var mid := (player.global_position + bp) * 0.5
 			var along := Terrain.beach_point(0, 0.42) - Terrain.beach_point(0, 0.8)
@@ -493,17 +495,26 @@ func _direct(t: float) -> void:
 				aim_at(e._head.global_position)
 		"smotherer":
 			if at(0.0, t, "c"):
-				caption("The Smotherer", "Climbs the tower and wraps itself over the lantern. Shake it down.")
+				caption("The Smotherer", "Climbs the tower and wraps itself over the lantern. Harpoon it down.")
 			var s = _actors["s"]
 			if at(0.0, t, "climb") and is_instance_valid(s):
 				s._height = 3.5
 				s.change_state(&"Climb")
 			aim_at(main.lighthouse.global_position)
-			if is_instance_valid(s):
-				for k in 3:
-					if at(5.5 + 0.7 * float(k), t, "shake%d" % k):
-						player._attack_cd = 0.0
-						player._attack()
+			# Out from the tower's foot for room to throw, then the boathook goes up at it.
+			if t > 3.6 and t < 5.0:
+				walk_to(main.lighthouse.global_position + Vector3(1.5, 0.0, 4.2), 0.2)
+			elif at(5.0, t, "throw"):
+				walk_to(player.global_position)
+				player._attack_cd = 0.0
+				player._attack()
+			# Then back for the hook where it fell.
+			if t > 7.6:
+				var hooks := get_nodes_in_group("harpoons")
+				if not hooks.is_empty() and hooks[0].is_lying():
+					walk_to(hooks[0].global_position, 0.1)
+				else:
+					walk_to(player.global_position)
 		"storm":
 			if at(0.0, t, "c"):
 				caption("The storm", "It builds through dusk to a gale. Lightning shows what stands in the surf.")

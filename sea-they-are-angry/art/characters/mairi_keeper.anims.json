@@ -11,14 +11,14 @@
    "length": 1.0
   },
   "run": {
-   "period": 0.66,
-   "speed": 2.7042969098636243,
+   "period": 0.62,
+   "speed": 4.224278658289778,
    "loop": true,
    "length": 1.0
   },
   "sprint": {
-   "period": 0.58,
-   "speed": 3.9058081363945454,
+   "period": 0.54,
+   "speed": 6.197347085104139,
    "loop": true,
    "length": 1.0
   },
@@ -46,6 +46,23 @@
   "hit": {
    "loop": false,
    "length": 0.45
+  },
+  "stagger_back": {
+   "travel": 0.5,
+   "slide": 0.45,
+   "loop": false,
+   "length": 0.8
+  },
+  "stagger_fwd": {
+   "travel": 0.5,
+   "slide": 0.45,
+   "loop": false,
+   "length": 0.8
+  },
+  "throw": {
+   "release": 0.32,
+   "loop": false,
+   "length": 0.8
   },
   "revive": {
    "loop": true,

@@ -68,7 +68,7 @@ Keepers face the way they walk and turn to their aim to swing. Each carries a pa
   - **The Wall-Crawling Squid** climbs straight up cliffs and the crag at the keepers, lunges, and hides the others in ink.
   - **The Armoured Crab** comes to wreck the cottage, shed or garden; its shell turns blows from the front.
   - **The Giant Constrictor Eel** surges up and coils round the lighthouse until the focused beam burns its head.
-  - **The Smotherer** climbs the lighthouse and wraps itself over the lantern, smothering the beam. The light can't burn it: strike the tower's foot with the boathook to shake it down.
+  - **The Smotherer** climbs the lighthouse and wraps itself over the lantern, smothering the beam. The light can't burn it: throw your boathook up at it from the crag top to knock it off, then go and pick the hook up.
 - Work the lamp from inside the lighthouse: the keeper walks in at the door and out again. Repairs are done with a hammer; refuelling with an oil can. The cottage, shed and garden take damage and need mending too.
 - Foghorn warnings name where they land, the water churns before they surface, and a keeper's log at dawn sums up the night.
 - A spawner driven by a per-night table and the hidden Sea Anger value.

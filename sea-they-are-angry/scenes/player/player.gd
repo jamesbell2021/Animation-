@@ -29,7 +29,15 @@ const PUSH_DECAY := 10.0
 const FALL_SPEED := -5.0
 const BODY_COLOR := Color(0.85, 0.65, 0.2)
 # Knocked down by a hard hit: how hard (per point of damage) and for how long.
-const HIT_RAGDOLL_FROM := 10
+# How a blow lands, by its damage: below FLINCH_BELOW a flinch; up to FLOOR_FROM a
+# stagger back (a step to catch the weight, a moment out of control); from FLOOR_FROM
+# the blow shows for REACT_TIME and then the keeper goes down as a ragdoll.
+const FLINCH_BELOW := 12
+const FLOOR_FROM := 25
+const REACT_TIME := 0.16
+# The boathook thrown like a harpoon at a Smotherer on the tower, from this close.
+const THROW_RANGE := 10.0
+const THROW_CD := 1.0
 const HIT_IMPULSE := 3.0
 const HIT_DOWN_TIME := 0.7
 # Roughly the ragdoll's mass, to turn a shove (m/s) into an impulse.
@@ -114,6 +122,13 @@ var _job_action := "interact"
 var in_menu := false
 # Holding interact over a downed mate this frame (kneels over them).
 var _reviving := false
+## The boathook is in hand (false while it lies where it was thrown).
+var has_hook := true
+# Reeling from a blow: slid back over the stagger clip's slide, no control meanwhile.
+var _stagger_t := 0.0
+var _stagger_len := 0.45
+var _stagger_dir := Vector3.ZERO
+var _stagger_travel := 0.5
 
 func _ready() -> void:
 	add_to_group("player")
@@ -316,6 +331,9 @@ func _physics_process(delta: float) -> void:
 	if rig != null and rig.is_ragdoll():
 		_ragdolled(delta)
 		return
+	if _stagger_t > 0.0:
+		_staggering(delta)
+		return
 	if _climb_t >= 0.0:
 		_climbing(delta)
 		return
@@ -435,6 +453,11 @@ func _clips() -> bool:
 # The keeper's clips: walking, running and sprinting by speed; the tool work, the ladder
 # and kneeling over a mate as held actions.
 func _drive_clips(speed: float) -> void:
+	_look_about()
+	if _stagger_t > 0.0:
+		rig.activity("")
+		rig.locomote(0.0)
+		return
 	if _climb_t >= 0.0:
 		rig.locomote(0.0)
 		var rise := float(rig.clips.get("climb", {}).get("rise", 0.6))
@@ -451,6 +474,25 @@ func _drive_clips(speed: float) -> void:
 	else:
 		rig.activity("")
 	rig.locomote(speed)
+
+const LOOK_RANGE := 7.0
+
+# The keeper's head turns to the nearest creature close by, or to where they aim.
+func _look_about() -> void:
+	var best: Node3D = null
+	var best_d := LOOK_RANGE
+	for e in get_tree().get_nodes_in_group("enemies"):
+		if e is Node3D and e.visible:
+			var d := global_position.distance_to(e.global_position)
+			if d < best_d:
+				best = e
+				best_d = d
+	if best != null:
+		rig.look_at_point(best.global_position + Vector3(0.0, 1.0, 0.0), 1.0)
+	elif operating or _aim_face_t > 0.0 or _climb_t >= 0.0 or _job_tool != "":
+		rig.look_at_point(Vector3.INF, 0.0)
+	else:
+		rig.look_at_point(global_position + _aim * 5.0 + Vector3(0.0, 1.3, 0.0), 0.6)
 
 # The walk cycle, the hook arm and breathing, on the keeper's bones. Model axes:
 # -X swings a limb forward, +X bends a knee back, Y turns, Z leans sideways.
@@ -565,6 +607,14 @@ func _clamp_to_island(before: Vector3) -> void:
 		global_position.z = before.z
 
 func _attack() -> void:
+	if not has_hook:
+		_attack_cd = 0.5
+		Events.message.emit("Your boathook is lying by the tower: walk over it to take it back.")
+		return
+	var climber := _climber_in_reach()
+	if climber != null:
+		_throw_at(climber)
+		return
 	_attack_cd = ATTACK_CD
 	_swing_t = SWING_TIME
 	_aim_face_t = AIM_FACE_TIME
@@ -587,21 +637,65 @@ func _attack() -> void:
 		if rad_to_deg(_aim.angle_to(dir_to)) > ATTACK_ARC_DEG:
 			continue
 		e.take_damage(ATTACK_DMG, dir_to, self)
-	# At the tower's foot, a blow on the stone shakes anything clinging up there.
-	if _at_tower_foot():
-		var shook := false
-		for s in get_tree().get_nodes_in_group("smotherers"):
-			if s.is_on_tower():
-				s.shake(self)
-				shook = true
-		if shook:
-			Audio.sfx("hammer", global_position, 0.0, 0.2)
 
-func _at_tower_foot() -> bool:
+# ---- the boathook as a harpoon ----
+
+## The nearest Smotherer on the tower, if the keeper is near enough the tower (on the
+## crag top) to throw the boathook up at it.
+func _climber_in_reach() -> Node3D:
 	if lamp == null or lamp.lighthouse == null:
-		return false
-	var lh: Structure = lamp.lighthouse
-	return absf(lh.global_position.y - global_position.y) < REACH_HEIGHT and lh.surface_distance(global_position) < Smotherer.SHAKE_REACH
+		return null
+	var lh: Node3D = lamp.lighthouse
+	if absf(lh.global_position.y - global_position.y) > REACH_HEIGHT or Geo.flat_dist(lh.global_position, global_position) > THROW_RANGE:
+		return null
+	var best: Node3D = null
+	var best_d := INF
+	for s in get_tree().get_nodes_in_group("smotherers"):
+		if s.is_on_tower():
+			var d := global_position.distance_to(s.global_position)
+			if d < best_d:
+				best = s
+				best_d = d
+	return best
+
+# Wind up and hurl the boathook at it; it leaves the hand partway through the throw.
+func _throw_at(target: Node3D) -> void:
+	_attack_cd = THROW_CD
+	var to := target.global_position - global_position
+	to.y = 0.0
+	if to.length() > 0.05:
+		_aim = to.normalized()
+		facing = aim_yaw()
+		rotation.y = facing
+	_aim_face_t = AIM_FACE_TIME * 2.0
+	var release := 0.0
+	if _clips() and rig.has_clip("throw"):
+		rig.shot("throw")
+		release = float(rig.clips["throw"].get("release", 0.3))
+	var tw := create_tween()
+	tw.tween_interval(release)
+	tw.tween_callback(_let_fly.bind(target))
+
+func _let_fly(target: Node3D) -> void:
+	if not has_hook or downed or hp <= 0 or (rig != null and rig.is_ragdoll()):
+		return
+	has_hook = false
+	_hook_holder.visible = false
+	var h := Harpoon.new()
+	h.keeper = self
+	h.target = target if is_instance_valid(target) else null
+	var from := rig.bone_position("hand.R") if rig != null else global_position + Vector3(0.0, 1.5, 0.0)
+	get_parent().add_child(h)
+	h.global_position = from
+	Audio.sfx("swing", global_position, 2.0, 0.1)
+
+## The thrown boathook is back in hand.
+func take_back_hook() -> void:
+	if has_hook:
+		return
+	has_hook = true
+	_hook_holder.visible = _job_tool == ""
+	Audio.sfx("gather", global_position, -2.0, 0.1)
 
 func _climber_on_tower() -> bool:
 	for s in get_tree().get_nodes_in_group("smotherers"):
@@ -787,7 +881,7 @@ func _end_job(done: bool) -> void:
 	_job_target = null
 	_hammer.visible = false
 	_can.visible = false
-	_hook_holder.visible = true
+	_hook_holder.visible = has_hook
 	_hook_pivot.rotation.z = 0.0
 	_scripted = false
 	# The work is done: now the stock is spent and the repair or the oil goes in.
@@ -902,8 +996,52 @@ func knock(impulse: Vector3, time: float) -> void:
 	_swing_t = 0.0
 	if _climb_t >= 0.0:
 		return
-	_rag_t = maxf(_rag_t, time)
-	rig.ragdoll(impulse, "chest")
+	_stagger_t = 0.0
+	# The blow shows first, then the body goes.
+	var react := 0.0
+	if _clips() and not rig.is_ragdoll():
+		_play_stagger(impulse)
+		react = REACT_TIME
+	_rag_t = maxf(_rag_t, time + react)
+	rig.ragdoll(impulse, "chest", react)
+
+func _play_stagger(push: Vector3) -> void:
+	var fwd := Vector3(-sin(facing), 0.0, -cos(facing))
+	var flat := Vector3(push.x, 0.0, push.z)
+	rig.shot("stagger_fwd" if flat.length() > 0.01 and fwd.dot(flat.normalized()) > 0.3 else "stagger_back")
+
+## Rocked by a blow but still standing: reels away from it a step, then has control back.
+func stagger_from(away: Vector3) -> void:
+	if not _clips() or _inside or rig.is_ragdoll() or _climb_t >= 0.0:
+		return
+	if _job_tool != "":
+		_end_job(false)
+	_kill_walk()
+	_scripted = false
+	away.y = 0.0
+	away = away.normalized() if away.length() > 0.01 else -aim_dir()
+	_play_stagger(away)
+	var info: Dictionary = rig.clips.get("stagger_back", {})
+	_stagger_len = float(info.get("slide", 0.45))
+	_stagger_travel = float(info.get("travel", 0.5))
+	_stagger_t = _stagger_len
+	_stagger_dir = away
+
+func is_staggering() -> bool:
+	return _stagger_t > 0.0
+
+# The slide that goes with the stagger clip: fast at first, easing out (the clip's feet
+# are keyed against exactly this, so they stay planted).
+func _staggering(delta: float) -> void:
+	var u := clampf(1.0 - _stagger_t / maxf(_stagger_len, 0.01), 0.0, 1.0)
+	var spd := _stagger_travel * 2.0 * (1.0 - u) / maxf(_stagger_len, 0.01)
+	velocity = _stagger_dir * spd
+	velocity.y = 0.0 if is_on_floor() else FALL_SPEED
+	var before := global_position
+	move_and_slide()
+	_clamp_to_island(before)
+	_stagger_t = maxf(0.0, _stagger_t - delta)
+	_animate(delta)
 
 func _ragdolled(delta: float) -> void:
 	_follow_ragdoll()
@@ -977,16 +1115,18 @@ func interact_prompt() -> String:
 		return _keys("[E] Hold to revive %s  (%d%%)" % [mate.keeper_name(), roundi(mate.revive_progress * 100.0)])
 	if operating:
 		if _climber_on_tower():
-			return _keys("Something's on the tower!  [R] Leave the lamp and shake it loose")
+			return _keys("Something's on the tower!  [R] Leave the lamp and harpoon it down")
 		return _keys("[R] Leave the lamp   [Q] Switch beam")
-	if _at_tower_foot() and _climber_on_tower():
-		return _keys("[LMB] Strike the tower to shake it loose!")
+	if has_hook and _climber_in_reach() != null:
+		return _keys("[LMB] Throw the boathook up at it!")
 	if _job_tool == "hammer":
 		return "Hammering..."
 	if _job_tool == "can":
 		return "Pouring oil..."
 	if _target != null and is_instance_valid(_target):
 		return _keys(_target.interact_prompt())
+	if not has_hook:
+		return "Your boathook lies by the tower: walk over it to take it back"
 	return ""
 
 # Rewrite keyboard hints for keepers on a gamepad or the arrow keys.
@@ -1050,11 +1190,13 @@ func take_damage(amount: int, from: Vector3 = Vector3.INF) -> void:
 	if hp <= 0 or downed or not Run.active or _inside:
 		return
 	hp = maxi(0, hp - amount)
-	if amount >= HIT_RAGDOLL_FROM and hp > 0 and rig != null:
-		var away := global_position - from if from != Vector3.INF else -aim_dir()
-		away.y = 0.0
-		away = away.normalized() if away.length() > 0.01 else Vector3.BACK
+	var away := global_position - from if from != Vector3.INF else -aim_dir()
+	away.y = 0.0
+	away = away.normalized() if away.length() > 0.01 else Vector3.BACK
+	if amount >= FLOOR_FROM and hp > 0 and rig != null:
 		knock((away + Vector3(0.0, 0.35, 0.0)) * float(amount) * HIT_IMPULSE, HIT_DOWN_TIME + float(amount) / 60.0)
+	elif amount >= FLINCH_BELOW and hp > 0 and _clips():
+		stagger_from(away)
 	elif _clips() and not rig.is_ragdoll():
 		rig.shot("hit")
 	Audio.sfx("hurt", global_position)

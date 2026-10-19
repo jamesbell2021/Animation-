@@ -311,14 +311,27 @@ func _run() -> void:
 	var foot := Vector3(0.0, Terrain.CRAG_TOP + 0.1, Lighthouse.RADIUS + 0.5)
 	player.global_position = foot
 	await frames(3)
-	check(player.interact_prompt().contains("Strike the tower"), "at the foot: " + player.interact_prompt())
-	for i in Smotherer.SHAKES_TO_FALL:
-		player._attack_cd = 0.0
-		player._attack()
-		await frames(5)
+	check(player.interact_prompt().contains("Throw the boathook"), "at the foot: " + player.interact_prompt())
+	var sm_side := sm.global_position - lh.global_position
+	sm_side.y = 0.0
+	player._attack_cd = 0.0
+	player._attack()
+	await frames(30)
+	check(not player.has_hook, "the boathook leaves the keeper's hands")
+	# Round the far side of the tower while it falls, so it isn't simply picked straight up.
+	player.global_position = Vector3(lh.global_position.x, Terrain.CRAG_TOP + 0.1, lh.global_position.z) - sm_side.normalized() * (Lighthouse.RADIUS + 0.6)
 	# Dead: freed, or lying as a ragdoll corpse.
 	await wait_until(func(): return not is_instance_valid(sm) or sm.hp <= 0, 300)
-	check(not is_instance_valid(sm) or (sm.hp <= 0 and not sm.is_in_group("enemies")), "three blows on the tower's foot shake it loose, and the fall kills it")
+	check(not is_instance_valid(sm) or (sm.hp <= 0 and not sm.is_in_group("enemies")), "the thrown boathook knocks it off the lantern, and the fall kills it")
+	var hooks := get_nodes_in_group("harpoons")
+	await wait_until(func(): return not hooks.is_empty() and is_instance_valid(hooks[0]) and hooks[0].is_lying(), 200)
+	check(not hooks.is_empty() and hooks[0].is_lying() and Terrain.walkable(hooks[0].global_position.x, hooks[0].global_position.z), "it lies on walkable ground below where it struck")
+	player._attack_cd = 0.0
+	player._attack()
+	check(not player.has_hook, "with no hook there's no swing")
+	player.global_position = hooks[0].global_position + Vector3(0.0, 0.1, 0.0)
+	await wait_until(func(): return player.has_hook, 60)
+	check(player.has_hook, "walking over it takes it back")
 	check(not lamp.is_smothered() and is_equal_approx(lamp.current_range(), full_range), "the beam comes back")
 	Cycle._enter(Cycle.Phase.DAY)
 	await frames(2)

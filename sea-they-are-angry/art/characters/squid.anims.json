@@ -13,6 +13,12 @@
   "lunge": {
    "loop": false,
    "length": 0.6
+  },
+  "stagger_back": {
+   "loop": false,
+   "length": 0.6,
+   "travel": 0.35,
+   "slide": 0.45
   }
  }
 }

@@ -12,10 +12,9 @@ extends Enemy
 
 const CLIMB_SPEED := 1.3
 const CLIMB_FROM := 0.4
-const SHAKES_TO_FALL := 3
 # Each blow at the tower's foot jolts a climber back down a little.
-const SHAKE_DROP := 1.2
-const SHAKE_REACH := 1.3
+# A thrown boathook wounds it as well as knocking it off.
+const HARPOON_DMG := 15
 const CRACK_DPS := 2.0
 const LIGHT_SLOW := 0.6
 const STUN_TIME := 1.5
@@ -30,7 +29,6 @@ var _arms: Array[Node3D] = []
 var _legs: Array[Node3D] = []
 var _angle := 0.0
 var _height := 0.0
-var _shakes := 0
 var _crack_acc := 0.0
 var _lit_t := 0.0
 var _fall_from := 0.0
@@ -227,33 +225,33 @@ func _let_go_of_lamp() -> void:
 		if is_instance_valid(lighthouse) and is_instance_valid(lighthouse.lamp):
 			lighthouse.lamp.smother(false)
 
-## A boathook blow on the tower's foot: jolts it down; three and it loses its grip.
-func shake(_by: Node) -> void:
+## Struck by a keeper's thrown boathook: it lets go of the stone and drops. From the
+## lantern the fall kills it; from low down it gets up and tries again.
+func harpooned(_by: Node) -> void:
 	if not is_on_tower():
 		return
-	_shakes += 1
-	_height = maxf(0.0, _height - SHAKE_DROP)
-	Audio.sfx("hit", global_position, 0.0, 0.1)
+	Events.message.emit("Harpooned! It loses its grip!")
+	Audio.sfx("hit", global_position, 2.0, 0.1)
+	Audio.sfx("groan", global_position, 0.0, 0.1)
 	FX.spray(get_parent(), global_position + Vector3(0.0, 1.0, 0.0), Vector3.UP, Color(0.6, 0.7, 0.65))
-	if _shakes >= SHAKES_TO_FALL:
-		_shakes = 0
-		Events.message.emit("It loses its grip!")
-		if rig != null:
-			# Off the tower as a dead weight: the drop does the rest.
-			var out := global_position - lighthouse.global_position
-			out.y = 0.0
-			out = out.normalized()
-			_let_go_of_lamp()
-			# Clear of the tower's wall first, so the limbs don't start inside the stone.
-			global_position = Vector3(lighthouse.global_position.x, global_position.y, lighthouse.global_position.z) + out * (Lighthouse.RADIUS + 0.45)
-			_height = 0.0
-			knock_down((out.normalized() * 2.0 + Vector3(0.0, 0.5, 0.0)) * rig.mass * 10.0, 1.5)
-			_resume_state = &"Approach"
-			Audio.sfx("groan", global_position, 0.0, 0.1)
-			return
+	var lh := lighthouse.global_position
+	var out := global_position - lh
+	out.y = 0.0
+	out = out.normalized() if out.length() > 0.01 else Vector3.BACK
+	_let_go_of_lamp()
+	if rig != null:
+		# Off the stone as a dead weight, from where it clung: only nudged clear of the
+		# wall, so the limbs don't start inside it.
+		var r := maxf(Vector2(global_position.x - lh.x, global_position.z - lh.z).length(), _tower_radius(global_position.y - lh.y) + 0.15)
+		global_position = Vector3(lh.x, global_position.y, lh.z) + out * r
+		_height = 0.0
+		knock_down((out * 2.5 + Vector3(0.0, 0.4, 0.0)) * rig.mass * 10.0, 1.5)
+		_resume_state = &"Approach"
+		take_damage(HARPOON_DMG, Vector3.ZERO, null)
+		return
+	take_damage(HARPOON_DMG, Vector3.ZERO, null)
+	if is_inside_tree() and hp > 0:
 		change_state(&"Fall")
-	elif state == &"Smother":
-		change_state(&"Climb")
 
 func _enter_Fall() -> void:
 	_fall_from = global_position.y

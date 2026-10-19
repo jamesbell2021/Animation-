@@ -59,6 +59,15 @@ const HIT_IMPULSE := 3.0
 const SHOVE_IMPULSE := 5.5
 const KNOCKDOWN_TIME := 0.8
 const CORPSE_TIME := 5.0
+# A blow shows before the body goes limp: the stagger plays this long first.
+const REACT_TIME := 0.14
+# Hook blows within POISE_TIME of each other wear down its footing: the blow that
+# takes it to poise_hits knocks it flat; the others make it stagger back.
+const POISE_TIME := 3.0
+const HIT_STAGGER_TIME := 0.55
+var poise_hits := 2
+var _poise := 0
+var _poise_t := 0.0
 var _walk_phase := 0.0
 var _walk_amt := 0.0
 var _rag_left := 0.0
@@ -137,11 +146,26 @@ func _animate_walk(delta: float, stride: float = 2.6, leg: float = 0.55, arm: fl
 	rig.pose("neck", Vector3(-hunch * 0.5, 0.0, 0.0))
 	rig.shift("hips", Vector3(0.0, absf(sin(_walk_phase)) * 0.04 * _walk_amt, 0.0))
 
+const LOOK_RANGE := 8.0
+
+# Its head turns to the nearest keeper close by (they're what it's after).
+func _look_at_keeper() -> void:
+	var best: Node3D = null
+	var best_d := LOOK_RANGE
+	for p in get_tree().get_nodes_in_group("player"):
+		if p is Node3D and p.visible:
+			var d: float = global_position.distance_to(p.global_position)
+			if d < best_d:
+				best = p
+				best_d = d
+	rig.look_at_point(best.global_position + Vector3(0.0, 1.3, 0.0) if best != null else Vector3.INF, 0.8)
+
 ## Virtual: whether a blow can knock it flat right now.
 func can_ragdoll() -> bool:
 	return true
 
-## Knocked flat: a ragdoll for `time` seconds, then it gets up and carries on.
+## Knocked flat: the blow shows, then a ragdoll for `time` seconds, then it gets up
+## and carries on.
 func knock_down(impulse: Vector3, time: float = KNOCKDOWN_TIME) -> void:
 	if rig == null or hp <= 0:
 		return
@@ -153,11 +177,39 @@ func knock_down(impulse: Vector3, time: float = KNOCKDOWN_TIME) -> void:
 		return
 	if state != &"Stagger":
 		_resume_state = state
-	_rag_left = time
+	_rag_left = time + REACT_TIME
 	_rag_from_y = global_position.y
 	_rag_fell = false
 	change_state(&"Ragdoll")
-	rig.ragdoll(impulse, "chest")
+	_react_shot(impulse)
+	rig.ragdoll(impulse, "chest", REACT_TIME if rig.has_clip("stagger_back") else 0.0)
+
+# The stagger clip that fits a blow pushing this way: it reels away from it.
+func _react_shot(push: Vector3) -> void:
+	if rig == null or not rig.has_clips():
+		return
+	var fwd := Vector3(-sin(rotation.y), 0.0, -cos(rotation.y))
+	var flat := Vector3(push.x, 0.0, push.z)
+	if flat.length() > 0.01 and fwd.dot(flat) > 0.3 and rig.has_clip("stagger_fwd"):
+		rig.shot("stagger_fwd")
+	else:
+		rig.shot("stagger_back")
+
+## A blow it keeps its feet through: it reels back a step (if it's light enough to
+## move), stops what it was doing for a moment, then carries on.
+func hit_reaction(from_dir: Vector3) -> void:
+	var flat := Vector3(from_dir.x, 0.0, from_dir.z).normalized()
+	var light := mass < SHOVE_MAX_MASS
+	if rig != null and rig.has_clip("stagger_back"):
+		# A light one is turned to the blow; a heavy one (the Crab) only flinches.
+		if light and flat != Vector3.ZERO:
+			face(-flat)
+		rig.shot("stagger_back")
+	if not light:
+		return
+	var travel := float(rig.clips.get("stagger_back", {}).get("travel", 0.3)) if rig != null else 0.3
+	_knock = flat * sqrt(2.0 * KNOCKBACK_DECAY * travel)
+	stagger(HIT_STAGGER_TIME)
 
 func _enter_Ragdoll() -> void:
 	velocity = Vector3.ZERO
@@ -227,7 +279,8 @@ func _ragdoll_corpse(impulse: Vector3 = Vector3.ZERO) -> bool:
 	collision_layer = 0
 	collision_mask = 0
 	set_physics_process(false)
-	rig.ragdoll(impulse, "chest")
+	_react_shot(impulse)
+	rig.ragdoll(impulse, "chest", REACT_TIME * 0.7 if rig.has_clip("stagger_back") else 0.0)
 	rig.stay_down()
 	var tw := create_tween()
 	tw.tween_interval(CORPSE_TIME)
@@ -298,6 +351,12 @@ func _physics_process(delta: float) -> void:
 		return
 	if rig != null and rig.has_clips():
 		rig.locomote(Vector2(velocity.x, velocity.z).length())
+	if rig != null and rig.has_clips():
+		_look_at_keeper()
+	if _poise_t > 0.0:
+		_poise_t -= delta
+		if _poise_t <= 0.0:
+			_poise = 0
 	velocity += _knock
 	_knock = _knock.move_toward(Vector3.ZERO, KNOCKBACK_DECAY * delta)
 	move_and_slide()
@@ -537,7 +596,9 @@ func _enter_Stagger() -> void:
 
 func _tick_Stagger(_delta: float) -> void:
 	velocity = Vector3.ZERO
-	rotation.z = sin(state_t * 22.0) * 0.12 * (1.0 - state_t / maxf(_stagger_len, 0.01))
+	# A model with clips reels in its stagger clip; the primitives wobble.
+	if rig == null or not rig.has_clips():
+		rotation.z = sin(state_t * 22.0) * 0.12 * (1.0 - state_t / maxf(_stagger_len, 0.01))
 	if state_t >= _stagger_len:
 		rotation.z = 0.0
 		change_state(_resume_state if _resume_state != &"" else &"Approach")
@@ -561,10 +622,16 @@ func take_damage(amount: int, from_dir: Vector3 = Vector3.ZERO, source: Node = n
 		shoved = Vector3(from_dir.x, 0.0, from_dir.z).dot(out) > SHOVE_DOT
 	if rig != null and source != null and hp > 0:
 		var flat := Vector3(from_dir.x, 0.0, from_dir.z).normalized()
-		var push := (out * SHOVE_IMPULSE + Vector3(0.0, 1.2, 0.0)) if shoved else (flat * HIT_IMPULSE + Vector3(0.0, 1.0, 0.0))
-		knock_down(push * rig.mass * 10.0)
+		# Blows wear its footing down: the one that breaks it knocks it flat.
+		_poise += 1
+		_poise_t = POISE_TIME
+		var floored := shoved or (_poise >= poise_hits and can_ragdoll())
+		if floored:
+			_poise = 0
+			var push := (out * SHOVE_IMPULSE + Vector3(0.0, 1.2, 0.0)) if shoved else (flat * HIT_IMPULSE + Vector3(0.0, 1.0, 0.0))
+			knock_down(push * rig.mass * 10.0)
 		if state != &"Ragdoll" and not rig.is_ragdoll():
-			rig.shot("hit")
+			hit_reaction(from_dir)
 	else:
 		_knock += Vector3(from_dir.x, 0.0, from_dir.z) * (KNOCKBACK / mass)
 		if shoved:

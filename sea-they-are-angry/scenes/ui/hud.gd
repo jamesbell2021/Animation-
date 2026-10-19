@@ -211,7 +211,7 @@ func _update_lamp_label() -> void:
 		Lamp.State.BURNING:
 			# Say which beam, and that the focused one drinks oil, so it isn't left on by accident.
 			if lamp.is_smothered():
-				_lamp_label.text = "Lamp: SMOTHERED — shake it off the tower!"
+				_lamp_label.text = "Lamp: SMOTHERED — harpoon it off the tower!"
 				color = RED
 			elif lamp.is_boosted():
 				_lamp_label.text = "Lamp: BURNING HOT on dirty fuel (%ds)" % ceili(lamp.boost_left())

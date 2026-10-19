@@ -245,7 +245,7 @@ func _on_smothered(on: bool) -> void:
 	if on and Run.active:
 		_count("smother")
 		Audio.horn([1.0, 1.0, 1.0, 1.0], -1.0)
-		hud.warn("The light is smothered! Strike the tower's foot to shake it loose!")
+		hud.warn("The light is smothered! Throw your boathook at it from the crag top!")
 
 func _unhandled_input(event: InputEvent) -> void:
 	# Debug builds: F9 brings the Eel now.
@@ -642,7 +642,7 @@ func _dawn_report() -> void:
 	elif g.call("reached") > 0:
 		tip = "Meet climbers on the ledge: a blow aimed outward knocks them over the edge."
 	elif g.call("smother") > 0:
-		tip = "When something climbs the tower, burn it on the ledge or strike the tower's foot to shake it down."
+		tip = "When something climbs the tower, burn it on the ledge, or throw your boathook up at it from the crag top. Then go and pick the hook up."
 	elif g.call("fence") > 0:
 		tip = "Mend broken fences with driftwood before dark."
 	elif not hurt_home.is_empty():

@@ -32,6 +32,9 @@ FPS = 30
 X, Y, Z = Vector((1, 0, 0)), Vector((0, 1, 0)), Vector((0, 0, 1))
 FWD = Vector((0, -1, 0))
 CYCLE_FRAMES = 30
+# A stagger slides the character over this long (the game uses the same figure).
+STAGGER_SLIDE = 0.45
+THROW_RELEASE = 0.32
 
 
 def rad(d):
@@ -712,6 +715,72 @@ def hit_react(b, carry=None, scale_t=1.0):
     return pose
 
 
+def stagger(b, back=True, travel=0.5, seconds=0.8, carry=None, heavy=0.0):
+    """Knocked off balance by a blow: the body snaps away from it, a foot steps to catch
+    the weight, the arms fly out, and it recovers. The game slides the character
+    `travel` metres (back, or forward if hit from behind) over STAGGER_SLIDE seconds,
+    eased out; the planted feet are keyed against that slide, so they stay put."""
+    sgn = 1.0 if back else -1.0      # +Y is behind the character
+    slide = STAGGER_SLIDE
+    keys = [(0.0, {"p": 0.0, "a": 0.0}), (0.07, {"p": 1.0, "a": 1.0}), (0.25, {"p": 0.75, "a": 0.85}),
+            (0.5, {"p": 0.3, "a": 0.4}), (seconds, {"p": 0.0, "a": 0.0})]
+    y0 = {s: b.ankle0[s].y for s, _ in SIDES}
+
+    def d(tt):
+        u = min(1.0, tt / slide)
+        return travel * (1.0 - (1.0 - u) ** 2) * sgn
+
+    # Which foot catches the fall: the right steps first, then the left rejoins it.
+    step_r = (0.08, 0.3, 0.16 * sgn)
+    step_l = (0.32, 0.55, 0.02 * sgn)
+
+    def foot(s, tt, step):
+        t0, t1, land = step
+        if tt < t0:
+            return -d(tt), 0.0, 0.0
+        if tt < t1:
+            u = (tt - t0) / (t1 - t0)
+            y = lerp(-d(t0), land, ease(u))
+            return y, 0.07 * math.sin(math.pi * u), -12.0 * math.sin(math.pi * u)
+        return land - (d(tt) - d(t1)), 0.0, 0.0
+
+    def pose(t):
+        tt = t * seconds
+        k = keyed(keys, tt)
+        p, a = k["p"], k["a"]
+        b.hips((0.0, 0.0, -0.05 * a - 0.03 * heavy * a), pitch=-8.0 * sgn * p, roll=3.0 * p)
+        over = 0.0
+        for s, sx in SIDES:
+            y, lift, pitch = foot(s, tt, step_r if s == "R" else step_l)
+            a_, q = b.foot_pose(s, "flat", pitch, yaw=sx * 8.0, at=Vector((sx * 0.03, y, lift)))
+            over = max(over, b.leg(s, a_, q))
+        b.trunk(spine=(-12.0 * sgn * p, 4.0 * p, 0.0), chest=(-10.0 * sgn * p, 3.0 * p, 5.0 * p), neck=(14.0 * p * sgn, 0.0, 0.0))
+        if carry:
+            carry(b, 0.0, 0.0, 0.0)
+            b.sk.turn("upper_arm.R", -30.0 * a * sgn, 18.0 * a, 0.0)
+            b.sk.turn("upper_arm.L", -35.0 * a * sgn, -22.0 * a, 0.0)
+        else:
+            for s, _ in SIDES:
+                b.arm_swing(s, 32.0 * a * sgn + 6.0, 10.0 + 28.0 * a, 20.0 + 40.0 * a)
+        b.look(10.0 * p * sgn, 0.0, 0.0, amount=0.4)
+        return over
+    return pose
+
+
+def keeper_throw(b):
+    """Hurling the boathook up like a harpoon: drawn back over the shoulder, the body
+    leaning away, then thrown up and forward. It leaves the hand at THROW_RELEASE."""
+    up = (-0.2, -0.85, 0.5)
+    keys = [
+        (0.00, {"lean": 2.0, "twist": 0.0, "wrist": (-0.27, -0.16, 0.95), "dir": up, "lf": 0.0}),
+        (0.22, {"lean": -12.0, "twist": -32.0, "wrist": (-0.3, 0.22, 1.5), "dir": (0.0, -0.45, 0.89), "lf": 0.6}),
+        (0.32, {"lean": 4.0, "twist": 8.0, "wrist": (-0.18, -0.4, 1.68), "dir": (0.0, -0.45, 0.89), "lf": 1.0}),
+        (0.45, {"lean": 14.0, "twist": 24.0, "wrist": (-0.04, -0.45, 1.15), "dir": (0.1, -0.9, -0.1), "lf": 0.8}),
+        (0.80, {"lean": 2.0, "twist": 0.0, "wrist": (-0.27, -0.16, 0.95), "dir": up, "lf": 0.0}),
+    ]
+    return keyed_upper(b, keys, 0.8)
+
+
 def keeper_hit_arms(b, a):
     keeper_carry(b, 0.0, 0.0, 0.0)
     b.sk.turn("upper_arm.R", -14.0 * a, -8.0 * a, 0.0)
@@ -1098,8 +1167,20 @@ def crab_clips(sk):
             sk.turn(f"claw.{side}", 25.0 * k * max(0.0, u), 0.0, 0.0)
         return over
 
+    def recoil(t):
+        """Struck: the front of the shell rears up, the claws fly up and back, legs braced."""
+        k = keyed([(0.0, {"a": 0.0}), (0.1, {"a": 1.0}), (0.35, {"a": 0.6}), (0.7, {"a": 0.0})], t * 0.7)["a"]
+        sk.place_root(sk.h0["body"] + Vector((0.0, 0.05 * k, 0.06 * k)), body_q(-12.0 * k, 4.0 * k, 0.0))
+        over = pose_legs(0.25, 0.0, 0.0)
+        for side in ("L", "R"):
+            sx = 1.0 if side == "L" else -1.0
+            sk.turn(f"claw_arm.{side}", -30.0 * k, 0.0, sx * 15.0 * k)
+            sk.turn(f"claw.{side}", -20.0 * k, 0.0, 0.0)
+        return over
+
     speed = travel / (0.55 * 0.9)
-    return [("idle", 2.4, idle, True), ("walk", 0.9, walk, True), ("rummage", 0.8, rummage, True)], {"walk": {"period": 0.9, "speed": speed}}
+    return [("idle", 2.4, idle, True), ("walk", 0.9, walk, True), ("rummage", 0.8, rummage, True),
+            ("stagger_back", 0.7, recoil, False)], {"walk": {"period": 0.9, "speed": speed}}
 
 
 def crab_leg(sk, i, s, tip, pole):
@@ -1191,7 +1272,18 @@ def squid_clips(sk):
                 sweep(i, "a", -10.0 * k)
         return -1.0
 
-    return [("idle", 2.0, idle, True), ("walk", 1.2, crawl, True), ("lunge", 0.6, lunge, False)], {}
+    def recoil(t):
+        """Struck: the mantle jerks up and back, every arm curls in, then it spreads again."""
+        k = keyed([(0.0, {"a": 0.0}), (0.08, {"a": 1.0}), (0.3, {"a": 0.7}), (0.6, {"a": 0.0})], t * 0.6)["a"]
+        sk.place_root(sk.h0["mantle"] + Vector((0.0, 0.06 * k, 0.07 * k)), body_q(-16.0 * k, 0.0, 0.0))
+        for i in arms:
+            lift(i, "a", 20.0 * k)
+            lift(i, "b", -25.0 * k)
+            lift(i, "c", -40.0 * k)
+        return -1.0
+
+    return [("idle", 2.0, idle, True), ("walk", 1.2, crawl, True), ("lunge", 0.6, lunge, False),
+            ("stagger_back", 0.6, recoil, False)], {}
 
 
 # ---------------------------------------------------------------- the build
@@ -1210,10 +1302,12 @@ def humanoid_set(sk, kind):
 
     if kind == "keeper":
         walk = Gait(b, 0.92, 0.6, 0.68, 0.012, 0.012, 0.12, strike=14.0, toe_off=32.0, sway=0.022, list_=3.0, yaw=6.0, lean=3.0)
-        run = Gait(b, 0.66, 0.3, 0.8, 0.04, 0.045, 0.34, strike=4.0, toe_off=40.0, heel=0.08, toe=0.45, runner=True,
-                   sway=0.012, list_=2.5, yaw=9.0, lean=11.0, kick=0.26)
-        sprint = Gait(b, 0.58, 0.26, 0.88, 0.05, 0.05, 0.42, strike=2.0, toe_off=45.0, heel=0.06, toe=0.4, runner=True,
-                      sway=0.01, list_=2.0, yaw=11.0, lean=16.0, kick=0.32)
+        # Keepers move at 4.5 m/s, 6.5 sprinting: long-striding runs with short contact
+        # and a real flight phase, so the clips' natural speeds match the game's.
+        run = Gait(b, 0.62, 0.23, 0.9, 0.08, 0.05, 0.36, strike=4.0, toe_off=40.0, heel=0.08, toe=0.45, runner=True,
+                   sway=0.012, list_=2.5, yaw=9.0, lean=12.0, kick=0.3)
+        sprint = Gait(b, 0.54, 0.2, 1.0, 0.09, 0.055, 0.44, strike=2.0, toe_off=45.0, heel=0.06, toe=0.4, runner=True,
+                      sway=0.01, list_=2.0, yaw=11.0, lean=17.0, kick=0.36)
         add("idle", 4.0, keeper_idle(b), True)
         add("walk", 1.0, keeper_cycle(b, walk), True, CYCLE_FRAMES, period=walk.period, speed=walk.speed)
         add("run", 1.0, keeper_cycle(b, run, run=True, chest_twist=10.0, head_pitch=6.0), True, CYCLE_FRAMES, period=run.period, speed=run.speed)
@@ -1226,6 +1320,9 @@ def humanoid_set(sk, kind):
         add("climb", 1.2, climb, True, rise=rise)
         add("flare", 0.6, keeper_flare(b), False)
         add("hit", 0.45, hit_react(b, keeper_hit_arms), False)
+        add("stagger_back", 0.8, stagger(b, True, 0.5, carry=keeper_carry), False, travel=0.5, slide=STAGGER_SLIDE)
+        add("stagger_fwd", 0.8, stagger(b, False, 0.5, carry=keeper_carry), False, travel=0.5, slide=STAGGER_SLIDE)
+        add("throw", 0.8, keeper_throw(b), False, release=THROW_RELEASE)
         add("revive", 0.8, kneel_work(b), True)
         # Keepers are quick about it: being floored shouldn't cost too long.
         gb, hb, tb = getup_back(b, slow=0.82)
@@ -1238,6 +1335,7 @@ def humanoid_set(sk, kind):
         add("bloat", 1.2, bloated_swell(b), False)
         add("strike", 1.1, creature_strike(b, 0.9, 1.2), False)
         add("hit", 0.45, hit_react(b), False)
+        add("stagger_back", 0.9, stagger(b, True, 0.35, 0.9, heavy=1.0), False, travel=0.35, slide=STAGGER_SLIDE)
         gb, hb, tb = getup_back(b, slow=1.35, heavy=1.0)
         gf, hf, tf = getup_front(b, slow=1.35, heavy=1.0)
     else:  # smotherer
@@ -1249,6 +1347,7 @@ def humanoid_set(sk, kind):
         add("smother", 2.5, smotherer_smother(b), True)
         add("strike", 0.9, creature_strike(b, 1.2, 1.0), False)
         add("hit", 0.45, hit_react(b), False)
+        add("stagger_back", 0.8, stagger(b, True, 0.45), False, travel=0.45, slide=STAGGER_SLIDE)
         gb, hb, tb = getup_back(b, slow=1.1)
         gf, hf, tf = getup_front(b, slow=1.1)
     add("getup_back", tb, gb, False, hips=rig_space(hb))
@@ -1274,10 +1373,12 @@ def build(name, rig):
         cl, info = crab_clips(sk)
         clips = [(n, s, p, l, CYCLE_FRAMES if n == "walk" else None) for n, s, p, l in cl]
         meta = {"clips": {n: dict(info.get(n, {}), loop=l, length=(1.0 if n == "walk" else s)) for n, s, p, l in cl}}
+        meta["clips"]["stagger_back"].update(travel=0.25, slide=STAGGER_SLIDE)
     elif name == "squid":
         cl, info = squid_clips(sk)
         clips = [(n, s, p, l, None) for n, s, p, l in cl]
         meta = {"clips": {n: dict(loop=l, length=s) for n, s, p, l in cl}}
+        meta["clips"]["stagger_back"].update(travel=0.35, slide=STAGGER_SLIDE)
         meta["clips"]["walk"]["period"] = 1.2
         meta["clips"]["walk"]["speed"] = 2.2
     else:

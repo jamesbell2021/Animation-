@@ -21,8 +21,10 @@ const GET_UP_TIME := 0.55
 ## How long the limp body takes to blend into the first frames of a get-up clip.
 const RAG_TO_CLIP := 0.3
 const LOCO := ["walk", "run", "sprint"]
-const UPPER_SHOTS := ["swing", "flare", "hit", "strike"]
-const FULL_SHOTS := ["getup_back", "getup_front", "lunge"]
+const UPPER_SHOTS := ["swing", "flare", "hit", "strike", "throw"]
+const FULL_SHOTS := ["getup_back", "getup_front", "lunge", "stagger_back", "stagger_fwd"]
+# The rig's own space against the model's (the model is turned round to face -Z).
+const TURN := Quaternion(Vector3.UP, PI)
 const NOT_ACTIVITIES := ["idle", "walk", "run", "sprint"]
 const UPPER_BONES := ["spine", "chest", "neck", "head", "upper_arm", "forearm", "hand"]
 # Bodies that start against rock get shoved out hard: never let a limb fly.
@@ -63,6 +65,20 @@ var _busy_want := 0.0
 var _activity := ""
 var _act_speed := 1.0
 var _layers := {}
+# A ragdoll waiting on a reaction: the blow shows first, then the body goes.
+var _rag_wait := -1.0
+var _rag_impulse := Vector3.ZERO
+var _rag_bone := "chest"
+# Leaning into turns and speed changes, and the head turning to look.
+var _last_pos := Vector3.INF
+var _last_yaw := 0.0
+var _vel := Vector3.ZERO
+var _accel := Vector3.ZERO
+var _yaw_rate := 0.0
+var _lean := Vector2.ZERO
+var _look_at := Vector3.INF
+var _look := Vector2.ZERO
+var _look_weight := 0.0
 
 ## Load a character by name; null when the model is missing (callers keep their fallback).
 static func create(model: String) -> CharacterRig:
@@ -329,6 +345,62 @@ func _run_clips(delta: float) -> void:
 	for bone in _layers:
 		var i := skeleton.find_bone(bone)
 		skeleton.set_bone_pose_rotation(i, skeleton.get_bone_pose_rotation(i) * _model_q(bone, _layers[bone]))
+	_alive(delta)
+
+## Turn the head toward a point in the world (weight 0 lets it go); the neck takes some.
+func look_at_point(p: Vector3, weight: float = 1.0) -> void:
+	_look_at = p
+	_look_weight = weight if p != Vector3.INF else 0.0
+
+# A turn given in the rig's own space, added to a bone after the clips.
+func _add_rig_turn(bone: String, q_rig: Quaternion) -> void:
+	var i := skeleton.find_bone(bone)
+	if i < 0:
+		return
+	var q_model := TURN * q_rig * TURN.inverse()
+	var g: Quaternion = _rest_global[bone]
+	skeleton.set_bone_pose_rotation(i, skeleton.get_bone_pose_rotation(i) * (g.inverse() * q_model * g))
+
+# What makes a body read as alive between the clips: leaning into speeding up, slowing
+# down and turning (the spine and chest), and the head turning to look at things.
+func _alive(delta: float) -> void:
+	if not _rest.has("spine") or _ragdoll:
+		_last_pos = Vector3.INF
+		return
+	var pos := global_position
+	var yaw := global_rotation.y
+	if _last_pos != Vector3.INF and delta > 0.0:
+		var v := (pos - _last_pos) / delta
+		v.y = 0.0
+		var acc := (v - _vel) / delta
+		_vel = _vel.lerp(v, minf(1.0, delta * 12.0))
+		_accel = _accel.lerp(acc, minf(1.0, delta * 6.0))
+		_yaw_rate = lerpf(_yaw_rate, angle_difference(_last_yaw, yaw) / delta, minf(1.0, delta * 8.0))
+	_last_pos = pos
+	_last_yaw = yaw
+	var fwd := -global_basis.z.normalized()
+	var speed := _vel.length()
+	# Forward lean on speeding up, back on pulling up; banked into turns.
+	var want := Vector2(clampf(fwd.dot(_accel) * 0.022, -0.2, 0.2), clampf(_yaw_rate * speed * 0.035, -0.22, 0.22))
+	_lean = _lean.lerp(want, minf(1.0, delta * 7.0))
+	if absf(_lean.x) > 0.002 or absf(_lean.y) > 0.002:
+		var q := Quaternion(Vector3.FORWARD, -_lean.y * 0.5) * Quaternion(Vector3.RIGHT, -_lean.x * 0.5)
+		_add_rig_turn("spine", q)
+		_add_rig_turn("chest", q)
+	# The head looks where it is told, within what a neck can do.
+	var want_look := Vector2.ZERO
+	if _look_at != Vector3.INF and _look_weight > 0.0 and _rest.has("head"):
+		var local := global_transform.affine_inverse() * _look_at
+		var eye_h := 1.5
+		var yaw_to := atan2(-local.x, -local.z)
+		var flat := Vector2(local.x, local.z).length()
+		var pitch_to := atan2(local.y - eye_h, maxf(flat, 0.3))
+		if absf(yaw_to) < deg_to_rad(110.0):
+			want_look = Vector2(clampf(yaw_to, -1.2, 1.2), clampf(pitch_to, -0.6, 0.5)) * _look_weight
+	_look = _look.lerp(want_look, minf(1.0, delta * 5.0))
+	if _look.length() > 0.002:
+		_add_rig_turn("neck", Quaternion(Vector3.UP, _look.x * 0.4) * Quaternion(Vector3.RIGHT, _look.y * 0.4))
+		_add_rig_turn("head", Quaternion(Vector3.UP, _look.x * 0.6) * Quaternion(Vector3.RIGHT, _look.y * 0.6))
 
 func has_bone(bone: String) -> bool:
 	return _rest.has(bone)
@@ -392,6 +464,10 @@ func ragdoll_speed() -> float:
 	return b.linear_velocity.length() if b else 0.0
 
 func _physics_process(delta: float) -> void:
+	if _rag_wait >= 0.0:
+		_rag_wait -= delta
+		if _rag_wait < 0.0:
+			_go_limp(_rag_impulse, _rag_bone)
 	if tree != null:
 		_run_clips(delta)
 	if not _ragdoll:
@@ -430,12 +506,26 @@ func is_getting_up() -> bool:
 	return _getting_up
 
 ## Go limp. The impulse (kg·m/s) is applied at `at_bone`, e.g. a blow on the chest.
-func ragdoll(impulse: Vector3 = Vector3.ZERO, at_bone: String = "chest") -> void:
+## With `react` seconds, the blow shows first (play a stagger before calling) and the
+## body goes limp after, carrying the impulse.
+func ragdoll(impulse: Vector3 = Vector3.ZERO, at_bone: String = "chest", react: float = 0.0) -> void:
 	if skeleton == null:
+		return
+	if _rag_wait >= 0.0:
+		_rag_impulse += impulse
 		return
 	if _ragdoll and not _getting_up:
 		_push(impulse, at_bone)
 		return
+	if react > 0.0 and not _ragdoll and tree != null:
+		_rag_wait = react
+		_rag_impulse = impulse
+		_rag_bone = at_bone
+		_ragdoll = true
+		return
+	_go_limp(impulse, at_bone)
+
+func _go_limp(impulse: Vector3, at_bone: String) -> void:
 	_getting_up = false
 	if _sim == null:
 		_build_bodies()
@@ -507,6 +597,12 @@ func getup_plan() -> Dictionary:
 func get_up(time: float = GET_UP_TIME, clip: String = "") -> void:
 	if not _ragdoll or _getting_up:
 		return
+	if _rag_wait >= 0.0:
+		# Told to get up before it ever went limp (dawn, a Bloated swelling): it never fell.
+		_rag_wait = -1.0
+		_ragdoll = false
+		got_up.emit.call_deferred()
+		return
 	_getting_up = true
 	var tw := create_tween()
 	if clip != "" and clips.has(clip) and tree != null:
@@ -520,6 +616,7 @@ func get_up(time: float = GET_UP_TIME, clip: String = "") -> void:
 func _stood() -> void:
 	if not _getting_up:
 		return
+	_rag_wait = -1.0
 	_getting_up = false
 	_ragdoll = false
 	_free_bodies()

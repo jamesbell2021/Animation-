@@ -165,10 +165,12 @@ Judgement calls made where the spec was open, contradictory, or would not work a
   - **Alarm:** four foghorn blasts and "The light is smothered!"
   - **HUD:** "Lamp: SMOTHERED", and the keeper in the lamp room is told to go out.
 - **Beam can't burn it:** it only slows ×0.6 in either beam. A first version could be burned like the Bloated, and the playtest bot burned every one on the beaches, so it never threatened the lamp at all. It is boathook work: on the ledge, where an outward blow knocks it over the edge, or at the tower.
-- **Shaking it down:** on the tower it can't be struck. A boathook swing within 1.3 m of the tower's foot shakes everything on the tower: each blow drops it 1.2 m and climbing resumes, and the third blow makes it lose its grip and fall. Fall damage is the usual 14/m past 1.2 m, so from the lantern it dies. Shaken off low down, it gets up after 1.5 s and tries again. At the tower's foot the prompt says "[LMB] Strike the tower to shake it loose!"
+- **Harpooning it down** (replaced shaking the tower, which looked janky): on the tower it can't be struck, but from anywhere on the crag top within 10 m of the tower an attack throws the boathook up at it like a harpoon. The throw is a clip with the hook leaving the hand at 0.32 s, and the hook homes a little because the creature keeps climbing. A hit makes it let go of the stone and drop from where it clung as a ragdoll, and wounds it (15). Fall damage is the usual 14/m past 1.2 m, so from the lantern it dies; from low down it gets up and tries again.
+  - **Then the hook has to be fetched:** it bounces off the stone and comes to rest on walkable ground just out from the tower's foot, glinting. With it gone the keeper has nothing to swing, and walking over it takes it back. At dawn it comes back on its own, so it can't be lost for good.
+  - **Prompts:** in reach, "[LMB] Throw the boathook up at it!"; while it's out, "Your boathook lies by the tower: walk over it to take it back".
 - **Schedule:** one on nights 4, 5 and 6, two on night 7 (and so on from 9), two together on night 8. Warning: "Something pale crawls from the sea".
 - **Playtest bot:**
-  - Solo: the lamp is smothered for 4–41 s a night from night 4, and each time the keeper has to go out and shake it down.
+  - Solo: the lamp is smothered for 4–41 s a night from night 4, and each time the keeper has to go out and harpoon it down.
   - Co-op: the keeper holding the ledge kills every Smotherer on the way up, so the lamp is never smothered. That gives the second keeper a clear job.
 
 
@@ -236,14 +238,14 @@ Built to plan 2's Phase C, with these departures:
   - **Speed cap:** speeds are capped at 7 m/s (and spin at 14 rad/s). Without the cap, a body that starts against the crag wall was flung 10 m into the air.
   - **Getting up:** the owner moves to where the ragdoll lies, found with a ray down because the island has several levels, and gets up with a get-up clip (see the next section). With no clip it blends back into the animated pose over 0.55 s. If the ragdoll is lying somewhere it can't stand (the sea), it snaps up on the last safe ground instead of stretching across the gap.
   - **Lifetime:** the physics bodies are freed after getting up, so idle characters cost nothing.
-- **When keepers go down:**
-  - Any hit of 10 or more (a Squid's lunge, a Crab's slam, a Bloated's burst) knocks them flat for about a second.
+- **When keepers go down** (since the hit reactions, below, only big blows floor them):
+  - A hit of 25 or more (a Crab's slam, a Bloated's burst) knocks them flat for about a second.
   - The Eel's surge knocks them flat for its prone time.
   - Downed keepers lie as ragdolls until revived. The revive test now keeps the reviver beside the body, since it can slide.
 - **When creatures go down:**
-  - Every boathook hit knocks a Bloated, Smotherer or Squid down for 0.8 s. A blow aimed out over the ledge throws it off for real, and the fall damage (the usual 14/m) applies when it lands. Knocked into the sea, it's gone.
+  - A boathook hit staggers a Bloated, Smotherer or Squid; the second within 3 s floors it (the third for a Bloated). See the hit reactions, below. A blow aimed out over the ledge throws it off for real, and the fall damage (the usual 14/m) applies when it lands. Knocked into the sea, it's gone.
   - The Crab is too heavy to knock down, but a chain plate now throws it on its back as a ragdoll, wide open.
-  - A Smotherer shaken loose falls from the tower as a dead weight and dies of the fall.
+  - A harpooned Smotherer falls from the tower as a dead weight and, from the lantern, dies of the fall.
   - The dead lie as ragdolls for five seconds, then sink away. The Bloated still bursts, and the Eel is a scripted giant with no ragdoll.
 - **The Eel** keeps its tube body (it has to wrap the tower) but gains a mottled texture, a pale belly, a ragged dorsal fin and a moray head modelled in Blender.
 - **Eyes** are placed from points the build script writes alongside each model (`*.json`), so the glows sit in the sockets.
@@ -273,3 +275,20 @@ Built to plan 2's Phase C, with these departures:
   Keepers take about 1.4 s, the heavy Bloated nearer 2.3 s.
 - **Checked:** every clip was rendered as frame strips in Blender and through the game's own rig in Godot, and in the reel's new "moves" shot (a swing that floors a Bloated, which gets up; a keeper floored and getting up). All seven test suites still pass.
 - **Limits:** the clips are authored in code, not motion-captured or keyed by an animator. There are no hand or finger poses and no facial animation. Turning on the spot doesn't step, it slides. Climbing a ladder still moves the keeper in straight lines, with the clip on top.
+
+## Hit reactions before ragdolls (owner's request: "people ragdoll too easy, need to show they are being hit, react and then ragdoll")
+
+- **Keepers take a blow by its size:**
+  - Under 12 damage: a flinch, an upper-body clip they keep walking under.
+  - 12 to 24 (a Squid's lunge): a stagger. The body snaps away from the blow, a foot steps to catch the weight, the arms fly out, and they slide half a metre with no control for 0.45 s. The clip's planted foot is keyed against exactly that slide, so it doesn't skate. Hit from behind, they stumble forward instead.
+  - 25 and up (a Crab's slam, a Bloated's burst, the Eel's surge): the stagger plays for 0.16 s and then the body goes limp, carrying the blow's momentum.
+- **Creatures have poise:**
+  - A boathook hit staggers a light creature back (Bloated, Smotherer, Squid). It turns to the blow, reels back in its stagger clip, and stops what it was doing for 0.55 s.
+  - The blow that wears its poise down floors it: the second within 3 s, the third for a Bloated. That blow shows for 0.14 s before the ragdoll.
+  - A blow aimed out over the ledge still throws it straight off.
+  - The Crab only flinches in its shell: no turn, no slide.
+  - Death blows react before going limp too.
+- **Livelier between the clips:** `CharacterRig` adds a little on its own.
+  - Bodies lean forward when they speed up, back when they pull up, and into turns.
+  - Heads turn to look: a keeper at the nearest creature within 7 m (or where they aim); a creature at the nearest keeper within 8 m.
+- **Runs that fit the game's speeds:** the keepers' run and sprint were re-solved to their real speeds, 4.5 and 6.5 m/s: longer strides, shorter ground contact, and a proper flight phase. Before, the game played the sprint sped up for an ordinary run.

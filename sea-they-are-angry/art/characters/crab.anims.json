@@ -13,6 +13,12 @@
   "rummage": {
    "loop": true,
    "length": 0.8
+  },
+  "stagger_back": {
+   "loop": false,
+   "length": 0.7,
+   "travel": 0.25,
+   "slide": 0.45
   }
  }
 }
