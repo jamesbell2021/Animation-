@@ -10,6 +10,8 @@ const CROWN_SIGN := "CONNOR'S CROWN"
 const WELCOME_MESSAGE := "Welcome to Connor's Carnival Chaos!"
 const RESULTS_TITLE := "CARNIVAL CHAOS RESULTS"
 const WIN_MESSAGE := "Champion of the Carnival!"
+## Who designed it (first name only, on purpose: it's on a public page).
+const DESIGNER_CREDIT := "Designed by Connor, age 13 - his first game!"
 
 
 static func title_upper() -> String:

@@ -25,6 +25,11 @@ static func apply(tier: Tier, viewport: Viewport, root: Node) -> void:
 	if viewport == null:
 		push_error("MobileSettings.apply: viewport is null.")
 		return
+	if OS.has_feature("web"):
+		# Browsers: leave the renderer alone (changing it stops the 3D drawing in WebGL).
+		_configure_lights(root, false, 45.0)
+		print("MobileSettings: browser defaults")
+		return
 	match tier:
 		Tier.LOW:
 			viewport.scaling_3d_scale = 0.7
