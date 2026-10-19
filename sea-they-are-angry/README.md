@@ -61,7 +61,7 @@ Keepers face the way they walk and turn to their aim to swing. Each carries a pa
   - **Oil:** a drum washes up every third night.
   - **Flare gun:** two shots that burn red where they land.
   - **Campfire:** warms a keeper back up by the cottage.
-- Storm weather that builds through dusk to a full gale at night: driving rain, thrashing grass, breakers crashing on the beaches, lightning and thunder, and pale shapes standing in the surf that only the flashes show. Every creature's eyes glow in the dark.
+- Random weather each night: a clear moonlit night, rain squalls, or a storm that builds through dusk to a gale. The angrier the sea, the likelier a storm. In a storm: driving rain, thrashing grass, breakers crashing on the beaches, lightning and thunder, and pale shapes standing in the surf that only the flashes show. Every creature's eyes glow in the dark.
 - Five creatures:
   - **The Bloated Dead** land on a beach and walk the long way up to the light, batter fences, swell and burst. Some groups raid the homestead instead.
   - **The Wall-Crawling Squid** climbs straight up cliffs and the crag at the keepers, lunges, and hides the others in ink.

@@ -11,6 +11,10 @@ var max_hp_bonus := [0, 0, 0]
 var crops := [0, 0, 0, 0, 0]
 ## Flares in each keeper's gun.
 var flares := [2, 2, 2]
+## Seeds each night's weather roll (see Weather.tonight), so a reload keeps it.
+var weather_seed := 0
+var weather_for := 0
+var weather_kind := 0
 # Set before reloading the scene to skip the title screen (New Run from game over).
 var quick_start := false
 
@@ -21,6 +25,8 @@ func start_new() -> void:
 	max_hp_bonus = [0, 0, 0]
 	crops = [0, 0, 0, 0, 0]
 	flares = [2, 2, 2]
+	weather_seed = randi()
+	weather_for = 0
 	Anger.reset()
 	Stock.reset()
 	active = true
@@ -40,6 +46,8 @@ func start_loaded(d: Dictionary) -> void:
 	flares = [2, 2, 2]
 	for i in mini(fl.size(), 3):
 		flares[i] = clampi(int(fl[i]), 0, 2)
+	weather_seed = int(d.get("weather_seed", randi()))
+	weather_for = 0
 	Anger.set_value(int(d.get("anger", 0)))
 	Stock.set_all(d.get("stock", {}))
 	active = true

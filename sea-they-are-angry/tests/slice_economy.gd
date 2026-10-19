@@ -255,5 +255,23 @@ func _run() -> void:
 	var d: Dictionary = SaveSys.load_run()
 	check(int(d["upgrades"]["lighthouse"]) == 2 and int(d["crops"][0]) == 2 and int(d["max_hp_bonus"][0]) == 10, "upgrades, beds and meals are saved")
 
+	# ---- the weather ----
+	check(Weather.roll(123, 1, 10) == Weather.Kind.CLEAR, "the first night is always clear")
+	check(Weather.roll(77, 5, 2) == Weather.roll(77, 5, 2), "the same run and night gives the same weather")
+	var counts := [[0, 0, 0], [0, 0, 0]]
+	for seed_value in 400:
+		counts[0][Weather.roll(seed_value, 4, 0)] += 1
+		counts[1][Weather.roll(seed_value, 4, 10)] += 1
+	print("   calm sea: clear/squalls/storm %s   angry sea: %s" % [counts[0], counts[1]])
+	check(counts[0][0] > 100 and counts[0][1] > 80 and counts[0][2] > 40, "all three kinds of night come up")
+	check(counts[1][2] > counts[0][2] * 2, "an angry sea brings more storms")
+	Run.night = 6
+	Run.weather_for = 0
+	var kind := Weather.tonight()
+	Cycle._enter(Cycle.Phase.DUSK)
+	await frames(2)
+	check(main.hud._phase_label.text.ends_with(Weather.KIND_NAMES[kind]), "the HUD names tonight's weather: " + main.hud._phase_label.text)
+	check(is_equal_approx(main.atmosphere.weather._target, Weather.KIND_LEVELS[kind][Cycle.Phase.DUSK]), "the storm builds to tonight's level")
+
 	print("RESULT: ", "PASS" if fails == 0 else "FAIL (%d)" % fails)
 	quit()

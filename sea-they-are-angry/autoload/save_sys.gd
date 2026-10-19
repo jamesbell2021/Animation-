@@ -13,6 +13,7 @@ func save_run() -> void:
 		"max_hp_bonus": Run.max_hp_bonus,
 		"crops": Run.crops,
 		"flares": Run.flares,
+		"weather_seed": Run.weather_seed,
 	}
 	var f := FileAccess.open(RUN_PATH, FileAccess.WRITE)
 	if f:

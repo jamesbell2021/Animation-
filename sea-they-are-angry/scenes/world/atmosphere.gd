@@ -172,7 +172,12 @@ func _build_buoy() -> void:
 ## Ease the mood to a phase. Fog rolls in slowly at dusk and thins at dawn.
 func apply(p: int, duration: float) -> void:
 	_phase = p
-	var m: Dictionary = MOOD[p]
+	var m: Dictionary = MOOD[p].duplicate()
+	# A clear night: thinner fog and a lighter vignette.
+	if Weather.tonight() == Weather.Kind.CLEAR and (p == Cycle.Phase.DUSK or p == Cycle.Phase.NIGHT):
+		m["bank"] = float(m["bank"]) * 0.5
+		m["mist"] = float(m["mist"]) * 0.6
+		m["vig"] = float(m["vig"]) * 0.75
 	if duration <= 0.0:
 		_bank_mat.density = m["bank"]
 		_mist_mat.density = m["mist"]

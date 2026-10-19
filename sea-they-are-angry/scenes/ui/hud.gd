@@ -163,6 +163,8 @@ func _build_game_over(root: Control) -> void:
 
 func _process(delta: float) -> void:
 	_phase_label.text = "Night %d — %s  (%s)" % [Run.night, Cycle.phase_name(), _mmss(Cycle.time_left)]
+	if Cycle.phase == Cycle.Phase.DUSK or Cycle.phase == Cycle.Phase.NIGHT:
+		_phase_label.text += "  · " + Weather.tonight_name()
 	var stock := "Driftwood %d · Scrap %d · Bio %d · Kelp %d · Food %d" % [Stock.get_amount("driftwood"), Stock.get_amount("scrap"), Stock.get_amount("bio"), Stock.get_amount("seaweed"), Stock.get_amount("food")]
 	if Stock.get_amount("oil") > 0:
 		stock += " · Oil %d" % Stock.get_amount("oil")
@@ -258,7 +260,7 @@ func report(heading: String, lines: Array, time: float = REPORT_TIME) -> void:
 
 func _on_phase_changed(p: int) -> void:
 	if p == Cycle.Phase.DUSK:
-		_show_warning("The fog is coming.")
+		_show_warning(["A clear night. The fog is coming.", "Squalls coming in with the fog.", "A storm is coming."][Weather.tonight()])
 	elif p == Cycle.Phase.NIGHT:
 		_show_warning("They are coming.")
 

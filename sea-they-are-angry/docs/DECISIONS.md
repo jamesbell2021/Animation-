@@ -181,6 +181,12 @@ Judgement calls made where the spec was open, contradictory, or would not work a
 - **Lightning:** above storm 0.45, a strike comes every 5–12 s (more often in heavier weather). A jagged bolt with a fork drops into the sea, the sky and the whole island flash white, and thunder follows after a delay. One strike in six hits the lighthouse's rod instead.
 - **The watchers:** 70 pale drowned figures standing in the surf 18–30 m out, all facing the light, with pinprick eyes. They are only ever visible for half a second during a flash (40% of flashes), so they read as a glimpse rather than something to fight. They are not creatures and nothing touches them.
 - **Glowing eyes:** every creature's eyes use `Look.eye_mat` (unshaded, high energy) plus `Look.glint`, a camera-facing additive halo. The halo matters: the eyes are a few pixels across from the game camera, so the glow alone vanished at distance. Colours: Bloated sickly yellow-green, Squid cyan, Crab red, Eel yellow, Smotherer pale pinpoints in black sockets.
+- **Random weather each night (owner's request, after the reel showed nights too dark to read):** at dusk each night rolls one of three kinds of weather (`Weather.tonight()`):
+  - **Clear:** calm and moonlit, almost no rain or wind; ambient ×1.2, moon ×1.45, half the fog, a lighter vignette.
+  - **Squalls:** storm level 0.6 at night, with rain, gusts and the odd lightning strike.
+  - **Storm:** the full gale, eased to 0.9 from 1.0, with ambient ×1.1 and less fog than before.
+
+  The base night is brighter too: ambient energy 0.95 (was 0.72), moon 1.05 (was 0.85), and less fog. Night 1 is always clear. After that a storm comes 20% of the time, plus 4% per point of Anger up to 60%; squalls come 35% of the time; and the rest are clear. The roll is seeded per run (`Run.weather_seed`, saved), so a reloaded night has the same weather. The HUD names tonight's weather, and the dusk warning says what is coming. The title screen is always a storm.
 - **Tuning from renders:** the first breakers were white cotton balls, so they are now a burst of spray with a few faint puffs. The whitecaps blew out to white in a lightning flash, so they are toned down at full storm. The watchers were too small to notice, so they are 1.5–2.2× scale and closer in.
 
 ## Phase C: garden, cottage, upgrades, traps, oil, flares, campfire (owner's request)

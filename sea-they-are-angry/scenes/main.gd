@@ -53,10 +53,17 @@ const CAMPFIRE_AT := [-22.0, 10.4]
 
 # Per phase: background, ambient colour and energy, sun colour and energy,
 # distance fog density, volumetric fog density, fog glow tint.
+# How each kind of night shifts dusk and night: ambient and moon energy, fog.
+const WEATHER_LIGHT := [
+	{"amb": 1.2, "sun": 1.45, "fog": 0.55, "bg": Color(0.05, 0.08, 0.14)},
+	{"amb": 1.0, "sun": 1.0, "fog": 1.0, "bg": Color(0.0, 0.0, 0.0)},
+	{"amb": 1.1, "sun": 0.95, "fog": 0.9, "bg": Color(0.0, 0.0, 0.0)},
+]
+
 var _lighting := [
 	{"bg": Color(0.60, 0.67, 0.72), "amb": Color(0.62, 0.68, 0.76), "amb_e": 0.55, "sun": Color(1.0, 0.92, 0.78), "sun_e": 1.3, "fog": 0.0013, "vfog": 0.0035, "tint": Color(0.70, 0.75, 0.80)},
 	{"bg": Color(0.34, 0.31, 0.38), "amb": Color(0.52, 0.44, 0.52), "amb_e": 0.38, "sun": Color(1.0, 0.58, 0.36), "sun_e": 0.8, "fog": 0.005, "vfog": 0.019, "tint": Color(0.52, 0.42, 0.44)},
-	{"bg": Color(0.03, 0.05, 0.08), "amb": Color(0.26, 0.36, 0.52), "amb_e": 0.72, "sun": Color(0.55, 0.68, 0.95), "sun_e": 0.85, "fog": 0.0075, "vfog": 0.024, "tint": Color(0.10, 0.14, 0.20)},
+	{"bg": Color(0.04, 0.06, 0.10), "amb": Color(0.30, 0.40, 0.56), "amb_e": 0.95, "sun": Color(0.6, 0.72, 0.98), "sun_e": 1.05, "fog": 0.006, "vfog": 0.018, "tint": Color(0.11, 0.15, 0.21)},
 	{"bg": Color(0.52, 0.50, 0.55), "amb": Color(0.60, 0.55, 0.60), "amb_e": 0.42, "sun": Color(1.0, 0.74, 0.58), "sun_e": 0.95, "fog": 0.004, "vfog": 0.013, "tint": Color(0.62, 0.56, 0.58)},
 ]
 
@@ -542,7 +549,15 @@ func _build_spawner() -> void:
 # ---- cycle ----
 
 func _apply_lighting(p: int, duration: float) -> void:
-	var cfg: Dictionary = _lighting[p]
+	var cfg: Dictionary = _lighting[p].duplicate()
+	if Run.active and (p == Cycle.Phase.DUSK or p == Cycle.Phase.NIGHT):
+		var w: Dictionary = WEATHER_LIGHT[Weather.tonight()]
+		cfg["amb_e"] = float(cfg["amb_e"]) * float(w["amb"])
+		cfg["sun_e"] = float(cfg["sun_e"]) * float(w["sun"])
+		cfg["fog"] = float(cfg["fog"]) * float(w["fog"])
+		cfg["vfog"] = float(cfg["vfog"]) * float(w["fog"])
+		if p == Cycle.Phase.NIGHT and w["bg"] != Color(0.0, 0.0, 0.0):
+			cfg["bg"] = w["bg"]
 	if _tween and _tween.is_valid():
 		_tween.kill()
 	var tint: Color = cfg["tint"]

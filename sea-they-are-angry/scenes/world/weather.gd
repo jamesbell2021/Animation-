@@ -7,8 +7,22 @@ extends Node3D
 ## night. Lightning flashes out at sea, now and then strikes the lighthouse's own rod,
 ## and in some flashes the sea all round the island is full of pale drowned figures
 ## standing in the swell, gone when the light goes.
+##
+## Each night's weather is rolled at dusk: a clear moonlit night, squalls, or a storm.
+## The first night is always clear, and the angrier the sea, the likelier a storm.
 
-const LEVELS := [0.12, 0.6, 1.0, 0.3]
+enum Kind { CLEAR, SQUALL, STORM }
+const KIND_NAMES := ["Clear", "Squalls", "Storm"]
+# Storm level per phase (day, dusk, night, dawn) for each kind of night.
+const KIND_LEVELS := [
+	[0.12, 0.06, 0.08, 0.15],
+	[0.12, 0.35, 0.6, 0.3],
+	[0.12, 0.6, 0.9, 0.35],
+]
+const SQUALL_CHANCE := 0.35
+const STORM_CHANCE := 0.2
+const STORM_PER_ANGER := 0.04
+const STORM_CHANCE_MAX := 0.6
 const RAMP := 12.0
 const RAIN_AMOUNT := 5000
 const RAIN_BOX := Vector3(34.0, 1.0, 30.0)
@@ -42,9 +56,35 @@ func _ready() -> void:
 	_build_watchers()
 	_apply_storm()
 
-## Ease the storm toward the level for a phase.
+## Tonight's weather. Rolled once per night from the run's weather seed, so a
+## reloaded save gets the same night. Off the title screen it is always a storm.
+static func tonight() -> int:
+	if not Run.active:
+		return Kind.STORM
+	if Run.weather_for != Run.night:
+		Run.weather_for = Run.night
+		Run.weather_kind = roll(Run.weather_seed, Run.night, Anger.value)
+	return Run.weather_kind
+
+static func roll(seed_value: int, night: int, anger: int) -> int:
+	if night <= 1:
+		return Kind.CLEAR
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash([seed_value, night])
+	var r := rng.randf()
+	var storm_p := clampf(STORM_CHANCE + STORM_PER_ANGER * float(anger), STORM_CHANCE, STORM_CHANCE_MAX)
+	if r < storm_p:
+		return Kind.STORM
+	if r < storm_p + SQUALL_CHANCE:
+		return Kind.SQUALL
+	return Kind.CLEAR
+
+static func tonight_name() -> String:
+	return KIND_NAMES[tonight()]
+
+## Ease the storm toward the level for a phase and tonight's weather.
 func apply(p: int, duration: float = RAMP) -> void:
-	_target = LEVELS[p]
+	_target = KIND_LEVELS[tonight()][p]
 	if duration <= 0.0:
 		storm = _target
 		_apply_storm()

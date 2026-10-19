@@ -58,6 +58,10 @@ The creatures and the hammer:
 |---|---|
 | ![storm](screenshots/storm_night.png) | ![flash](screenshots/storm_flash.png) |
 
+| Clear, squalls and storm: each night's weather is rolled at dusk |
+|---|
+| ![weather](screenshots/weather_nights.png) |
+
 | The homestead: potato beds, campfire, a trap on the ledge | The lighthouse at upgrade level 3 |
 |---|---|
 | ![homestead](screenshots/eco_homestead.png) | ![upgraded](screenshots/eco_lighthouse.png) |
