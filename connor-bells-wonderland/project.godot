@@ -10,7 +10,7 @@ config_version=5
 
 [application]
 
-config/name="Connor Bell's Wonderland"
+config/name="Connor's Carnival Chaos"
 config/description="Tower of Frustration at the Travelling Fair: an 8-contestant fairground obstacle race."
 run/main_scene="res://scenes/menus/main_menu.tscn"
 config/features=PackedStringArray("4.3", "Mobile")
@@ -30,6 +30,10 @@ window/size/viewport_height=720
 window/handheld/orientation=0
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
+
+[gui]
+
+theme/custom_font="res://fonts/RussoOne-Regular.ttf"
 
 [input]
 

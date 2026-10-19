@@ -13,6 +13,7 @@ var _bots_spin: SpinBox
 var _difficulty_option: OptionButton
 var _countdown_spin: SpinBox
 var _items_check: CheckButton
+var _mode_option: OptionButton
 var _start_button: Button
 var _ready_button: Button
 var _status: Label
@@ -37,14 +38,17 @@ func _ready() -> void:
 
 
 func _build() -> void:
+	add_child(MenuBackdrop.new())
 	var bg := ColorRect.new()
-	bg.color = Color(0.04, 0.045, 0.07)
+	bg.color = Color(0.0, 0.0, 0.03, 0.55)
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
 	var panel := PanelContainer.new()
 	panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
 	panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	panel.grow_vertical = Control.GROW_DIRECTION_BOTH
+	UiStyle.style_panel(panel, 18.0)
 	add_child(panel)
 	var columns := HBoxContainer.new()
 	columns.add_theme_constant_override("separation", 30)
@@ -55,7 +59,8 @@ func _build() -> void:
 	columns.add_child(left)
 	var title := Label.new()
 	title.text = "%s LOBBY%s" % [Branding.HERO_NAME.to_upper() + "'S", " (host)" if _is_host else ""]
-	title.add_theme_font_size_override("font_size", 34)
+	title.add_theme_font_size_override("font_size", 30)
+	GameFonts.use_title(title)
 	title.add_theme_color_override("font_color", CourseBuilder.accent(0))
 	left.add_child(title)
 	_ip_label = Label.new()
@@ -74,6 +79,12 @@ func _build() -> void:
 	right.custom_minimum_size = Vector2(340.0, 0.0)
 	right.add_theme_constant_override("separation", 10)
 	columns.add_child(right)
+	_mode_option = OptionButton.new()
+	_mode_option.add_item("Tower Race", 0)
+	_mode_option.add_item("Paintball Battle", 1)
+	_mode_option.disabled = not _is_host
+	_mode_option.item_selected.connect(func(_i: int) -> void: _push_settings())
+	right.add_child(_row("Mode", _mode_option))
 	_sections_spin = _spin(1, 6, 6)
 	right.add_child(_row("Sections", _sections_spin))
 	_bots_spin = _spin(0, 7, 3)
@@ -137,6 +148,7 @@ func _button(text: String, callback: Callable) -> Button:
 	button.text = text
 	button.custom_minimum_size = Vector2(0.0, 52.0)
 	button.add_theme_font_size_override("font_size", 24)
+	UiStyle.style_button(button, text.begins_with("Start"))
 	button.pressed.connect(callback)
 	return button
 
@@ -172,6 +184,8 @@ func _apply_settings(settings: Dictionary) -> void:
 	_difficulty_option.selected = clampi(int(settings.get("difficulty", 1)), 0, 2)
 	_countdown_spin.value = int(settings.get("countdown", 3))
 	_items_check.button_pressed = bool(settings.get("items", true))
+	_mode_option.selected = 1 if str(settings.get("mode", "race")) == "paintball" else 0
+	_start_button.text = "Start Battle" if _mode_option.selected == 1 else "Start Race"
 	_updating = false
 
 
@@ -184,6 +198,7 @@ func _push_settings() -> void:
 		"difficulty": _difficulty_option.selected,
 		"countdown": int(_countdown_spin.value),
 		"items": _items_check.button_pressed,
+		"mode": "paintball" if _mode_option.selected == 1 else "race",
 	})
 
 

@@ -118,33 +118,20 @@ func _build_environment() -> void:
 	sun.shadow_enabled = true
 	holder.add_child(sun)
 
-	# Dusk-into-night sky with an orange glow on the horizon.
-	var sky_mat := ProceduralSkyMaterial.new()
-	sky_mat.sky_top_color = Color(0.02, 0.03, 0.09)
-	sky_mat.sky_horizon_color = Color(0.45, 0.16, 0.12)
-	sky_mat.sky_curve = 0.08
-	sky_mat.ground_bottom_color = Color(0.01, 0.01, 0.02)
-	sky_mat.ground_horizon_color = Color(0.2, 0.08, 0.08)
-	sky_mat.sun_angle_max = 1.0
-	var sky := Sky.new()
-	sky.sky_material = sky_mat
-
-	var env := Environment.new()
-	env.background_mode = Environment.BG_SKY
-	env.sky = sky
-	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color(0.42, 0.45, 0.62)
-	env.ambient_light_energy = 0.9
-	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	# Bloom so neon trims, lights and pickups glow.
-	env.glow_enabled = true
-	env.glow_intensity = 0.9
-	env.glow_bloom = 0.15
-	env.glow_hdr_threshold = 0.9
+	# Starry night sky with a moon, shooting stars and distant fireworks.
+	var env := NightSky.make_environment()
 	var world_env := WorldEnvironment.new()
 	world_env.name = "WorldEnvironment"
 	world_env.environment = env
 	holder.add_child(world_env)
+	var night := NightSky.new()
+	night.name = "NightSky"
+	holder.add_child(night)
+	# Belfast on the horizon: Cave Hill and the Harland & Wolff cranes.
+	var skyline := BelfastSkyline.new()
+	skyline.name = "BelfastSkyline"
+	skyline.position = Vector3(0.0, -13.0, -1300.0)
+	holder.add_child(skyline)
 
 
 ## Decorative grass field far below the course (below the fall limit, no collision).

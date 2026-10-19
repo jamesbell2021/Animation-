@@ -114,6 +114,7 @@ func _build_model() -> void:
 	var mark := Label3D.new()
 	mark.text = "?"
 	mark.font_size = 140
+	mark.font = GameFonts.title()
 	mark.outline_size = 18
 	mark.modulate = Color(glow.r * 1.6, glow.g * 1.6, glow.b * 1.6)
 	mark.billboard = BaseMaterial3D.BILLBOARD_ENABLED

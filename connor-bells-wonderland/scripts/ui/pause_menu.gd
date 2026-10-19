@@ -50,7 +50,9 @@ func _build() -> void:
 	menu_button.offset_right = 60.0
 	menu_button.offset_top = 10.0
 	menu_button.offset_bottom = 58.0
-	menu_button.add_theme_font_size_override("font_size", 22)
+	menu_button.add_theme_font_size_override("font_size", 20)
+	UiStyle.style_button(menu_button)
+	GameFonts.use_title(menu_button)
 	menu_button.pressed.connect(func() -> void: set_open(true))
 	add_child(menu_button)
 
@@ -68,6 +70,7 @@ func _build() -> void:
 	panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
 	panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	panel.grow_vertical = Control.GROW_DIRECTION_BOTH
+	UiStyle.style_panel(panel, 20.0)
 	_overlay.add_child(panel)
 	var box := VBoxContainer.new()
 	box.custom_minimum_size = Vector2(320.0, 0.0)
@@ -78,6 +81,7 @@ func _build() -> void:
 	title.text = "PAUSED" if pause_tree else "MENU"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", 36)
+	GameFonts.use_title(title)
 	title.add_theme_color_override("font_color", CourseBuilder.accent(0))
 	box.add_child(title)
 	box.add_child(_button("Resume", func() -> void: set_open(false)))
@@ -91,6 +95,7 @@ func _button(text: String, callback: Callable) -> Button:
 	button.text = text
 	button.custom_minimum_size = Vector2(0.0, 56.0)
 	button.add_theme_font_size_override("font_size", 26)
+	UiStyle.style_button(button)
 	button.pressed.connect(callback)
 	return button
 

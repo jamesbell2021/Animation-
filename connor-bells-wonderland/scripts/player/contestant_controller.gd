@@ -50,6 +50,8 @@ var charging: bool = false
 var ballistic: bool = false
 
 var _ballistic_time: float = 0.0
+## Knocked flying: keeps its speed through the air (no air drag) until it lands.
+var _flung_time: float = -1.0
 
 var _visual: ContestantVisuals
 var _stumble: StumbleController
@@ -99,7 +101,7 @@ func _physics_process(delta: float) -> void:
 
 	var control := 1.0 if on_floor else air_control
 	var horizontal := Vector3(velocity.x, 0.0, velocity.z)
-	if ballistic:
+	if ballistic or _flung_time >= 0.0:
 		pass
 	elif wish_dir.length() > 0.01:
 		horizontal = horizontal.move_toward(wish_dir * move_speed, acceleration * control * delta)
@@ -121,6 +123,10 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 	_handle_collisions()
 
+	if _flung_time >= 0.0:
+		_flung_time += delta
+		if _flung_time > 0.15 and is_on_floor():
+			_flung_time = -1.0
 	if ballistic:
 		_ballistic_time += delta
 		if _ballistic_time > 0.15 and is_on_floor():
@@ -146,6 +152,10 @@ func _physics_process(delta: float) -> void:
 
 
 ## Horizontal unit vector the contestant is facing.
+func get_visuals() -> ContestantVisuals:
+	return _visual
+
+
 func get_facing() -> Vector3:
 	var yaw := _visual.rotation.y if _visual != null else 0.0
 	return Vector3(-sin(yaw), 0.0, -cos(yaw))
@@ -156,14 +166,17 @@ func is_stumbling() -> bool:
 
 
 ## Replace velocity with [param impulse] and tumble for [param stumble_seconds].
-func knock(impulse: Vector3, stumble_seconds: float = 0.9) -> void:
+## With [param fly] the contestant sails through the air and tumbles instead of
+## slowing down (big paintball hits).
+func knock(impulse: Vector3, stumble_seconds: float = 0.9, fly: bool = false) -> void:
 	velocity = impulse
 	ballistic = false
+	_flung_time = 0.0 if fly else -1.0
 	FX.burst(self, "impact", global_position + Vector3.UP * 0.9)
 	if not is_local_player:
 		SoundManager.world(self, "knock", global_position, 1.0, -3.0)
 	if _stumble != null and stumble_seconds > 0.0:
-		_stumble.stumble(stumble_seconds)
+		_stumble.stumble(stumble_seconds, 16.0 if fly else 8.0)
 	knocked.emit(impulse)
 
 
@@ -184,6 +197,7 @@ func launch(new_velocity: Vector3) -> void:
 func respawn() -> void:
 	velocity = Vector3.ZERO
 	ballistic = false
+	_flung_time = -1.0
 	charging = false
 	use_held = false
 	global_position = respawn_position

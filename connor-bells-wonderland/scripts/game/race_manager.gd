@@ -16,6 +16,8 @@ enum State { WAITING, COUNTDOWN, RACING, FINISHED }
 @export var finish_grace_seconds: float = 30.0
 ## Hard limit for a race, in case nobody finishes.
 @export var max_race_seconds: float = 300.0
+## False for modes with no finish line (Paintball Battle).
+@export var needs_finish_area: bool = true
 
 var state: State = State.WAITING
 var race_time: float = 0.0
@@ -78,7 +80,7 @@ func clear_contestants() -> void:
 
 
 func start_countdown() -> void:
-	if _finish_area == null:
+	if _finish_area == null and needs_finish_area:
 		push_error("RaceManager.start_countdown: no finish area registered.")
 	race_time = 0.0
 	_results.clear()
@@ -151,6 +153,20 @@ func _on_contestant_fell(contestant: Contestant) -> void:
 	var id := contestant.get_instance_id()
 	_falls[id] = _falls.get(id, 0) + 1
 	contestant_fell.emit(contestant, _falls[id])
+
+
+## Ends the race with results worked out elsewhere (Paintball Battle).
+func end_with_results(results: Array) -> void:
+	if state == State.FINISHED:
+		return
+	state = State.FINISHED
+	for c in _contestants:
+		if is_instance_valid(c):
+			c.controls_enabled = false
+	_results.clear()
+	for entry in results:
+		_results.append(entry)
+	race_finished.emit(_results.duplicate())
 
 
 func _end_race() -> void:

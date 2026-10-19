@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Launch Connor Bell's Wonderland.
+# Launch Connor's Carnival Chaos.
 # Godot needs a one-time import that builds the list of named scripts in .godot/.
 # This runs it on a fresh clone, and again whenever a script is newer than that
 # list (for example after a git pull) or a different Godot version is used.
