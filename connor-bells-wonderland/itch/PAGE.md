@@ -15,7 +15,7 @@ Everything to paste into itch.io when the game goes up. The builds come from
 | Release status | Released |
 | Pricing | **No payments** (completely free) |
 | Genre | Action |
-| Tags | `3D`, `Racing`, `Party`, `Local multiplayer`, `Funny`, `Obby`, `Neon`, `Godot`, `Family Friendly` |
+| Tags | `3D`, `Racing`, `Party`, `Local multiplayer`, `Funny`, `Obby`, `Neon`, `Godot`, `Family Friendly`, `Android` |
 | AI generation disclosure | Answer honestly: the game's code (and the shapes, music and sounds it builds) was written with an AI coding assistant, so tick **Yes** for the parts that apply. |
 | Cover image | `itch/images/cover.png` (630 × 500) |
 | Screenshots | `itch/images/screenshot_*.png` (1280 × 720), in number order |
@@ -28,6 +28,7 @@ Everything to paste into itch.io when the game goes up. The builds come from
 | `ConnorsCarnivalChaos-web.zip` | Tick **This file will be played in the browser** |
 | `ConnorsCarnivalChaos-windows.zip` | Platform: Windows |
 | `ConnorsCarnivalChaos-linux.zip` | Platform: Linux |
+| `ConnorsCarnivalChaos-android.apk` | Platform: Android |
 
 ### Embed options (browser version)
 
@@ -93,10 +94,15 @@ giraffe called Tower, a pedalo to cross the Irish Sea...
 
 #### Play with your mates
 
-Download the **Windows** or **Linux** version and play together on the same Wi-Fi:
-one person presses **Host Wi-Fi Game**, everyone else types the IP address it
-shows and presses **Join**. Windows and Linux can play together. (On Windows, click
-**Allow** when the firewall asks.) The browser version is solo against bots.
+Download the **Android**, **Windows** or **Linux** version and play together on the
+same Wi-Fi: one person presses **Host Wi-Fi Game**, everyone else types the IP
+address it shows and presses **Join**. Phones and PCs can all play together. (On
+Windows, click **Allow** when the firewall asks.) The browser version is solo
+against bots.
+
+**On Android:** download the APK on the phone and open it. Android will ask to
+allow installing from your browser ("Install unknown apps"); say yes. On the phone
+you get a joystick on the left and JUMP and USE buttons on the right.
 
 #### Credits
 

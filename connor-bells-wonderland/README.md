@@ -210,10 +210,21 @@ has the cover (630 × 500) and screenshots (1280 × 720).
 
 ## Android build
 
-`export_presets.cfg` holds an arm64 Android preset (landscape, immersive, network
-permissions). Install the Godot 4.3 export templates, the Android SDK and JDK 17, set
-their paths and a debug keystore in *Editor Settings → Export → Android*, then
-*Project → Export → Android → Export Project*. The APK goes to `build/`.
+`export_presets.cfg` holds an arm64 Android preset (landscape, immersive, Wi-Fi
+permissions, launcher icons from `icons/`). On a phone the touch controls appear
+by themselves: a joystick under your left thumb, JUMP and USE on the right. Phones
+can join Wi-Fi games with PCs and each other. Phones without Vulkan fall back to
+OpenGL, and then hide far scenery the same way the browser version does.
+
+To build it: install the Godot 4.3 export templates, the Android SDK
+(`platform-tools` and `build-tools`) and a JDK (17 or newer), set their paths in
+*Editor Settings → Export → Android*, then run `tools/itch/build_itch.sh` with
+`ANDROID_KEYSTORE` and `ANDROID_KEYSTORE_PASSWORD` set (see the script). Sign every
+release with the same keystore, or phones refuse to install it over the old one.
+The APK lands in `build/itch/`.
+
+To install it on a phone, open the APK (from itch.io, or sent over) and allow
+"Install unknown apps" for the browser or file manager when Android asks.
 
 ## Renaming the game
 

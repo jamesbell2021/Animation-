@@ -223,7 +223,11 @@ func _process(delta: float) -> void:
 func _next_tip() -> void:
 	_tip_left = 4.5
 	_tip_index = (_tip_index + 1) % TIPS.size()
-	_tip.text = TIPS[_tip_index]
+	var tip := TIPS[_tip_index]
+	if DisplayServer.is_touchscreen_available():
+		# Phones: name the on-screen buttons instead of keys.
+		tip = tip.replace("Hold E", "Hold USE").replace("hold E", "hold USE").replace("SPACE", "JUMP")
+	_tip.text = tip
 	_tip.modulate.a = 0.0
 	_tip.create_tween().tween_property(_tip, "modulate:a", 1.0, 0.4)
 
