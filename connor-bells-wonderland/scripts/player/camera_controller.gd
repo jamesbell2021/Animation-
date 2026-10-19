@@ -97,13 +97,27 @@ func _process(delta: float) -> void:
 		v_offset = 0.0
 
 
-## Pulls the orbiting camera in front of any scenery between it and the target.
+## Keeps scenery from getting between the camera and the target. In the arena
+## the camera first rises up over low walls; otherwise (or if that fails) it is
+## pulled in front of whatever is in the way.
 func _unblocked(desired: Vector3) -> Vector3:
 	var focus := _target.global_position + Vector3.UP * look_height
+	var space := get_world_3d().direct_space_state
 	var query := PhysicsRayQueryParameters3D.create(focus, desired, 1)
-	var hit_info := get_world_3d().direct_space_state.intersect_ray(query)
+	var hit_info := space.intersect_ray(query)
 	if hit_info.is_empty():
 		return desired
+	if arena_mode and not _orbit:
+		var flat := Vector3(desired.x - _target.global_position.x, 0.0, desired.z - _target.global_position.z)
+		for step in range(1, 6):
+			var lift := float(step) * 3.0
+			var candidate := _target.global_position + flat * (1.0 - float(step) * 0.08) + Vector3.UP * (height + lift)
+			if space.intersect_ray(PhysicsRayQueryParameters3D.create(focus, candidate, 1)).is_empty():
+				return candidate
+		# Pressed against a wall: look down from almost straight above.
+		var overhead := _target.global_position + flat * 0.12 + Vector3.UP * (height + 6.0)
+		if space.intersect_ray(PhysicsRayQueryParameters3D.create(focus, overhead, 1)).is_empty():
+			return overhead
 	var hit_pos: Vector3 = hit_info["position"]
 	return hit_pos + (focus - hit_pos).normalized() * 0.6
 

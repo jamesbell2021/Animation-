@@ -73,7 +73,15 @@ func _setup() -> void:
 			var gunner := PaintballBot.new()
 			g.player.add_child(gunner)
 			gunner.setup(g.player, g.paintball, 2)
-			g.camera.fov = 86.0
+			g.camera.fov = 74.0
+			# Start Connor near the middle, where the fighting is.
+			g.player.global_position = Vector3(3.0, 1.0, 13.0)
+			g.camera.set_target(g.player)
+			# For the reel: Connor stays in, and the screen splat doesn't hide the action.
+			g.paintball._state[str(g.player.name)]["lives"] = 99
+			g.hud._overlay.visible = false
+			g.hud._progress_label.visible = false
+			g.hud._message_label.visible = false
 			_end_after(10.0)
 		"finale":
 			_bot_connor()
@@ -110,10 +118,10 @@ func _direct(f: int) -> void:
 		"paintball":
 			if f == 10:
 				_caption("PAINTBALL BATTLE!", "LAST ONE STANDING WINS")
-			if f == 170:
+			if f == 150:
 				_caption("SPLAT!")
 				_force_hit_on(g.player)
-			if f == 235:
+			if f == 215:
 				_force_hit_on(_nearest_rival(g.player))
 		"finale":
 			if f == -10:
@@ -138,6 +146,15 @@ func _direct(f: int) -> void:
 					results.append({"name": str(c.name), "place": place, "time": _toaster_time() + float(place - 1) * 1.3, "falls": place % 3, "finished": true})
 					place += 1
 				g.race_manager.end_with_results(results)
+			if f == 1:
+				# Closer camera and bigger prize text for a phone screen.
+				g.camera.orbit_distance = 13.0
+				g.camera.height = 3.0
+				g.camera.look_height = 7.0
+				g.hud._prize_lead.add_theme_font_size_override("font_size", 56)
+				g.hud._prize_label.add_theme_font_size_override("font_size", 92)
+				g.hud._prize_label.offset_left = -560.0
+				g.hud._prize_label.offset_right = 560.0
 
 
 ## A finishing time that makes Prizes.pick() give the toaster (it's seeded).
