@@ -36,6 +36,22 @@ Everything to paste into itch.io when the game goes up. The builds come from
 - Leave *SharedArrayBuffer support* off (not needed)
 - Mobile friendly: off (the browser version wants a keyboard)
 
+## Theme (the **Edit theme** button at the top of the game's page)
+
+Dark neon, to match the game. itch.io's labels may differ a little.
+
+| Setting | Value |
+|---|---|
+| Banner | `itch/images/banner.png` (960 × 300; it replaces the plain title) |
+| Background colour (BG) | `#05050D` (night sky) |
+| Inner column colour (BG2) | `#11121F` |
+| Text colour | `#ECE8F2` |
+| Link colour | `#00C7FF` (the game's electric cyan) |
+| Button colour | `#FF6B00` (the game's hot orange) |
+| Headers font | **Bungee** if it's in the list (it's the game's title font), otherwise another chunky display font such as Bangers or Russo One |
+| Body font | **Russo One** if it's in the list (the game's other font), otherwise Lato |
+| Embed background (Edit game > Embed options) | `#000000` |
+
 ## Description (paste this into the page)
 
 ---
