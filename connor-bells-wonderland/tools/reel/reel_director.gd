@@ -134,7 +134,7 @@ func _direct(f: int) -> void:
 				_caption("", "A 3BL_INDIE GAME")
 		"end":
 			if f == 5:
-				_caption("COMING SOON", "RACE  •  PAINTBALL  •  DODGEMS  •  TOWER CLIMB")
+				_caption("FREE ON ITCH.IO", "DESIGNED BY CONNOR, AGE 13 - HIS FIRST GAME!")
 		"dodgems":
 			if f == 10:
 				_caption("DODGEM DERBY!", "KNOCK THEM INTO THE IRISH SEA")

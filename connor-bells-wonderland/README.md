@@ -191,6 +191,23 @@ countdown, then presses **Start Race**. The host simulates everything; clients s
 their input and see smoothed copies. If phones can't see each other, check that the
 router doesn't have "AP isolation" turned on.
 
+## itch.io release
+
+Connor's Carnival Chaos goes on itch.io **free**, credited as designed by Connor,
+age 13: his first game design. `tools/itch/build_itch.sh` (needs Godot 4.3 and its
+export templates) builds the three uploads into `build/itch/`:
+
+- **Windows** and **Linux** downloads, with `HOW_TO_PLAY.txt`. Wi-Fi multiplayer
+  works in these, and Windows and Linux can play together.
+- A **browser** version (`index.html` at the top of the zip; tick *This file will
+  be played in the browser* on itch.io). Browsers can't do Wi-Fi games, so Host
+  and Join (and Quit) are hidden there. WebGL also stops drawing the 3D world once
+  about a thousand objects are showing, so in the browser `WebCuller` hides the
+  scenery and item boxes furthest from the camera to stay under that.
+
+`itch/PAGE.md` has the store page text and settings to paste in, and `itch/images/`
+has the cover (630 × 500) and screenshots (1280 × 720).
+
 ## Android build
 
 `export_presets.cfg` holds an arm64 Android preset (landscape, immersive, network
