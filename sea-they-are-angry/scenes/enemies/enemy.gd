@@ -12,6 +12,7 @@ const RETREAT_MULT := 2.0
 const DESPAWN_RADIUS := 30.0
 const SINK_RATE := 0.6
 const WAYPOINT_REACHED := 0.7
+const STRUCTURE_REACH := 1.0
 const REPATH_EVERY := 0.5
 const OFF_ROUTE_HEIGHT := 1.2
 const FALL_RATE := 9.0
@@ -42,6 +43,14 @@ var attack_target: Structure
 var route: Array[Vector3] = []
 ## What last hurt it: "beam", "hook", "fall", or "reached" once it gets to the light.
 var last_hit := ""
+## Set by the lamp each frame its beam is on this creature; cleared after moving.
+var lit_this_frame := false
+## Seconds left hidden inside a Squid's ink cloud (unless the beam is on it).
+var inked := 0.0
+# Too heavy to be shoved off the ledge at or above this.
+const SHOVE_MAX_MASS := 3.0
+var _resume_state: StringName = &""
+var _stagger_len := 0.0
 
 var _knock := Vector3.ZERO
 var _detour_t := 0.0
@@ -82,6 +91,21 @@ func light_probe_points() -> Array:
 		out.append(global_position + Vector3(0.0, float(h), 0.0))
 	return out
 
+const HOME_IDS := ["cottage", "shed", "garden"]
+
+## The nearest standing building of the homestead, or null if all are wrecked.
+static func nearest_home(from: Vector3) -> Structure:
+	var best: Structure = null
+	var best_d := INF
+	var tree := Engine.get_main_loop() as SceneTree
+	for s in tree.get_nodes_in_group("structures"):
+		if s is Structure and HOME_IDS.has(s.id) and not s.is_destroyed():
+			var d := Geo.flat_dist(from, s.global_position)
+			if d < best_d:
+				best_d = d
+				best = s
+	return best
+
 func _enter_Arrived() -> void:
 	velocity = Vector3.ZERO
 
@@ -111,8 +135,13 @@ func _physics_process(delta: float) -> void:
 	velocity += _knock
 	_knock = _knock.move_toward(Vector3.ZERO, KNOCKBACK_DECAY * delta)
 	move_and_slide()
-	# Reset after use: the lamp re-applies its slow every physics frame through in_light().
+	# Ink hides it, except while the beam is on it.
+	if inked > 0.0:
+		inked = maxf(0.0, inked - delta)
+	visible = inked <= 0.0 or lit_this_frame
+	# Reset after use: the lamp re-applies these every physics frame through in_light().
 	speed_mult = 1.0
+	lit_this_frame = false
 
 func _on_phase_changed(p: int) -> void:
 	if p == Cycle.Phase.DAWN and state != &"Retreat":
@@ -147,11 +176,25 @@ func _tick_Emerge(_delta: float) -> void:
 func _enter_Approach() -> void:
 	target = pick_target()
 	if _last_wp == Vector3.INF:
-		# First time ashore: plot the way up unless the spawner already did.
+		# First time ashore: plot the way unless the spawner already did.
 		if route.is_empty():
-			set_route(Nav.route_to_light(global_position))
+			replan()
 		else:
 			_last_wp = global_position
+
+## Plot a fresh route from here to the current target.
+func replan() -> void:
+	if target != null and is_instance_valid(target):
+		set_route(Nav.route_to(global_position, target.global_position))
+	else:
+		set_route(Nav.route_to_light(global_position))
+
+## Virtual: whether it has reached its target. Buildings are measured to their walls.
+func at_target() -> bool:
+	if target is Structure and target != lighthouse:
+		return target.surface_distance(global_position) < STRUCTURE_REACH
+	var to := target.global_position - global_position
+	return Vector2(to.x, to.z).length() < reach
 
 func set_route(r: Array[Vector3]) -> void:
 	route = r
@@ -178,21 +221,21 @@ func _check_route(delta: float) -> void:
 	if ab.length_squared() > 0.001:
 		k = clampf(Vector2(global_position.x - a.x, global_position.z - a.z).dot(ab) / ab.length_squared(), 0.0, 1.0)
 	if absf(ground_y() - lerpf(a.y, b.y, k)) > OFF_ROUTE_HEIGHT:
-		set_route(Nav.route_to_light(global_position))
+		replan()
 
 func _tick_Approach(delta: float) -> void:
-	if target == null or not is_instance_valid(target):
+	if target == null or not is_instance_valid(target) or (target is Structure and target != lighthouse and target.is_destroyed()):
+		# Its building is already wrecked: on to the next thing.
 		target = pick_target()
+		replan()
 	if target == null:
 		velocity = Vector3.ZERO
 		return
-	var to := target.global_position - global_position
-	to.y = 0.0
-	if to.length() < reach:
+	if at_target():
 		change_state(&"Arrived")
 		return
 	_check_route(delta)
-	to = _steer_point() - global_position
+	var to := _steer_point() - global_position
 	to.y = 0.0
 	if to.length() < 0.01:
 		to = target.global_position - global_position
@@ -308,17 +351,39 @@ func _tick_Retreat(delta: float) -> void:
 	if _in_water:
 		position.y = g - _sink_t * SINK_RATE * 2.0 - SINK_RATE
 
+## Reeling for a moment: stops, wobbles, then carries on with what it was doing.
+func stagger(duration: float) -> void:
+	if state == &"Stagger" or state == &"Emerge" or state == &"Retreat":
+		return
+	_resume_state = state
+	_stagger_len = duration
+	change_state(&"Stagger")
+
+func _enter_Stagger() -> void:
+	velocity = Vector3.ZERO
+
+func _tick_Stagger(_delta: float) -> void:
+	velocity = Vector3.ZERO
+	rotation.z = sin(state_t * 22.0) * 0.12 * (1.0 - state_t / maxf(_stagger_len, 0.01))
+	if state_t >= _stagger_len:
+		rotation.z = 0.0
+		change_state(_resume_state if _resume_state != &"" else &"Approach")
+
+## Virtual: whether hits land at all right now.
+func is_vulnerable() -> bool:
+	return true
+
 # ---- damage ----
 
 func take_damage(amount: int, from_dir: Vector3 = Vector3.ZERO, source: Node = null) -> void:
-	if state == &"Emerge" or hp <= 0:
+	if state == &"Emerge" or hp <= 0 or not is_vulnerable():
 		return
 	if source is Player:
 		last_hit = "hook"
 	hp -= amount
 	_knock += Vector3(from_dir.x, 0.0, from_dir.z) * (KNOCKBACK / mass)
 	# On the ledge, a blow aimed outward sends it over the edge.
-	if source != null and hp > 0 and Terrain.on_ledge(global_position.x, global_position.z):
+	if source != null and hp > 0 and mass < SHOVE_MAX_MASS and Terrain.on_ledge(global_position.x, global_position.z):
 		var out := Vector3(global_position.x, 0.0, global_position.z).normalized()
 		if Vector3(from_dir.x, 0.0, from_dir.z).dot(out) > SHOVE_DOT:
 			_knock = out * SHOVE_SPEED

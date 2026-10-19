@@ -40,6 +40,16 @@ The crag and its ledge path (Bad North layout; the shots above are of the earlie
 |---|
 | ![ledge](screenshots/crag_ledge.png) |
 
+The creatures and the hammer:
+
+| The Eel coiled round the tower, its head in the focused beam | The Eel's surge up the east beach |
+|---|---|
+| ![eel](screenshots/creature_eel.png) | ![eel surge](screenshots/creature_eel_surge.png) |
+
+| The Crab winding up at the cottage | A Squid on the crag's edge | Mending a fence |
+|---|---|---|
+| ![crab](screenshots/creature_crab.png) | ![squid](screenshots/creature_squid.png) | ![hammer](screenshots/keeper_hammer.png) |
+
 Regenerate with `tools/screenshot.gd`.
 
 The owner's brief is "a Valheim look". In practice that means simple, faceted low-poly shapes with flat colour, carried by modern, moody lighting. It is the lighting and atmosphere that make Valheim read as beautiful, not texture detail. The checklist the game now follows:

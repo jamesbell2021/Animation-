@@ -15,6 +15,17 @@ const INTERACT_RANGE := 2.2
 # so nothing is struck or repaired through the crag's walls.
 const REACH_HEIGHT := 1.5
 const OPERATE_RANGE := 3.8
+# Working the lamp: the keeper walks up to the door and goes in; leaving, steps back out.
+const DOOR_STEP := 2.5
+const DOOR_IN := 1.4
+const DOOR_OUT := 3.1
+const DOOR_WALK_SPEED := 3.2
+# Repairs are a few hammer blows; refuelling is a pour from the oil can.
+const STRIKE_TIME := 0.34
+const STRIKES := 3
+const POUR_TIME := 0.9
+# Knocked flat (the Eel's surge) and shoved (the Crab's slam).
+const PUSH_DECAY := 10.0
 const FALL_SPEED := -5.0
 const BODY_COLOR := Color(0.85, 0.65, 0.2)
 const MODEL_DIR := "res://art/characters/%s.glb"
@@ -77,6 +88,21 @@ var _climb_t := -1.0
 var _climb_len := 1.0
 # Where the mouse cursor meets the ground or the sea, while working the lamp.
 var _lamp_point := Vector3.INF
+# Walking in or out of the lighthouse door, or busy with a tool: no control meanwhile.
+var _scripted := false
+var _inside := false
+var _walking_in := false
+var _walk_tween: Tween
+var _hook_holder: Node3D
+var _hammer: Node3D
+var _can: Node3D
+var _job_tool := ""
+var _job_t := 0.0
+var _job_len := 0.0
+var _job_target: Node
+var _job_strikes := 0
+var _prone_t := 0.0
+var _push := Vector3.ZERO
 
 func _ready() -> void:
 	add_to_group("player")
@@ -90,6 +116,9 @@ func _ready() -> void:
 	_hook_pivot = Node3D.new()
 	_hook_pivot.position = Vector3(0.4, 0.9, 0.0)
 	_pose.add_child(_hook_pivot)
+	_hook_holder = Node3D.new()
+	_hook_pivot.add_child(_hook_holder)
+	_build_tools()
 	if not _build_model():
 		Geo.cyl(_pose, 0.35, 1.2, BODY_COLOR, Vector3(0.0, 0.6, 0.0))
 		Geo.cyl(_pose, 0.22, 0.32, Color(0.9, 0.75, 0.62), Vector3(0.0, 1.38, 0.0))
@@ -99,8 +128,8 @@ func _ready() -> void:
 	Cycle.phase_changed.connect(_on_phase_changed)
 	_set_lantern(Cycle.phase == Cycle.Phase.DUSK or Cycle.phase == Cycle.Phase.NIGHT)
 	if not _build_hook():
-		Geo.box(_hook_pivot, Vector3(0.06, 0.06, 1.6), Color(0.18, 0.15, 0.12), Vector3(0.0, 0.0, -0.6))
-		Geo.box(_hook_pivot, Vector3(0.06, 0.25, 0.06), Color(0.3, 0.3, 0.32), Vector3(0.0, -0.1, -1.4))
+		Geo.box(_hook_holder, Vector3(0.06, 0.06, 1.6), Color(0.18, 0.15, 0.12), Vector3(0.0, 0.0, -0.6))
+		Geo.box(_hook_holder, Vector3(0.06, 0.25, 0.06), Color(0.3, 0.3, 0.32), Vector3(0.0, -0.1, -1.4))
 	Geo.cyl_shape(self, 0.35, 1.6, Vector3(0.0, 0.8, 0.0))
 
 # Loads a Z-up, vertex-coloured GLB from art/ and stands it upright. Returns null if
@@ -185,8 +214,31 @@ func _build_hook() -> bool:
 	h.rotation.y = PI
 	h.position = Vector3(0.0, 0.0, 0.45)
 	h.scale = Vector3.ONE * 1.25
-	_hook_pivot.add_child(h)
+	_hook_holder.add_child(h)
 	return true
+
+# A claw hammer for repairs and an oil can for the lamp, carried in place of the boathook.
+func _build_tools() -> void:
+	var wood := Look.flat_mat(Color(0.45, 0.33, 0.2), 0.8)
+	var iron := Look.flat_mat(Color(0.22, 0.22, 0.24), 0.4)
+	# Drawn larger than life so the tool reads from the camera, like the boathook.
+	_hammer = Node3D.new()
+	_hammer.scale = Vector3.ONE * 1.7
+	_hook_pivot.add_child(_hammer)
+	var handle := Geo.box(_hammer, Vector3(0.045, 0.045, 0.46), Color.WHITE, Vector3(0.0, 0.0, -0.22))
+	handle.material_override = wood
+	var head := Geo.box(_hammer, Vector3(0.08, 0.22, 0.08), Color.WHITE, Vector3(0.0, -0.03, -0.44))
+	head.material_override = iron
+	_hammer.visible = false
+	_can = Node3D.new()
+	_can.scale = Vector3.ONE * 1.6
+	_hook_pivot.add_child(_can)
+	var body := Geo.box(_can, Vector3(0.2, 0.26, 0.13), Color.WHITE, Vector3(0.0, -0.08, -0.28))
+	body.material_override = Look.flat_mat(Color(0.55, 0.16, 0.12), 0.5)
+	var spout := Geo.cyl(_can, 0.02, 0.24, Color.WHITE, Vector3(0.0, 0.08, -0.42))
+	spout.material_override = iron
+	spout.rotation.x = deg_to_rad(-55.0)
+	_can.visible = false
 
 # A paraffin lantern carried in the left hand: lights the keeper's way at night.
 func _build_lantern() -> void:
@@ -236,6 +288,9 @@ func _set_lantern(lit: bool) -> void:
 
 func _on_phase_changed(p: int) -> void:
 	_set_lantern(p == Cycle.Phase.DUSK or p == Cycle.Phase.NIGHT)
+	# Morning: the lamp is out, so the keeper comes down and out to start the day.
+	if p == Cycle.Phase.DAWN and _inside:
+		_toggle_operate()
 	if p == Cycle.Phase.DAWN and downed:
 		revive(DAWN_HP)
 
@@ -299,12 +354,25 @@ func _physics_process(delta: float) -> void:
 	if _climb_t >= 0.0:
 		_climbing(delta)
 		return
+	if _prone_t > 0.0:
+		_lying(delta)
+		return
+	if _scripted:
+		if _job_tool != "":
+			_work(delta)
+		_animate(delta)
+		return
 	_attack_cd = maxf(0.0, _attack_cd - delta)
 	_aim_face_t = maxf(0.0, _aim_face_t - delta)
 	_update_aim()
 	_update_swing(delta)
 	if Input.is_action_just_pressed(_act("operate")):
 		_toggle_operate()
+	if _inside:
+		# Up in the lamp room: aim and switch the beam; nothing else reaches in here.
+		if operating and Input.is_action_just_pressed(_act("beam_mode")) and lamp:
+			lamp.toggle_mode()
+		return
 	if operating:
 		velocity.x = 0.0
 		velocity.z = 0.0
@@ -315,6 +383,9 @@ func _physics_process(delta: float) -> void:
 		if Input.is_action_just_pressed(_act("attack")) and _attack_cd <= 0.0:
 			_attack()
 	velocity.y = 0.0 if is_on_floor() else FALL_SPEED
+	velocity.x += _push.x
+	velocity.z += _push.z
+	_push = _push.move_toward(Vector3.ZERO, PUSH_DECAY * delta)
 	var before := global_position
 	move_and_slide()
 	_clamp_to_island(before)
@@ -328,7 +399,11 @@ func _physics_process(delta: float) -> void:
 		return
 	_target = _find_interactable()
 	if Input.is_action_just_pressed(_act("interact")) and _target != null:
-		_target.interact(self)
+		var tool: String = _target.work_kind() if _target.has_method("work_kind") else ""
+		if tool != "":
+			_start_job(tool, _target)
+		else:
+			_target.interact(self)
 
 # Face where the keeper walks; face the cursor while swinging or working the lamp.
 func _update_facing(delta: float) -> void:
@@ -359,8 +434,18 @@ func _animate(delta: float) -> void:
 			# Raise the hook arm and chop down through the swing.
 			var k := 1.0 - _swing_t / SWING_TIME
 			arm = lerpf(-1.9, 0.4, k)
+		if _job_tool == "hammer":
+			# Lift slowly, then bring the hammer down hard.
+			var ph := fmod(_job_t, STRIKE_TIME) / STRIKE_TIME
+			arm = lerpf(0.2, -1.6, ph / 0.65) if ph < 0.65 else lerpf(-1.6, 0.35, (ph - 0.65) / 0.35)
+		elif _job_tool == "can":
+			arm = -1.0
 		_joints["arm_r"].rotation.x = arm
 		_hook_pivot.rotation.x = -arm * 0.6
+		if _job_tool == "can":
+			_hook_pivot.rotation.z = lerpf(0.0, 1.1, smoothstep(0.0, 0.3, _job_t / maxf(_job_len, 0.01)))
+		else:
+			_hook_pivot.rotation.z = 0.0
 	if _model:
 		var bob := absf(sin(_walk_phase)) * 0.06 * _move_amount + sin(_breath * 2.0) * 0.008
 		_model.position.y = bob
@@ -523,6 +608,8 @@ func _toggle_operate() -> void:
 		return
 	if operating:
 		_stop_operating()
+		if _inside or _walking_in:
+			_come_out()
 		return
 	if Geo.flat_dist(global_position, lamp.lighthouse.global_position) > OPERATE_RANGE:
 		Events.message.emit("Get closer to the lighthouse to operate the lamp.")
@@ -532,6 +619,7 @@ func _toggle_operate() -> void:
 		return
 	operating = true
 	lamp.set_operator(self)
+	_go_in()
 	if lamp.is_lit():
 		Events.message.emit("On the lamp.  Mouse aims, [Q] beam, [R] leave")
 	else:
@@ -541,6 +629,163 @@ func _stop_operating() -> void:
 	operating = false
 	if lamp and lamp.operator == self:
 		lamp.set_operator(null)
+
+## True while the keeper is up in the lamp room: hidden, untouchable.
+func is_inside() -> bool:
+	return _inside
+
+func _door_point(r: float) -> Vector3:
+	var lh := lamp.lighthouse
+	# The door faces +Z, toward the camera.
+	return Vector3(lh.global_position.x, global_position.y, lh.global_position.z + r)
+
+func _kill_walk() -> void:
+	if _walk_tween and _walk_tween.is_valid():
+		_walk_tween.kill()
+
+func _walk_along(k: float, a: Vector3, b: Vector3) -> void:
+	global_position = a.lerp(b, k)
+	var d := b - a
+	d.y = 0.0
+	velocity = d.normalized() * DOOR_WALK_SPEED if d.length() > 0.01 else Vector3.ZERO
+	if d.length() > 0.01:
+		facing = atan2(-d.x, -d.z)
+		rotation.y = facing
+
+# Up to the door, then through it.
+func _go_in() -> void:
+	_kill_walk()
+	_scripted = true
+	_walking_in = true
+	collision_layer = 0
+	collision_mask = 0
+	var step := _door_point(DOOR_STEP)
+	var inside := _door_point(DOOR_IN)
+	_walk_tween = create_tween()
+	var d := Geo.flat_dist(global_position, step)
+	if d > 0.05:
+		_walk_tween.tween_method(_walk_along.bind(global_position, step), 0.0, 1.0, d / DOOR_WALK_SPEED)
+	_walk_tween.tween_method(_walk_along.bind(step, inside), 0.0, 1.0, (DOOR_STEP - DOOR_IN) / DOOR_WALK_SPEED)
+	_walk_tween.tween_callback(_set_inside.bind(true))
+
+func _set_inside(v: bool) -> void:
+	_inside = v
+	_walking_in = false
+	visible = not v
+	velocity = Vector3.ZERO
+	if v:
+		_scripted = false
+		Audio.sfx("creak", global_position, -6.0, 0.1)
+
+# Out of the door and a few steps clear of it (or, if still on the way in, turn round).
+func _come_out() -> void:
+	_kill_walk()
+	var from := _door_point(DOOR_IN) if _inside else global_position
+	if _inside:
+		Audio.sfx("creak", from, -6.0, 0.1)
+	_set_inside(false)
+	_scripted = true
+	var out := _door_point(DOOR_OUT)
+	global_position = from
+	_walk_tween = create_tween()
+	_walk_tween.tween_method(_walk_along.bind(from, out), 0.0, 1.0, maxf(0.1, Geo.flat_dist(from, out) / DOOR_WALK_SPEED))
+	_walk_tween.tween_callback(_out_of_door)
+
+func _out_of_door() -> void:
+	_scripted = false
+	velocity = Vector3.ZERO
+	collision_layer = 2
+	collision_mask = 1 | 4 | 8
+
+# ---- tools: hammer for repairs, oil can for the lamp ----
+
+func _start_job(tool: String, target: Node) -> void:
+	_scripted = true
+	_job_tool = tool
+	_job_target = target
+	_job_t = 0.0
+	_job_strikes = 0
+	_job_len = STRIKE_TIME * STRIKES if tool == "hammer" else POUR_TIME
+	velocity = Vector3.ZERO
+	_hook_holder.visible = false
+	_hammer.visible = tool == "hammer"
+	_can.visible = tool == "can"
+	var d: Vector3 = (target as Node3D).global_position - global_position
+	if Vector2(d.x, d.z).length() > 0.05:
+		facing = atan2(-d.x, -d.z)
+		rotation.y = facing
+	if tool == "can":
+		Audio.sfx("refuel", global_position, -2.0)
+
+func _work(delta: float) -> void:
+	_job_t += delta
+	if _job_target == null or not is_instance_valid(_job_target):
+		_end_job(false)
+		return
+	if _job_tool == "hammer":
+		# Each blow lands at the bottom of the swing.
+		var landed := int((_job_t + STRIKE_TIME * 0.35) / STRIKE_TIME)
+		if landed > _job_strikes and _job_strikes < STRIKES:
+			_job_strikes = landed
+			var fwd := Vector3(-sin(facing), 0.0, -cos(facing))
+			var at := global_position + fwd * 0.9 + Vector3(0.0, 0.5, 0.0)
+			Audio.sfx("hammer", at, -1.0, 0.12)
+			FX.splinters(get_parent(), at)
+	if _job_t >= _job_len:
+		_end_job(true)
+
+func _end_job(done: bool) -> void:
+	var target := _job_target
+	_job_tool = ""
+	_job_target = null
+	_hammer.visible = false
+	_can.visible = false
+	_hook_holder.visible = true
+	_hook_pivot.rotation.z = 0.0
+	_scripted = false
+	# The work is done: now the stock is spent and the repair or the oil goes in.
+	if done and target != null and is_instance_valid(target):
+		target.interact(self)
+
+func is_busy() -> bool:
+	return _scripted
+
+# ---- knocked about ----
+
+## Knocked flat for t seconds: can't move or act.
+func knock_prone(t: float) -> void:
+	if _inside or downed or hp <= 0:
+		return
+	if _job_tool != "":
+		_end_job(false)
+	_prone_t = t
+	_kill_walk()
+	_scripted = false
+	var tw := create_tween()
+	tw.tween_property(_pose, "rotation:x", deg_to_rad(-80.0), 0.2)
+	tw.parallel().tween_property(_pose, "position:y", 0.25, 0.2)
+
+func _lying(delta: float) -> void:
+	_prone_t -= delta
+	velocity = Vector3(_push.x, 0.0 if is_on_floor() else FALL_SPEED, _push.z)
+	_push = _push.move_toward(Vector3.ZERO, PUSH_DECAY * delta)
+	var before := global_position
+	move_and_slide()
+	_clamp_to_island(before)
+	if _prone_t <= 0.0:
+		_prone_t = 0.0
+		var tw := create_tween()
+		tw.tween_property(_pose, "rotation:x", 0.0, 0.3)
+		tw.parallel().tween_property(_pose, "position:y", 0.0, 0.3)
+
+func is_prone() -> bool:
+	return _prone_t > 0.0
+
+## A shove along v (m/s), fading quickly: the Crab's slam.
+func shove(v: Vector3) -> void:
+	if _inside:
+		return
+	_push = Vector3(v.x, 0.0, v.z)
 
 func _find_interactable() -> Node:
 	var best: Node = null
@@ -569,6 +814,10 @@ func interact_prompt() -> String:
 		return _keys("[E] Hold to revive %s  (%d%%)" % [mate.keeper_name(), roundi(mate.revive_progress * 100.0)])
 	if operating:
 		return _keys("[R] Leave the lamp   [Q] Switch beam")
+	if _job_tool == "hammer":
+		return "Hammering..."
+	if _job_tool == "can":
+		return "Pouring oil..."
 	if _target != null and is_instance_valid(_target):
 		return _keys(_target.interact_prompt())
 	return ""
@@ -624,7 +873,7 @@ func revive(fraction: float) -> void:
 	Events.message.emit("%s is back on their feet." % keeper_name())
 
 func take_damage(amount: int) -> void:
-	if hp <= 0 or downed or not Run.active:
+	if hp <= 0 or downed or not Run.active or _inside:
 		return
 	hp = maxi(0, hp - amount)
 	Audio.sfx("hurt", global_position)

@@ -36,7 +36,7 @@ Choose 1 to 3 keepers on the title screen, then New Run (or Continue).
 | Aim | Mouse | Facing direction | Right stick |
 | Boathook swing | Left mouse | Ctrl | X or right trigger |
 | Use: gather, repair, refuel, climb a ladder, revive (hold) | E | Shift | A |
-| Work the lamp / leave it | R (within 3.8 m of the lighthouse) | / | Y |
+| Work the lamp (walk in at the door) / leave it | R (within 3.8 m of the lighthouse) | / | Y |
 | Switch beam: wide slows, focused burns | Q | . | B |
 | Sprint | Space | , | Right shoulder |
 | Skip the rest of the day or dawn | Enter | | |
@@ -50,7 +50,12 @@ Keepers face the way they walk and turn to their aim to swing. Each carries a pa
 - Keeper movement, mouse aim, boathook attack. A blow aimed outward on the ledge knocks a creature over the edge. Keepers have their own ladders down the crag.
 - The lamp: fuel, wide and focused beams (the focused one reaches the beaches), auto-sweep when nobody operates it, Burning to Guttering to Dark.
 - Six scavenge points on the beaches that refill at dawn, five fences at the chokepoints (beach heads and the ledge), repair, refuel.
-- One enemy, the Bloated Dead: lands on a beach, walks the long way up to the light, batters fences, swells and bursts.
+- Four creatures:
+  - **The Bloated Dead** land on a beach and walk the long way up to the light, batter fences, swell and burst. Some groups raid the homestead instead.
+  - **The Wall-Crawling Squid** climbs straight up cliffs and the crag at the keepers, lunges, and hides the others in ink.
+  - **The Armoured Crab** comes to wreck the cottage, shed or garden; its shell turns blows from the front.
+  - **The Giant Constrictor Eel** surges up and coils round the lighthouse until the focused beam burns its head.
+- Work the lamp from inside the lighthouse: the keeper walks in at the door and out again. Repairs are done with a hammer; refuelling with an oil can. The cottage, shed and garden take damage and need mending too.
 - Foghorn warnings name where they land, the water churns before they surface, and a keeper's log at dawn sums up the night.
 - A spawner driven by a per-night table and the hidden Sea Anger value.
 - HUD, dawn autosave and resume, game-over screen with New Run.

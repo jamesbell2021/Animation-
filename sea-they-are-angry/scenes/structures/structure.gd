@@ -5,10 +5,13 @@ signal health_changed(hp: int, max_hp: int)
 signal destroyed
 
 const REPAIR_AMOUNT := 25
+# Below this much health a building smoulders, so damage reads from across the island.
+const SMOKE_BELOW := 0.45
 
 @export var id: String = ""
 @export var max_hp: int = 100
 var hp: int = 0
+var _smoke: GPUParticles3D
 
 func _ready() -> void:
 	add_to_group("structures")
@@ -18,6 +21,7 @@ func _ready() -> void:
 	hp = max_hp
 	_build()
 	_refresh()
+	_update_smoke()
 
 # Virtual: create meshes and collision shapes.
 func _build() -> void:
@@ -26,6 +30,22 @@ func _build() -> void:
 # Virtual: update visuals from hp.
 func _refresh() -> void:
 	pass
+
+# Virtual: where smoke rises from when badly damaged, in local space; INF for none.
+func smoke_point() -> Vector3:
+	return Vector3.INF
+
+func _update_smoke() -> void:
+	var p := smoke_point()
+	if p == Vector3.INF or not is_inside_tree():
+		return
+	var want := health_ratio() < SMOKE_BELOW
+	if want and _smoke == null:
+		_smoke = FX.emitter(self, to_global(p), FX._puff_mesh_ref(), Color(0.16, 0.15, 0.15, 0.5),
+			18, 3.5, Vector3(0.2, 1.0, 0.1).normalized(), 18.0, 0.6, 1.2, -0.2, 0.5, 1.0, false, true)
+	elif not want and _smoke != null:
+		_smoke.queue_free()
+		_smoke = null
 
 func is_damaged() -> bool:
 	return hp < max_hp
@@ -41,9 +61,19 @@ func health_ratio() -> float:
 func repair_cost() -> Dictionary:
 	return {"driftwood": 1}
 
-## Health restored per repair.
+## Health restored per repair. Homestead buildings and fences mend faster than the
+## lighthouse: a day's driftwood should go a long way toward putting a raid right.
+const MEND_HOMESTEAD := 50
+
 func repair_amount() -> int:
-	return REPAIR_AMOUNT
+	return MEND_HOMESTEAD if id in ["cottage", "shed", "garden"] else REPAIR_AMOUNT
+
+## The tool a keeper works with when using this: "hammer" for a repair they can pay for,
+## "" when there's nothing to do (or it can't be afforded: interact() then says what's missing).
+func work_kind() -> String:
+	if is_damaged() and Stock.can_afford(repair_cost()):
+		return "hammer"
+	return ""
 
 func display_name() -> String:
 	return id
@@ -61,6 +91,7 @@ func take_damage(amount: int) -> void:
 	Events.structure_damaged.emit(self)
 	_on_damaged()
 	_refresh()
+	_update_smoke()
 	if hp == 0:
 		destroyed.emit()
 		Events.structure_destroyed.emit(self)
@@ -78,6 +109,7 @@ func repair(amount: int) -> void:
 	hp = clampi(hp + amount, 0, max_hp)
 	health_changed.emit(hp, max_hp)
 	_refresh()
+	_update_smoke()
 
 func interact_prompt() -> String:
 	if not is_damaged():

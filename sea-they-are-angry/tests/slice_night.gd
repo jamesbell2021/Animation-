@@ -27,9 +27,12 @@ func _go() -> void:
 	check(Run.night == 3 and Stock.get_amount("driftwood") == 9 and Stock.get_amount("bio") == 5 and Anger.value == 4, "relaunch resumes night 3 with saved stock and anger")
 	check(is_equal_approx(main.lighthouse.lamp.fuel, 61.5), "saved fuel restored")
 	var table: Array = main.spawner.night_table(3)
-	check(table.size() == 4 and int(table[0]["count"]) == 4, "night 3 table with anger 4 adds +1 per group: %s" % str(table.map(func(e): return e["count"])))
+	var counts: Array = table.map(func(e): return e["count"])
+	check(counts == [4, 2, 3, 4, 3], "night 3 (B3 C1 S2 B3 S2) with anger 4 adds +1 per group: %s" % str(counts))
 	var t9: Array = main.spawner.night_table(9)
-	check(t9.size() == 5 and int(t9[0]["count"]) == 3 + 2 + 1, "night 9 uses night 4 pattern +2, +1 anger")
+	var t9_groups := t9.filter(func(e): return e["kind"] != "E")
+	var t9_eel := t9.filter(func(e): return e["kind"] == "E")
+	check(t9_groups.size() == 6 and int(t9_groups[0]["count"]) == 3 + 1 + 1 and t9_eel.size() == 1, "night 9 uses the night 7 pattern +1, +1 anger, and brings the Eel (solo)")
 	# Keep the keeper out of the way and the lamp fuelled, then run a night fast.
 	main.player.global_position = Vector3(-2.6, Terrain.height_at(-2.6, 2.2) + 0.15, 2.2)
 	Run.night = 1

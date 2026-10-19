@@ -144,6 +144,13 @@ func interact_prompt() -> String:
 	parts.append("[R] Operate lamp")
 	return "   ".join(parts)
 
+func work_kind() -> String:
+	if is_damaged() and (Stock.can_afford(repair_cost()) or not _can_refuel()):
+		return super.work_kind()
+	if _can_refuel():
+		return "can"
+	return ""
+
 func interact(player: Node) -> bool:
 	if is_damaged():
 		if Stock.can_afford(repair_cost()) or not _can_refuel():

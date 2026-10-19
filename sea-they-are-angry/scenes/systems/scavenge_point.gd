@@ -28,6 +28,8 @@ func _ready() -> void:
 			_build_scrap()
 		"bio":
 			_build_bio()
+		"seaweed":
+			_build_seaweed()
 		_:
 			Geo.box(_mesh, Vector3(0.9, 0.35, 0.6), COLORS.get(kind, Color.GRAY), Vector3(0.0, 0.175, 0.0))
 	rotation.y = randf() * TAU
@@ -64,6 +66,16 @@ func _build_scrap() -> void:
 	var pipe := Geo.cyl(_mesh, 0.07, 0.8, Color.WHITE, Vector3(0.1, 0.1, -0.3))
 	pipe.material_override = iron
 	pipe.rotation = Vector3(0.0, 0.8, deg_to_rad(90.0))
+
+# A heap of wet kelp: dark green fronds slumped over a rock.
+func _build_seaweed() -> void:
+	Look.rock(_mesh, 61, Vector3(0.6, 0.3, 0.5), Vector3(0.0, 0.05, 0.0), Look.STONE, 0.2)
+	var kelp := Look.flat_mat(COLORS["seaweed"], 0.25)
+	for i in 7:
+		var a := float(i) * 0.9
+		var frond := Geo.box(_mesh, Vector3(0.08, 0.04, 0.7), Color.WHITE, Vector3(sin(a) * 0.15, 0.22 + 0.03 * float(i % 3), cos(a) * 0.15))
+		frond.material_override = kelp
+		frond.rotation = Vector3(0.25 * float(i % 2), a, 0.3)
 
 func _build_bio() -> void:
 	Look.rock(_mesh, 44, Vector3(0.7, 0.35, 0.6), Vector3(0.0, 0.05, 0.0), Look.STONE, 0.3)

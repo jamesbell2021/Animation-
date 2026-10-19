@@ -171,6 +171,8 @@ func _run() -> void:
 	Input.action_press("interact")
 	await frames(2)
 	Input.action_release("interact")
+	# A few hammer blows first.
+	await wait_until(func(): return not player.is_busy(), 200)
 	await frames(2)
 	check(fence.hp == 50 and Stock.get_amount("driftwood") == dw - 1 and fence._meshes[0].visible, "E repairs fence 50 for 1 driftwood")
 
@@ -274,6 +276,8 @@ func _run() -> void:
 	Input.action_press("interact")
 	await frames(2)
 	Input.action_release("interact")
+	# Poured from the oil can.
+	await wait_until(func(): return not player.is_busy(), 200)
 	check(lamp.state == Lamp.State.BURNING and lamp.fuel > 20.0, "E with bio refuels and returns to BURNING")
 	lamp.fuel = 0.0
 	await frames(2)

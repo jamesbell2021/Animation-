@@ -49,7 +49,11 @@ func _go() -> void:
 	player.camera = null
 	events.enemy_killed.connect(func(e):
 		var k: String = e.last_hit if e.last_hit != "" else "?"
-		stats[k] = stats.get(k, 0) + 1)
+		stats[k] = stats.get(k, 0) + 1
+		var kinds: Dictionary = stats.get("kinds", {})
+		var kind: String = e.get_script().get_global_name()
+		kinds[kind] = kinds.get(kind, 0) + 1
+		stats["kinds"] = kinds)
 	events.structure_destroyed.connect(func(s): stats["destroyed_" + String(s.id)] = stats.get("destroyed_" + String(s.id), 0) + 1)
 	Engine.time_scale = 8.0
 	for n in nights:
@@ -68,9 +72,9 @@ func _go() -> void:
 			main.players[k].global_position = Terrain.ledge_point(POST_S) + Vector3(0.0, 0.1, 0.0)
 			if main.players[k].downed:
 				main.players[k].revive(0.5)
-		if mode == "bot":
-			lamp.set_operator(player)
-			player.operating = true
+		if mode == "bot" and not player.operating:
+			# In at the lighthouse door, like a keeper would.
+			player._toggle_operate()
 		while run.active and cycle.phase != cycle.Phase.DAWN:
 			t += Engine.time_scale / 60.0
 			for e in get_nodes_in_group("enemies"):
@@ -112,6 +116,12 @@ func _go() -> void:
 		print("NIGHT %d [%s x%d]: landed %d  beam %d  hook %d  fall %d  reached the light %d (avg %.0f s after landing)  lighthouse %d->%d  fences down %d/5  fuel %.0f->%.0f (refuels %d)  run active %s" % [
 			run.night - 1 if cycle.phase == cycle.Phase.DAWN else run.night, mode, keepers, landed.size(), stats.get("beam", 0), stats.get("hook", 0), stats.get("fall", 0),
 			reached, avg_reach, lh_start, main.lighthouse.hp, fences_down, fuel_start, lamp.fuel, stats.get("refuels", 0), run.active])
+		var home: Array[String] = []
+		var kinds := {}
+		for s in get_nodes_in_group("structures"):
+			if s is Structure and Enemy.HOME_IDS.has(s.id):
+				home.append("%s %d/%d" % [s.id, s.hp, s.max_hp])
+		print("   homestead: %s   killed: %s" % [", ".join(home), stats.get("kinds", {})])
 		print("   lamp lit %.0f s, focused %.0f s, of which burning something %.0f s" % [stats.get("lit_s", 0.0), stats.get("focus_s", 0.0), stats.get("burn_s", 0.0)])
 		if not run.active:
 			break
@@ -142,7 +152,7 @@ func _restore(saved: Dictionary) -> void:
 
 func _aim_bot(player: Player, lamp: Lamp) -> void:
 	_bot_think -= Engine.time_scale / 60.0
-	if _bot_think > 0.0 and is_instance_valid(_bot_target) and _bot_target.state == &"Approach":
+	if _bot_think > 0.0 and is_instance_valid(_bot_target) and (_bot_target.state == &"Approach" or _bot_target.state == &"Stalk" or _bot_target.state == &"Coil"):
 		_steer(player, lamp, _bot_target)
 		return
 	_bot_think = REACTION
@@ -154,8 +164,15 @@ func _aim_bot(player: Player, lamp: Lamp) -> void:
 	for e in get_nodes_in_group("enemies"):
 		if e.state == &"Retreat" or e.state == &"Emerge" or e.state == &"Bloat" or e.state == &"Burst":
 			continue
-		var d := Geo.flat_dist(e.global_position, Vector3.ZERO)
-		var drop: float = lamp.global_position.y - e.global_position.y - 1.0
+		# The Crab's shell shrugs off the beam except in its eyes mid-wind-up.
+		if e is Crab and e.state != &"WindUp":
+			continue
+		var probes: Array = e.light_probe_points()
+		if probes.is_empty():
+			continue
+		var at: Vector3 = probes[0]
+		var d := Geo.flat_dist(at, Vector3.ZERO)
+		var drop: float = lamp.global_position.y - at.y
 		var dep := rad_to_deg(atan2(drop, d))
 		var reachable: bool = dep > -Lamp.TILT_DEG - Lamp.FOCUS_ANGLE + 1.0 and dep < -Lamp.TILT_DEG + Lamp.FOCUS_ANGLE - 1.0
 		var score := d if reachable else 100.0 + d
@@ -170,11 +187,15 @@ func _aim_bot(player: Player, lamp: Lamp) -> void:
 		lamp.toggle_mode()
 
 func _steer(player: Player, lamp: Lamp, best: Node3D) -> void:
-	var d := Geo.flat_dist(best.global_position, Vector3.ZERO)
-	var drop: float = lamp.global_position.y - best.global_position.y - 1.0
+	var probes: Array = best.light_probe_points()
+	if probes.is_empty():
+		return
+	var at: Vector3 = probes[0]
+	var d := Geo.flat_dist(at, Vector3.ZERO)
+	var drop: float = lamp.global_position.y - at.y
 	var dep := rad_to_deg(atan2(drop, d))
 	var focus_target: bool = dep > -Lamp.TILT_DEG - Lamp.FOCUS_ANGLE + 1.0 and dep < -Lamp.TILT_DEG + Lamp.FOCUS_ANGLE - 1.0
-	player._aim = Vector3(best.global_position.x, 0.0, best.global_position.z).normalized().rotated(Vector3.UP, _bot_error)
+	player._aim = Vector3(at.x, 0.0, at.z).normalized().rotated(Vector3.UP, _bot_error)
 	# Only pay for the focused beam once it is actually on target.
 	var on_target := absf(wrapf(lamp.yaw - player.aim_yaw(), -PI, PI)) < deg_to_rad(Lamp.FOCUS_ANGLE * 0.8)
 	var want := Lamp.Mode.FOCUSED if focus_target and on_target else Lamp.Mode.WIDE
@@ -221,6 +242,7 @@ func _day_repairs(main) -> void:
 	stock.add("driftwood", 6)
 	stock.add("scrap", 1)
 	stock.add("bio", 2)
+	stock.add("seaweed", 2)
 	for s in get_nodes_in_group("structures"):
 		while s is Structure and s.is_damaged() and stock.spend(s.repair_cost()):
 			s.repair(s.repair_amount())

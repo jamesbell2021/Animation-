@@ -36,6 +36,8 @@ const SCAVENGE := [
 	[1, 0.62, -2.0, "bio", 1],
 	[2, 0.55, -2.0, "driftwood", 2],
 	[2, 0.62, 2.0, "bio", 1],
+	# Kelp for mending the garden, low on the west beach by the tideline.
+	[2, 0.46, 0.0, "seaweed", 2],
 ]
 
 # Per phase: background, ambient colour and energy, sun colour and energy,
@@ -198,18 +200,31 @@ func _on_enemy_killed(e: Node) -> void:
 func _on_structure_destroyed(s: Node) -> void:
 	if s is Fence:
 		_count("fence")
+	elif s is Structure and Enemy.HOME_IDS.has(s.id):
+		_count("home")
 
 func _count(key: String, n: int = 1) -> void:
 	_tally[key] = int(_tally.get(key, 0)) + n
 
-func _on_wave_incoming(points: Array, count: int) -> void:
+func _on_wave_incoming(_points: Array, count: int) -> void:
 	_count("ashore", count)
+
+# One foghorn blast per landing, and a warning naming what and where.
+func _on_group_warning(kind: String, points: Array, raid: bool) -> void:
 	Audio.horn([1.0] if points.size() == 1 else [1.0, 1.0], -5.0)
-	var what := "Something stirs" if count < 4 else "Many things stir"
+	var what: String = SpawnerScript.WARNINGS.get(kind, "Something stirs in the water")
 	var where: Array[String] = []
 	for p in points:
 		where.append(compass(p))
-	hud.warn("%s in the water — %s." % [what, " and ".join(where)])
+	var text := "%s — %s." % [what, " and ".join(where)]
+	if raid:
+		text += "  They're making for the cottage!"
+	hud.warn(text)
+
+func _unhandled_input(event: InputEvent) -> void:
+	# Debug builds: F9 brings the Eel now.
+	if OS.is_debug_build() and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F9 and Run.active:
+		spawner.force_eel()
 
 # Foghorn alarms: a guttering lamp blasts every few seconds; a failing lighthouse warns once a night.
 func _alarms(delta: float) -> void:
@@ -400,24 +415,10 @@ func _build_homestead() -> void:
 	_build_shed(_on_pad(Terrain.PADS[2][0], Terrain.PADS[2][1]))
 
 func _build_shed(at: Vector3) -> void:
-	# Oil and tool store: scenery that blocks movement but takes no damage.
-	var shed := StaticBody3D.new()
-	shed.name = "Shed"
-	shed.collision_layer = 4
-	shed.collision_mask = 0
+	var shed := Shed.new()
 	shed.position = at
 	_face_inward(shed)
 	add_child(shed)
-	var stone := Look.flat_mat(Color(0.44, 0.43, 0.40))
-	var walls := Geo.box(shed, Vector3(2.4, 1.6, 2.0), Color.WHITE, Vector3(0.0, 0.8, 0.0))
-	walls.material_override = stone
-	var roof := Geo.box(shed, Vector3(2.7, 0.12, 2.4), Color.WHITE, Vector3(0.0, 1.75, 0.0))
-	roof.material_override = Look.flat_mat(Color(0.20, 0.22, 0.25), 0.6)
-	roof.rotation.x = deg_to_rad(-12.0)
-	Geo.box(shed, Vector3(0.75, 1.25, 0.08), Color(0.30, 0.22, 0.14), Vector3(0.2, 0.62, -1.03))
-	var barrel := Geo.cyl(shed, 0.28, 0.8, Color.WHITE, Vector3(-0.85, 0.4, -1.35))
-	barrel.material_override = Look.flat_mat(Color(0.18, 0.2, 0.22), 0.5)
-	Geo.box_shape(shed, Vector3(2.4, 1.6, 2.0), Vector3(0.0, 0.8, 0.0))
 
 func _build_sea() -> void:
 	var sea := MeshInstance3D.new()
@@ -496,6 +497,7 @@ func _build_spawner() -> void:
 	spawner.lighthouse = lighthouse
 	add_child(spawner)
 	spawner.wave_incoming.connect(_on_wave_incoming)
+	spawner.group_warning.connect(_on_group_warning)
 
 # ---- cycle ----
 
@@ -562,6 +564,12 @@ func _dawn_report() -> void:
 		cost.append("%d reached the light" % g.call("reached"))
 	if g.call("fence") > 0:
 		cost.append("%d fence%s broken" % [g.call("fence"), "" if g.call("fence") == 1 else "s"])
+	var hurt_home: Array[String] = []
+	for s in get_tree().get_nodes_in_group("structures"):
+		if s is Structure and Enemy.HOME_IDS.has(s.id) and s.is_damaged():
+			hurt_home.append(s.id)
+	if not hurt_home.is_empty():
+		cost.append("%s damaged" % " and ".join(hurt_home))
 	cost.append("lighthouse %d/%d" % [lighthouse.hp, lighthouse.max_hp])
 	cost.append("fuel %d%%" % roundi(lighthouse.lamp.fuel))
 	lines.append(" · ".join(cost))
@@ -572,6 +580,8 @@ func _dawn_report() -> void:
 		tip = "Meet climbers on the ledge: a blow aimed outward knocks them over the edge."
 	elif g.call("fence") > 0:
 		tip = "Mend broken fences with driftwood before dark."
+	elif not hurt_home.is_empty():
+		tip = "Take the hammer to the homestead: the cottage and shed take driftwood, the garden kelp too."
 	elif g.call("beam") < g.call("ashore") / 2:
 		tip = "The focused beam (Q) burns them on the beaches, long before they climb."
 	if tip != "":

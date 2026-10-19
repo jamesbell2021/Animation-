@@ -16,6 +16,8 @@ var _wall_mat: StandardMaterial3D
 var _window_mat: StandardMaterial3D
 var _lamp: OmniLight3D
 var _chimney_top := Vector3.ZERO
+var _slabs: Array[MeshInstance3D] = []
+var _ridge_y := 0.0
 
 func _init() -> void:
 	id = "cottage"
@@ -39,6 +41,8 @@ func _build() -> void:
 		var slab := Geo.box(self, Vector3(WIDTH + 0.4, 0.14, slab_len + 0.05), SLATE, Vector3(0.0, (WALL_H + 0.2 + ridge_y) * 0.5, side * half * 0.5))
 		slab.material_override = slate
 		slab.rotation.x = side * pitch
+		_slabs.append(slab)
+	_ridge_y = ridge_y
 	for side in [-1.0, 1.0]:
 		var gable := MeshInstance3D.new()
 		var prism := PrismMesh.new()
@@ -84,6 +88,14 @@ func _set_windows(lit: bool) -> void:
 func _refresh() -> void:
 	if _wall_mat:
 		_wall_mat.albedo_color = Color(0.32, 0.30, 0.28).lerp(WALL, health_ratio())
+	# The roof sags and slips as the cottage is battered.
+	var hurt := 1.0 - health_ratio()
+	for i in _slabs.size():
+		_slabs[i].rotation.z = hurt * (0.22 if i == 0 else -0.14)
+		_slabs[i].position.y = (WALL_H + 0.2 + _ridge_y) * 0.5 - hurt * 0.35
+
+func smoke_point() -> Vector3:
+	return Vector3(-0.6, _ridge_y, 0.2)
 
 func display_name() -> String:
 	return "cottage"

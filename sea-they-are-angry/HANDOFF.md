@@ -28,9 +28,10 @@ godot --headless --path sea-they-are-angry --script res://tests/slice_night.gd
 godot --headless --path sea-they-are-angry --script res://tests/slice_retreat.gd
 godot --headless --path sea-they-are-angry --script res://tests/slice_coop.gd
 godot --headless --path sea-they-are-angry --script res://tests/slice_ledge.gd
+godot --headless --path sea-they-are-angry --script res://tests/slice_creatures.gd
 ```
 
-On Windows use `Godot_v4.3-stable_win64_console.exe` in place of `godot`. All five tests ended in PASS on Godot 4.3 stable. Run them one at a time: they share `user://run.json`. For balance, `tools/playtest.gd` plays several nights with a bot and prints a line per night (see README). `slice_behaviour.gd` covers every item of the slice's verify list, from W moving up-screen to New Run restarting at night 1.
+On Windows use `Godot_v4.3-stable_win64_console.exe` in place of `godot`. All six tests ended in PASS on Godot 4.3 stable. Run them one at a time: they share `user://run.json`. For balance, `tools/playtest.gd` plays several nights with a bot and prints a line per night (see README). `slice_behaviour.gd` covers every item of the slice's verify list, from W moving up-screen to New Run restarting at night 1.
 
 Two kinds of console noise are expected and harmless:
 
@@ -42,6 +43,7 @@ Two kinds of console noise are expected and harmless:
 ## Things Phase A must reconcile
 
 - **Parts of later phases already exist:** 3-player co-op and a simplified downed/revive (Phase D), the title and pause menus (Phase E), synthesised sound with `.ogg` overrides (Phase F), particle effects (Phase I) and the cottage, shed and garden buildings (Phase C). Extend these rather than rebuilding them; DECISIONS lists exactly what each covers and what is missing.
+- **Phase B's creatures already exist** (owner's request): Squid, Crab and Eel, adapted to the crag island. So do the hammer and oil-can repairs, homestead raids and damage, the `Shed` structure, and the lamp-room door. See DECISIONS, "The other creatures…", for every number and where it departs from plan 2. Phase B now means moving their numbers into `Balance`, adding drops through Phase A's `Loot` (they currently add straight to `Stock`), and reconciling the Eel's head position and the Squid's tell.
 - **The island was rebuilt Bad North style** (owner's request, see DECISIONS "The crag, the ledge and the beaches"). Creatures land only on three beaches and walk a waypoint graph (`scenes/util/nav.gd`) up the ledge that winds round the crag. New enemies should follow `Enemy.route` too. Phase B's Wall-Crawling Squid is the obvious exception: let it climb straight up the crag walls. That shortcut is its threat. Traps (Phase C) belong at the chokepoints: the beach heads, the track and the ledge.
 - **The lamp tests a real 3D cone** against `Enemy.light_probe_points()` and is tilted 38°, so it cannot reach near its own base. Plan item B4 asks for `light_probe_position()`; use the existing `light_probe_points()` instead and have the Eel return its head. See DECISIONS.
 - **The focused beam now burns the Bloated** at 10 hp per second instead of slowing it, by the owner's decision after playtesting. The appendix still lists only "light slow ×0.6" for the Bloated, so add the burn to `Balance` alongside it. See DECISIONS.

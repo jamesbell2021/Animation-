@@ -47,6 +47,12 @@ static func _ensure() -> void:
 	# The lighthouse yard.
 	_goal = _add(Vector3(0.0, Terrain.CRAG_TOP, 0.0))
 	_link(prev, _goal)
+	# The homestead: a stop on the meadow side of each building's pad, off the ring.
+	for pad in Terrain.PADS:
+		var c := Vector2(float(pad[0]), float(pad[1]))
+		var at := c.normalized() * (c.length() - float(pad[2]) * 0.8)
+		var n := _add(Vector3(at.x, Terrain.height_at(at.x, at.y), at.y))
+		_link_to_ring(n, Terrain.compass_deg(at.x, at.y), ring)
 
 static func _add(p: Vector3) -> int:
 	_nodes.append(p)
@@ -132,6 +138,12 @@ static func route_to_light(from: Vector3) -> Array[Vector3]:
 	_ensure()
 	var res := _dijkstra(_nearest(from))
 	return _walk(res[1], _goal)
+
+## Waypoints from here to the graph node nearest a goal on its own level.
+static func route_to(from: Vector3, goal: Vector3) -> Array[Vector3]:
+	_ensure()
+	var res := _dijkstra(_nearest(from))
+	return _walk(res[1], _nearest(goal))
 
 ## Waypoints from here back out to sea, by the nearest beach.
 static func route_to_sea(from: Vector3) -> Array[Vector3]:

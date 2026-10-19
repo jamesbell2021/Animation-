@@ -11,6 +11,7 @@ const PLOTS_L1 := 3
 
 var plots: Array[Node3D] = []
 var _wall_mat: StandardMaterial3D
+var _ridges: Array[MeshInstance3D] = []
 
 func _init() -> void:
 	id = "garden"
@@ -57,6 +58,7 @@ func _build() -> void:
 			ridge.rotation.x = PI * 0.5
 			ridge.position = Vector3(-0.27 + float(f) * 0.27, 0.15, 0.0)
 			plot.add_child(ridge)
+			_ridges.append(ridge)
 		plots.append(plot)
 	# A water butt by the gate.
 	var butt := Geo.cyl(self, 0.3, 0.75, Look.WOOD, Vector3(WIDTH * 0.5 - 0.35, 0.38, -DEPTH * 0.5 - 0.45))
@@ -66,6 +68,15 @@ func _build() -> void:
 func _refresh() -> void:
 	if _wall_mat:
 		_wall_mat.albedo_color = Color(0.25, 0.24, 0.22).lerp(WALL, health_ratio())
+	# Trampled: the earthed-up rows are flattened and scuffed out of line.
+	var hurt := 1.0 - health_ratio()
+	for i in _ridges.size():
+		var r := _ridges[i]
+		r.scale = Vector3(1.0 + hurt * 0.5, 1.0, 1.0 - hurt * 0.6)
+		r.rotation.y = hurt * (0.5 if i % 2 == 0 else -0.4)
+
+func smoke_point() -> Vector3:
+	return Vector3.INF
 
 func display_name() -> String:
 	return "garden"

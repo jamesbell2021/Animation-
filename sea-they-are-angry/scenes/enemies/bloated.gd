@@ -86,7 +86,14 @@ func _build() -> void:
 	# Shape bottom sits 0.05 above the body origin so it never snags the island rim.
 	Geo.cyl_shape(self, 0.5, 1.7, Vector3(0.0, 0.9, 0.0))
 
+## Set by the spawner for a group that comes for the cottage, shed and garden instead of the light.
+var raid := false
+
 func pick_target() -> Node3D:
+	if raid:
+		var home := Enemy.nearest_home(global_position)
+		if home != null:
+			return home
 	return lighthouse
 
 func in_light(mode: int, delta: float) -> void:

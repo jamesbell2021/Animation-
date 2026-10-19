@@ -124,3 +124,34 @@ Judgement calls made where the spec was open, contradictory, or would not work a
 - **The big centred warnings were drawn off-screen.** `set_anchors_preset` only moves anchors, so "They are coming." and the foghorn landing warnings sat above the top edge. They now use `set_anchors_and_offsets_preset`.
 - **First day briefing:** a new run opens with four lines on what to do: gather on the beaches, the ladders, mending and the lamp, burning, and the ledge shove.
 
+## The other creatures, the lamp-room door, homestead raids and the hammer (owner's requests)
+
+- **Phase B's three creatures are in**, adapted to the crag island rather than built to plan 2 word for word:
+  - **Squid** (`scenes/enemies/squid.gd`): 35 hp. Dashes for 1 s at 4.5 m/s, then pauses for 0.6 s. It ignores the paths and crawls straight over everything (beaches, cliffs, the crag's walls) toward the nearest keeper outside the lighthouse, leaning into slopes as it climbs. It goes up and over fences and buildings, and with no keeper outside it goes for the lighthouse door. Its lunge has a 0.35 s tell (the dots flash), deals 10, then it backs off 3 m. Every 8 s it leaves an ink cloud (radius 4, 5 s) that hides any creature inside it unless the beam is on that creature. The wide beam slows it ×0.4; the focused beam burns 15/s, about 2.5 s to kill, with a "!" while it squeals. The plan's 0.2 s tell is too short to react to from the game camera, so it is 0.35 s.
+  - **Crab** (`scenes/enemies/crab.gd`): 150 hp (+20% per extra keeper), 1.2 m/s, too heavy to shove off the ledge. It walks the paths to the nearest homestead building and slams fences on the way. Each slam has a 1.5 s wind-up (the claw rises and glows) and hits a 2.2 m, 120° arc: 30 to buildings, 25 to keepers with a hard shove. Blows from the front do half damage, with sparks and a clang; during the 1 s recovery they do double. Three hits from one keeper within 5 s make it go for that keeper for 8 s. The beam can't hurt it, but a focused beam in its eyes during the wind-up staggers it (4 s cooldown). Killing it with the boathook drops 2 scrap.
+  - **Crab balance:** playtests showed one unopposed crab flattening the whole homestead in a night. So it now tears at the wreckage for 2.5 s between slams on a building, and once it has wrecked one building it drags itself back to the sea. Each crab costs at most one building unless a keeper stops it. Only once the whole homestead is down does it go for the lighthouse.
+  - **Eel** (`scenes/enemies/eel.gd`): a scripted encounter.
+    - **Announce, 8 s:** dark humps churn off a beach, with a long foghorn blast and "The water is moving."
+    - **Surge, 3 s:** it rushes up over the beach, cliff and crag toward the lighthouse. Fences in its line are smashed and keepers in it are knocked flat for 1.5 s.
+    - **Coil, 25 s solo or 20 s co-op:** it wraps the tower and crushes it at 5/s. Its head rears out over the ledge, 6.6 m from the tower and 3.6 m above the top, circling slowly. That spot is inside the focused beam's reach. The plan put the head at the tower's foot, where the tipped beam can't reach.
+    - **Release:** the focused beam on the head does 12/s against 90 hp (+20% per extra keeper). Driving it off early gives Anger −1 and +3 bio, +2 scrap. Outlasting the coil gives Anger +2.
+    - **Damage:** boathook blows on the coils do a quarter.
+    - **Body:** one tapering tube rebuilt each frame through its control points, not a chain of spheres, which read as loose balls.
+- **Schedule (`spawner.gd`):** plan 2's appendix table, with t compressed by about 0.8 for the long walk up. Rows are [t, kind, count, "opp"], and "opp" lands on a different beach from the night's first group. Night 9+ repeats night 7 with +1 per group every two nights. The Eel comes on nights 6, 9, 12… solo and 5, 8, 11… in co-op, a night earlier at Anger 6+. While it's about, other groups shrink to a quarter. Warnings name the kind ("Something skitters in the shallows", "Something heavy drags itself ashore"). F9 brings the Eel in debug builds.
+- **Homestead raids:** from night 2, every second Bloated group of a night makes for the nearest of the cottage, shed and garden ("They're making for the cottage!"). It walks the paths to a stop beside the building (new nodes in `Nav`) and bursts on it.
+- **Homestead buildings:** the shed is now a `Shed` structure (120 hp). Damage shows: the cottage's roof sags and slips, the shed's roof skews and its door hangs, the garden's rows are trampled. A cottage or shed below 45% smoulders. Mending any of them gives 50 per driftwood (the garden also takes kelp), like fences. A seaweed pile on the west beach supplies the kelp.
+- **Repairs take a hammer.** Using a damaged building swaps the boathook for a claw hammer: three blows over about a second, each with a synthesised hammer knock and splinters. The stock is spent and the repair applied when the hammering is done. With nothing to pay with, there is no hammering, just "Need …". Refuelling at the lighthouse is a pour from an oil can instead. Keepers can't move meanwhile.
+- **The lamp-room door.** R near the lighthouse takes the lamp at once, then the keeper walks up to the door and goes in. Inside they are out of sight and nothing can hurt them. R again lets go, and they step out a few paces clear of the door. Pressing R on the way in turns them round. At dawn they come out by themselves.
+- **Keepers can be knocked about:** `knock_prone(t)` (the Eel's surge) and `shove(v)` (the Crab's slam).
+- **Shared enemy plumbing (`enemy.gd`):**
+  - `replan()` and `at_target()`: buildings are measured to their walls.
+  - `stagger(t)`, `is_vulnerable()`.
+  - `inked` and `lit_this_frame`: the lamp sets the flag before calling `in_light`.
+  - Shove only below mass 3.
+  - `Enemy.nearest_home()`.
+- **Playtest bot, lamp keeper only, perfect aim:** survives eight nights.
+  - Each Crab costs about a building a night.
+  - The Eel is driven off on its first visit.
+  - From night 6, lighthouse damage comes from Bloated that reach the top.
+  - Human mouse aim will do worse than the bot on Squids.
+

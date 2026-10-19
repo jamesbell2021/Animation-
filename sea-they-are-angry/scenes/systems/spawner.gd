@@ -11,42 +11,73 @@ const OMEN_EVERY := 0.6
 # From this night, big groups split between two beaches.
 const SPLIT_FROM_NIGHT := 2
 const SPLIT_MIN := 3
-# Waves come early enough that the last one still reaches the fences before dawn:
-# the walk from a beach to the lighthouse is close to a minute.
+# Rows are [t, kind, count] or [t, kind, count, "opp"]: t is the fraction of the night,
+# kind B Bloated, S Squid, C Crab; "opp" lands on a different beach from the night's
+# first group. Waves come early enough that the last still reaches the fences before
+# dawn: the walk from a beach to the lighthouse is close to a minute. The Eel is
+# scheduled separately (see eel_night).
 const NIGHT_TABLES := {
-	1: [[0.06, 2], [0.32, 2], [0.58, 3]],
-	2: [[0.06, 2], [0.24, 3], [0.44, 3], [0.62, 3]],
-	3: [[0.05, 3], [0.22, 3], [0.40, 4], [0.60, 4]],
-	4: [[0.04, 3], [0.18, 3], [0.34, 4], [0.50, 4], [0.66, 5]],
+	1: [[0.06, "B", 2], [0.32, "B", 2], [0.58, "B", 3]],
+	2: [[0.06, "B", 2], [0.24, "S", 2, "opp"], [0.44, "B", 3], [0.62, "S", 2, "opp"]],
+	3: [[0.06, "B", 3], [0.20, "C", 1], [0.38, "S", 2, "opp"], [0.55, "B", 3], [0.68, "S", 2, "opp"]],
+	4: [[0.04, "S", 2], [0.12, "B", 3], [0.28, "C", 1], [0.44, "B", 4], [0.56, "S", 3, "opp"], [0.68, "C", 1]],
+	5: [[0.06, "B", 3], [0.20, "C", 1], [0.32, "S", 3, "opp"], [0.62, "B", 4]],
+	6: [[0.04, "B", 4], [0.16, "S", 3, "opp"], [0.28, "C", 2], [0.44, "B", 4], [0.56, "S", 3, "opp"], [0.68, "C", 1]],
+	7: [[0.04, "S", 3], [0.12, "B", 4], [0.24, "C", 2], [0.40, "B", 5], [0.52, "S", 4, "opp"], [0.68, "C", 2]],
+	8: [[0.04, "B", 4], [0.16, "C", 2], [0.28, "S", 4, "opp"], [0.60, "B", 5], [0.72, "S", 3, "opp"]],
+}
+const EEL_AT := 0.42
+# The second and later Bloated groups of a night (from night 2) make for the homestead.
+const RAID_FROM_NIGHT := 2
+# While the Eel is about, other landings shrink to a quarter.
+const EEL_RATE := 0.25
+const WARNINGS := {
+	"B": "Something stirs in the water",
+	"S": "Something skitters in the shallows",
+	"C": "Something heavy drags itself ashore",
 }
 
 ## A group is about to come out of the sea at these landing points.
 signal wave_incoming(points: Array, count: int)
+## The same, with what kind it is and whether it's making for the homestead (for the warning text).
+signal group_warning(kind: String, points: Array, raid: bool)
 
 var points: Array[Vector3] = []
 var enemies_root: Node
 var lighthouse: Node3D
 
 var _queue: Array[Dictionary] = []
-# Individual spawns waiting out their stagger delay: {at: Vector3, delay: float}.
+# Individual spawns waiting out their stagger delay: {at: Vector3, delay: float, kind, raid}.
 var _pending: Array[Dictionary] = []
 # Landings about to happen: {at: Vector3, left: float, tick: float}.
 var _omens: Array[Dictionary] = []
+var _first_point := -1
+var _bloated_groups := 0
 
 func _ready() -> void:
 	Cycle.phase_changed.connect(_on_phase_changed)
 	Cycle.night_progress.connect(_on_night_progress)
 	Events.run_ended.connect(_on_run_ended)
 
+## The Eel comes on night 5 then every third night (solo: 6, 9, 12...); a night early when the sea is very angry.
+static func eel_night(n: int, keepers: int, anger: int) -> bool:
+	var first := 6 if keepers <= 1 else 5
+	var m := n + (1 if anger >= 6 else 0)
+	return m >= first and (m - first) % 3 == 0
+
 func night_table(n: int) -> Array[Dictionary]:
-	var rows: Array = NIGHT_TABLES.get(mini(n, 4), NIGHT_TABLES[4])
+	var rows: Array = NIGHT_TABLES.get(mini(n, 8), NIGHT_TABLES[8])
+	if n >= 9:
+		rows = NIGHT_TABLES[7]
 	var extra := 0
-	if n >= 5:
-		extra += floori((n - 4) / 2.0)
+	if n >= 9:
+		extra += floori((n - 7) / 2.0)
 	extra += floori(Anger.value / 3.0)
 	var out: Array[Dictionary] = []
 	for row in rows:
-		out.append({"t": float(row[0]), "count": int(row[1]) + extra, "point": -1})
+		out.append({"t": float(row[0]), "kind": String(row[1]), "count": int(row[2]) + extra, "opp": row.size() > 3, "point": -1})
+	if eel_night(n, Players.count(), Anger.value):
+		out.append({"t": EEL_AT, "kind": "E", "count": 1, "opp": false, "point": -1})
 	return out
 
 func queue_size() -> int:
@@ -54,6 +85,8 @@ func queue_size() -> int:
 
 func _on_phase_changed(p: int) -> void:
 	if p == Cycle.Phase.NIGHT:
+		_first_point = -1
+		_bloated_groups = 0
 		_queue = night_table(Run.night)
 		_queue.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a["t"] < b["t"])
 	elif p == Cycle.Phase.DAWN:
@@ -69,21 +102,56 @@ func _on_night_progress(t: float) -> void:
 func _queue_group(entry: Dictionary) -> void:
 	if points.is_empty():
 		return
+	var kind: String = entry.get("kind", "B")
 	var idx: int = entry["point"]
 	if idx < 0 or idx >= points.size():
 		idx = randi() % points.size()
+		# "opp": a beach other than the night's first group's (points come in pairs, one pair per beach).
+		if entry.get("opp", false) and _first_point >= 0 and points.size() > 2:
+			while idx / 2 == _first_point / 2:
+				idx = randi() % points.size()
+	if _first_point < 0:
+		_first_point = idx
+	if kind == "E":
+		_spawn_eel(points[idx])
+		return
 	# Co-op: more keepers, more creatures (x1.5 per extra keeper, rounded up).
 	var count := ceili(float(entry["count"]) * (1.0 + 0.5 * float(Players.count() - 1)))
+	if eel_active():
+		count = maxi(1, roundi(count * EEL_RATE))
+	var raid := false
+	if kind == "B":
+		_bloated_groups += 1
+		raid = Run.night >= RAID_FROM_NIGHT and _bloated_groups % 2 == 0 and Enemy.nearest_home(Vector3.ZERO) != null
 	var landings: Array = [points[idx]]
-	if Run.night >= SPLIT_FROM_NIGHT and count >= SPLIT_MIN and points.size() > 2:
-		# A second landing at a different beach (points come in pairs, one pair per beach).
+	if kind == "B" and not raid and Run.night >= SPLIT_FROM_NIGHT and count >= SPLIT_MIN and points.size() > 2:
+		# A second landing at a different beach.
 		var other := (idx + 2 + 2 * (randi() % maxi(1, points.size() / 2 - 1))) % points.size()
 		landings.append(points[other])
 	wave_incoming.emit(landings, count)
+	group_warning.emit(kind, landings, raid)
 	for l in landings:
 		_omens.append({"at": l, "left": OMEN_TIME, "tick": 0.0})
 	for i in count:
-		_pending.append({"at": landings[i % landings.size()], "delay": OMEN_TIME + STAGGER * float(i)})
+		_pending.append({"at": landings[i % landings.size()], "delay": OMEN_TIME + STAGGER * float(i), "kind": kind, "raid": raid})
+
+## True while an Eel encounter is under way.
+func eel_active() -> bool:
+	return not get_tree().get_nodes_in_group("eel").is_empty()
+
+## Debug: bring the Eel now (F9 in debug builds).
+func force_eel() -> void:
+	if eel_active() or points.is_empty():
+		return
+	_spawn_eel(points[randi() % points.size()])
+
+func _spawn_eel(at: Vector3) -> void:
+	if enemies_root == null or eel_active():
+		return
+	var e := Eel.new()
+	e.lighthouse = lighthouse
+	e.origin = Vector3(at.x, Terrain.SEA_LEVEL, at.z)
+	enemies_root.add_child(e)
 
 func _process(delta: float) -> void:
 	if not Run.active:
@@ -95,7 +163,7 @@ func _process(delta: float) -> void:
 	for p in _pending:
 		p["delay"] = float(p["delay"]) - delta
 		if p["delay"] <= 0.0:
-			_spawn_one(p["at"])
+			_spawn_one(p["at"], String(p.get("kind", "B")), bool(p.get("raid", false)))
 		else:
 			still.append(p)
 	_pending = still
@@ -114,10 +182,19 @@ func _churn(delta: float) -> void:
 			still.append(o)
 	_omens = still
 
-func _spawn_one(at: Vector3) -> void:
+func _spawn_one(at: Vector3, kind: String = "B", raid: bool = false) -> void:
 	if enemies_root == null:
 		return
-	var e := Bloated.new()
+	var e: Enemy
+	match kind:
+		"S":
+			e = Squid.new()
+		"C":
+			e = Crab.new()
+		_:
+			var b := Bloated.new()
+			b.raid = raid
+			e = b
 	e.lighthouse = lighthouse
 	var jitter := Vector3(randf_range(-JITTER, JITTER), 0.0, randf_range(-JITTER, JITTER))
 	e.position = Vector3(at.x, SPAWN_Y, at.z) + jitter

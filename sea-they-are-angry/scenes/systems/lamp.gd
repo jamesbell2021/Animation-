@@ -196,6 +196,8 @@ func _sweep(delta: float) -> void:
 		for p in probes:
 			var to: Vector3 = p - origin
 			if to.length() <= r and fwd.angle_to(to) <= half:
+				if "lit_this_frame" in e:
+					e.lit_this_frame = true
 				e.in_light(mode, delta)
 				break
 
