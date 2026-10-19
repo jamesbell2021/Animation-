@@ -55,7 +55,7 @@ const CAMPFIRE_AT := [-22.0, 10.4]
 # distance fog density, volumetric fog density, fog glow tint.
 # How each kind of night shifts dusk and night: ambient and moon energy, fog.
 const WEATHER_LIGHT := [
-	{"amb": 1.2, "sun": 1.45, "fog": 0.55, "bg": Color(0.05, 0.08, 0.14)},
+	{"amb": 1.2, "sun": 1.45, "fog": 0.55, "bg": Color(0.05, 0.08, 0.14), "moon": Color(0.78, 0.86, 1.0)},
 	{"amb": 1.0, "sun": 1.0, "fog": 1.0, "bg": Color(0.0, 0.0, 0.0)},
 	{"amb": 1.1, "sun": 0.95, "fog": 0.9, "bg": Color(0.0, 0.0, 0.0)},
 ]
@@ -558,6 +558,9 @@ func _apply_lighting(p: int, duration: float) -> void:
 		cfg["vfog"] = float(cfg["vfog"]) * float(w["fog"])
 		if p == Cycle.Phase.NIGHT and w["bg"] != Color(0.0, 0.0, 0.0):
 			cfg["bg"] = w["bg"]
+		# A clear night is moonlit: silver light that throws real shadows.
+		if p == Cycle.Phase.NIGHT and w.has("moon"):
+			cfg["sun"] = w["moon"]
 	if _tween and _tween.is_valid():
 		_tween.kill()
 	var tint: Color = cfg["tint"]

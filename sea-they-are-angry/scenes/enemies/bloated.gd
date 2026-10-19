@@ -190,7 +190,7 @@ func _enter_Burst() -> void:
 			s.take_damage(BURST_STRUCT_DMG)
 	for p in get_tree().get_nodes_in_group("player"):
 		if p is Node3D and Geo.flat_dist(c, p.global_position) <= BURST_RADIUS:
-			p.take_damage(BURST_PLAYER_DMG)
+			p.take_damage(BURST_PLAYER_DMG, c)
 	FX.burst(get_parent(), c + Vector3(0.0, 0.9, 0.0))
 	Audio.sfx("burst", c, 0.0)
 	Events.enemy_killed.emit(self)

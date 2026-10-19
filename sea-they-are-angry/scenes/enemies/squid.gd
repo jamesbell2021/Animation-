@@ -174,7 +174,7 @@ func _tick_Lunge(delta: float) -> void:
 		Audio.sfx("swing", global_position, -4.0, 0.2)
 		if _gap() < LUNGE_RANGE + 0.6:
 			if target is Player:
-				target.take_damage(LUNGE_DMG)
+				target.take_damage(LUNGE_DMG, global_position)
 			elif target is Structure:
 				target.take_damage(LUNGE_DMG)
 		_crawl(Vector3.ZERO)

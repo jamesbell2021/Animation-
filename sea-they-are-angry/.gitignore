@@ -6,3 +6,5 @@ export_presets.cfg
 .DS_Store
 Thumbs.db
 build/
+# Textures Godot extracts from the GLBs on import.
+art/characters/*.png

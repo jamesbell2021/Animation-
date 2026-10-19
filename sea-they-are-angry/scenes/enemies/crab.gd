@@ -182,7 +182,7 @@ func _enter_Slam() -> void:
 		var tp: Vector3 = p.global_position - c
 		tp.y = 0.0
 		if tp.length() <= SLAM_RANGE + 0.3 and (tp.length() < 0.6 or rad_to_deg(fwd.angle_to(tp.normalized())) <= SLAM_ARC_DEG):
-			p.take_damage(SLAM_PLAYER_DMG)
+			p.take_damage(SLAM_PLAYER_DMG, c)
 			p.shove(tp.normalized() * SLAM_SHOVE)
 	var at := c + fwd * 1.4
 	for t in get_tree().get_nodes_in_group("trap_slots"):

@@ -28,7 +28,12 @@ const POUR_TIME := 0.9
 const PUSH_DECAY := 10.0
 const FALL_SPEED := -5.0
 const BODY_COLOR := Color(0.85, 0.65, 0.2)
-const MODEL_DIR := "res://art/characters/%s.glb"
+# Knocked down by a hard hit: how hard (per point of damage) and for how long.
+const HIT_RAGDOLL_FROM := 10
+const HIT_IMPULSE := 3.0
+const HIT_DOWN_TIME := 0.7
+# Roughly the ragdoll's mass, to turn a shove (m/s) into an impulse.
+const RAG_MASS := 30.0
 const BASE_HP := 100
 # The flare gun: two shots, reloaded at the cottage.
 const FLARES_MAX := 2
@@ -47,13 +52,6 @@ const STRIDE := 2.4
 const LEG_SWING := 0.65
 const ARM_SWING := 0.5
 const STEP_EVERY := 0.42
-# Rig joints in the GLB's own (Z-up) coordinates. The file's -X side is the keeper's right.
-const RIG := {
-	"leg_r": [["trouser_leg", "boot", "boot_sole"], Vector3(-0.155, 0.0, 0.74)],
-	"leg_l": [["trouser_leg_1", "boot_1", "boot_sole_1"], Vector3(0.155, 0.0, 0.74)],
-	"arm_r": [["upper_sleeve", "forearm", "hand"], Vector3(-0.38, 0.0, 1.4)],
-	"arm_l": [["upper_sleeve_1", "forearm_1", "hand_1"], Vector3(0.38, 0.0, 1.4)],
-}
 
 var idx := 0
 var downed := false
@@ -71,8 +69,11 @@ var _sprint_cd := 0.0
 var _swing_t := 0.0
 var _hook_pivot: Node3D
 var _target: Node = null
-var _model: Node3D
-var _joints := {}
+## The rigged keeper (art/characters): animated in code, ragdolls when knocked down.
+var rig: CharacterRig
+# Seconds left lying as a ragdoll before getting up (downed keepers wait for a revive).
+var _rag_t := 0.0
+var _last_safe := Vector3.ZERO
 var _walk_phase := 0.0
 var _move_amount := 0.0
 var _aim_face_t := 0.0
@@ -122,12 +123,18 @@ func _ready() -> void:
 	_pose.name = "Pose"
 	add_child(_pose)
 	_hook_pivot = Node3D.new()
-	_hook_pivot.position = Vector3(0.4, 0.9, 0.0)
-	_pose.add_child(_hook_pivot)
 	_hook_holder = Node3D.new()
 	_hook_pivot.add_child(_hook_holder)
 	_build_tools()
-	if not _build_model():
+	rig = CharacterRig.create(Players.MODELS[idx % Players.MODELS.size()])
+	if rig != null:
+		_pose.add_child(rig)
+		# Tools are held in the right hand, pointing forward.
+		rig.attach_aligned("hand.R", _hook_pivot, Vector3(0.0, -0.05, -0.02))
+		rig.got_up.connect(_on_got_up)
+	else:
+		_hook_pivot.position = Vector3(0.4, 0.9, 0.0)
+		_pose.add_child(_hook_pivot)
 		Geo.cyl(_pose, 0.35, 1.2, BODY_COLOR, Vector3(0.0, 0.6, 0.0))
 		Geo.cyl(_pose, 0.22, 0.32, Color(0.9, 0.75, 0.62), Vector3(0.0, 1.38, 0.0))
 		Geo.cyl(_pose, 0.25, 0.1, Color(0.15, 0.18, 0.3), Vector3(0.0, 1.57, 0.0))
@@ -159,60 +166,6 @@ static func load_art(path: String) -> Node3D:
 			n.material_override = mat
 		stack.append_array(n.get_children())
 	return node
-
-func _build_model() -> bool:
-	var m := load_art(MODEL_DIR % Players.MODELS[idx % Players.MODELS.size()])
-	if m == null:
-		return false
-	var holder := Node3D.new()
-	holder.name = "Model"
-	# Z-up to Y-up, then turn the model's front (-Y in the file) to face -Z, Godot's forward.
-	holder.rotation = Vector3(deg_to_rad(-90.0), PI, 0.0)
-	holder.scale = Vector3.ONE * MODEL_SCALE
-	holder.add_child(m)
-	_pose.add_child(holder)
-	_model = holder
-	_rig(m)
-	return true
-
-func _find_part(root: Node, part: String) -> Node3D:
-	var stack: Array[Node] = [root]
-	while not stack.is_empty():
-		var n: Node = stack.pop_back()
-		var nm := String(n.name)
-		if nm.ends_with("_" + part) and n is Node3D:
-			# "trouser_leg" must not match "trouser_leg_1".
-			var stem := nm.substr(0, nm.length() - part.length() - 1)
-			if not stem.ends_with("_") and stem.find("_") == -1:
-				return n
-		stack.append_array(n.get_children())
-	return null
-
-# Parent each limb's parts under a pivot at its joint so they can swing.
-func _rig(model_root: Node3D) -> void:
-	for key in RIG:
-		var parts: Array = RIG[key][0]
-		var joint: Vector3 = RIG[key][1]
-		var pivot := Node3D.new()
-		pivot.name = key
-		pivot.position = joint
-		var found := 0
-		for p in parts:
-			var node := _find_part(model_root, p)
-			if node == null:
-				continue
-			var parent := node.get_parent()
-			if found == 0:
-				parent.add_child(pivot)
-			var xf := node.transform
-			parent.remove_child(node)
-			pivot.add_child(node)
-			node.transform = Transform3D(xf.basis, xf.origin - joint)
-			found += 1
-		if found > 0:
-			_joints[key] = pivot
-		else:
-			pivot.queue_free()
 
 func _build_hook() -> bool:
 	var h := load_art(HOOK_PATH)
@@ -250,15 +203,11 @@ func _build_tools() -> void:
 
 # A paraffin lantern carried in the left hand: lights the keeper's way at night.
 func _build_lantern() -> void:
-	var holder: Node3D = _joints.get("arm_l")
 	var lantern := Node3D.new()
 	lantern.name = "Lantern"
-	if holder != null:
-		# In the GLB's Z-up space, hanging below the left hand.
-		holder.add_child(lantern)
-		lantern.position = Vector3(0.04, -0.06, -0.86)
-		lantern.rotation.x = deg_to_rad(90.0)
-		lantern.scale = Vector3.ONE / MODEL_SCALE * 0.85
+	if rig != null:
+		# Hanging by its bail below the left hand.
+		rig.attach_aligned("hand.L", lantern, Vector3(0.0, -0.2, 0.0))
 	else:
 		_pose.add_child(lantern)
 		lantern.position = Vector3(-0.42, 0.75, -0.1)
@@ -356,8 +305,14 @@ func _physics_process(delta: float) -> void:
 	if _lantern_light.visible:
 		_lantern_light.light_energy = 1.5 + 0.12 * sin(_flicker * 11.0) * sin(_flicker * 7.3)
 	if downed:
+		if rig != null and rig.is_ragdoll():
+			_follow_ragdoll()
+			return
 		velocity = Vector3(0.0, 0.0 if is_on_floor() else FALL_SPEED, 0.0)
 		move_and_slide()
+		return
+	if rig != null and rig.is_ragdoll():
+		_ragdolled(delta)
 		return
 	if _climb_t >= 0.0:
 		_climbing(delta)
@@ -438,33 +393,25 @@ func _animate(delta: float) -> void:
 	_walk_phase += delta * speed * STRIDE
 	_breath += delta
 	var swing := sin(_walk_phase) * _move_amount
-	if _joints.has("leg_r"):
-		_joints["leg_r"].rotation.x = swing * LEG_SWING
-	if _joints.has("leg_l"):
-		_joints["leg_l"].rotation.x = -swing * LEG_SWING
-	if _joints.has("arm_l"):
-		_joints["arm_l"].rotation.x = -swing * ARM_SWING
-	if _joints.has("arm_r"):
-		var arm := swing * ARM_SWING
-		if _swing_t > 0.0:
-			# Raise the hook arm and chop down through the swing.
-			var k := 1.0 - _swing_t / SWING_TIME
-			arm = lerpf(-1.9, 0.4, k)
-		if _job_tool == "hammer":
-			# Lift slowly, then bring the hammer down hard.
-			var ph := fmod(_job_t, STRIKE_TIME) / STRIKE_TIME
-			arm = lerpf(0.2, -1.6, ph / 0.65) if ph < 0.65 else lerpf(-1.6, 0.35, (ph - 0.65) / 0.35)
-		elif _job_tool == "can":
-			arm = -1.0
-		_joints["arm_r"].rotation.x = arm
+	var arm := -swing * ARM_SWING
+	if _swing_t > 0.0:
+		# Raise the hook arm and chop down through the swing.
+		var k := 1.0 - _swing_t / SWING_TIME
+		arm = lerpf(-1.9, 0.4, k)
+	if _job_tool == "hammer":
+		# Lift slowly, then bring the hammer down hard.
+		var ph := fmod(_job_t, STRIKE_TIME) / STRIKE_TIME
+		arm = lerpf(0.2, -1.6, ph / 0.65) if ph < 0.65 else lerpf(-1.6, 0.35, (ph - 0.65) / 0.35)
+	elif _job_tool == "can":
+		arm = -1.0
+	if _job_tool == "can":
+		_hook_pivot.rotation.z = lerpf(0.0, 1.1, smoothstep(0.0, 0.3, _job_t / maxf(_job_len, 0.01)))
+	else:
+		_hook_pivot.rotation.z = 0.0
+	if rig != null:
+		_pose_rig(swing, arm)
+	else:
 		_hook_pivot.rotation.x = -arm * 0.6
-		if _job_tool == "can":
-			_hook_pivot.rotation.z = lerpf(0.0, 1.1, smoothstep(0.0, 0.3, _job_t / maxf(_job_len, 0.01)))
-		else:
-			_hook_pivot.rotation.z = 0.0
-	if _model:
-		var bob := absf(sin(_walk_phase)) * 0.06 * _move_amount + sin(_breath * 2.0) * 0.008
-		_model.position.y = bob
 	if speed > 0.5 and is_on_floor():
 		_step_t -= delta
 		if _step_t <= 0.0:
@@ -472,6 +419,28 @@ func _animate(delta: float) -> void:
 			Audio.sfx("step", global_position)
 	else:
 		_step_t = 0.0
+
+# The walk cycle, the hook arm and breathing, on the keeper's bones. Model axes:
+# -X swings a limb forward, +X bends a knee back, Y turns, Z leans sideways.
+func _pose_rig(swing: float, arm: float) -> void:
+	if rig.is_ragdoll():
+		return
+	rig.pose("thigh.L", Vector3(-swing * LEG_SWING, 0.0, 0.0))
+	rig.pose("thigh.R", Vector3(swing * LEG_SWING, 0.0, 0.0))
+	rig.pose("shin.L", Vector3(maxf(0.0, swing) * 1.1 * _move_amount + 0.04, 0.0, 0.0))
+	rig.pose("shin.R", Vector3(maxf(0.0, -swing) * 1.1 * _move_amount + 0.04, 0.0, 0.0))
+	rig.pose("foot.L", Vector3(-maxf(0.0, -swing) * 0.4, 0.0, 0.0))
+	rig.pose("foot.R", Vector3(-maxf(0.0, swing) * 0.4, 0.0, 0.0))
+	# The lantern arm stays a little forward so the light swings ahead.
+	rig.pose("upper_arm.L", Vector3(swing * ARM_SWING * 0.5 - 0.25, 0.0, -0.08))
+	rig.pose("forearm.L", Vector3(-0.35, 0.0, 0.0))
+	var chopping := _swing_t > 0.0 or _job_tool != ""
+	rig.pose("upper_arm.R", Vector3(arm, 0.0, 0.1 if chopping else 0.06))
+	rig.pose("forearm.R", Vector3(-0.5 if chopping else -0.25, 0.0, 0.0))
+	var twist := swing * 0.12 + (0.25 * (1.0 - _swing_t / SWING_TIME) if _swing_t > 0.0 else 0.0)
+	rig.pose("spine", Vector3(0.04 * _move_amount, twist * 0.5, 0.0))
+	rig.pose("chest", Vector3(sin(_breath * 2.0) * 0.02, twist * 0.5, 0.0))
+	rig.shift("hips", Vector3(0.0, absf(sin(_walk_phase)) * 0.05 * _move_amount + sin(_breath * 2.0) * 0.006, 0.0))
 
 func _update_aim() -> void:
 	if idx > 0 or Players.devices.size() > idx and Players.devices[idx] != Players.KEYBOARD_MOUSE:
@@ -842,6 +811,9 @@ func is_busy() -> bool:
 func knock_prone(t: float) -> void:
 	if _inside or downed or hp <= 0:
 		return
+	if rig != null:
+		knock(Vector3(randf_range(-1.0, 1.0), 0.6, randf_range(-1.0, 1.0)).normalized() * 3.0 * RAG_MASS, t)
+		return
 	if _job_tool != "":
 		_end_job(false)
 	_prone_t = t
@@ -865,13 +837,64 @@ func _lying(delta: float) -> void:
 		tw.parallel().tween_property(_pose, "position:y", 0.0, 0.3)
 
 func is_prone() -> bool:
-	return _prone_t > 0.0
+	return _prone_t > 0.0 or (rig != null and rig.is_ragdoll())
 
-## A shove along v (m/s), fading quickly: the Crab's slam.
+## A shove along v (m/s), fading quickly: the Crab's slam. With a rig, it bowls the
+## keeper over instead.
 func shove(v: Vector3) -> void:
 	if _inside:
 		return
+	if rig != null:
+		knock(Vector3(v.x, absf(v.length()) * 0.3, v.z) * RAG_MASS * 0.35, 1.0)
+		return
 	_push = Vector3(v.x, 0.0, v.z)
+
+## Knocked off their feet: a ragdoll for `time` seconds, then they get back up.
+func knock(impulse: Vector3, time: float) -> void:
+	if _inside or rig == null or hp <= 0:
+		return
+	if _job_tool != "":
+		_end_job(false)
+	_kill_walk()
+	_scripted = false
+	_swing_t = 0.0
+	if _climb_t >= 0.0:
+		return
+	_rag_t = maxf(_rag_t, time)
+	rig.ragdoll(impulse, "chest")
+
+func _ragdolled(delta: float) -> void:
+	_follow_ragdoll()
+	if rig.is_getting_up():
+		return
+	_rag_t -= delta
+	var c := rig.ragdoll_centre()
+	# Over a cliff and into the sea: back up on the last safe ground.
+	if c.y < Terrain.SEA_LEVEL - 0.3:
+		_rag_t = 0.0
+		global_position = _last_safe
+	if _rag_t <= 0.0:
+		_stand_up()
+
+# The keeper's body goes where the ragdoll lies, so enemies and the camera follow it.
+func _follow_ragdoll() -> void:
+	velocity = Vector3.ZERO
+	var g := rig.ragdoll_ground()
+	if g != Vector3.INF and Terrain.walkable(g.x, g.z) and g.y > Terrain.SEA_LEVEL:
+		global_position = g
+		_last_safe = global_position
+
+func _stand_up() -> void:
+	var f := rig.ragdoll_facing()
+	facing = atan2(-f.x, -f.z)
+	rotation.y = facing
+	# Blend up from where it lies; if it's lying somewhere it can't stand (in the sea),
+	# it's simply back on its feet on the last safe ground.
+	var far := Geo.flat_dist(rig.ragdoll_centre(), global_position) > 1.2
+	rig.get_up(0.05 if far else CharacterRig.GET_UP_TIME)
+
+func _on_got_up() -> void:
+	_rag_t = 0.0
 
 func _find_interactable() -> Node:
 	var best: Node = null
@@ -944,9 +967,13 @@ func go_down() -> void:
 	revive_progress = 0.0
 	_stop_operating()
 	collision_layer = 0
-	var tw := create_tween()
-	tw.tween_property(_pose, "rotation:x", deg_to_rad(-80.0), 0.35)
-	tw.parallel().tween_property(_pose, "position:y", 0.25, 0.35)
+	if rig != null:
+		_rag_t = 0.0
+		rig.ragdoll(-aim_dir() * 40.0 + Vector3(0.0, 20.0, 0.0), "chest")
+	else:
+		var tw := create_tween()
+		tw.tween_property(_pose, "rotation:x", deg_to_rad(-80.0), 0.35)
+		tw.parallel().tween_property(_pose, "position:y", 0.25, 0.35)
 	Events.message.emit("%s is down!  Hold interact beside them to revive." % keeper_name())
 
 func revive(fraction: float) -> void:
@@ -956,21 +983,31 @@ func revive(fraction: float) -> void:
 	revive_progress = 0.0
 	hp = maxi(1, roundi(max_hp * fraction))
 	collision_layer = 2
-	var tw := create_tween()
-	tw.tween_property(_pose, "rotation:x", 0.0, 0.4)
-	tw.parallel().tween_property(_pose, "position:y", 0.0, 0.4)
+	if rig != null and rig.is_ragdoll():
+		_stand_up()
+	else:
+		var tw := create_tween()
+		tw.tween_property(_pose, "rotation:x", 0.0, 0.4)
+		tw.parallel().tween_property(_pose, "position:y", 0.0, 0.4)
 	Audio.sfx("gather", global_position, 0.0, 0.0)
 	Events.message.emit("%s is back on their feet." % keeper_name())
 
-func take_damage(amount: int) -> void:
+func take_damage(amount: int, from: Vector3 = Vector3.INF) -> void:
 	if hp <= 0 or downed or not Run.active or _inside:
 		return
 	hp = maxi(0, hp - amount)
+	if amount >= HIT_RAGDOLL_FROM and hp > 0 and rig != null:
+		var away := global_position - from if from != Vector3.INF else -aim_dir()
+		away.y = 0.0
+		away = away.normalized() if away.length() > 0.01 else Vector3.BACK
+		knock((away + Vector3(0.0, 0.35, 0.0)) * float(amount) * HIT_IMPULSE, HIT_DOWN_TIME + float(amount) / 60.0)
 	Audio.sfx("hurt", global_position)
 	FX.spray(get_parent(), global_position + Vector3(0.0, 1.1, 0.0), Vector3.UP, Color(0.75, 0.8, 0.82))
 	if hp == 0:
 		_stop_operating()
 		if Players.count() <= 1:
+			if rig != null:
+				rig.ragdoll(Vector3(0.0, 15.0, 0.0), "chest")
 			Run.end_run("The keeper has fallen.")
 			return
 		go_down()
