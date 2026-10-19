@@ -125,6 +125,40 @@ func _run() -> void:
 	await frames(3)
 	check(not player.interact_prompt().begins_with("[E] Repair"), "no repairing the ledge fence from the meadow below")
 
+	# Mouse aim from the crag top: the cursor ray is traced to the real ground, and the beam
+	# swings from the lamp to that point, so a creature under the cursor on a beach burns.
+	var cam: Camera3D = main.camera
+	var spot := Terrain.beach_point(0, 0.6)
+	var hit: Vector3 = Player._ground_hit(cam.global_position, (spot - cam.global_position).normalized())
+	check(hit.distance_to(spot) < 0.6, "cursor ray meets the beach where it is drawn (off by %.2f m)" % hit.distance_to(spot))
+	var lamp: Lamp = main.lighthouse.lamp
+	var Cycle = root.get_node("Cycle")
+	Cycle._enter(Cycle.Phase.DUSK)
+	await frames(2)
+	player.global_position = Vector3(-1.6, Terrain.CRAG_TOP + 0.1, 2.7)
+	await frames(2)
+	player._toggle_operate()
+	var b3 := Bloated.new()
+	b3.lighthouse = main.lighthouse
+	b3.position = spot
+	main.get_node("Enemies").add_child(b3)
+	await wait_until(func(): return b3.state == &"Approach", 120)
+	b3.speed = 0.0
+	# What _update_aim would set from the mouse; the keeper's own aim points elsewhere.
+	player._aim = Vector3(-1.0, 0.0, 0.0)
+	player.set_physics_process(false)
+	player._lamp_point = spot
+	if lamp.mode != Lamp.Mode.FOCUSED:
+		lamp.toggle_mode()
+	var hp3 := b3.hp
+	await frames(150)
+	check(b3.hp < hp3, "the focused beam follows the cursor point and burns it (hp %d -> %d)" % [hp3, b3.hp])
+	player.set_physics_process(true)
+	player._toggle_operate()
+	b3.queue_free()
+	Cycle._enter(Cycle.Phase.DAY)
+	await frames(2)
+
 	# Cliff edge: walking straight out to sea stops at the edge.
 	var a := 45.0
 	player.global_position = Terrain.at_angle(a, Terrain.coast_radius(a) - 2.0) + Vector3(0.0, 0.2, 0.0)

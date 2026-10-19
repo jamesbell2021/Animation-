@@ -153,7 +153,15 @@ func _physics_process(delta: float) -> void:
 
 func _aim(delta: float) -> void:
 	if operator != null and operator.has_method("aim_yaw"):
-		yaw = lerp_angle(yaw, operator.aim_yaw(), 1.0 - exp(-delta * AIM_SHARPNESS))
+		var want: float = operator.aim_yaw()
+		# A mouse gives a point on the ground: aim from the lamp itself, not from the keeper beside it.
+		if operator.has_method("lamp_target"):
+			var t: Vector3 = operator.lamp_target()
+			if t != Vector3.INF:
+				var d := t - global_position
+				if Vector2(d.x, d.z).length() > 0.5:
+					want = atan2(-d.x, -d.z)
+		yaw = lerp_angle(yaw, want, 1.0 - exp(-delta * AIM_SHARPNESS))
 	else:
 		yaw = wrapf(yaw + deg_to_rad(AUTO_SWEEP_DEG) * delta, -PI, PI)
 	_pivot.rotation.y = yaw

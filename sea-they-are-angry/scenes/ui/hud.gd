@@ -83,16 +83,20 @@ func _ready() -> void:
 
 	_warn_label = _label(root, 52)
 	Fonts.use_title(_warn_label)
-	_warn_label.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_warn_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_warn_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_warn_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_warn_label.offset_top = -160.0
 	_warn_label.visible = false
 	_report_label = _label(root, 24)
-	_report_label.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_report_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_report_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_report_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_report_label.offset_top = 40.0
+	_report_label.offset_top = 60.0
+	_report_label.offset_left = 80.0
+	_report_label.offset_right = -80.0
+	_report_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_report_label.add_theme_constant_override("outline_size", 8)
 	_report_label.visible = false
 
 	_build_game_over(root)
@@ -233,13 +237,13 @@ func warn(text: String) -> void:
 	_show_warning(text)
 
 ## The keeper's log for the night just survived: a heading and a few lines under it.
-func report(heading: String, lines: Array[String]) -> void:
+func report(heading: String, lines: Array, time: float = REPORT_TIME) -> void:
 	_show_warning(heading)
-	_warn_t = REPORT_TIME
+	_warn_t = time
 	_report_label.text = "\n".join(lines)
 	_report_label.visible = true
 	_report_label.modulate.a = 1.0
-	_report_t = REPORT_TIME
+	_report_t = time
 
 func _on_phase_changed(p: int) -> void:
 	if p == Cycle.Phase.DUSK:

@@ -75,6 +75,8 @@ var _climb_from := Vector3.ZERO
 var _climb_to := Vector3.ZERO
 var _climb_t := -1.0
 var _climb_len := 1.0
+# Where the mouse cursor meets the ground or the sea, while working the lamp.
+var _lamp_point := Vector3.INF
 
 func _ready() -> void:
 	add_to_group("player")
@@ -383,6 +385,7 @@ func _update_aim() -> void:
 		if flat.length() > 0.3:
 			_aim = Vector3(flat.x, 0.0, flat.y).normalized()
 		return
+	_lamp_point = Vector3.INF
 	if camera == null:
 		return
 	var mp := get_viewport().get_mouse_position()
@@ -390,6 +393,8 @@ func _update_aim() -> void:
 	var dir := camera.project_ray_normal(mp)
 	if absf(dir.y) < 0.0001:
 		return
+	if operating:
+		_lamp_point = _ground_hit(from, dir)
 	var t := (global_position.y - from.y) / dir.y
 	if t <= 0.0:
 		return
@@ -397,6 +402,34 @@ func _update_aim() -> void:
 	d.y = 0.0
 	if d.length() > 0.05:
 		_aim = d.normalized()
+
+## The point the beam should light: under the mouse when one is aiming, otherwise INF.
+func lamp_target() -> Vector3:
+	return _lamp_point
+
+# March the cursor ray down to the island or the sea. From the crag top the beaches are
+# far below the keeper, so a plane at the keeper's height would swing the beam well off.
+static func _ground_hit(from: Vector3, dir: Vector3) -> Vector3:
+	if dir.y >= 0.0:
+		return Vector3.INF
+	var t := maxf(0.0, (Terrain.CRAG_TOP + 1.0 - from.y) / dir.y)
+	var t_end := (Terrain.SEA_LEVEL - from.y) / dir.y
+	var prev := t
+	while t <= t_end:
+		var p := from + dir * t
+		if p.y <= maxf(Terrain.height_at(p.x, p.z), Terrain.SEA_LEVEL):
+			# Refine between the last point above ground and this one.
+			for i in 6:
+				var mid := (prev + t) * 0.5
+				var q := from + dir * mid
+				if q.y <= maxf(Terrain.height_at(q.x, q.z), Terrain.SEA_LEVEL):
+					t = mid
+				else:
+					prev = mid
+			return from + dir * t
+		prev = t
+		t += 0.5
+	return from + dir * t_end
 
 func _move(delta: float) -> void:
 	var input := Input.get_vector(_act("move_left"), _act("move_right"), _act("move_up"), _act("move_down"))

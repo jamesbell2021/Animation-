@@ -120,4 +120,7 @@ Judgement calls made where the spec was open, contradictory, or would not work a
   - The HUD says when the focused beam is on ("burns oil fast") and when the lamp is sweeping unmanned.
   - At dawn a keeper's log reports what came ashore, how each one was stopped (burned, over the edge, boathook), what it cost, and one tip for the next night.
 - **Camera and mood:** the camera sits further back (0, 41, 27) to frame the bigger island. Fog densities are scaled down to match the longer view, and night ambient and moonlight are raised a little so the island still reads in the dark.
+- **Mouse aim from the crag top hits what's under the cursor.** Aiming used a flat plane at the keeper's height. From 6.4 m up, a cursor over a beach turned the beam about 18° off, which is more than the focused beam's 10° half-width. While a keeper works the lamp, the cursor ray is now traced down to the ground or the sea, and the lamp turns from its own centre toward that point. Gamepads still aim by stick direction.
+- **The big centred warnings were drawn off-screen.** `set_anchors_preset` only moves anchors, so "They are coming." and the foghorn landing warnings sat above the top edge. They now use `set_anchors_and_offsets_preset`.
+- **First day briefing:** a new run opens with four lines on what to do: gather on the beaches, the ladders, mending and the lamp, burning, and the ledge shove.
 

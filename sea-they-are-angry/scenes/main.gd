@@ -59,6 +59,7 @@ var _warned_low := false
 # This night's tally for the dawn report.
 var _tally := {}
 const HORN_GUTTER_EVERY := 7.0
+const FIRST_DAY_TIP_TIME := 14.0
 var camera: Camera3D
 var spawner: Node
 var hud: CanvasLayer
@@ -158,6 +159,13 @@ func begin_run(continue_save: bool, n: int) -> void:
 	else:
 		Run.start_new()
 	lighthouse.lamp.fuel = Run.lamp_fuel
+	if d.is_empty():
+		hud.report("The first day.", [
+			"Gather driftwood, scrap and bio on the three beaches. The ladders down the crag are on its east side.",
+			"Mend fences with driftwood (E). At dusk the lamp lights: stand by the door and work it (R).",
+			"They come ashore on the beaches and climb the ledge. Q focuses the beam to burn them,",
+			"and on the ledge a blow aimed outward knocks them over the edge.",
+		], FIRST_DAY_TIP_TIME)
 	_apply_lighting(Cycle.Phase.DAY, 0.0)
 	atmosphere.apply(Cycle.Phase.DAY, 0.0)
 	Cycle.start(Cycle.Phase.DAY)
