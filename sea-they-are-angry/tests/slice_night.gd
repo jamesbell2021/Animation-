@@ -32,7 +32,7 @@ func _go() -> void:
 	var t9: Array = main.spawner.night_table(9)
 	var t9_groups := t9.filter(func(e): return e["kind"] != "E")
 	var t9_eel := t9.filter(func(e): return e["kind"] == "E")
-	check(t9_groups.size() == 6 and int(t9_groups[0]["count"]) == 3 + 1 + 1 and t9_eel.size() == 1, "night 9 uses the night 7 pattern +1, +1 anger, and brings the Eel (solo)")
+	check(t9_groups.size() == 8 and int(t9_groups[0]["count"]) == 3 + 1 + 1 and t9_eel.size() == 1, "night 9 uses the night 7 pattern +1, +1 anger, and brings the Eel (solo)")
 	# Keep the keeper out of the way and the lamp fuelled, then run a night fast.
 	main.player.global_position = Vector3(-2.6, Terrain.height_at(-2.6, 2.2) + 0.15, 2.2)
 	Run.night = 1

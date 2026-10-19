@@ -12,7 +12,7 @@ const OMEN_EVERY := 0.6
 const SPLIT_FROM_NIGHT := 2
 const SPLIT_MIN := 3
 # Rows are [t, kind, count] or [t, kind, count, "opp"]: t is the fraction of the night,
-# kind B Bloated, S Squid, C Crab; "opp" lands on a different beach from the night's
+# kind B Bloated, S Squid, C Crab, M Smotherer; "opp" lands on a different beach from the night's
 # first group. Waves come early enough that the last still reaches the fences before
 # dawn: the walk from a beach to the lighthouse is close to a minute. The Eel is
 # scheduled separately (see eel_night).
@@ -20,11 +20,11 @@ const NIGHT_TABLES := {
 	1: [[0.06, "B", 2], [0.32, "B", 2], [0.58, "B", 3]],
 	2: [[0.06, "B", 2], [0.24, "S", 2, "opp"], [0.44, "B", 3], [0.62, "S", 2, "opp"]],
 	3: [[0.06, "B", 3], [0.20, "C", 1], [0.38, "S", 2, "opp"], [0.55, "B", 3], [0.68, "S", 2, "opp"]],
-	4: [[0.04, "S", 2], [0.12, "B", 3], [0.28, "C", 1], [0.44, "B", 4], [0.56, "S", 3, "opp"], [0.68, "C", 1]],
-	5: [[0.06, "B", 3], [0.20, "C", 1], [0.32, "S", 3, "opp"], [0.62, "B", 4]],
-	6: [[0.04, "B", 4], [0.16, "S", 3, "opp"], [0.28, "C", 2], [0.44, "B", 4], [0.56, "S", 3, "opp"], [0.68, "C", 1]],
-	7: [[0.04, "S", 3], [0.12, "B", 4], [0.24, "C", 2], [0.40, "B", 5], [0.52, "S", 4, "opp"], [0.68, "C", 2]],
-	8: [[0.04, "B", 4], [0.16, "C", 2], [0.28, "S", 4, "opp"], [0.60, "B", 5], [0.72, "S", 3, "opp"]],
+	4: [[0.04, "S", 2], [0.12, "B", 3], [0.28, "C", 1], [0.36, "M", 1, "opp"], [0.44, "B", 4], [0.56, "S", 3, "opp"], [0.68, "C", 1]],
+	5: [[0.06, "B", 3], [0.20, "C", 1], [0.32, "S", 3, "opp"], [0.52, "M", 1, "opp"], [0.62, "B", 4]],
+	6: [[0.04, "B", 4], [0.16, "S", 3, "opp"], [0.28, "C", 2], [0.36, "M", 1], [0.44, "B", 4], [0.56, "S", 3, "opp"], [0.68, "C", 1]],
+	7: [[0.04, "S", 3], [0.12, "B", 4], [0.24, "C", 2], [0.32, "M", 1, "opp"], [0.40, "B", 5], [0.52, "S", 4, "opp"], [0.60, "M", 1], [0.68, "C", 2]],
+	8: [[0.04, "B", 4], [0.16, "C", 2], [0.28, "S", 4, "opp"], [0.50, "M", 2, "opp"], [0.60, "B", 5], [0.72, "S", 3, "opp"]],
 }
 const EEL_AT := 0.42
 # The second and later Bloated groups of a night (from night 2) make for the homestead.
@@ -35,6 +35,7 @@ const WARNINGS := {
 	"B": "Something stirs in the water",
 	"S": "Something skitters in the shallows",
 	"C": "Something heavy drags itself ashore",
+	"M": "Something pale crawls from the sea",
 }
 
 ## A group is about to come out of the sea at these landing points.
@@ -191,6 +192,8 @@ func _spawn_one(at: Vector3, kind: String = "B", raid: bool = false) -> void:
 			e = Squid.new()
 		"C":
 			e = Crab.new()
+		"M":
+			e = Smotherer.new()
 		_:
 			var b := Bloated.new()
 			b.raid = raid

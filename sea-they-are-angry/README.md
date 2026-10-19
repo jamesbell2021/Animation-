@@ -50,11 +50,12 @@ Keepers face the way they walk and turn to their aim to swing. Each carries a pa
 - Keeper movement, mouse aim, boathook attack. A blow aimed outward on the ledge knocks a creature over the edge. Keepers have their own ladders down the crag.
 - The lamp: fuel, wide and focused beams (the focused one reaches the beaches), auto-sweep when nobody operates it, Burning to Guttering to Dark.
 - Six scavenge points on the beaches that refill at dawn, five fences at the chokepoints (beach heads and the ledge), repair, refuel.
-- Four creatures:
+- Five creatures:
   - **The Bloated Dead** land on a beach and walk the long way up to the light, batter fences, swell and burst. Some groups raid the homestead instead.
   - **The Wall-Crawling Squid** climbs straight up cliffs and the crag at the keepers, lunges, and hides the others in ink.
   - **The Armoured Crab** comes to wreck the cottage, shed or garden; its shell turns blows from the front.
   - **The Giant Constrictor Eel** surges up and coils round the lighthouse until the focused beam burns its head.
+  - **The Smotherer** climbs the lighthouse and wraps itself over the lantern, smothering the beam. The light can't burn it: strike the tower's foot with the boathook to shake it down.
 - Work the lamp from inside the lighthouse: the keeper walks in at the door and out again. Repairs are done with a hammer; refuelling with an oil can. The cottage, shed and garden take damage and need mending too.
 - Foghorn warnings name where they land, the water churns before they surface, and a keeper's log at dawn sums up the night.
 - A spawner driven by a per-night table and the hidden Sea Anger value.

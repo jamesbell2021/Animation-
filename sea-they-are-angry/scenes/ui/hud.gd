@@ -203,7 +203,10 @@ func _update_lamp_label() -> void:
 			_lamp_label.text = "Lamp: unlit (lights at dusk)"
 		Lamp.State.BURNING:
 			# Say which beam, and that the focused one drinks oil, so it isn't left on by accident.
-			if lamp.mode == Lamp.Mode.FOCUSED:
+			if lamp.is_smothered():
+				_lamp_label.text = "Lamp: SMOTHERED — shake it off the tower!"
+				color = RED
+			elif lamp.mode == Lamp.Mode.FOCUSED:
 				_lamp_label.text = "Lamp: FOCUSED — burns oil fast"
 				color = Color(1.0, 0.55, 0.25)
 			else:

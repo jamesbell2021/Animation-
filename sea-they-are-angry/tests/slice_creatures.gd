@@ -282,6 +282,46 @@ func _run() -> void:
 	check(Anger.value <= anger0, "the sea calms a little (anger %d -> %d)" % [anger0, Anger.value])
 	lamp.set_operator(null)
 
+	# ---- Smotherer ----
+	await clear_enemies()
+	lh.hp = lh.max_hp
+	Cycle._enter(Cycle.Phase.NIGHT)
+	await frames(2)
+	player.global_position = Vector3(-1.6, Terrain.CRAG_TOP + 0.1, 2.9)
+	player._prone_t = 0.0
+	await frames(2)
+	await press("operate")
+	await wait_until(func(): return player.is_inside(), 120)
+	var full_range := lamp.current_range()
+	var sm := spawn(Smotherer.new(), Terrain.ledge_point(0.97)) as Smotherer
+	Engine.time_scale = 4.0
+	await wait_until(func(): return sm.state == &"Smother", 1500)
+	Engine.time_scale = 1.0
+	check(sm.state == &"Smother", "a Smotherer climbs the tower and wraps the lantern")
+	check(lamp.is_smothered() and lamp.current_range() < full_range * 0.5, "the beam is smothered (range %.0f -> %.0f m)" % [full_range, lamp.current_range()])
+	check(sm.light_probe_points().is_empty(), "up there the beam can't touch it")
+	var lhs := lh.hp
+	await frames(90)
+	check(lh.hp < lhs, "and the lantern glass cracks (%d -> %d)" % [lhs, lh.hp])
+	check(player.interact_prompt().contains("on the tower"), "the keeper in the lamp room is told: " + player.interact_prompt())
+	sm.take_damage(20, Vector3.FORWARD, player)
+	check(sm.hp == 50, "no boathook reaches it up there")
+	await press("operate")
+	await wait_until(func(): return not player.is_busy(), 120)
+	var foot := Vector3(0.0, Terrain.CRAG_TOP + 0.1, Lighthouse.RADIUS + 0.5)
+	player.global_position = foot
+	await frames(3)
+	check(player.interact_prompt().contains("Strike the tower"), "at the foot: " + player.interact_prompt())
+	for i in Smotherer.SHAKES_TO_FALL:
+		player._attack_cd = 0.0
+		player._attack()
+		await frames(5)
+	await wait_until(func(): return not is_instance_valid(sm), 200)
+	check(not is_instance_valid(sm), "three blows on the tower's foot shake it loose, and the fall kills it")
+	check(not lamp.is_smothered() and is_equal_approx(lamp.current_range(), full_range), "the beam comes back")
+	Cycle._enter(Cycle.Phase.DAY)
+	await frames(2)
+
 	# ---- the schedule ----
 	var Spawner = load("res://scenes/systems/spawner.gd")
 	check(Spawner.eel_night(6, 1, 0) and Spawner.eel_night(9, 1, 0) and not Spawner.eel_night(5, 1, 0), "solo Eel nights: 6, 9")

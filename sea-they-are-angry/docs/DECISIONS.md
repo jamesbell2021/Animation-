@@ -155,3 +155,19 @@ Judgement calls made where the spec was open, contradictory, or would not work a
   - From night 6, lighthouse damage comes from Bloated that reach the top.
   - Human mouse aim will do worse than the bot on Squids.
 
+## The Smotherer, a fifth creature (owner's request, from the roadmap's idea)
+
+- **Why:** the roadmap's idea was a creature that threatens the lamp keeper: it climbs the lighthouse and must be knocked off by another keeper. Solo, it forces you off the lamp for a while.
+- **`scenes/enemies/smotherer.gd`:** a gaunt, pale drowned thing. 50 hp, 1.4 m/s, mass 1.2, so it can be shoved off the ledge.
+  - **Getting there:** it comes up a beach and the ledge like the Bloated.
+  - **Climbing:** at the tower it climbs hand over hand at 1.3 m/s.
+  - **Smothering:** at the top it wraps itself over the lantern. While any Smotherer is there (counted), the beam's energy is ×0.12 and its range ×0.3, so it can't reach anything worth slowing or burning. The lantern glass also cracks at 2 hp/s.
+  - **Alarm:** four foghorn blasts and "The light is smothered!"
+  - **HUD:** "Lamp: SMOTHERED", and the keeper in the lamp room is told to go out.
+- **Beam can't burn it:** it only slows ×0.6 in either beam. A first version could be burned like the Bloated, and the playtest bot burned every one on the beaches, so it never threatened the lamp at all. It is boathook work: on the ledge, where an outward blow knocks it over the edge, or at the tower.
+- **Shaking it down:** on the tower it can't be struck. A boathook swing within 1.3 m of the tower's foot shakes everything on the tower: each blow drops it 1.2 m and climbing resumes, and the third blow makes it lose its grip and fall. Fall damage is the usual 14/m past 1.2 m, so from the lantern it dies. Shaken off low down, it gets up after 1.5 s and tries again. At the tower's foot the prompt says "[LMB] Strike the tower to shake it loose!"
+- **Schedule:** one on nights 4, 5 and 6, two on night 7 (and so on from 9), two together on night 8. Warning: "Something pale crawls from the sea".
+- **Playtest bot:**
+  - Solo: the lamp is smothered for 4–41 s a night from night 4, and each time the keeper has to go out and shake it down.
+  - Co-op: the keeper holding the ledge kills every Smotherer on the way up, so the lamp is never smothered. That gives the second keeper a clear job.
+

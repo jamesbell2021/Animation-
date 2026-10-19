@@ -97,9 +97,25 @@ func _go() -> void:
 					if burning:
 						stats["burn_s"] = stats.get("burn_s", 0.0) + Engine.time_scale / 60.0
 			if mode == "bot" and cycle.phase == cycle.Phase.NIGHT:
-				_aim_bot(player, lamp)
+				# Something on the tower: in co-op the ledge keeper runs up to shake it down;
+				# solo the lamp keeper has to go out and do it.
+				var climber := _climber_up()
+				var shaker: Player = main.players[1] if main.players.size() > 1 and not main.players[1].downed else player
+				if climber:
+					stats["smothered_s"] = stats.get("smothered_s", 0.0) + Engine.time_scale / 60.0
+				if climber and shaker == player:
+					_shake_down(player)
+				elif not player.operating and not player.is_busy():
+					# Back in at the door.
+					player.global_position = Vector3(0.0, Terrain.CRAG_TOP + 0.1, 2.6)
+					player._toggle_operate()
+				else:
+					_aim_bot(player, lamp)
 				for k in range(1, main.players.size()):
-					_defend(main.players[k])
+					if climber and main.players[k] == shaker:
+						_shake_down(main.players[k])
+					else:
+						_defend(main.players[k])
 				# Top the lamp up from the store when it runs low, as a keeper at the lamp would.
 				if lamp.fuel < 12.0 and root.get_node("Stock").spend({"bio": 1}):
 					lamp.refuel_clean(Lighthouse.REFUEL_UNITS)
@@ -122,6 +138,7 @@ func _go() -> void:
 			if s is Structure and Enemy.HOME_IDS.has(s.id):
 				home.append("%s %d/%d" % [s.id, s.hp, s.max_hp])
 		print("   homestead: %s   killed: %s" % [", ".join(home), stats.get("kinds", {})])
+		print("   smothered for %.0f s" % stats.get("smothered_s", 0.0))
 		print("   lamp lit %.0f s, focused %.0f s, of which burning something %.0f s" % [stats.get("lit_s", 0.0), stats.get("focus_s", 0.0), stats.get("burn_s", 0.0)])
 		if not run.active:
 			break
@@ -166,6 +183,9 @@ func _aim_bot(player: Player, lamp: Lamp) -> void:
 			continue
 		# The Crab's shell shrugs off the beam except in its eyes mid-wind-up.
 		if e is Crab and e.state != &"WindUp":
+			continue
+		# Nor does the light burn a Smotherer.
+		if e is Smotherer:
 			continue
 		var probes: Array = e.light_probe_points()
 		if probes.is_empty():
@@ -234,6 +254,33 @@ func _defend(k: Player) -> void:
 			k.global_position = Vector3(np.x, Terrain.height_at(np.x, np.z) + 0.05, np.z)
 	if target != null and target.state != &"Bloat" and target.state != &"Burst" and Geo.flat_dist(target.global_position, k.global_position) < 1.8 and k._attack_cd <= 0.0:
 		k._aim = Vector3(target.global_position.x - k.global_position.x, 0.0, target.global_position.z - k.global_position.z).normalized()
+		k._attack()
+
+func _climber_up() -> bool:
+	for s in get_nodes_in_group("smotherers"):
+		if s.is_on_tower():
+			return true
+	return false
+
+# Out of the lamp room if need be, round to the tower's foot, and strike it.
+func _shake_down(k: Player) -> void:
+	if k.downed or k.is_busy():
+		return
+	if k.operating:
+		k._toggle_operate()
+		return
+	var foot := Vector3(0.0, Terrain.CRAG_TOP, Lighthouse.RADIUS + 0.6)
+	var dt := Engine.time_scale / 60.0
+	var step := Vector3(foot.x - k.global_position.x, 0.0, foot.z - k.global_position.z)
+	if step.length() > 0.3:
+		var np := k.global_position + step.normalized() * minf(step.length(), Player.SPEED * dt)
+		if Terrain.walkable(np.x, np.z) or absf(Terrain.height_at(np.x, np.z) - k.global_position.y) < 1.0:
+			k.global_position = Vector3(np.x, Terrain.height_at(np.x, np.z) + 0.05, np.z)
+		else:
+			# Off on the ledge: take the ladder-ish shortcut a real keeper would.
+			k.global_position = foot + Vector3(0.0, 0.1, 0.0)
+		return
+	if k._attack_cd <= 0.0:
 		k._attack()
 
 func _day_repairs(main) -> void:

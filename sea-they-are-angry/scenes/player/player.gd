@@ -568,6 +568,27 @@ func _attack() -> void:
 		if rad_to_deg(_aim.angle_to(dir_to)) > ATTACK_ARC_DEG:
 			continue
 		e.take_damage(ATTACK_DMG, dir_to, self)
+	# At the tower's foot, a blow on the stone shakes anything clinging up there.
+	if _at_tower_foot():
+		var shook := false
+		for s in get_tree().get_nodes_in_group("smotherers"):
+			if s.is_on_tower():
+				s.shake(self)
+				shook = true
+		if shook:
+			Audio.sfx("hammer", global_position, 0.0, 0.2)
+
+func _at_tower_foot() -> bool:
+	if lamp == null or lamp.lighthouse == null:
+		return false
+	var lh: Structure = lamp.lighthouse
+	return absf(lh.global_position.y - global_position.y) < REACH_HEIGHT and lh.surface_distance(global_position) < Smotherer.SHAKE_REACH
+
+func _climber_on_tower() -> bool:
+	for s in get_tree().get_nodes_in_group("smotherers"):
+		if s.is_on_tower():
+			return true
+	return false
 
 ## Climb from where the keeper stands to `to` over `time` seconds (ladders).
 func climb(to: Vector3, time: float) -> void:
@@ -813,7 +834,11 @@ func interact_prompt() -> String:
 	if mate != null:
 		return _keys("[E] Hold to revive %s  (%d%%)" % [mate.keeper_name(), roundi(mate.revive_progress * 100.0)])
 	if operating:
+		if _climber_on_tower():
+			return _keys("Something's on the tower!  [R] Leave the lamp and shake it loose")
 		return _keys("[R] Leave the lamp   [Q] Switch beam")
+	if _at_tower_foot() and _climber_on_tower():
+		return _keys("[LMB] Strike the tower to shake it loose!")
 	if _job_tool == "hammer":
 		return "Hammering..."
 	if _job_tool == "can":
@@ -828,8 +853,8 @@ func _keys(text: String) -> String:
 	if d == Players.KEYBOARD_MOUSE:
 		return text
 	if d == Players.KEYBOARD_ARROWS:
-		return text.replace("[E]", "[Shift]").replace("[R]", "[/]").replace("[Q]", "[.]")
-	return text.replace("[E]", "(A)").replace("[R]", "(Y)").replace("[Q]", "(B)")
+		return text.replace("[E]", "[Shift]").replace("[R]", "[/]").replace("[Q]", "[.]").replace("[LMB]", "[Ctrl]")
+	return text.replace("[E]", "(A)").replace("[R]", "(Y)").replace("[Q]", "(B)").replace("[LMB]", "(X)")
 
 func _downed_mate() -> Node:
 	for p in get_tree().get_nodes_in_group("player"):

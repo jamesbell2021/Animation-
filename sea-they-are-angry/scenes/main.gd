@@ -221,6 +221,13 @@ func _on_group_warning(kind: String, points: Array, raid: bool) -> void:
 		text += "  They're making for the cottage!"
 	hud.warn(text)
 
+# Four short blasts: the light is smothered.
+func _on_smothered(on: bool) -> void:
+	if on and Run.active:
+		_count("smother")
+		Audio.horn([1.0, 1.0, 1.0, 1.0], -1.0)
+		hud.warn("The light is smothered! Strike the tower's foot to shake it loose!")
+
 func _unhandled_input(event: InputEvent) -> void:
 	# Debug builds: F9 brings the Eel now.
 	if OS.is_debug_build() and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F9 and Run.active:
@@ -498,6 +505,7 @@ func _build_spawner() -> void:
 	add_child(spawner)
 	spawner.wave_incoming.connect(_on_wave_incoming)
 	spawner.group_warning.connect(_on_group_warning)
+	lighthouse.lamp.smothered_changed.connect(_on_smothered)
 
 # ---- cycle ----
 
@@ -578,6 +586,8 @@ func _dawn_report() -> void:
 		tip = "Fuel is low: gather bio on the beaches and refuel at the lighthouse door."
 	elif g.call("reached") > 0:
 		tip = "Meet climbers on the ledge: a blow aimed outward knocks them over the edge."
+	elif g.call("smother") > 0:
+		tip = "When something climbs the tower, burn it on the ledge or strike the tower's foot to shake it down."
 	elif g.call("fence") > 0:
 		tip = "Mend broken fences with driftwood before dark."
 	elif not hurt_home.is_empty():

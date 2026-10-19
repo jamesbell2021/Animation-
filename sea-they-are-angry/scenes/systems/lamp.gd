@@ -6,6 +6,7 @@ enum State { OFF, BURNING, GUTTERING, DARK }
 enum Mode { WIDE, FOCUSED }
 
 signal state_changed(s: int)
+signal smothered_changed(on: bool)
 
 const GUTTER_WINDOW := 25.0
 const FUEL_MAX := 100.0
@@ -28,6 +29,9 @@ const LOW_HP_FLICKER := 0.3
 const CONE_INTENSITY := 0.09
 const FOG_ENERGY := 0.45
 const GLOW_RANGE := 5.0
+# A Smotherer wrapped over the lantern: the light barely gets out.
+const SMOTHER_ENERGY := 0.12
+const SMOTHER_RANGE := 0.3
 
 var lighthouse: Structure
 var state: int = State.OFF
@@ -47,6 +51,7 @@ var _glow: OmniLight3D
 var _gutter_t := 0.0
 var _boost_t := 0.0
 var _flicker_t := 0.0
+var _smothered := 0
 
 func _ready() -> void:
 	fuel = Run.lamp_fuel
@@ -86,7 +91,19 @@ func current_angle() -> float:
 	return WIDE_ANGLE if mode == Mode.WIDE else FOCUS_ANGLE
 
 func current_range() -> float:
-	return WIDE_RANGE if mode == Mode.WIDE else FOCUS_RANGE
+	var r := WIDE_RANGE if mode == Mode.WIDE else FOCUS_RANGE
+	return r * SMOTHER_RANGE if is_smothered() else r
+
+## Something is wrapped over the lantern (counted, in case more than one is up there).
+func smother(on: bool) -> void:
+	var was := is_smothered()
+	_smothered = maxi(0, _smothered + (1 if on else -1))
+	if was != is_smothered():
+		_apply_mode()
+		smothered_changed.emit(is_smothered())
+
+func is_smothered() -> bool:
+	return _smothered > 0
 
 func is_lit() -> bool:
 	return state == State.BURNING or state == State.GUTTERING
@@ -210,6 +227,8 @@ func _flicker(delta: float) -> void:
 		base *= clampf(n, 0.2, 1.2)
 	if _boost_t > 0.0:
 		base *= BOOST_MULT
+	if is_smothered():
+		base *= SMOTHER_ENERGY
 	_light.light_energy = base * ENERGY_SCALE
 	_glow.light_energy = base * 1.6
 	_cone_mat.set_shader_parameter("intensity", CONE_INTENSITY * base)

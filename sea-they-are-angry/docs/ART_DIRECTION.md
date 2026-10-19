@@ -50,6 +50,10 @@ The creatures and the hammer:
 |---|---|---|
 | ![crab](screenshots/creature_crab.png) | ![squid](screenshots/creature_squid.png) | ![hammer](screenshots/keeper_hammer.png) |
 
+| Smotherers: one climbing, one wrapped over the lantern |
+|---|
+| ![smotherer](screenshots/creature_smotherer.png) |
+
 Regenerate with `tools/screenshot.gd`.
 
 The owner's brief is "a Valheim look". In practice that means simple, faceted low-poly shapes with flat colour, carried by modern, moody lighting. It is the lighting and atmosphere that make Valheim read as beautiful, not texture detail. The checklist the game now follows:
