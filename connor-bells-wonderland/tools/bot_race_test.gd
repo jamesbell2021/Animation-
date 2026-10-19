@@ -2,13 +2,15 @@ extends SceneTree
 ## Headless bot race: 7 bots, all six sections, prints progress every 20 s and the results.
 ## Run from the project folder:
 ##   godot --headless --path . --fixed-fps 60 -s res://tools/bot_race_test.gd -- diff=2
-## diff=0 Easy, 1 Medium, 2 Hard. Add items=off to race without gift boxes.
+## diff=0 Easy, 1 Medium, 2 Hard. Add items=off to race without gift boxes, and
+## mode=tower to race up the Tower Climb instead of the fairground course.
 ## The idle "Player" contestant always ends DNF.
 var frame := 0
 var gm: Node
 var diff := 1
 var max_frames := 60 * 320
 var items_on := true
+var race_mode := "race"
 var pickups := 0
 var hits := 0
 var uses := {}
@@ -19,6 +21,9 @@ func _initialize() -> void:
 			diff = int(a.substr(5))
 		if a == "items=off":
 			items_on = false
+		if a.begins_with("mode="):
+			race_mode = a.substr(5)
+			max_frames = 60 * 500
 
 func _process(_d: float) -> bool:
 	frame += 1
@@ -28,7 +33,7 @@ func _process(_d: float) -> bool:
 	if frame == 2:
 		var net = root.get_node_or_null("NetworkManager")
 		if net != null:
-			net.settings = {"sections": 6, "bots": 7, "difficulty": diff, "countdown": 3, "items": items_on}
+			net.settings = {"sections": 6, "bots": 7, "difficulty": diff, "countdown": 3, "items": items_on, "mode": race_mode}
 		change_scene_to_file("res://scenes/main/main.tscn")
 		return false
 	if frame < 4:

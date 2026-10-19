@@ -4,7 +4,7 @@ extends Control
 
 const MENU_SCENE := "res://scenes/menus/main_menu.tscn"
 const DIFFICULTY_NAMES: Array[String] = ["Easy", "Medium", "Hard"]
-const LOBBY_MODES: Array[String] = ["race", "paintball", "dodgems"]
+const LOBBY_MODES: Array[String] = ["race", "tower", "paintball", "dodgems"]
 
 var _net: Node
 var _list: VBoxContainer
@@ -81,9 +81,10 @@ func _build() -> void:
 	right.add_theme_constant_override("separation", 10)
 	columns.add_child(right)
 	_mode_option = OptionButton.new()
-	_mode_option.add_item("Tower Race", 0)
-	_mode_option.add_item("Paintball Battle", 1)
-	_mode_option.add_item("Dodgem Derby", 2)
+	_mode_option.add_item("Fairground Race", 0)
+	_mode_option.add_item("Tower Climb", 1)
+	_mode_option.add_item("Paintball Battle", 2)
+	_mode_option.add_item("Dodgem Derby", 3)
 	_mode_option.disabled = not _is_host
 	_mode_option.item_selected.connect(func(_i: int) -> void: _push_settings())
 	right.add_child(_row("Mode", _mode_option))
@@ -187,7 +188,7 @@ func _apply_settings(settings: Dictionary) -> void:
 	_countdown_spin.value = int(settings.get("countdown", 3))
 	_items_check.button_pressed = bool(settings.get("items", true))
 	_mode_option.selected = maxi(LOBBY_MODES.find(str(settings.get("mode", "race"))), 0)
-	_start_button.text = ["Start Race", "Start Battle", "Start Derby"][_mode_option.selected]
+	_start_button.text = ["Start Race", "Start Climb", "Start Battle", "Start Derby"][_mode_option.selected]
 	_updating = false
 
 

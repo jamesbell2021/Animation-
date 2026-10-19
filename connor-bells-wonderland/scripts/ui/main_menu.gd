@@ -6,9 +6,9 @@ const GAME_SCENE := "res://scenes/main/main.tscn"
 const LOBBY_SCENE := "res://scenes/menus/lobby.tscn"
 const COLOUR_NAMES: Array[String] = CourseBuilder.PLAYER_COLOUR_NAMES
 const DIFFICULTY_NAMES: Array[String] = ["Easy", "Medium", "Hard"]
-const MODES: Array[String] = ["race", "paintball", "dodgems"]
-const MODE_NAMES: Array[String] = ["Tower Race", "Paintball Battle", "Dodgem Derby"]
-const PLAY_TEXT: Array[String] = ["PLAY SOLO", "PAINTBALL BATTLE!", "DODGEM DERBY!"]
+const MODES: Array[String] = ["race", "tower", "paintball", "dodgems"]
+const MODE_NAMES: Array[String] = ["Fairground Race", "Tower Climb", "Paintball Battle", "Dodgem Derby"]
+const PLAY_TEXT: Array[String] = ["PLAY SOLO", "TOWER CLIMB!", "PAINTBALL BATTLE!", "DODGEM DERBY!"]
 
 var _net: Node
 var _name_edit: LineEdit
@@ -39,6 +39,8 @@ const TIPS: Array[String] = [
 	"Paintball Battle: last one standing wins Fruit of the Month!",
 	"Paintball: hold E to fire, grab PAINT crates to reload",
 	"Dodgem Derby: ram them into the Irish Sea, SPACE to boost",
+	"Tower Climb: fall off and it's back to the last landing!",
+	"Tower Climb: every weapon is in the boxes - use them!",
 	"Dodgem Derby: hit them from the middle so they fly off the edge",
 ]
 

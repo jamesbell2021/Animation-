@@ -152,6 +152,11 @@ func _physics_process(delta: float) -> void:
 
 
 ## Horizontal unit vector the contestant is facing.
+## Keep the current speed through the air (no steering or drag) until landing.
+func coast() -> void:
+	_flung_time = 0.0
+
+
 func get_visuals() -> ContestantVisuals:
 	return _visual
 

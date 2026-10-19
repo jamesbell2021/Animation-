@@ -44,6 +44,8 @@ var paintball: PaintballManager
 var dodgems: DodgemsManager
 var battle: bool = false
 var battle_kind: String = ""
+## Tower Climb mode (mode "tower"): a race up a spiral obby tower.
+var climb: bool = false
 var touch: TouchControls
 var pause_menu: PauseMenu
 var player: Contestant
@@ -66,11 +68,14 @@ func _ready() -> void:
 	var chosen := str(settings.get("mode", "race"))
 	battle_kind = chosen if chosen in ["paintball", "dodgems"] else ""
 	battle = not battle_kind.is_empty()
+	climb = chosen == "tower"
 
 	if battle_kind == "paintball":
 		course = PaintballArena.new()
 	elif battle_kind == "dodgems":
 		course = DodgemArena.new()
+	elif climb:
+		course = TowerClimbCourse.new()
 	else:
 		course = _instantiate_scene(COURSE_SCENE_PATH) as FairgroundCourse
 	if course == null:
@@ -89,7 +94,7 @@ func _ready() -> void:
 		dodgems.name = "DodgemsManager"
 		add_child(dodgems)
 		dodgems.setup(self, course as DodgemArena)
-	if scenery_enabled and not battle:
+	if scenery_enabled and not battle and not climb:
 		decorator = SceneryDecorator.new()
 		course.add_child(decorator)
 		decorator.decorate(course, coins_enabled)
@@ -97,6 +102,7 @@ func _ready() -> void:
 			decorator.coin_collected.connect(_on_coin_collected)
 	_spawn_points = course.get_spawn_positions(max_contestants)
 	navigation = BotNavigation.new()
+	navigation.assist_jumps = climb
 	if not battle:
 		navigation.build(course)
 	items = ItemManager.new()
@@ -120,6 +126,9 @@ func _ready() -> void:
 			push_error("GameManager: course has no finish area.")
 		else:
 			race_manager.register_finish_area(finish)
+		if climb:
+			race_manager.max_race_seconds = 480.0
+			race_manager.finish_grace_seconds = 45.0
 
 	hud = HudController.new()
 	hud.name = "HUD"
@@ -151,6 +160,13 @@ func _ready() -> void:
 	if player != null:
 		camera.set_target(player)
 		_connect_player_sounds(player)
+	if climb:
+		camera.arena_mode = true
+		camera.arena_swing_degrees = 55.0
+		camera.distance = 9.0
+		camera.height = 4.5
+		if player != null:
+			camera.set_target(player)
 	if battle:
 		camera.distance = 10.0 if paintball != null else 11.0
 		camera.height = 8.5 if paintball != null else 9.5
@@ -361,6 +377,8 @@ func _reset_local_state() -> void:
 		paintball.reset()
 	if dodgems != null:
 		dodgems.reset()
+	if course.has_method("on_restart"):
+		course.call("on_restart", _contestants)
 	if _fireworks != null:
 		_fireworks.stop_show()
 	if is_instance_valid(_present):
@@ -447,6 +465,21 @@ func on_race_started() -> void:
 
 
 func on_contestant_finished(contestant: Contestant, place: int, time: float) -> void:
+	if climb and place == 1 and contestant != null:
+		# First to the top: a fireworks display over the crown straight away.
+		if _fireworks == null:
+			_fireworks = FireworksShow.new()
+			_fireworks.name = "FinaleFireworks"
+			add_child(_fireworks)
+		_fireworks.spread = 16.0
+		_fireworks.height = Vector2(14.0, 30.0)
+		_fireworks.global_position = (course as TowerClimbCourse).crown_position()
+		_fireworks.start_show(25.0, 4.0)
+		sound.play("airhorn", 1.0, -2.0)
+		if contestant == player:
+			camera.set_finale(player)
+		else:
+			hud.show_message("%s CONQUERED THE TOWER!" % contestant.display_name.to_upper(), 3.0)
 	if contestant != null:
 		for i in range(3):
 			var offset := Vector3(randf_range(-3.0, 3.0), 4.0 + float(i) * 1.5, randf_range(-3.0, 3.0))
@@ -589,6 +622,11 @@ func _start_finale(results: Array) -> void:
 		prize = Prizes.BATTLE_PRIZE
 		subline = Prizes.BATTLE_PRIZE_DETAIL
 		lead = "LAST ONE STANDING: %s! %s" % [display.to_upper(), "YOU WIN..." if winner == player else "THEY WIN..."]
+	elif climb:
+		prize = Prizes.pick_tower("%s|%.2f|%d" % [str(top.get("name", "")), float(top.get("time", 0.0)), results.size()])
+		lead = "FIRST TO THE TOP: %s! %s" % [display.to_upper(), "YOU WIN..." if winner == player else "THEY WIN..."]
+		if not bool(top.get("finished", false)):
+			lead = "NOBODY MADE IT TO THE TOP! BOOBY PRIZE FOR %s..." % display.to_upper()
 	elif dodgems != null:
 		prize = Prizes.pick_derby("%s|%.2f|%d" % [str(top.get("name", "")), float(top.get("time", 0.0)), results.size()])
 		lead = "LAST DODGEM DRIVING: %s! %s" % [display.to_upper(), "YOU WIN..." if winner == player else "THEY WIN..."]
@@ -596,7 +634,7 @@ func _start_finale(results: Array) -> void:
 		lead = "NOBODY FINISHED! BOOBY PRIZE FOR %s..." % display.to_upper()
 	sound.play("drumroll")
 	var titles := {"paintball": "PAINTBALL BATTLE RESULTS", "dodgems": "DODGEM DERBY RESULTS"}
-	hud.set_results_title(titles.get(battle_kind, Branding.RESULTS_TITLE))
+	hud.set_results_title("TOWER CLIMB RESULTS" if climb else titles.get(battle_kind, Branding.RESULTS_TITLE))
 	hud.show_prize(lead, prize + "!", 2.2, subline, func() -> void:
 		if is_instance_valid(_present):
 			_present.pop()

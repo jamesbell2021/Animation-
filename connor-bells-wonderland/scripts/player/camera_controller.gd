@@ -14,6 +14,9 @@ extends Camera3D
 ## from [member arena_centre], so it always looks in towards the action.
 var arena_mode: bool = false
 var arena_centre: Vector3 = Vector3.ZERO
+## Tower Climb: swing the camera this far (degrees) from straight-out towards
+## behind the target as it runs anticlockwise round [member arena_centre].
+var arena_swing_degrees: float = 0.0
 
 var _target: Node3D
 var _yaw: float = 0.0
@@ -32,7 +35,7 @@ func set_target(node: Node3D) -> void:
 		if arena_mode and not _orbit:
 			var out := _target.global_position - arena_centre
 			if Vector2(out.x, out.z).length() > 5.0:
-				_yaw = atan2(out.x, out.z)
+				_yaw = _arena_yaw(out)
 		global_position = _target.global_position + _offset()
 		_look_at_target()
 
@@ -78,7 +81,7 @@ func _process(delta: float) -> void:
 		var out := _target.global_position - arena_centre
 		out.y = 0.0
 		if out.length() > 5.0:
-			_yaw = lerp_angle(_yaw, atan2(out.x, out.z), clampf(1.5 * delta, 0.0, 1.0))
+			_yaw = lerp_angle(_yaw, _arena_yaw(out), clampf(1.5 * delta, 0.0, 1.0))
 	var desired := _target.global_position + _offset()
 	if _orbit or arena_mode:
 		desired = _unblocked(desired)
@@ -120,6 +123,16 @@ func _unblocked(desired: Vector3) -> Vector3:
 			return overhead
 	var hit_pos: Vector3 = hit_info["position"]
 	return hit_pos + (focus - hit_pos).normalized() * 0.6
+
+
+## Camera direction for arena mode: straight out from the centre, swung back
+## along the way the target runs round it by arena_swing_degrees.
+func _arena_yaw(out: Vector3) -> float:
+	var flat := Vector3(out.x, 0.0, out.z).normalized()
+	var swing := deg_to_rad(arena_swing_degrees)
+	var tangent := Vector3(-flat.z, 0.0, flat.x)
+	var dir := flat * cos(swing) - tangent * sin(swing)
+	return atan2(dir.x, dir.z)
 
 
 func _offset() -> Vector3:

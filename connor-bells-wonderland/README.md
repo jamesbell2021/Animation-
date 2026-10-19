@@ -50,7 +50,8 @@ To try the touch controls on a PC, tick **Force Touch Controls** on the `Main` n
 The menu sits over a live night fair: contestants dance on a flashing dance floor
 under a disco ball in time with the music, a Ferris wheel turns, searchlights
 sweep, rockets go up behind the big top and shooting stars cross the sky. Pick
-**Tower Race**, **Paintball Battle** or **Dodgem Derby** under **Mode**.
+**Fairground Race**, **Tower Climb**, **Paintball Battle** or **Dodgem Derby**
+under **Mode**.
 
 ## The course
 
@@ -69,6 +70,32 @@ When the race ends, a fireworks display goes up over the winner, a drumroll play
 and a present above their head bursts open with their prize, picked at random from
 40 ridiculous ones ("PLAYER, YOU WON... A BRAND NEW TOASTER!", a wheelie bin cover,
 a llama called Gary...). Everyone in a Wi-Fi race sees the same prize.
+
+## Tower Climb
+
+An extreme obby race up a 120 m neon tower. The path spirals round the outside in
+eight stages, each starting on a numbered checkpoint landing:
+
+1. **Stepping Stones**: zig-zag jumps up floating blocks
+2. **Sweeper Stairs**: ramps up to railed pads with spinning sweeper arms
+3. **Vanishing Tiles**: tiles shake and drop away moments after you land
+4. **Spin City**: spinning discs between small stepping blocks
+5. **Pusher Beams**: narrow ramps and pads with pushers trying to shove you off
+6. **Bounce House**: bounce pads launch you up from ledge to ledge
+7. **Meltdown**: vanishing tiles either side of a three-armed sweeper
+8. **The Crown Climb**: small, far-apart blocks up to the golden summit
+
+There are no walls: fall more than a few metres below your last landing and you're
+back on it. Item boxes sit on every landing and along each stage, and every item is
+in play (catapult yourself up a level, Mega Bomb the pack off a ledge, oil the
+stepping stones...). The camera swings round to follow you up the spiral.
+
+The first to reach Connor's Crown on the summit sets off a fireworks display over
+the tower straight away; everyone else then has 45 seconds to finish. The winner
+gets a big, crazy prize ("A SOLID GOLD TOILET (IT'S ACTUALLY CHOCOLATE)!", "A PET
+GIRAFFE CALLED TOWER!", "A ZIP LINE FROM YOUR BED TO THE FRIDGE!"...). Bots climb
+too (aiming their jumps); on Hard the best of them reach the top in about two
+minutes. Works over Wi-Fi.
 
 ## Paintball Battle
 
@@ -184,6 +211,7 @@ fonts/           Bungee and Russo One with their licences
 scripts/items/   coins, item boxes, item rules, traps, custard pie
 scripts/paintball/ Paintball Battle: arena, rules, paintballs, paint splats, crates, bots
 scripts/dodgems/ Dodgem Derby: rink over the sea, rules and bumping, dodgem cars, bots
+scripts/tower/   Tower Climb: the tower course, its eight obby stages, vanishing tiles
 scripts/fx/      particles, fireworks shows, the prize present, the sword swipe
 scripts/audio/   synthesised sound effects and hard dance music
 tools/           headless bot race and item tests (not exported)
