@@ -112,6 +112,8 @@ var _push := Vector3.ZERO
 var _job_action := "interact"
 ## In a menu (the cottage, a trap slot): stands still, takes no other input.
 var in_menu := false
+# Holding interact over a downed mate this frame (kneels over them).
+var _reviving := false
 
 func _ready() -> void:
 	add_to_group("player")
@@ -363,7 +365,12 @@ func _physics_process(delta: float) -> void:
 	_update_facing(delta)
 	_animate(delta)
 	var mate := _downed_mate()
-	if mate != null and Input.is_action_pressed(_act("interact")):
+	_reviving = mate != null and Input.is_action_pressed(_act("interact"))
+	if _reviving:
+		var to: Vector3 = mate.global_position - global_position
+		if Vector2(to.x, to.z).length() > 0.05:
+			facing = atan2(-to.x, -to.z)
+			rotation.y = facing
 		mate.revive_progress += delta / float(Upgrades.pick("garden", Upgrades.REVIVE_TIME))
 		if mate.revive_progress >= 1.0:
 			mate.revive(REVIVE_HP)
@@ -404,11 +411,13 @@ func _animate(delta: float) -> void:
 		arm = lerpf(0.2, -1.6, ph / 0.65) if ph < 0.65 else lerpf(-1.6, 0.35, (ph - 0.65) / 0.35)
 	elif _job_tool == "can":
 		arm = -1.0
-	if _job_tool == "can":
+	if _job_tool == "can" and not _clips():
 		_hook_pivot.rotation.z = lerpf(0.0, 1.1, smoothstep(0.0, 0.3, _job_t / maxf(_job_len, 0.01)))
 	else:
 		_hook_pivot.rotation.z = 0.0
-	if rig != null:
+	if _clips():
+		_drive_clips(speed)
+	elif rig != null:
 		_pose_rig(swing, arm)
 	else:
 		_hook_pivot.rotation.x = -arm * 0.6
@@ -419,6 +428,29 @@ func _animate(delta: float) -> void:
 			Audio.sfx("step", global_position)
 	else:
 		_step_t = 0.0
+
+func _clips() -> bool:
+	return rig != null and rig.has_clips()
+
+# The keeper's clips: walking, running and sprinting by speed; the tool work, the ladder
+# and kneeling over a mate as held actions.
+func _drive_clips(speed: float) -> void:
+	if _climb_t >= 0.0:
+		rig.locomote(0.0)
+		var rise := float(rig.clips.get("climb", {}).get("rise", 0.6))
+		var natural := rise / maxf(rig.clip_length("climb"), 0.1)
+		var v := absf(_climb_to.y - _climb_from.y) / maxf(_climb_len * 0.8, 0.1)
+		rig.activity("climb", v / natural)
+		return
+	if _job_tool == "hammer":
+		rig.activity("hammer", rig.clip_length("hammer") / STRIKE_TIME)
+	elif _job_tool == "can":
+		rig.activity("pour", rig.clip_length("pour") / POUR_TIME)
+	elif _reviving:
+		rig.activity("revive")
+	else:
+		rig.activity("")
+	rig.locomote(speed)
 
 # The walk cycle, the hook arm and breathing, on the keeper's bones. Model axes:
 # -X swings a limb forward, +X bends a knee back, Y turns, Z leans sideways.
@@ -538,6 +570,8 @@ func _attack() -> void:
 	_aim_face_t = AIM_FACE_TIME
 	facing = aim_yaw()
 	rotation.y = facing
+	if _clips():
+		rig.shot("swing")
 	Audio.sfx("swing", global_position)
 	for e in get_tree().get_nodes_in_group("enemies"):
 		if not (e is Node3D) or not e.has_method("take_damage"):
@@ -584,6 +618,11 @@ func climb(to: Vector3, time: float) -> void:
 	_climb_len = time
 	_climb_t = 0.0
 	velocity = Vector3.ZERO
+	# Face the rungs both ways: the wall is toward the top end.
+	var wall := (to - global_position) if to.y > global_position.y else (global_position - to)
+	if Vector2(wall.x, wall.z).length() > 0.05:
+		facing = atan2(-wall.x, -wall.z)
+		rotation.y = facing
 	Audio.sfx("creak", global_position, -4.0, 0.1)
 
 func is_climbing() -> bool:
@@ -605,7 +644,8 @@ func _update_swing(delta: float) -> void:
 	if _swing_t > 0.0:
 		_swing_t = maxf(0.0, _swing_t - delta)
 		var k := 1.0 - _swing_t / SWING_TIME
-		_hook_pivot.rotation.y = lerpf(deg_to_rad(70.0), deg_to_rad(-70.0), k)
+		# With clips the swing clip carries the hook round; the old sweep is for the stand-in.
+		_hook_pivot.rotation.y = 0.0 if _clips() else lerpf(deg_to_rad(70.0), deg_to_rad(-70.0), k)
 	else:
 		_hook_pivot.rotation.y = 0.0
 
@@ -786,6 +826,8 @@ func _fire_flare() -> void:
 		facing = aim_yaw()
 		rotation.y = facing
 	_aim_face_t = AIM_FACE_TIME
+	if _clips():
+		rig.shot("flare")
 	var f := Flare.new()
 	f.from = global_position + Vector3(0.0, 1.4, 0.0) + _aim * 0.4
 	f.to = to
@@ -885,12 +927,24 @@ func _follow_ragdoll() -> void:
 		_last_safe = global_position
 
 func _stand_up() -> void:
-	var f := rig.ragdoll_facing()
-	facing = atan2(-f.x, -f.z)
-	rotation.y = facing
 	# Blend up from where it lies; if it's lying somewhere it can't stand (in the sea),
 	# it's simply back on its feet on the last safe ground.
 	var far := Geo.flat_dist(rig.ragdoll_centre(), global_position) > 1.2
+	var plan := {} if far else rig.getup_plan()
+	if not plan.is_empty():
+		# Off its back or its front with a get-up clip, standing where the clip ends.
+		var d: Vector3 = plan["facing"]
+		facing = atan2(-d.x, -d.z)
+		rotation.y = facing
+		var root: Vector3 = plan["root"]
+		if Terrain.walkable(root.x, root.z):
+			global_position.x = root.x
+			global_position.z = root.z
+		rig.get_up(CharacterRig.GET_UP_TIME, plan["clip"])
+		return
+	var f := rig.ragdoll_facing()
+	facing = atan2(-f.x, -f.z)
+	rotation.y = facing
 	rig.get_up(0.05 if far else CharacterRig.GET_UP_TIME)
 
 func _on_got_up() -> void:
@@ -1001,6 +1055,8 @@ func take_damage(amount: int, from: Vector3 = Vector3.INF) -> void:
 		away.y = 0.0
 		away = away.normalized() if away.length() > 0.01 else Vector3.BACK
 		knock((away + Vector3(0.0, 0.35, 0.0)) * float(amount) * HIT_IMPULSE, HIT_DOWN_TIME + float(amount) / 60.0)
+	elif _clips() and not rig.is_ragdoll():
+		rig.shot("hit")
 	Audio.sfx("hurt", global_position)
 	FX.spray(get_parent(), global_position + Vector3(0.0, 1.1, 0.0), Vector3.UP, Color(0.75, 0.8, 0.82))
 	if hp == 0:

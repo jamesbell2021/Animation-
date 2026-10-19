@@ -154,6 +154,13 @@ func _physics_process(delta: float) -> void:
 		# The texture carries the colour: tint it by how far the look has moved.
 		rig.tint(Color.WHITE.lerp(Color(c.r / BODY_COLOR.r, c.g / BODY_COLOR.g, c.b / BODY_COLOR.b), 0.45), BURN_COLOR, _burn_k * 0.6)
 		_animate_walk(delta, 2.2, 0.45, 0.25, 0.35 + _lit_k * 0.3, 0.15 + _lit_k * 0.6)
+		if rig.has_clips():
+			# Cowering from the beam: hunched lower, the arms up over its face.
+			rig.layer("spine", Vector3(0.25 * _lit_k, 0.0, 0.0))
+			rig.layer("upper_arm.L", Vector3(-0.9 * _lit_k, 0.0, -0.2 * _lit_k))
+			rig.layer("upper_arm.R", Vector3(-0.9 * _lit_k, 0.0, 0.2 * _lit_k))
+			rig.layer("forearm.L", Vector3(-0.8 * _lit_k, 0.0, 0.0))
+			rig.layer("forearm.R", Vector3(-0.8 * _lit_k, 0.0, 0.0))
 		if not rig.is_ragdoll():
 			_visual.scale = Vector3.ONE.lerp(COWER_SCALE, _lit_k)
 		return
@@ -192,6 +199,10 @@ func _enter_Bloat() -> void:
 		# Swelling to burst: up off the ground at once, wherever it was lying.
 		if rig.is_ragdoll():
 			rig.get_up(0.1)
+		if rig.has_clips():
+			for b in ["spine", "upper_arm.L", "upper_arm.R", "forearm.L", "forearm.R"]:
+				rig.layer(b, Vector3.ZERO)
+			rig.activity("bloat", rig.clip_length("bloat") / BLOAT_TIME)
 		return
 	_body_mat.emission_enabled = true
 
@@ -200,8 +211,9 @@ func _tick_Bloat(_delta: float) -> void:
 	var k := clampf(state_t / BLOAT_TIME, 0.0, 1.0)
 	if rig != null:
 		rig.tint(Color.WHITE.lerp(Color(1.6, 1.8, 1.3), k), GLOW_COLOR, k * 1.2)
-		rig.pose("upper_arm.L", Vector3(-0.4 * k, 0.0, -0.6 * k))
-		rig.pose("upper_arm.R", Vector3(-0.4 * k, 0.0, 0.6 * k))
+		if not rig.has_clips():
+			rig.pose("upper_arm.L", Vector3(-0.4 * k, 0.0, -0.6 * k))
+			rig.pose("upper_arm.R", Vector3(-0.4 * k, 0.0, 0.6 * k))
 	else:
 		_body_mat.albedo_color = BODY_COLOR.lerp(GLOW_COLOR, k)
 		_body_mat.emission = GLOW_COLOR * k * 0.6

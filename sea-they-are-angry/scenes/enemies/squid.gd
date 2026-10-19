@@ -186,9 +186,12 @@ func _tick_Stalk(delta: float) -> void:
 	_crawl(dir)
 	_ink(delta)
 
+var _lunge_shot := false
+
 func _enter_Lunge() -> void:
 	velocity = Vector3.ZERO
 	_struck = false
+	_lunge_shot = false
 
 func _tick_Lunge(delta: float) -> void:
 	velocity = Vector3.ZERO
@@ -199,6 +202,10 @@ func _tick_Lunge(delta: float) -> void:
 	# The tell: the dots flash twice, then it strikes.
 	var flash := int(state_t / (LUNGE_TELL / 4.0)) % 2 == 0
 	_dot_mat.emission_energy_multiplier = 6.0 if flash and state_t < LUNGE_TELL else 2.0
+	# The arms are flung out so they snap shut as the strike lands.
+	if rig != null and rig.has_clips() and not _lunge_shot and state_t >= LUNGE_TELL - rig.clip_length("lunge") * 0.45:
+		_lunge_shot = true
+		rig.shot("lunge")
 	if state_t >= LUNGE_TELL and not _struck:
 		_struck = true
 		Audio.sfx("swing", global_position, -4.0, 0.2)
@@ -292,7 +299,7 @@ func _physics_process(delta: float) -> void:
 	var rate := 14.0 if velocity.length() > 1.0 else 4.0
 	if rig != null:
 		rig.tint(Color(c.r / BODY.r, c.g / BODY.g, c.b / BODY.b).lerp(Color.WHITE, 0.4))
-		if not rig.is_ragdoll():
+		if not rig.is_ragdoll() and not rig.has_clips():
 			for i in 6:
 				for k in 3:
 					var w := sin(state_t * rate + float(i) * 1.1 + float(k) * 0.9) * (0.22 + 0.08 * float(k))

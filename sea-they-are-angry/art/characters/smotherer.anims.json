@@ -1,0 +1,49 @@
+{
+ "clips": {
+  "idle": {
+   "loop": true,
+   "length": 3.0
+  },
+  "walk": {
+   "period": 1.15,
+   "speed": 0.8173382172237723,
+   "loop": true,
+   "length": 1.0
+  },
+  "climb": {
+   "rise": 0.9,
+   "loop": true,
+   "length": 1.0
+  },
+  "smother": {
+   "loop": true,
+   "length": 2.5
+  },
+  "strike": {
+   "loop": false,
+   "length": 0.9
+  },
+  "hit": {
+   "loop": false,
+   "length": 0.45
+  },
+  "getup_back": {
+   "hips": [
+    -0.0,
+    0.13,
+    0.5162
+   ],
+   "loop": false,
+   "length": 1.87
+  },
+  "getup_front": {
+   "hips": [
+    -0.0,
+    0.15,
+    0.4163
+   ],
+   "loop": false,
+   "length": 1.7600000000000002
+  }
+ }
+}

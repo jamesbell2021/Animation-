@@ -142,7 +142,11 @@ func at_target() -> bool:
 # Raise the big claw (0 at rest, 1.3 cocked high, negative slammed down), with a lift.
 func _set_claw(raise: float, lift: float = 0.0) -> void:
 	if rig != null:
-		if not rig.is_ragdoll():
+		if rig.has_clips():
+			# On top of the clips: the big claw cocked up for a slam, or driven down.
+			rig.layer("claw_arm.R", Vector3(-raise * 0.9, 0.0, -lift))
+			rig.layer("claw.R", Vector3(-raise * 0.5, 0.0, 0.0))
+		elif not rig.is_ragdoll():
 			rig.pose("claw_arm.R", Vector3(-raise * 0.9, 0.0, -lift))
 			rig.pose("claw.R", Vector3(-raise * 0.5, 0.0, 0.0))
 		return
@@ -259,10 +263,19 @@ func _tick_Recover(_delta: float) -> void:
 			replan()
 			change_state(&"Approach")
 
+func _enter_Rummage() -> void:
+	if rig != null and rig.has_clips():
+		rig.activity("rummage")
+
+func _exit_Rummage() -> void:
+	if rig != null and rig.has_clips():
+		rig.activity("")
+
 func _tick_Rummage(delta: float) -> void:
 	velocity = Vector3.ZERO
 	_scuttle(delta)
-	_set_claw(0.3 + 0.25 * sin(state_t * 9.0))
+	if rig == null or not rig.has_clips():
+		_set_claw(0.3 + 0.25 * sin(state_t * 9.0))
 	if fmod(state_t, 0.8) < delta and _slam_target != null and is_instance_valid(_slam_target):
 		FX.splinters(get_parent(), global_position.lerp(_slam_target.global_position, 0.5) + Vector3(0.0, 0.4, 0.0))
 	if state_t >= RUMMAGE_TIME:
@@ -278,7 +291,9 @@ func _scuttle(delta: float) -> void:
 	_scuttle_t -= delta
 	var moving := velocity.length() > 0.2
 	if rig != null:
-		if not rig.is_ragdoll():
+		if rig.has_clips():
+			pass
+		elif not rig.is_ragdoll():
 			for i in 3:
 				for side in ["L", "R"]:
 					var ph := state_t * 9.0 + float(i) * 1.7 + (PI if side == "R" else 0.0)

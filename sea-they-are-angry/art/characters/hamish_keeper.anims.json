@@ -1,0 +1,73 @@
+{
+ "clips": {
+  "idle": {
+   "loop": true,
+   "length": 4.0
+  },
+  "walk": {
+   "period": 0.92,
+   "speed": 0.8348177362002756,
+   "loop": true,
+   "length": 1.0
+  },
+  "run": {
+   "period": 0.66,
+   "speed": 2.7380831276443978,
+   "loop": true,
+   "length": 1.0
+  },
+  "sprint": {
+   "period": 0.58,
+   "speed": 3.9546054721548396,
+   "loop": true,
+   "length": 1.0
+  },
+  "swing": {
+   "loop": false,
+   "length": 0.55
+  },
+  "hammer": {
+   "loop": true,
+   "length": 0.34
+  },
+  "pour": {
+   "loop": false,
+   "length": 0.9
+  },
+  "climb": {
+   "rise": 0.6,
+   "loop": true,
+   "length": 1.2
+  },
+  "flare": {
+   "loop": false,
+   "length": 0.6
+  },
+  "hit": {
+   "loop": false,
+   "length": 0.45
+  },
+  "revive": {
+   "loop": true,
+   "length": 0.8
+  },
+  "getup_back": {
+   "hips": [
+    -0.0,
+    0.13,
+    0.4202
+   ],
+   "loop": false,
+   "length": 1.394
+  },
+  "getup_front": {
+   "hips": [
+    -0.0,
+    0.15,
+    0.3388
+   ],
+   "loop": false,
+   "length": 1.36
+  }
+ }
+}

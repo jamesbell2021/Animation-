@@ -8,3 +8,4 @@ Thumbs.db
 build/
 # Textures Godot extracts from the GLBs on import.
 art/characters/*.png
+__pycache__/

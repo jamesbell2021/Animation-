@@ -117,7 +117,8 @@ func _rig_eye(key: String, color: Color, size: float = 0.3, energy: float = 9.0)
 ## Walk cycle for humanoids: stride (radians of phase per metre), leg and arm swing,
 ## a forward hunch and arms held out in front.
 func _animate_walk(delta: float, stride: float = 2.6, leg: float = 0.55, arm: float = 0.4, hunch: float = 0.0, arms_fwd: float = 0.0) -> void:
-	if rig == null or rig.is_ragdoll():
+	# A model with clips walks by them (locomote, in _physics_process).
+	if rig == null or rig.is_ragdoll() or rig.has_clips():
 		return
 	var v := Vector2(velocity.x, velocity.z).length()
 	_walk_amt = move_toward(_walk_amt, clampf(v / maxf(speed, 0.1), 0.0, 1.2), delta * 4.0)
@@ -189,10 +190,19 @@ func _tick_Ragdoll(delta: float) -> void:
 			if not is_inside_tree() or hp <= 0 or state != &"Ragdoll":
 				return
 	if _rag_left <= 0.0 and settled:
-		var f := rig.ragdoll_facing()
-		face(-f)
+		var far := Geo.flat_dist(c, global_position) > 1.2
+		var plan := {} if far else rig.getup_plan()
 		change_state(&"GetUp")
-		rig.get_up(0.05 if Geo.flat_dist(c, global_position) > 1.2 else CharacterRig.GET_UP_TIME)
+		if not plan.is_empty():
+			# Up off its back or its front with a get-up clip, from where it lies.
+			face(plan["facing"])
+			var root: Vector3 = plan["root"]
+			global_position.x = root.x
+			global_position.z = root.z
+			rig.get_up(CharacterRig.GET_UP_TIME, plan["clip"])
+			return
+		face(-rig.ragdoll_facing())
+		rig.get_up(0.05 if far else CharacterRig.GET_UP_TIME)
 
 func _tick_GetUp(_delta: float) -> void:
 	velocity = Vector3.ZERO
@@ -286,6 +296,8 @@ func _physics_process(delta: float) -> void:
 		call(tick, delta)
 	if not is_inside_tree() or is_queued_for_deletion():
 		return
+	if rig != null and rig.has_clips():
+		rig.locomote(Vector2(velocity.x, velocity.z).length())
 	velocity += _knock
 	_knock = _knock.move_toward(Vector3.ZERO, KNOCKBACK_DECAY * delta)
 	move_and_slide()
@@ -466,7 +478,14 @@ func _tick_AttackFence(delta: float) -> void:
 		change_state(&"Approach")
 		return
 	face(attack_target.global_position - global_position)
+	var before := _attack_t
 	_attack_t += delta
+	# The blow is swung so it lands as the damage does.
+	if rig != null and rig.has_clip("strike"):
+		var lead := rig.clip_length("strike") * 0.5
+		var at := FENCE_HIT_INTERVAL - lead
+		if before < at and _attack_t >= at:
+			rig.shot("strike")
 	if _attack_t >= FENCE_HIT_INTERVAL:
 		_attack_t -= FENCE_HIT_INTERVAL
 		attack_target.take_damage(FENCE_HIT_DMG)
@@ -544,6 +563,8 @@ func take_damage(amount: int, from_dir: Vector3 = Vector3.ZERO, source: Node = n
 		var flat := Vector3(from_dir.x, 0.0, from_dir.z).normalized()
 		var push := (out * SHOVE_IMPULSE + Vector3(0.0, 1.2, 0.0)) if shoved else (flat * HIT_IMPULSE + Vector3(0.0, 1.0, 0.0))
 		knock_down(push * rig.mass * 10.0)
+		if state != &"Ragdoll" and not rig.is_ragdoll():
+			rig.shot("hit")
 	else:
 		_knock += Vector3(from_dir.x, 0.0, from_dir.z) * (KNOCKBACK / mass)
 		if shoved:

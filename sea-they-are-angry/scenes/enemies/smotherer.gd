@@ -130,7 +130,7 @@ func _tick_Approach(delta: float) -> void:
 # Arms and legs: on the rig's bones, or the primitive's pivots.
 func _limbs(arm_l: Vector3, arm_r: Vector3, leg_l: Vector3, leg_r: Vector3) -> void:
 	if rig != null:
-		if rig.is_ragdoll():
+		if rig.is_ragdoll() or rig.has_clips():
 			return
 		rig.pose("upper_arm.L", arm_l)
 		rig.pose("upper_arm.R", arm_r)
@@ -170,6 +170,13 @@ func _enter_Climb() -> void:
 	_height = maxf(_height, 0.0)
 	Events.message.emit("Something is climbing the lighthouse!")
 	Audio.sfx("creak", global_position, -2.0, 0.2)
+	if rig != null and rig.has_clips():
+		var natural := float(rig.clips.get("climb", {}).get("rise", 0.9)) / maxf(rig.clip_length("climb"), 0.1)
+		rig.activity("climb", CLIMB_SPEED / natural)
+
+func _exit_Climb() -> void:
+	if rig != null and rig.has_clips():
+		rig.activity("")
 
 func _tick_Climb(delta: float) -> void:
 	velocity = Vector3.ZERO
@@ -211,6 +218,8 @@ func _tick_Smother(delta: float) -> void:
 func _exit_Smother() -> void:
 	_visual.rotation.x = 0.0
 	_let_go_of_lamp()
+	if rig != null and rig.has_clips():
+		rig.activity("")
 
 func _let_go_of_lamp() -> void:
 	if _smothering:
@@ -324,7 +333,10 @@ func _physics_process(delta: float) -> void:
 	var lit := _lit_t > 0.0
 	if rig != null:
 		rig.tint(Color(1.12, 1.12, 1.06) if lit else Color.WHITE)
-		if state == &"Approach" and not rig.is_ragdoll():
+		if rig.has_clips():
+			# Shrinking from the beam: lower and more hunched.
+			rig.layer("spine", Vector3(0.2 if lit and state == &"Approach" else 0.0, 0, 0))
+		elif state == &"Approach" and not rig.is_ragdoll():
 			rig.pose("spine", Vector3(0.45 if lit else 0.27, 0, 0))
 		return
 	_skin.albedo_color = SKIN.lerp(Color(0.9, 0.92, 0.85), 0.4) if lit else SKIN

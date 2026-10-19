@@ -12,8 +12,9 @@ Every character is made the same way, so they can be rebuilt and tweaked from he
 3. Automatic weights for the body; rigid parts are bound to a single bone.
 4. Procedural materials (wool, oilskin, leather, skin, hair) baked with ambient
    occlusion into one texture, so the game draws each character with one material.
-5. Exported as a GLB with its skeleton. The game animates the bones in code and
-   swaps them to physics for ragdolls.
+5. Exported as a GLB with its skeleton and its animation clips (animate.py: walks,
+   runs, tool work, get-ups, the creatures' gaits). The game plays the clips, layers a
+   little code on top, and swaps the bones to physics for ragdolls.
 
 Blender coordinates: Z up, the character faces -Y, its left is +X (bone names .L).
 """
@@ -27,6 +28,9 @@ import bmesh
 import bpy
 import numpy as np
 from mathutils import Matrix, Vector
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import animate  # noqa: E402
 
 ARGV = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
 PREVIEW = "--preview" in ARGV
@@ -484,10 +488,19 @@ def export(name, rig, body):
         with open(os.path.join(OUT, name + ".json"), "w") as f:
             json.dump(MARKERS, f, indent=1)
         MARKERS.clear()
+    # The animation clips (animate.py), solved on this character's own skeleton.
+    for pb in rig.pose.bones:
+        pb.rotation_mode = 'QUATERNION'
+    meta = animate.build(name, rig)
+    if meta:
+        with open(os.path.join(OUT, name + ".anims.json"), "w") as f:
+            json.dump(meta, f, indent=1)
     activate(rig, [body])
     path = os.path.join(OUT, name + ".glb")
     bpy.ops.export_scene.gltf(filepath=path, export_format='GLB', use_selection=True, export_apply=False,
-                              export_animations=False, export_skins=True, export_yup=True,
+                              export_animations=bool(meta), export_animation_mode='ACTIONS', export_force_sampling=True,
+                              export_anim_single_armature=True, export_reset_pose_bones=True,
+                              export_skins=True, export_yup=True,
                               export_image_format='AUTO', export_texcoords=True, export_normals=True)
     print("EXPORTED", path, len(body.data.polygons), "faces")
     return path

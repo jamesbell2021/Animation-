@@ -1,0 +1,18 @@
+{
+ "clips": {
+  "idle": {
+   "loop": true,
+   "length": 2.4
+  },
+  "walk": {
+   "period": 0.9,
+   "speed": 0.5926356617369603,
+   "loop": true,
+   "length": 1.0
+  },
+  "rummage": {
+   "loop": true,
+   "length": 0.8
+  }
+ }
+}

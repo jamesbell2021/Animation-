@@ -1,0 +1,44 @@
+{
+ "clips": {
+  "idle": {
+   "loop": true,
+   "length": 3.2
+  },
+  "walk": {
+   "period": 1.5,
+   "speed": 0.26974451844595926,
+   "loop": true,
+   "length": 1.0
+  },
+  "bloat": {
+   "loop": false,
+   "length": 1.2
+  },
+  "strike": {
+   "loop": false,
+   "length": 1.1
+  },
+  "hit": {
+   "loop": false,
+   "length": 0.45
+  },
+  "getup_back": {
+   "hips": [
+    -0.0,
+    0.13,
+    0.3679
+   ],
+   "loop": false,
+   "length": 2.295
+  },
+  "getup_front": {
+   "hips": [
+    -0.0,
+    0.15,
+    0.2967
+   ],
+   "loop": false,
+   "length": 2.16
+  }
+ }
+}
