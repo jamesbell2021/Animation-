@@ -1,24 +1,28 @@
 class_name SoundManager
 extends Node
 ## All audio is synthesised in code (no files). Sound effects are built once per
-## session; the disco loop is built on a worker thread so loading doesn't stall.
+## session; music tracks are built on a worker thread so loading doesn't stall:
+## "race" (142 BPM fairground hard dance) and "derby" (150 BPM hardstyle).
 ## play() is for UI/player sounds; play_at() is positional (louder when close).
 ## Anything in the game can call SoundManager.world(node, "name", pos).
 
 const MIX_RATE := 22050
 const BPM := 142.0
 const BARS := 16
+const DERBY_BPM := 150.0
 
 @export var sfx_volume_db: float = -4.0
 @export var music_volume_db: float = -8.0
 @export var music_enabled: bool = true
+## Which music track plays: "race" or "derby".
+@export var music_track: String = "race"
 @export var pool_size: int = 10
 @export var world_pool_size: int = 16
 
 static var _sounds: Dictionary = {}
-static var _music: AudioStreamWAV
-static var _music_building: bool = false
-static var _music_task: int = -1
+static var _tracks: Dictionary = {}
+static var _track_tasks: Dictionary = {}
+static var _track_mutex := Mutex.new()
 static var _noise: PackedFloat32Array
 
 var _pool: Array[AudioStreamPlayer] = []
@@ -62,16 +66,20 @@ func _ready() -> void:
 
 
 func _exit_tree() -> void:
-	# The worker task must be waited on (and must not outlive the script when quitting).
-	if _music_task >= 0:
-		WorkerThreadPool.wait_for_task_completion(_music_task)
-		_music_task = -1
+	# Worker tasks must be waited on (and must not outlive the script when quitting).
+	for track in _track_tasks.keys():
+		var task: int = _track_tasks[track]
+		if task >= 0:
+			WorkerThreadPool.wait_for_task_completion(task)
+			_track_tasks[track] = -1
 
 
 func _process(_delta: float) -> void:
-	if music_enabled and _music_player.stream == null and _music != null:
-		_music_player.stream = _music
-		_music_player.play()
+	if music_enabled and _music_player.stream == null:
+		var music := _track(music_track)
+		if music != null:
+			_music_player.stream = music
+			_music_player.play()
 
 
 func play(sound_name: String, pitch: float = 1.0, volume_offset_db: float = 0.0) -> void:
@@ -129,17 +137,32 @@ func set_music_enabled(enabled: bool) -> void:
 
 
 func _start_music() -> void:
-	if _music != null:
-		_music_player.stream = _music
+	var music := _track(music_track)
+	if music != null:
+		_music_player.stream = music
 		if not _music_player.playing:
 			_music_player.play()
-	elif not _music_building:
-		_music_building = true
-		_music_task = WorkerThreadPool.add_task(_build_music_threaded)
+	elif not _track_tasks.has(music_track):
+		_track_tasks[music_track] = WorkerThreadPool.add_task(_build_track_threaded.bind(music_track))
 
 
-static func _build_music_threaded() -> void:
-	_music = _build_disco()
+## Beats per minute of the track this manager plays.
+func track_bpm() -> float:
+	return DERBY_BPM if music_track == "derby" else BPM
+
+
+static func _track(track: String) -> AudioStreamWAV:
+	_track_mutex.lock()
+	var music: AudioStreamWAV = _tracks.get(track)
+	_track_mutex.unlock()
+	return music
+
+
+static func _build_track_threaded(track: String) -> void:
+	var music := _build_hardstyle() if track == "derby" else _build_disco()
+	_track_mutex.lock()
+	_tracks[track] = music
+	_track_mutex.unlock()
 
 
 # --- Sound effects ------------------------------------------------------------
@@ -328,6 +351,146 @@ static func _build_disco() -> AudioStreamWAV:
 		v = v / (1.0 + absf(v) * 0.25)
 		data.encode_s16(i * 2, int(clampf(v, -1.0, 1.0) * 32767.0))
 	return _wav(data, frames, true)
+
+
+## Dodgem Derby: 16 bars of 150 BPM hardstyle in F minor (Fm - Db - Ab - Eb).
+## Bars 1-4 distorted kicks with a reverse bass swelling into each one; 5-8 add
+## a screeching lead; 9-12 a big supersaw breakdown with an air horn and a rising
+## sweep while the kick keeps pounding; 13-16 everything, ending in a kick roll.
+static func _build_hardstyle() -> AudioStreamWAV:
+	_ensure_noise()
+	var beat := 60.0 / DERBY_BPM
+	var bar := beat * 4.0
+	var frames := int(bar * BARS * MIX_RATE)
+	var buf := PackedFloat32Array()
+	buf.resize(frames)
+	var saw := _saw_table()
+	var roots: Array[int] = [41, 37, 44, 39]
+	var chords: Array = [[65, 68, 72], [61, 65, 68], [68, 72, 75], [63, 67, 70]]
+	var lead: Array = [[77, 0, 77, 80, 77, 0, 75, 72], [77, 0, 77, 80, 82, 0, 80, 77],
+		[80, 0, 80, 84, 82, 0, 80, 79], [79, 0, 77, 75, 79, 0, 82, 84]]
+	for b in range(BARS):
+		var bar_start := float(b) * bar
+		var chord := b % 4
+		var section := b / 4
+		if b % 4 == 0:
+			_crash(buf, bar_start, 0.4)
+		var kick_roll := b == BARS - 1
+		for q in range(4):
+			var t0 := bar_start + float(q) * beat
+			_hard_kick(buf, t0, _freq(roots[chord] + 12))
+			if kick_roll and q >= 2:
+				_hard_kick(buf, t0 + beat * 0.5, _freq(roots[chord] + 12))
+			_hat(buf, t0 + beat * 0.5, 0.08, 0.36)
+			for s16: float in [0.25, 0.75]:
+				_hat(buf, t0 + beat * s16, 0.02, 0.13)
+			if (q == 1 or q == 3) and b >= 2:
+				_clap(buf, t0)
+			if section != 2:
+				_reverse_bass(buf, saw, t0 + beat * 0.22, beat * 0.76, _freq(roots[chord]), 0.38)
+		if section == 2:
+			for n in chords[chord]:
+				_supersaw(buf, saw, bar_start, bar * 0.97, _freq(int(n)), 0.035)
+			if b == 8:
+				_airhorn(buf, bar_start, beat * 0.35)
+				_airhorn(buf, bar_start + beat * 0.5, beat * 0.35)
+				_airhorn(buf, bar_start + beat, beat * 0.8)
+			if b == 11:
+				_sweep(buf, bar_start, bar, 0.25)
+		if section == 1 or section == 3:
+			var notes: Array = lead[chord]
+			for e in range(8):
+				var midi := int(notes[e])
+				if midi > 0:
+					_screech(buf, bar_start + float(e) * beat * 0.5, beat * 0.44, _freq(midi), 0.06)
+		if section == 3:
+			for n in chords[chord]:
+				for stab: float in [0.5, 1.5, 2.5, 3.5]:
+					_tone(buf, saw, bar_start + beat * stab, beat * 0.25, _freq(int(n)), 0.035, 0.002, 1)
+		if kick_roll:
+			_sweep(buf, bar_start, bar, 0.2)
+	var peak := 0.001
+	for i in range(frames):
+		peak = maxf(peak, absf(buf[i]))
+	var gain := 1.15 / peak
+	var data := PackedByteArray()
+	data.resize(frames * 2)
+	for i in range(frames):
+		var v := buf[i] * gain
+		v = v / (1.0 + absf(v) * 0.3)
+		data.encode_s16(i * 2, int(clampf(v, -1.0, 1.0) * 32767.0))
+	return _wav(data, frames, true)
+
+
+## Hardstyle kick: a punchy click and a long distorted tail tuned to the note.
+static func _hard_kick(buf: PackedFloat32Array, start: float, tail_freq: float) -> void:
+	var s0 := int(start * MIX_RATE)
+	var n := int(0.22 * MIX_RATE)
+	var phase := 0.0
+	for i in range(n):
+		var idx := s0 + i
+		if idx >= buf.size():
+			return
+		var t := float(i) / MIX_RATE
+		var f := tail_freq + 260.0 * exp(-t * 45.0)
+		phase += f / MIX_RATE
+		var v := sin(TAU * phase) * 5.0
+		v = v / (1.0 + absf(v))
+		var amp := exp(-t * 9.0)
+		buf[idx] += v * amp * 1.2 + (_noise[(i * 3) % _noise.size()] * 0.45 if i < 60 else 0.0)
+
+
+## Reverse bass: a distorted saw that swells up into the next kick.
+static func _reverse_bass(buf: PackedFloat32Array, table: PackedFloat32Array, start: float, length: float, freq: float, amp: float) -> void:
+	var s0 := int(start * MIX_RATE)
+	var n := int(length * MIX_RATE)
+	var step := freq / MIX_RATE * float(table.size())
+	var phase := 0.0
+	for i in range(n):
+		var idx := s0 + i
+		if idx >= buf.size():
+			return
+		var k := float(i) / float(n)
+		var v := (table[int(phase) % table.size()] + table[int(phase * 2.0) % table.size()] * 0.5) * 3.0
+		v = v / (1.0 + absf(v))
+		buf[idx] += v * amp * k * k * clampf((1.0 - k) * 30.0, 0.0, 1.0)
+		phase += step
+
+
+## Screech lead: a detuned square that bends down into each note.
+static func _screech(buf: PackedFloat32Array, start: float, length: float, freq: float, amp: float) -> void:
+	var s0 := int(start * MIX_RATE)
+	var n := int(length * MIX_RATE)
+	var phases := [0.0, 0.0, 0.0]
+	var detune := [1.0, 1.009, 0.991]
+	for i in range(n):
+		var idx := s0 + i
+		if idx >= buf.size():
+			return
+		var t := float(i) / MIX_RATE
+		var bend := 1.0 + 0.19 * exp(-t * 40.0) + 0.006 * sin(TAU * 6.0 * t)
+		var v := 0.0
+		for k in range(3):
+			phases[k] = fmod(float(phases[k]) + freq * float(detune[k]) * bend / MIX_RATE, 1.0)
+			v += 1.0 if float(phases[k]) < 0.42 else -1.0
+		var env := minf(t / 0.004, 1.0) * clampf((length - t) / 0.03, 0.0, 1.0)
+		buf[idx] += v * amp * env
+
+
+## Rising white-noise sweep (builds into the next section).
+static func _sweep(buf: PackedFloat32Array, start: float, length: float, amp: float) -> void:
+	var s0 := int(start * MIX_RATE)
+	var n := int(length * MIX_RATE)
+	var prev := 0.0
+	for i in range(n):
+		var idx := s0 + i
+		if idx >= buf.size():
+			return
+		var k := float(i) / float(n)
+		var x := _noise[(i * 13 + 7) % _noise.size()]
+		var hp := x - prev * (0.95 - 0.9 * k)
+		prev = x
+		buf[idx] += hp * amp * k * k
 
 
 static func _saw_table() -> PackedFloat32Array:

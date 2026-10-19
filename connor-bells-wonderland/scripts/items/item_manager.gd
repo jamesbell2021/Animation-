@@ -261,6 +261,9 @@ func _on_box_picked(box: ItemBox, c: Contestant) -> void:
 
 
 func _roll_item(c: Contestant) -> int:
+	if game != null and game.course != null and game.course.has_method("item_pool"):
+		var pool: Array = game.course.call("item_pool")
+		return int(pool[randi() % pool.size()])
 	var fraction := 0.5
 	if game != null and game.race_manager != null and game._contestants.size() > 1:
 		var ranking := RaceRanking.compute(game._contestants, game.race_manager, game.course.checkpoint_manager)
@@ -672,6 +675,15 @@ func _build_boxes(course: FairgroundCourse) -> void:
 	var root := Node3D.new()
 	root.name = "ItemBoxes"
 	add_child(root)
+	# Arenas (Dodgem Derby) list their own box spots in world space.
+	if course.has_method("item_box_spots"):
+		for spot: Vector3 in course.call("item_box_spots"):
+			var arena_box := ItemBox.create(root, spot, _boxes.size())
+			if arena_box != null:
+				_boxes.append(arena_box)
+				if multiplayer.is_server():
+					arena_box.picked.connect(_on_box_picked)
+		return
 	for section in course.sections:
 		for local in _box_spots(section):
 			var box := ItemBox.create(root, section.to_global(local), _boxes.size())

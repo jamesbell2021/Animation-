@@ -4,6 +4,7 @@ extends Control
 
 const MENU_SCENE := "res://scenes/menus/main_menu.tscn"
 const DIFFICULTY_NAMES: Array[String] = ["Easy", "Medium", "Hard"]
+const LOBBY_MODES: Array[String] = ["race", "paintball", "dodgems"]
 
 var _net: Node
 var _list: VBoxContainer
@@ -82,6 +83,7 @@ func _build() -> void:
 	_mode_option = OptionButton.new()
 	_mode_option.add_item("Tower Race", 0)
 	_mode_option.add_item("Paintball Battle", 1)
+	_mode_option.add_item("Dodgem Derby", 2)
 	_mode_option.disabled = not _is_host
 	_mode_option.item_selected.connect(func(_i: int) -> void: _push_settings())
 	right.add_child(_row("Mode", _mode_option))
@@ -184,8 +186,8 @@ func _apply_settings(settings: Dictionary) -> void:
 	_difficulty_option.selected = clampi(int(settings.get("difficulty", 1)), 0, 2)
 	_countdown_spin.value = int(settings.get("countdown", 3))
 	_items_check.button_pressed = bool(settings.get("items", true))
-	_mode_option.selected = 1 if str(settings.get("mode", "race")) == "paintball" else 0
-	_start_button.text = "Start Battle" if _mode_option.selected == 1 else "Start Race"
+	_mode_option.selected = maxi(LOBBY_MODES.find(str(settings.get("mode", "race"))), 0)
+	_start_button.text = ["Start Race", "Start Battle", "Start Derby"][_mode_option.selected]
 	_updating = false
 
 
@@ -198,7 +200,7 @@ func _push_settings() -> void:
 		"difficulty": _difficulty_option.selected,
 		"countdown": int(_countdown_spin.value),
 		"items": _items_check.button_pressed,
-		"mode": "paintball" if _mode_option.selected == 1 else "race",
+		"mode": LOBBY_MODES[_mode_option.selected],
 	})
 
 

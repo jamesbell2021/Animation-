@@ -13,6 +13,8 @@ var pivot: Node3D
 var rig: Node3D
 ## Superman dive pose (catapult flight).
 var diving: bool = false
+## Sitting in a dodgem car: hands on the wheel, no walking.
+var driving: bool = false
 
 var _arm_l: Node3D
 var _arm_r: Node3D
@@ -60,6 +62,13 @@ func update_motion(speed: float, on_floor: bool, delta: float) -> void:
 		if _swing_left <= 0.0 and _arm_r != null:
 			_arm_r.rotation.y = 0.0
 	rig.rotation.x = lerp_angle(rig.rotation.x, -1.25 if diving else 0.0, 10.0 * delta)
+	if driving and not diving:
+		_set_x(_arm_l, -1.2, delta)
+		_set_x(_arm_r, -1.2, delta)
+		_set_x(_leg_l, -1.4, delta)
+		_set_x(_leg_r, -1.4, delta)
+		rig.position.y = -BODY_CENTRE_Y + 0.12
+		return
 	if diving:
 		_set_x(_arm_l, -3.0, delta)
 		_set_x(_arm_r, -3.0, delta)

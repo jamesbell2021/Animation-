@@ -38,9 +38,12 @@ var decorator: SceneryDecorator
 var navigation: BotNavigation
 var items: ItemManager
 var sync: RaceSync
-## Paintball Battle mode (instead of a race) when the "mode" setting is "paintball".
+## Arena modes instead of a race: the "mode" setting is "paintball" (Paintball
+## Battle) or "dodgems" (Dodgem Derby). battle_kind is that, or "" for a race.
 var paintball: PaintballManager
+var dodgems: DodgemsManager
 var battle: bool = false
+var battle_kind: String = ""
 var touch: TouchControls
 var pause_menu: PauseMenu
 var player: Contestant
@@ -60,10 +63,14 @@ func _ready() -> void:
 	if _net != null and bool(_net.get("is_multiplayer_session")):
 		mode = Mode.HOST if _net.is_host() else Mode.CLIENT
 	var settings := _resolve_settings()
-	battle = str(settings.get("mode", "race")) == "paintball"
+	var chosen := str(settings.get("mode", "race"))
+	battle_kind = chosen if chosen in ["paintball", "dodgems"] else ""
+	battle = not battle_kind.is_empty()
 
-	if battle:
+	if battle_kind == "paintball":
 		course = PaintballArena.new()
+	elif battle_kind == "dodgems":
+		course = DodgemArena.new()
 	else:
 		course = _instantiate_scene(COURSE_SCENE_PATH) as FairgroundCourse
 	if course == null:
@@ -72,11 +79,16 @@ func _ready() -> void:
 	add_child(course)
 	course.enabled_sections = int(settings["sections"])
 	course.build()
-	if battle:
+	if battle_kind == "paintball":
 		paintball = PaintballManager.new()
 		paintball.name = "PaintballManager"
 		add_child(paintball)
 		paintball.setup(self, course as PaintballArena)
+	elif battle_kind == "dodgems":
+		dodgems = DodgemsManager.new()
+		dodgems.name = "DodgemsManager"
+		add_child(dodgems)
+		dodgems.setup(self, course as DodgemArena)
 	if scenery_enabled and not battle:
 		decorator = SceneryDecorator.new()
 		course.add_child(decorator)
@@ -90,7 +102,7 @@ func _ready() -> void:
 	items = ItemManager.new()
 	items.name = "ItemManager"
 	add_child(items)
-	items.setup(self, course, bool(settings["items"]) and not battle)
+	items.setup(self, course, bool(settings["items"]) and battle_kind != "paintball")
 	var tier := MobileSettings.detect() if quality < 0 else (quality as MobileSettings.Tier)
 	MobileSettings.apply(tier, get_viewport(), self)
 
@@ -102,7 +114,7 @@ func _ready() -> void:
 		add_child(race_manager)
 		var finish := course.get_finish_area()
 		if battle:
-			race_manager.max_race_seconds = PaintballManager.TIME_LIMIT + 30.0
+			race_manager.max_race_seconds = (PaintballManager.TIME_LIMIT if paintball != null else DodgemsManager.TIME_LIMIT) + 30.0
 			race_manager.needs_finish_area = false
 		elif finish == null:
 			push_error("GameManager: course has no finish area.")
@@ -122,6 +134,7 @@ func _ready() -> void:
 	sound = SoundManager.new()
 	sound.name = "Sound"
 	sound.music_enabled = music_enabled
+	sound.music_track = "derby" if battle_kind == "dodgems" else "race"
 	add_child(sound)
 	pause_menu = PauseMenu.new()
 	pause_menu.name = "PauseMenu"
@@ -139,18 +152,25 @@ func _ready() -> void:
 		camera.set_target(player)
 		_connect_player_sounds(player)
 	if battle:
-		camera.distance = 10.0
-		camera.height = 8.5
+		camera.distance = 10.0 if paintball != null else 11.0
+		camera.height = 8.5 if paintball != null else 9.5
 		camera.arena_mode = true
 		if player != null:
 			camera.set_target(player)
-		paintball.splatted.connect(_on_paint_splatted)
-		paintball.eliminated.connect(_on_paint_eliminated)
-		paintball.announcement.connect(func(text: String) -> void:
+		var arena_game := _arena_game()
+		arena_game.eliminated.connect(_on_battle_eliminated)
+		arena_game.announcement.connect(func(text: String) -> void:
 			hud.show_message(text, 3.0)
 			sound.play("airhorn", 1.0, -4.0))
 		if mode != Mode.CLIENT:
-			paintball.battle_over.connect(func(results: Array) -> void: race_manager.end_with_results(results))
+			arena_game.battle_over.connect(func(results: Array) -> void: race_manager.end_with_results(results))
+		if paintball != null:
+			paintball.splatted.connect(_on_paint_splatted)
+		if dodgems != null:
+			dodgems.dunked.connect(_on_dunked)
+			dodgems.bumped.connect(_on_bumped)
+			if mode != Mode.CLIENT:
+				dodgems.watch_items(items)
 	_connect_signals()
 	items.hit.connect(_on_item_hit)
 	items.item_fx.connect(_on_item_fx)
@@ -174,23 +194,27 @@ func _process(delta: float) -> void:
 	if hud == null or player == null:
 		return
 	hud.set_time(sync.race_time if mode == Mode.CLIENT else race_manager.race_time)
-	if battle:
+	if paintball != null:
 		var me := str(player.name)
-		hud.set_battle(paintball.get_lives(me), paintball.get_ammo(me), PaintballManager.MAX_AMMO, paintball.get_hits(me), paintball.alive_count(), _contestants.size(), paintball.is_alive(me))
+		var lives := paintball.get_lives(me)
+		var ammo := paintball.get_ammo(me)
+		hud.set_battle("Lives: %d   Paint: %d/%d" % [lives, ammo, PaintballManager.MAX_AMMO], ammo == 0 or lives == 1,
+			"Hits: %d" % paintball.get_hits(me), paintball.alive_count(), _contestants.size(), paintball.is_alive(me))
 		touch.set_item_state(paintball.is_alive(me), PaintballManager.paint_colour(player))
+		return
+	if dodgems != null:
+		var me := str(player.name)
+		var lives := dodgems.get_lives(me)
+		var boost := "BOOST READY [%s]" % ("JUMP" if touch.visible else "SPACE") if dodgems.boost_ready(me) else "boost charging"
+		hud.set_battle("Lives: %d   %s" % [lives, boost], lives == 1,
+			"Knock-offs: %d" % dodgems.get_hits(me), dodgems.alive_count(), _contestants.size(), dodgems.is_alive(me))
+		_show_held_item()
 		return
 	hud.set_coins(int(_coins.get(str(player.name), 0)))
 	var cm := course.checkpoint_manager
 	if cm != null:
 		hud.set_progress(cm.get_progress(player) + 1, cm.get_checkpoint_count())
-	var holder := player.get_node_or_null("ItemHolder") as ItemHolder
-	if holder != null:
-		var hint := "USE" if touch.visible else "E"
-		if holder.kind == ItemKinds.Kind.CATAPULT:
-			hint = "hold %s, aim, let go" % hint
-		hud.set_item(holder.kind, holder.uses, hint)
-		touch.set_item_state(not holder.is_empty(), ItemKinds.colour_for(holder.kind))
-	hud.set_effects(_player_effects())
+	_show_held_item()
 	_ranking_timer -= delta
 	if _ranking_timer > 0.0:
 		return
@@ -204,6 +228,18 @@ func _process(delta: float) -> void:
 		for c in ranking:
 			names.append(str(c.name))
 		sync.ranking_names = names
+
+
+## The player's item slot, its touch button and any active effects.
+func _show_held_item() -> void:
+	var holder := player.get_node_or_null("ItemHolder") as ItemHolder
+	if holder != null:
+		var hint := "USE" if touch.visible else "E"
+		if holder.kind == ItemKinds.Kind.CATAPULT:
+			hint = "hold %s, aim, let go" % hint
+		hud.set_item(holder.kind, holder.uses, hint)
+		touch.set_item_state(not holder.is_empty(), ItemKinds.colour_for(holder.kind))
+	hud.set_effects(_player_effects())
 
 
 func _resolve_settings() -> Dictionary:
@@ -224,11 +260,16 @@ func _spawn_roster(roster: Array[Dictionary]) -> void:
 		var c := spawn_contestant(str(entry["name"]), entry["colour"], local, entry["hat"])
 		if c == null:
 			continue
-		if bool(entry["bot"]) and mode != Mode.CLIENT and battle:
+		if bool(entry["bot"]) and mode != Mode.CLIENT and paintball != null:
 			var gunner := PaintballBot.new()
 			gunner.name = "PaintballBot"
 			c.add_child(gunner)
 			gunner.setup(c, paintball, int(_resolve_settings()["difficulty"]))
+		elif bool(entry["bot"]) and mode != Mode.CLIENT and dodgems != null:
+			var driver := DodgemBot.new()
+			driver.name = "DodgemBot"
+			c.add_child(driver)
+			driver.setup(c, dodgems, int(_resolve_settings()["difficulty"]))
 		elif bool(entry["bot"]) and mode != Mode.CLIENT:
 			var brain := BotController.new()
 			brain.name = "BotController"
@@ -270,6 +311,8 @@ func spawn_contestant(contestant_name: String, colour: Color, local: bool, hat: 
 		items.register_contestant(contestant)
 	if paintball != null:
 		paintball.register(contestant)
+	if dodgems != null:
+		dodgems.register(contestant)
 	_contestants.append(contestant)
 	if race_manager != null:
 		race_manager.register_contestant(contestant)
@@ -316,6 +359,8 @@ func _reset_local_state() -> void:
 	_finale_token += 1
 	if paintball != null:
 		paintball.reset()
+	if dodgems != null:
+		dodgems.reset()
 	if _fireworks != null:
 		_fireworks.stop_show()
 	if is_instance_valid(_present):
@@ -391,8 +436,11 @@ func on_countdown_tick(seconds_left: int) -> void:
 
 func on_race_started() -> void:
 	if battle:
-		paintball.begin()
-		hud.show_message("PAINTBALL BATTLE! Last one standing wins!", 2.5)
+		_arena_game().begin()
+		if paintball != null:
+			hud.show_message("PAINTBALL BATTLE! Last one standing wins!", 2.5)
+		else:
+			hud.show_message("DODGEM DERBY! Knock them into the Irish Sea!", 2.5)
 		sound.play("airhorn", 1.0, -3.0)
 		return
 	hud.show_message("Race to %s's Crown!" % Branding.HERO_NAME, 2.0)
@@ -418,6 +466,8 @@ func on_contestant_finished(contestant: Contestant, place: int, time: float) -> 
 
 
 func on_contestant_fell(contestant: Contestant, fall_count: int) -> void:
+	if battle:
+		return
 	if contestant == player:
 		hud.show_message("Whoops! Fall #%d" % fall_count, 1.5)
 		sound.play("fall")
@@ -535,14 +585,18 @@ func _start_finale(results: Array) -> void:
 	var lead := "%s WON..." % display.to_upper()
 	if winner != null and winner == player:
 		lead = "%s, YOU WON..." % display.to_upper()
-	if battle:
+	if paintball != null:
 		prize = Prizes.BATTLE_PRIZE
 		subline = Prizes.BATTLE_PRIZE_DETAIL
 		lead = "LAST ONE STANDING: %s! %s" % [display.to_upper(), "YOU WIN..." if winner == player else "THEY WIN..."]
+	elif dodgems != null:
+		prize = Prizes.pick_derby("%s|%.2f|%d" % [str(top.get("name", "")), float(top.get("time", 0.0)), results.size()])
+		lead = "LAST DODGEM DRIVING: %s! %s" % [display.to_upper(), "YOU WIN..." if winner == player else "THEY WIN..."]
 	elif not bool(top.get("finished", false)):
 		lead = "NOBODY FINISHED! BOOBY PRIZE FOR %s..." % display.to_upper()
 	sound.play("drumroll")
-	hud.set_results_title("PAINTBALL BATTLE RESULTS" if battle else Branding.RESULTS_TITLE)
+	var titles := {"paintball": "PAINTBALL BATTLE RESULTS", "dodgems": "DODGEM DERBY RESULTS"}
+	hud.set_results_title(titles.get(battle_kind, Branding.RESULTS_TITLE))
 	hud.show_prize(lead, prize + "!", 2.2, subline, func() -> void:
 		if is_instance_valid(_present):
 			_present.pop()
@@ -572,21 +626,66 @@ func _on_paint_splatted(victim_name: String, shooter_name: String, lives: int) -
 		hud.show_message("Splat! You got %s" % victim_name, 1.0)
 
 
-func _on_paint_eliminated(victim_name: String, shooter_name: String, remaining: int) -> void:
+## The manager running the arena mode (PaintballManager or DodgemsManager).
+func _arena_game() -> Node:
+	return paintball if paintball != null else dodgems
+
+
+func _on_battle_eliminated(victim_name: String, by_name: String, remaining: int) -> void:
 	if player == null:
 		return
 	var me := str(player.name)
+	var arena_game := _arena_game()
 	if victim_name == me:
-		hud.show_message("YOU'RE OUT! %s got you. Spectating..." % shooter_name, 3.0)
+		if dodgems != null:
+			var into_sea := "%s sent you into the Irish Sea" % by_name if not by_name.is_empty() else "Into the Irish Sea"
+			hud.show_message("YOU'RE OUT! %s. Spectating..." % into_sea, 3.0)
+		else:
+			hud.show_message("YOU'RE OUT! %s got you. Spectating..." % by_name, 3.0)
 		sound.play("fall")
-		var alive := paintball.alive_contestants()
+		var alive: Array = arena_game.alive_contestants()
 		if not alive.is_empty():
 			camera.set_target(alive[0])
 	else:
-		var who := "You" if shooter_name == me else shooter_name
-		hud.show_message("%s knocked out %s! %d left" % [who, victim_name, remaining], 2.0)
+		var who := "You" if by_name == me else by_name
+		if dodgems != null:
+			if by_name.is_empty():
+				hud.show_message("%s is OUT - swallowed by the Irish Sea! %d left" % [victim_name, remaining], 2.0)
+			else:
+				hud.show_message("%s knocked %s out into the Irish Sea! %d left" % [who, victim_name, remaining], 2.0)
+		else:
+			hud.show_message("%s knocked out %s! %d left" % [who, victim_name, remaining], 2.0)
 		# Keep spectating someone who's still in.
-		if not paintball.is_alive(me) and camera.get_target() == find_contestant(victim_name):
-			var alive := paintball.alive_contestants()
+		if not arena_game.is_alive(me) and camera.get_target() == find_contestant(victim_name):
+			var alive: Array = arena_game.alive_contestants()
 			if not alive.is_empty():
 				camera.set_target(alive[0])
+
+
+## Dodgem Derby: someone went in the sea but has lives left.
+func _on_dunked(victim_name: String, by_name: String, lives: int) -> void:
+	if player == null:
+		return
+	var me := str(player.name)
+	var left := "%d %s left" % [lives, "life" if lives == 1 else "lives"]
+	if victim_name == me:
+		hud.flash(Color(0.3, 0.6, 1.0), 0.5)
+		if by_name.is_empty():
+			hud.show_message("SPLASH! Into the Irish Sea! %s" % left, 2.0)
+		else:
+			hud.show_message("SPLASH! %s rammed you into the Irish Sea! %s" % [by_name, left], 2.0)
+	elif by_name == me:
+		sound.play("coin", 1.4, -4.0)
+		hud.show_message("SPLASH! You sent %s into the Irish Sea!" % victim_name, 1.5)
+	else:
+		var who := by_name if not by_name.is_empty() else "The Irish Sea"
+		hud.show_message("%s dunked %s!" % [who, victim_name] if not by_name.is_empty() else "%s took %s!" % [who, victim_name], 1.2)
+
+
+## Dodgem Derby: big hits near you shake the camera.
+func _on_bumped(rammer_name: String, victim_name: String, strength: float) -> void:
+	if player == null:
+		return
+	var me := str(player.name)
+	if rammer_name == me or victim_name == me:
+		camera.add_shake(clampf(strength / 14.0, 0.15, 0.7))

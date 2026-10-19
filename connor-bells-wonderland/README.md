@@ -50,7 +50,7 @@ To try the touch controls on a PC, tick **Force Touch Controls** on the `Main` n
 The menu sits over a live night fair: contestants dance on a flashing dance floor
 under a disco ball in time with the music, a Ferris wheel turns, searchlights
 sweep, rockets go up behind the big top and shooting stars cross the sky. Pick
-**Tower Race** or **Paintball Battle** under **Mode**.
+**Tower Race**, **Paintball Battle** or **Dodgem Derby** under **Mode**.
 
 ## The course
 
@@ -122,6 +122,28 @@ Traps can only be dropped on solid, still ground; on a ride or over a gap the it
 kept until you can. Bots grab boxes they pass (and detour for one nearby), use items
 when a rival is in reach, and aim the Catapult at gaps and rivals ahead.
 
+## Dodgem Derby
+
+Everyone drives a dodgem car on a round neon rink built on a pier out in the Irish
+Sea, with Belfast across the water. Ram your rivals off the edge: the faster you
+hit, the further they fly, and hitting them from the middle sends them outwards.
+**JUMP is a boost** (it recharges in under two seconds) for the big hits. Item
+boxes are on the rink too, and every item helps: the Mega Bomb, Boxing Glove and
+Big Springer can launch a car right over the rail, Slippery Oil sends them
+sliding, the Giant Magnet drags them in, the Shield bounces rammers off, Big
+Fatty Cake makes you heavy and hard to shift, Shrink Potion makes you fly further.
+
+A rubber rail runs round the outer ring with six gaps marked by red posts, so at
+first you have to shove people through a gap or blast them over. Fall in the sea
+and you lose one of your 3 lives and drop back into the middle (safe for a
+moment). The rink shrinks: the outer ring (rail and all) sinks at 1:00, the next
+at 1:35 and the last at 2:10, leaving the centre disc. At 3:10 the most lives wins.
+
+The derby has its own music: 150 BPM hardstyle with distorted kicks, a reverse
+bass, a screeching lead and air horns. The last driver left wins a daft prize
+("A PEDALO TO CROSS THE IRISH SEA!", "A JELLYFISH CALLED JEFF!"...). Bots ram,
+boost, use items and steer back from the edge. It works over Wi-Fi too.
+
 ## Wi-Fi multiplayer
 
 One device presses **Host Wi-Fi Game**; the lobby shows its IP address. Others type that
@@ -161,6 +183,7 @@ scripts/ui/      HUD, splat overlay, main menu, lobby, pause menu, the live 3D m
 fonts/           Bungee and Russo One with their licences
 scripts/items/   coins, item boxes, item rules, traps, custard pie
 scripts/paintball/ Paintball Battle: arena, rules, paintballs, paint splats, crates, bots
+scripts/dodgems/ Dodgem Derby: rink over the sea, rules and bumping, dodgem cars, bots
 scripts/fx/      particles, fireworks shows, the prize present, the sword swipe
 scripts/audio/   synthesised sound effects and hard dance music
 tools/           headless bot race and item tests (not exported)
@@ -209,4 +232,12 @@ It uses Godot's Movie Maker (frame by frame, so it takes a while) and ffmpeg:
 
 ```
 GODOT=godot tools/reel/make_reel.sh reel.mp4
+```
+
+A Dodgem Derby with 7 bots and an idle player, then Play Again and a second derby.
+It prints every splash into the Irish Sea, the results, and counts bumps, boosts and
+item uses. Derbies usually last 70–110 s:
+
+```
+godot --headless --path . --fixed-fps 60 -s res://tools/dodgems_test.gd -- diff=1
 ```
