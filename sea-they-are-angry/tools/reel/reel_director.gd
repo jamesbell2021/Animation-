@@ -335,10 +335,12 @@ func _setup() -> void:
 func _direct(t: float) -> void:
 	match shot:
 		"title":
-			if at(0.0, t, "c"):
-				caption("Sea They Are Angry", "A lighthouse keeper on a North Sea rock. Keep the light burning.")
+			pass
 		"end":
 			if at(0.0, t, "c"):
+				# Just the island under the storm: no menu.
+				if main.title != null:
+					main.title.visible = false
 				caption("Sea They Are Angry", "Work in progress · 3BL_Indie")
 		"day":
 			if at(0.0, t, "c"):
