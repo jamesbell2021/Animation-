@@ -334,7 +334,7 @@ func _setup() -> void:
 			root.get_node("Stock").add("driftwood", 2)
 			slot.arm("spike")
 			_actors["b"] = spawn(Bloated, Terrain.beach_point(2, 0.38))
-			place(Terrain.beach_point(2, 0.95))
+			place(SPAWN)
 			var sp := slot.global_position
 			camera(sp + Vector3(-3.0, 4.0, 5.0).rotated(Vector3.UP, deg_to_rad(Terrain.BEACHES[2] - 180.0)), sp + Vector3(0.0, 0.4, 0.0), 50.0)
 		"flare":
