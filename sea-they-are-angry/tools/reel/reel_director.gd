@@ -33,6 +33,8 @@ var _caption: Label
 var _sub: Label
 var _actors := {}
 var _done := {}
+# Creatures frozen for the end of the warm-up, let go when the shot starts.
+var _held: Array[Node] = []
 
 func _initialize() -> void:
 	for a in OS.get_cmdline_user_args():
@@ -65,6 +67,15 @@ func _process(_delta: float) -> bool:
 		_setup()
 	if frame == WARMUP:
 		print("REC %.3f" % (float(WARMUP) / FPS))
+	# Out of the ground first (Emerge takes 0.8 s), then frozen until the shot starts.
+	if frame == 40:
+		for e in _held:
+			if is_instance_valid(e):
+				e.set_physics_process(false)
+	if frame == WARMUP:
+		for e in _held:
+			if is_instance_valid(e):
+				e.set_physics_process(true)
 	if frame > 3:
 		_direct(float(frame - WARMUP) / FPS)
 	return frame >= WARMUP + int(LENGTHS.get(shot, 6.0) * FPS)
@@ -161,6 +172,10 @@ func spawn(cls, pos: Vector3) -> Enemy:
 	main.get_node("Enemies").add_child(e)
 	return e
 
+func hold(e: Node) -> Node:
+	_held.append(e)
+	return e
+
 func place(p: Vector3) -> void:
 	player.global_position = ground(p)
 	player.velocity = Vector3.ZERO
@@ -246,13 +261,14 @@ func _setup() -> void:
 			scene(PH_NIGHT, 0.9, false)
 			place(Vector3(1.8, 0.0, 2.6))
 			var foot := Terrain.at_angle(30.0, 9.6)
-			_actors["s"] = spawn(Squid, foot)
+			_actors["s"] = hold(spawn(Squid, foot))
 			camera(Vector3(9.0, Terrain.CRAG_TOP + 3.5, 11.0), Vector3(2.5, Terrain.CRAG_TOP - 1.5, 4.5), 55.0)
 		"crab":
 			scene(PH_NIGHT, 0.9, false)
 			var cottage = _find(Cottage)
 			var spot: Vector3 = cottage.to_global(Vector3(0.0, 0.0, -Cottage.DEPTH * 0.5 - 2.4))
 			var c := spawn(Crab, ground(spot, 0.0))
+			hold(c)
 			c.rotation.y = atan2(-(cottage.global_position - spot).x, -(cottage.global_position - spot).z)
 			place(Vector3(2.0, 0.0, 2.6))
 			camera(spot + Vector3(3.5, 4.5, 4.5), spot + Vector3(-0.8, 0.8, -0.6), 55.0)
