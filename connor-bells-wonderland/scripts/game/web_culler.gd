@@ -15,9 +15,12 @@ var _fixed: int = 0
 var _timer: float = 0.0
 
 
-## Should the game use one? (Browsers, or "webcull" on the command line to test.)
+## Should the game use one? Browsers, phones that fall back to OpenGL (older ones
+## without Vulkan), or "webcull" on the command line to test.
 static func wanted() -> bool:
-	return OS.has_feature("web") or "webcull" in OS.get_cmdline_user_args()
+	if OS.has_feature("web") or "webcull" in OS.get_cmdline_user_args():
+		return true
+	return OS.has_feature("android") and RenderingServer.get_rendering_device() == null
 
 
 ## [param candidates]: nodes that can be hidden. Item boxes and coins hide their own
