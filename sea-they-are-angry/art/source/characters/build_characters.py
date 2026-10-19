@@ -84,9 +84,12 @@ def smooth(ob):
 
 # ---------------------------------------------------------------- materials
 
-def pmat(name, c1, c2, scale=30.0, detail=6.0, lo=0.3, hi=0.7, rough=0.85, pattern=None, pscale=60.0, pstrength=0.35):
+def pmat(name, c1, c2, scale=30.0, detail=6.0, lo=0.3, hi=0.7, rough=0.85, pattern=None, pscale=60.0, pstrength=0.35,
+         form=1.0, grade=True):
     """A painted-looking material: two colours broken up by noise, with an optional
-    pattern (knit ribs, stripes, weave) darkening it."""
+    pattern (knit ribs, cables, stripes, weave) darkening it. `form` paints in the
+    shape the way a hand-painted texture does: raised edges lighter, creases darker.
+    `grade` lightens toward the head and darkens toward the feet."""
     m = bpy.data.materials.new(name)
     m.use_nodes = True
     nt = m.node_tree
@@ -109,9 +112,13 @@ def pmat(name, c1, c2, scale=30.0, detail=6.0, lo=0.3, hi=0.7, rough=0.85, patte
         wave.inputs["Scale"].default_value = pscale
         wave.inputs["Distortion"].default_value = 1.5
         wave.wave_type = 'BANDS'
-        wave.bands_direction = {'ribs': 'X', 'rings': 'Z', 'stripes': 'Z', 'weave': 'DIAGONAL'}.get(pattern, 'X')
+        wave.bands_direction = {'ribs': 'X', 'rings': 'Z', 'stripes': 'Z', 'weave': 'DIAGONAL', 'cables': 'X'}.get(pattern, 'X')
         if pattern == 'rings':
             wave.wave_profile = 'SAW'
+        if pattern == 'cables':
+            # Twisted cables: bands warped by a second, coarser wave up the body.
+            wave.inputs["Distortion"].default_value = 6.0
+            wave.inputs["Detail"].default_value = 3.0
         nt.links.new(coord.outputs["Object"], wave.inputs["Vector"])
         mix = nt.nodes.new("ShaderNodeMix")
         mix.data_type = 'RGBA'
@@ -120,6 +127,37 @@ def pmat(name, c1, c2, scale=30.0, detail=6.0, lo=0.3, hi=0.7, rough=0.85, patte
         nt.links.new(col, mix.inputs["A"])
         nt.links.new(wave.outputs["Color"], mix.inputs["B"])
         col = mix.outputs["Result"]
+    if form > 0:
+        geo = nt.nodes.new("ShaderNodeNewGeometry")
+        mr = nt.nodes.new("ShaderNodeMapRange")
+        mr.inputs["From Min"].default_value = 0.44
+        mr.inputs["From Max"].default_value = 0.56
+        mr.inputs["To Min"].default_value = 1.0 - 0.32 * form
+        mr.inputs["To Max"].default_value = 1.0 + 0.3 * form
+        nt.links.new(geo.outputs["Pointiness"], mr.inputs["Value"])
+        mul = nt.nodes.new("ShaderNodeMix")
+        mul.data_type = 'RGBA'
+        mul.blend_type = 'MULTIPLY'
+        mul.inputs["Factor"].default_value = 1.0
+        nt.links.new(col, mul.inputs["A"])
+        nt.links.new(mr.outputs["Result"], mul.inputs["B"])
+        col = mul.outputs["Result"]
+    if grade:
+        sep = nt.nodes.new("ShaderNodeSeparateXYZ")
+        nt.links.new(coord.outputs["Object"], sep.inputs["Vector"])
+        gr = nt.nodes.new("ShaderNodeMapRange")
+        gr.inputs["From Min"].default_value = 0.0
+        gr.inputs["From Max"].default_value = 1.8
+        gr.inputs["To Min"].default_value = 0.72
+        gr.inputs["To Max"].default_value = 1.08
+        nt.links.new(sep.outputs["Z"], gr.inputs["Value"])
+        g2 = nt.nodes.new("ShaderNodeMix")
+        g2.data_type = 'RGBA'
+        g2.blend_type = 'MULTIPLY'
+        g2.inputs["Factor"].default_value = 1.0
+        nt.links.new(col, g2.inputs["A"])
+        nt.links.new(gr.outputs["Result"], g2.inputs["B"])
+        col = g2.outputs["Result"]
     nt.links.new(col, bsdf.inputs["Base Color"])
     return m
 
@@ -129,13 +167,15 @@ def add_mat(ob, m):
     return len(ob.data.materials) - 1
 
 
-def paint_regions(ob, rule):
-    """Give each face the material slot named by rule(centre, normal)."""
-    names = [m.name for m in ob.data.materials]
+def paint_regions(ob, rule, mats=None):
+    """Give each face the material for the region rule(centre, normal) names: a key in
+    `mats` when given, otherwise a material name."""
+    slots = list(ob.data.materials)
     for p in ob.data.polygons:
         n = rule(Vector(p.center), Vector(p.normal))
-        if n in names:
-            p.material_index = names.index(n)
+        m = mats.get(n) if mats else bpy.data.materials.get(n)
+        if m is not None and m in slots:
+            p.material_index = slots.index(m)
 
 
 # ---------------------------------------------------------------- shapes
@@ -250,13 +290,13 @@ def subdivide(ob, levels=1):
 
 # ---------------------------------------------------------------- the humanoid rig
 
-def humanoid_joints(p):
+def humanoid_joints(p, skip=()):
     """Joint graph for a humanoid from a proportions dict. Returns (joints, edges,
     named positions for the armature)."""
     H = p.get("height", 1.0)
     W = p.get("width", 1.0)
     G = p.get("girth", 1.0)
-    hips_z = 0.88 * H * p.get("legs", 1.0)
+    hips_z = 0.84 * H * p.get("legs", 1.0)
     chest_up = H * p.get("torso", 1.0)
     P = {}
     P["hips"] = Vector((0, 0.0, hips_z))
@@ -301,9 +341,9 @@ def humanoid_joints(p):
     limb = {
         "shoulder": R("shoulder", 0.074), "elbow": R("elbow", 0.055), "wrist": R("wrist", 0.042),
         "hand": R("hand", (0.052, 0.03)), "fingers": R("fingers", (0.045, 0.024)), "thumb": R("thumb", 0.021),
-        "hip": R("hip", 0.098), "knee": R("knee", 0.07), "ankle": R("ankle", 0.05), "toe": R("toe", (0.05, 0.038)),
+        "hip": R("hip", 0.106), "knee": R("knee", 0.076), "ankle": R("ankle", 0.054), "toe": R("toe", (0.05, 0.038)),
     }
-    names = list(order)
+    names = [n for n in order if n not in skip]
     for side in ("L", "R"):
         for k in ("shoulder", "elbow", "wrist", "hand", "fingers", "thumb", "hip", "knee", "ankle", "toe"):
             names.append(k + "." + side)
@@ -319,7 +359,7 @@ def humanoid_joints(p):
         E += [("upper", "shoulder" + s), ("shoulder" + s, "elbow" + s), ("elbow" + s, "wrist" + s),
               ("wrist" + s, "hand" + s), ("hand" + s, "fingers" + s), ("wrist" + s, "thumb" + s),
               ("hips", "hip" + s), ("hip" + s, "knee" + s), ("knee" + s, "ankle" + s), ("ankle" + s, "toe" + s)]
-    edges = [(idx[a], idx[b]) for a, b in E]
+    edges = [(idx[a], idx[b]) for a, b in E if a in idx and b in idx]
     return joints, edges, P
 
 
@@ -468,6 +508,15 @@ def preview(name, objs, height=1.8):
     sc.render.filepath = os.path.join(OUT, "preview_" + name + ".png")
     bpy.ops.render.render(write_still=True)
     print("PREVIEW", sc.render.filepath)
+    # And a close-up of the head and shoulders.
+    head = Vector((0, 0, height * 0.86))
+    cam.data.lens = 85
+    cam.location = head + Vector((0.45, -1.05, 0.08))
+    cam.rotation_euler = (head - cam.location).to_track_quat('-Z', 'Y').to_euler()
+    sc.render.resolution_x = 640
+    sc.render.resolution_y = 640
+    sc.render.filepath = os.path.join(OUT, "preview_" + name + "_head.png")
+    bpy.ops.render.render(write_still=True)
 
 
 # ---------------------------------------------------------------- keepers
@@ -476,115 +525,240 @@ KNIT_NAVY = ((0.10, 0.13, 0.22), (0.17, 0.21, 0.33))
 SKIN = ((0.66, 0.45, 0.36), (0.80, 0.58, 0.47))
 
 
+def gauss(d, r):
+    return math.exp(-(d / r) ** 2)
+
+
+def seg_dist(c, a, b):
+    ab = b - a
+    t = max(0.0, min(1.0, (c - a).dot(ab) / max(ab.length_squared, 1e-9)))
+    return (c - (a + ab * t)).length, t
+
+
 def is_hand(c, P, margin=0.0):
-    """True past the wrist, along the forearm."""
+    """True on the hand: near the wrist-to-fingers line, past the wrist."""
     for side in ("L", "R"):
-        w, e = P["wrist." + side], P["elbow." + side]
-        d = (w - e).normalized()
-        if (c - w).dot(d) > margin and (c - w).length < 0.2:
+        w, f = P["wrist." + side], P["fingers." + side]
+        d, t = seg_dist(c, w, f + (f - w) * 0.3)
+        if t > -0.12 + margin and d < 0.09:
             return True
     return False
 
 
-def keeper_body(name, p, mats, region):
-    joints, edges, P = humanoid_joints(p)
-    body = skin_body(name, joints, edges)
-    for m in mats.values():
-        add_mat(body, m)
-    paint_regions(body, lambda c, n: region(c, n, P))
-    return body, P
+# ---------------------------------------------------------------- heads
+
+def sculpt_head(name, C, dims, mat, look):
+    """A head from a dense sphere pushed into shape: a jaw that narrows to the chin, a
+    heavy brow, sunken eye sockets, cheekbones, a full cranium. `look` tunes it:
+    jaw (width), chin, brow, cheeks, gaunt (hollow cheeks, for the drowned)."""
+    a, b, c = dims
+    bm = bmesh.new()
+    bmesh.ops.create_uvsphere(bm, u_segments=36, v_segments=26, radius=1.0)
+    jaw = look.get("jaw", 1.0)
+    chin = look.get("chin", 1.0)
+    brow = look.get("brow", 1.0)
+    cheeks = look.get("cheeks", 1.0)
+    gaunt = look.get("gaunt", 0.0)
+    for v in bm.verts:
+        u = v.co.copy()
+        x, y, z = u.x * a, u.y * b, u.z * c
+        front = max(0.0, -u.y)
+        # The lower head narrows to the jaw, and to the neck at the back.
+        if u.z < 0:
+            x *= 1.0 - (0.22 / jaw) * (-u.z)
+            if u.y > 0:
+                y *= 1.0 - 0.38 * (-u.z)
+        # Jaw corners and chin pushed forward and down.
+        y -= 0.016 * chin * front * gauss(u.z + 0.75, 0.3) * gauss(u.x, 0.45)
+        z -= 0.012 * chin * front * gauss(u.z + 0.85, 0.25) * gauss(u.x, 0.5)
+        # Flatter face, fuller cranium behind.
+        y += 0.012 * front * gauss(u.z - 0.1, 0.6)
+        y += 0.012 * max(0.0, u.y) * max(0.0, u.z)
+        # Heavy brow ridge, eye sockets under it.
+        y -= 0.016 * brow * front * gauss(u.z - 0.28, 0.12) * gauss(abs(u.x) - 0.3, 0.32)
+        for s in (-1, 1):
+            d = math.hypot(u.x - s * 0.36, u.z - 0.12)
+            y += 0.014 * front * gauss(d, 0.17)
+            # Cheekbones out to the side and forward.
+            d2 = math.hypot(u.x - s * 0.55, u.z + 0.12)
+            x += s * 0.008 * cheeks * gauss(d2, 0.22) * (0.5 + front)
+            y -= 0.006 * cheeks * front * gauss(d2, 0.2)
+            if gaunt > 0:
+                d3 = math.hypot(u.x - s * 0.5, u.z + 0.4)
+                x -= s * 0.012 * gaunt * gauss(d3, 0.25)
+        v.co = Vector((x, y, z)) + Vector(C)
+    ob = mesh_from_bmesh(name, bm)
+    smooth(ob)
+    add_mat(ob, mat)
+    return ob
 
 
-def face(P, hs, mats, beard=None, brows=None, nose=1.0):
-    """Eyes, brows, nose and ears on the head: all bound to the head bone."""
+def head_parts(C, dims, mats, look):
+    """Nose, eyes with lids, ears and brows for a sculpted head (all bound to the head)."""
+    a, b, c = dims
+    C = Vector(C)
     parts = []
-    hm = P["head_mid"]
-    fr = 0.104 * hs
-    for s in (1, -1):
-        e = blob("eye", hm + Vector((s * 0.034 * hs, -fr * 0.86, 0.012)), (0.013, 0.008, 0.012), 10, 6, mats["eye"])
-        parts.append(e)
-        if brows:
-            b = box("brow", hm + Vector((s * 0.036 * hs, -fr * 0.9, 0.032)), (0.04, 0.02, 0.014), mats[brows], 0.005, rot=(0.25, s * 0.2, 0))
-            parts.append(b)
-        ear = blob("ear", hm + Vector((s * 0.09 * hs, 0.01, 0.0)), (0.014, 0.026, 0.034), 10, 6, mats["skin"])
-        parts.append(ear)
-    n = blob("nose", hm + Vector((0, -fr * 1.0, -0.01)), (0.02 * nose, 0.03 * nose, 0.034 * nose), 10, 8, mats["skin"])
+    nose = look.get("nose", 1.0)
+    # Nose: bridge from between the brows to a fleshy tip, with nostril wings.
+    nj = [(C + Vector((0, -b * 0.92, c * 0.12)), (0.011 * nose, 0.012 * nose)),
+          (C + Vector((0, -b * 1.08, -c * 0.12)), (0.017 * nose, 0.018 * nose)),
+          (C + Vector((0, -b * 1.12, -c * 0.24)), (0.021 * nose, 0.02 * nose))]
+    n = skin_body("nose", nj, [(0, 1), (1, 2)], levels=2)
+    add_mat(n, mats["skin"])
     parts.append(n)
-    if beard:
-        bj = [(hm + Vector((0, -0.045, -0.025)), (0.085 * hs, 0.06)), (hm + Vector((0, -0.07, -0.085)), (0.07 * hs, 0.05)),
-              (hm + Vector((0, -0.07, -0.15)), (0.04 * hs, 0.03))]
-        bd = skin_body("beard", bj, [(0, 1), (1, 2)], levels=2)
-        bd = roughen(bd, 0.012, 0.03)
-        add_mat(bd, mats[beard])
-        parts.append(bd)
-        # Moustache.
-        m = tube("tache", hm + Vector((-0.045, -fr * 0.93, -0.035)), hm + Vector((0.045, -fr * 0.93, -0.035)), 0.016, 0.016, 10, mats[beard])
-        parts.append(m)
+    for s in (-1, 1):
+        parts.append(blob("nostril", C + Vector((s * 0.016 * nose, -b * 1.03, -c * 0.27)), (0.012, 0.012, 0.01), 10, 6, mats["skin"]))
+        # Small, deep-set eyes under heavy lids.
+        e = C + Vector((s * a * 0.4, -b * 0.76, c * 0.1))
+        parts.append(blob("eye", e, (0.0135, 0.009, 0.0105), 12, 8, mats["eye_white"]))
+        parts.append(blob("iris", e + Vector((0, -0.0072, 0)), (0.0072, 0.004, 0.0072), 10, 6, mats["iris"]))
+        lid = dome("lid", e + Vector((0, -0.0015, 0.001)), (0.0165, 0.0125, 0.0135), cut=-0.05, mat=mats["skin"], segs=12, rings=8)
+        parts.append(lid)
+        if look.get("brows"):
+            bw = look.get("brow_size", 1.0)
+            inner = C + Vector((s * a * 0.16, -b * 0.95, c * 0.24))
+            outer = C + Vector((s * a * 0.62, -b * 0.8, c * 0.27))
+            brow = skin_body("brow", [(inner, (0.009 * bw, 0.007 * bw)), (outer, (0.006 * bw, 0.005 * bw))], [(0, 1)], levels=1)
+            add_mat(brow, mats[look["brows"]])
+            parts.append(roughen(brow, 0.002, 0.006))
+        # Ears: a flattened shell with a rim.
+        ear = blob("ear", C + Vector((s * a * 0.98, b * 0.05, c * 0.0)), (0.012, 0.03, 0.04), 12, 8, mats["skin"])
+        parts.append(ear)
     for o in parts:
-        o.data.update()
         bind_rigid(o, "head")
     return parts
 
 
-def build_callum():
-    """Callum MacLeod, principal keeper: navy gansey, oilskin trousers, sea boots,
-    a grey-shot beard and a rolled wool watch cap."""
-    name = "callum_keeper"
-    p = {"height": 1.0, "width": 1.05, "girth": 1.05, "head": 1.15}
-    mats = {
-        "jumper": pmat("jumper", *KNIT_NAVY, scale=60, pattern='ribs', pscale=140, pstrength=0.45),
-        "trousers": pmat("trousers", (0.16, 0.15, 0.13), (0.24, 0.22, 0.19), scale=25, pattern='weave', pscale=90, pstrength=0.25),
-        "boots": pmat("boots", (0.06, 0.06, 0.06), (0.14, 0.13, 0.12), scale=18, rough=0.4),
-        "skin": pmat("skin", *SKIN, scale=22, lo=0.35, hi=0.75),
-        "beard": pmat("beard", (0.32, 0.30, 0.28), (0.62, 0.6, 0.57), scale=90, detail=8, lo=0.25, hi=0.8),
-        "cap": pmat("cap", (0.45, 0.10, 0.08), (0.6, 0.16, 0.12), scale=60, pattern='ribs', pscale=160, pstrength=0.4),
-        "eye": pmat("eye", (0.05, 0.05, 0.06), (0.1, 0.1, 0.12), rough=0.2),
-        "leather": pmat("leather", (0.25, 0.15, 0.08), (0.38, 0.24, 0.13), scale=25, rough=0.5),
-    }
+def beard(C, dims, mat, kind="full", seed=1):
+    """A chunky beard: a mass on the jaw with clumps hanging from it, and a moustache."""
+    import random
+    rnd = random.Random(seed)
+    a, b, c = dims
+    C = Vector(C)
+    parts = []
+    if kind in ("full", "long"):
+        drop = 0.16 if kind == "long" else 0.1
+        bj = [(C + Vector((0, -b * 0.5, -c * 0.45)), (a * 0.95, b * 0.55)),
+              (C + Vector((0, -b * 0.82, -c * 0.85)), (a * 0.72, 0.05)),
+              (C + Vector((0, -b * 0.85, -c * 0.85 - drop)), (a * 0.38, 0.032))]
+        mass = skin_body("beard", bj, [(0, 1), (1, 2)], levels=2)
+        parts.append(roughen(mass, 0.008, 0.025))
+        for i in range(11):
+            ang = -1.1 + 2.2 * i / 10.0
+            top = C + Vector((math.sin(ang) * a * 0.66, -b * (0.6 + 0.3 * math.cos(ang)), -c * (0.72 + 0.1 * math.cos(ang))))
+            bot = top + Vector((math.sin(ang) * 0.012, -0.012 * math.cos(ang), -(drop * 0.75 + rnd.uniform(0.0, 0.04))))
+            parts.append(roughen(tube("clump", top, bot, 0.02, 0.004, 8), 0.003, 0.008))
+    if kind == "short":
+        bj = [(C + Vector((0, -b * 0.55, -c * 0.5)), (a * 0.98, b * 0.5)), (C + Vector((0, -b * 0.8, -c * 0.85)), (a * 0.6, 0.04))]
+        parts.append(roughen(skin_body("beard", bj, [(0, 1)], levels=2), 0.006, 0.02))
+    if kind != "none":
+        for s in (-1, 1):
+            m0 = C + Vector((s * 0.006, -b * 1.02, -c * 0.38))
+            m1 = C + Vector((s * a * 0.55, -b * 0.85, -c * 0.52))
+            parts.append(roughen(tube("tache", m0, m1, 0.017, 0.008, 8), 0.003, 0.01))
+            # Sideburns down to the jaw.
+            sb = skin_body("sideburn", [(C + Vector((s * a * 0.9, -b * 0.15, c * 0.12)), (0.012, 0.016)),
+                                        (C + Vector((s * a * 0.78, -b * 0.42, -c * 0.42)), (0.018, 0.022))], [(0, 1)], levels=2)
+            parts.append(roughen(sb, 0.003, 0.01))
+    for o in parts:
+        if not o.data.materials:
+            add_mat(o, mat)
+        bind_rigid(o, "head")
+    return parts
 
+
+def hair_back(C, dims, mat, low=-0.45, top=0.25):
+    """Hair round the back and sides under a hat."""
+    a, b, c = dims
+    h = dome("hair", Vector(C) + Vector((0, 0.006, 0.0)), (a * 1.06, b * 1.05, c * 1.04), cut=low, mat=mat, segs=24, rings=14)
+    # Only the back and sides, and only below the hat: drop the face and the crown.
+    bm = bmesh.new()
+    bm.from_mesh(h.data)
+    bmesh.ops.delete(bm, geom=[v for v in bm.verts if (v.co - Vector(C)).y < -b * 0.25 or (v.co - Vector(C)).z > c * top], context='VERTS')
+    bm.to_mesh(h.data)
+    bm.free()
+    h = roughen(h, 0.006, 0.02)
+    bind_rigid(h, "head")
+    return h
+
+
+# ---------------------------------------------------------------- keepers
+
+def keeper_body(name, p, mats, region):
+    joints, edges, P = humanoid_joints(p, skip=("head_low", "head_mid", "head_top"))
+    body = skin_body(name, joints, edges)
+    for m in mats.values():
+        add_mat(body, m)
+    paint_regions(body, lambda c, n: region(c, n, P), mats)
+    return body, P
+
+
+def head_frame(P, hs):
+    """Centre and half-sizes of the sculpted head on top of the neck."""
+    C = P["head_low"] + Vector((0, 0.006, 0.075 * hs))
+    return C, (0.083 * hs, 0.1 * hs, 0.118 * hs)
+
+
+def boots(P, mats, side, top=0.26):
+    a = P["ankle." + side]
+    t = P["toe." + side]
+    parts = []
+    # A rubber sea boot: a shaft, a rolled top and a broad toe on a thick sole.
+    parts.append(tube("boot", a + Vector((0, 0.008, -0.05)), a + Vector((0, 0.004, top)), 0.066, 0.072, 18, mats["boots"]))
+    parts.append(ring("boot_top", a + Vector((0, 0.004, top)), 0.072, 0.014, mat=mats["boots"]))
+    toe = skin_body("toe", [(a + Vector((0, 0.01, -0.04)), (0.062, 0.07)), (Vector((t.x, t.y - 0.02, 0.05)), (0.055, 0.045))], [(0, 1)], levels=2)
+    add_mat(toe, mats["boots"])
+    parts.append(toe)
+    sole = box("sole", (a.x, (a.y + t.y) * 0.5 - 0.02, 0.016), (0.112, 0.3, 0.032), mats["sole"], 0.012)
+    parts.append(sole)
+    for o in parts[:2]:
+        bind_rigid(o, "shin." + side)
+    for o in parts[2:]:
+        bind_rigid(o, "foot." + side)
+    return parts
+
+
+def keeper_mats(jumper, trousers, extra=None):
+    m = {
+        "jumper": jumper,
+        "trousers": trousers,
+        "boots": pmat("boots", (0.05, 0.05, 0.05), (0.13, 0.12, 0.11), scale=18, rough=0.35, form=1.4),
+        "sole": pmat("sole", (0.03, 0.03, 0.03), (0.07, 0.07, 0.07), scale=30, rough=0.6),
+        "skin": pmat("skin", *SKIN, scale=22, lo=0.35, hi=0.75, form=1.3),
+        "eye_white": pmat("eye_white", (0.8, 0.78, 0.72), (0.9, 0.88, 0.82), rough=0.2, form=0.0, grade=False),
+        "iris": pmat("iris", (0.08, 0.12, 0.16), (0.16, 0.24, 0.3), rough=0.15, form=0.0, grade=False),
+        "leather": pmat("leather", (0.22, 0.13, 0.07), (0.36, 0.22, 0.12), scale=25, rough=0.5, form=1.5),
+        "brass": pmat("brass", (0.55, 0.42, 0.18), (0.8, 0.66, 0.3), scale=40, rough=0.3, form=1.5),
+    }
+    m.update(extra or {})
+    return m
+
+
+def is_forearm(c, P):
+    for side in ("L", "R"):
+        d, t = seg_dist(c, P["elbow." + side], P["wrist." + side])
+        if t > 0.12 and d < 0.085:
+            return True
+    return False
+
+
+def keeper_region(rolled=False, coat=False):
     def region(c, n, P):
-        if c.z > P["neck"].z - 0.01:
-            return "skin"
         if is_hand(c, P):
             return "skin"
-        if c.z < 0.3 and abs(c.x) < 0.2:
+        if rolled and is_forearm(c, P):
+            return "skin"
+        if c.z > P["neck"].z - 0.02 and abs(c.x) < 0.1:
+            return "skin"
+        if c.z < 0.3 and abs(c.x) < 0.22:
             return "boots"
         if c.z < P["hips"].z - 0.02 and abs(c.x) < 0.25:
             return "trousers"
         return "jumper"
+    return region
 
-    body, P = keeper_body(name, p, mats, region)
-    rig = make_armature(name, P, HUMANOID_BONES)
-    bind_auto(body, rig)
-    parts = face(P, 1.0, mats, beard="beard", brows="beard", nose=1.05)
-    # Watch cap: crown and a rolled brim.
-    hm = P["head_mid"]
-    crown = dome("cap", hm + Vector((0, 0.008, 0.035)), (0.106, 0.114, 0.12), cut=0.0, mat=mats["cap"])
-    brim = ring("brim", hm + Vector((0, 0.008, 0.045)), 0.103, 0.022, (1.0, 1.08, 1.0), mat=mats["cap"])
-    for o in (crown, brim):
-        bind_rigid(o, "head")
-    parts += [crown, brim]
-    # Gansey rib at the hem, cuffs and a roll collar.
-    hem = ring("hem", P["hips"] + Vector((0, 0.0, 0.02)), 0.15, 0.022, (1.03, 0.78, 1.0), mat=mats["jumper"])
-    collar = ring("collar", P["neck"] + Vector((0, 0.0, -0.01)), 0.058, 0.022, (1.0, 1.0, 1.0), mat=mats["jumper"])
-    bind_rigid(hem, "hips")
-    bind_rigid(collar, "neck")
-    parts += [hem, collar]
-    for s, side in ((1, "L"), (-1, "R")):
-        w = P["wrist." + side]
-        e = P["elbow." + side]
-        cuff = tube("cuff", w + (e - w).normalized() * 0.01, w + (e - w).normalized() * 0.06, 0.045, 0.048, 14, mats["jumper"])
-        bind_rigid(cuff, "forearm." + side)
-        # Sea boots: a stiff upper and a thick sole.
-        a = P["ankle." + side]
-        upper = tube("boot", a + Vector((0, 0.01, -0.06)), a + Vector((0, 0.005, 0.24)), 0.062, 0.068, 16, mats["boots"])
-        bind_rigid(upper, "shin." + side)
-        sole = box("sole", (a.x, -0.045, 0.018), (0.1, 0.27, 0.036), mats["boots"], 0.012)
-        bind_rigid(sole, "foot." + side)
-        parts += [cuff, upper, sole]
-    belt = ring("belt", P["hips"] + Vector((0, 0.0, -0.03)), 0.155, 0.018, (1.02, 0.76, 0.7), mat=mats["leather"])
-    bind_rigid(belt, "hips")
-    parts.append(belt)
+
+def finish(name, body, rig, parts):
     body = join_into(body, parts)
     smooth(body)
     bake_textures(body)
@@ -593,8 +767,261 @@ def build_callum():
         preview(name, [body])
 
 
+def build_callum():
+    """Callum MacLeod, principal keeper: navy cable-knit gansey, dark oilskin trousers,
+    sea boots, a big grey-shot beard and a rolled red wool watch cap."""
+    name = "callum_keeper"
+    hs = 1.15
+    p = {"height": 1.0, "width": 1.08, "girth": 1.08, "head": hs}
+    mats = keeper_mats(
+        pmat("jumper", *KNIT_NAVY, scale=60, pattern='cables', pscale=55, pstrength=0.5, form=1.6),
+        pmat("trousers", (0.13, 0.12, 0.10), (0.22, 0.2, 0.17), scale=25, pattern='weave', pscale=90, pstrength=0.25, rough=0.5, form=1.4),
+        {
+            "beard": pmat("beard", (0.3, 0.28, 0.26), (0.66, 0.64, 0.6), scale=120, detail=8, lo=0.25, hi=0.8, pattern='stripes', pscale=220, pstrength=0.35, form=1.8),
+            "hair": pmat("hair", (0.3, 0.28, 0.26), (0.55, 0.53, 0.5), scale=120, detail=8, pattern='stripes', pscale=200, pstrength=0.35, form=1.6),
+            "cap": pmat("cap", (0.42, 0.09, 0.07), (0.62, 0.16, 0.12), scale=60, pattern='ribs', pscale=160, pstrength=0.45, form=1.6),
+        })
+    body, P = keeper_body(name, p, mats, keeper_region(None))
+    rig = make_armature(name, P, HUMANOID_BONES)
+    bind_auto(body, rig)
+    C, dims = head_frame(P, hs)
+    head = sculpt_head("head", C, dims, mats["skin"], {"jaw": 1.1, "brow": 1.2, "cheeks": 1.0, "chin": 1.0})
+    bind_rigid(head, "head")
+    parts = [head] + head_parts(C, dims, mats, {"nose": 1.15, "brows": "beard"})
+    parts += beard(C, dims, mats["beard"], "full", seed=3)
+    parts.append(hair_back(C, dims, mats["hair"], low=-0.35))
+    a, b, c = dims
+    crown = dome("cap", Vector(C) + Vector((0, 0.008, c * 0.28)), (a * 1.14, b * 1.1, c * 0.95), cut=0.0, mat=mats["cap"])
+    crown = roughen(crown, 0.004, 0.02)
+    brim = ring("brim", Vector(C) + Vector((0, 0.008, c * 0.36)), a * 1.1, 0.024, (1.0, b / a, 1.0), mat=mats["cap"])
+    for o in (crown, brim):
+        bind_rigid(o, "head")
+    parts += [crown, brim]
+    # Gansey: rib at the hem and cuffs, a turned-down roll collar, a yoke seam.
+    hem = ring("hem", P["hips"] + Vector((0, 0.0, 0.025)), 0.172, 0.024, (1.02, 0.78, 1.0), mat=mats["jumper"])
+    collar = ring("collar", P["neck"] + Vector((0, 0.004, 0.0)), 0.066, 0.026, mat=mats["jumper"])
+    bind_rigid(hem, "hips")
+    bind_rigid(collar, "neck")
+    parts += [hem, collar]
+    for s, side in ((1, "L"), (-1, "R")):
+        w, e = P["wrist." + side], P["elbow." + side]
+        d = (e - w).normalized()
+        cuff = tube("cuff", w + d * 0.0, w + d * 0.055, 0.05, 0.054, 14, mats["jumper"])
+        bind_rigid(cuff, "forearm." + side)
+        parts.append(cuff)
+        parts += boots(P, mats, side)
+    belt = ring("belt", P["hips"] + Vector((0, 0.0, -0.03)), 0.168, 0.02, (1.02, 0.76, 0.7), mat=mats["leather"])
+    buckle = box("buckle", P["hips"] + Vector((0, -0.132, -0.03)), (0.05, 0.012, 0.04), mats["brass"], 0.004)
+    knife = box("sheath", P["hips"] + Vector((-0.15, -0.06, -0.09)), (0.03, 0.02, 0.15), mats["leather"], 0.008)
+    for o in (belt, buckle, knife):
+        bind_rigid(o, "hips")
+    parts += [belt, buckle, knife]
+    finish(name, body, rig, parts)
+
+
+def skirt(name, P, top, bottom, r_top, r_bot, mat, depth=0.8):
+    """A coat skirt from the waist down: each side follows its thigh more toward the hem."""
+    a = Vector((0, 0.01, top))
+    b = Vector((0, 0.02, bottom))
+    ob = tube(name, a, b, r_top, r_bot, 24, mat, caps=False)
+    for v in ob.data.vertices:
+        v.co.y *= depth
+    ob.data.update()
+    hips = ob.vertex_groups.new(name="hips")
+    tl = ob.vertex_groups.new(name="thigh.L")
+    tr = ob.vertex_groups.new(name="thigh.R")
+    for v in ob.data.vertices:
+        k = max(0.0, min(1.0, (top - v.co.z) / max(top - bottom, 0.01))) * 0.75
+        side = max(-1.0, min(1.0, v.co.x / 0.08))
+        hips.add([v.index], 1.0 - k, 'REPLACE')
+        if side > 0:
+            tl.add([v.index], k * side, 'REPLACE')
+            hips.add([v.index], 1.0 - k * side, 'REPLACE')
+        elif side < 0:
+            tr.add([v.index], k * -side, 'REPLACE')
+            hips.add([v.index], 1.0 - k * -side, 'REPLACE')
+    return ob
+
+
+def cuffs(P, mats, key, r=0.05, at_elbow=False):
+    parts = []
+    for side in ("L", "R"):
+        w, e = P["wrist." + side], P["elbow." + side]
+        d = (e - w).normalized()
+        if at_elbow:
+            cuff = tube("cuff", e - d * 0.02, e + d * 0.04, r + 0.008, r + 0.01, 14, mats[key])
+            bind_rigid(cuff, "upper_arm." + side)
+        else:
+            cuff = tube("cuff", w, w + d * 0.055, r, r + 0.004, 14, mats[key])
+            bind_rigid(cuff, "forearm." + side)
+        parts.append(cuff)
+    return parts
+
+
+def build_hamish():
+    """Hamish Fraser, engineer: stocky, in a blue-grey boiler suit with the sleeves rolled
+    to the elbow, a tweed flat cap, a short dark beard and a big moustache."""
+    name = "hamish_keeper"
+    hs = 1.13
+    p = {"height": 0.97, "width": 1.14, "girth": 1.2, "head": hs, "arms": 0.97}
+    suit = pmat("suit", (0.22, 0.27, 0.32), (0.32, 0.38, 0.43), scale=35, pattern='weave', pscale=110, pstrength=0.2, rough=0.7, form=1.5)
+    mats = keeper_mats(suit, suit, {
+        "beard": pmat("beard", (0.08, 0.06, 0.05), (0.2, 0.15, 0.11), scale=120, detail=8, pattern='stripes', pscale=220, pstrength=0.35, form=1.8),
+        "tweed": pmat("tweed", (0.28, 0.24, 0.17), (0.42, 0.36, 0.26), scale=90, detail=8, pattern='weave', pscale=140, pstrength=0.35, form=1.4),
+        "oil": pmat("oil", (0.12, 0.12, 0.13), (0.3, 0.3, 0.32), scale=40, rough=0.3, form=1.6),
+    })
+    mats["skin"] = pmat("skin", (0.7, 0.47, 0.37), (0.84, 0.6, 0.48), scale=22, lo=0.35, hi=0.75, form=1.3)
+    body, P = keeper_body(name, p, mats, keeper_region(rolled=True))
+    rig = make_armature(name, P, HUMANOID_BONES)
+    bind_auto(body, rig)
+    C, dims = head_frame(P, hs)
+    a, b, c = dims
+    head = sculpt_head("head", C, dims, mats["skin"], {"jaw": 1.3, "brow": 1.0, "cheeks": 1.3, "chin": 0.8})
+    bind_rigid(head, "head")
+    parts = [head] + head_parts(C, dims, mats, {"nose": 1.3, "brows": "beard"})
+    parts += beard(C, dims, mats["beard"], "short", seed=5)
+    parts.append(hair_back(C, dims, mats["beard"], low=-0.3))
+    # Flat cap: a squashed crown leaning forward over a stiff peak.
+    crown = blob("cap", Vector(C) + Vector((0, -0.008, c * 0.6)), (a * 1.2, b * 1.22, c * 0.5), 24, 12, mats["tweed"])
+    crown = roughen(crown, 0.003, 0.02)
+    peak = box("peak", Vector(C) + Vector((0, -b * 1.05, c * 0.46)), (a * 1.6, 0.07, 0.012), mats["tweed"], 0.006, rot=(0.18, 0, 0))
+    for o in (crown, peak):
+        bind_rigid(o, "head")
+    parts += [crown, peak]
+    # Boiler suit: a collar, chest pockets, sleeves rolled to the elbow, a work belt.
+    collar = ring("collar", P["neck"] + Vector((0, 0.006, -0.01)), 0.072, 0.02, mat=mats["jumper"])
+    bind_rigid(collar, "neck")
+    parts.append(collar)
+    for s in (1, -1):
+        pk = box("pocket", P["chest"] + Vector((s * 0.09, -0.142, 0.06)), (0.075, 0.012, 0.085), mats["jumper"], 0.003)
+        flap = box("flap", P["chest"] + Vector((s * 0.09, -0.15, 0.1)), (0.08, 0.012, 0.025), mats["jumper"], 0.003)
+        for o in (pk, flap):
+            bind_rigid(o, "chest")
+            parts.append(o)
+    parts += cuffs(P, mats, "jumper", 0.058, at_elbow=True)
+    for side in ("L", "R"):
+        parts += boots(P, mats, side, top=0.2)
+    belt = ring("belt", P["hips"] + Vector((0, 0.0, -0.02)), 0.18, 0.022, (1.02, 0.76, 0.7), mat=mats["leather"])
+    buckle = box("buckle", P["hips"] + Vector((0, -0.142, -0.02)), (0.055, 0.012, 0.045), mats["brass"], 0.004)
+    spanner = box("spanner", P["hips"] + Vector((0.17, -0.07, -0.1)), (0.02, 0.012, 0.2), mats["oil"], 0.004)
+    rag = box("rag", P["hips"] + Vector((-0.16, 0.06, -0.1)), (0.05, 0.02, 0.14), mats["tweed"], 0.01)
+    for o in (belt, buckle, spanner, rag):
+        bind_rigid(o, "hips")
+    parts += [belt, buckle, spanner, rag]
+    finish(name, body, rig, parts)
+
+
+def build_mairi():
+    """Mairi Campbell, gardener and runner: lighter build, auburn hair in a bun and a
+    long braid, a green waxed jacket over a cream jumper, cord trousers, green wellies."""
+    name = "mairi_keeper"
+    hs = 1.1
+    p = {"height": 0.96, "width": 0.98, "girth": 0.95, "head": hs, "arms": 0.96}
+    jacket = pmat("jacket", (0.14, 0.2, 0.13), (0.24, 0.3, 0.18), scale=28, rough=0.45, form=1.6)
+    cords = pmat("cords", (0.3, 0.2, 0.12), (0.42, 0.3, 0.18), scale=30, pattern='ribs', pscale=260, pstrength=0.3, form=1.4)
+    mats = keeper_mats(jacket, cords, {
+        "hair": pmat("hair", (0.36, 0.13, 0.06), (0.62, 0.27, 0.12), scale=120, detail=8, pattern='stripes', pscale=220, pstrength=0.4, form=1.8),
+        "cream": pmat("cream", (0.72, 0.68, 0.58), (0.86, 0.82, 0.72), scale=60, pattern='ribs', pscale=160, pstrength=0.3, form=1.4),
+    })
+    mats["boots"] = pmat("boots", (0.06, 0.16, 0.08), (0.12, 0.26, 0.14), scale=18, rough=0.35, form=1.4)
+    mats["skin"] = pmat("skin", (0.74, 0.55, 0.45), (0.88, 0.68, 0.57), scale=22, lo=0.35, hi=0.75, form=1.2)
+    body, P = keeper_body(name, p, mats, keeper_region())
+    rig = make_armature(name, P, HUMANOID_BONES)
+    bind_auto(body, rig)
+    C, dims = head_frame(P, hs)
+    a, b, c = dims
+    head = sculpt_head("head", C, dims, mats["skin"], {"jaw": 0.85, "brow": 0.6, "cheeks": 1.1, "chin": 0.7})
+    bind_rigid(head, "head")
+    parts = [head] + head_parts(C, dims, mats, {"nose": 0.9, "brows": "hair", "brow_size": 0.7})
+    # Hair: a full cap of hair with a side parting, a bun and a braid down the back.
+    hair = dome("hair", Vector(C) + Vector((0, 0.006, -c * 0.02)), (a * 1.08, b * 1.07, c * 1.07), cut=-0.35, mat=mats["hair"], segs=28, rings=16)
+    bm = bmesh.new()
+    bm.from_mesh(hair.data)
+    # Off the face: a hairline high on the forehead, swept back at the temples.
+    bmesh.ops.delete(bm, geom=[v for v in bm.verts if (v.co - Vector(C)).y < -b * 0.5 and (v.co - Vector(C)).z < c * 0.5], context='VERTS')
+    bm.to_mesh(hair.data)
+    bm.free()
+    hair = roughen(hair, 0.005, 0.02)
+    bun = roughen(blob("bun", Vector(C) + Vector((0, b * 0.95, c * 0.25)), (0.05, 0.045, 0.05), 14, 10, mats["hair"]), 0.004, 0.015)
+    parts += [hair, bun]
+    for k in range(7):
+        seg = blob("braid", Vector(C) + Vector((0.006 * (-1) ** k, b * 1.02 + 0.012 * k, -c * 0.25 - 0.042 * k)), (0.03 - 0.002 * k, 0.026, 0.032), 10, 8, mats["hair"])
+        parts.append(seg)
+    for o in [hair, bun] + parts[-7:]:
+        bind_rigid(o, "head")
+    # Jumper roll neck under the jacket, the jacket's collar, pockets and cuffs.
+    neck = ring("rollneck", P["neck"] + Vector((0, 0.004, 0.0)), 0.062, 0.028, mat=mats["cream"])
+    bind_rigid(neck, "neck")
+    jcollar = ring("jcollar", P["neck"] + Vector((0, 0.01, -0.035)), 0.088, 0.02, (1.0, 1.0, 1.0), mat=mats["jumper"])
+    bind_rigid(jcollar, "chest")
+    parts += [neck, jcollar]
+    hem = skirt("jskirt", P, P["hips"].z + 0.02, P["hips"].z - 0.17, 0.175, 0.19, mats["jumper"], depth=0.78)
+    parts.append(hem)
+    for s in (1, -1):
+        pk = box("pocket", P["hips"] + Vector((s * 0.12, -0.14, -0.07)), (0.09, 0.03, 0.08), mats["jumper"], 0.01)
+        bind_rigid(pk, "hips")
+        parts.append(pk)
+    parts += cuffs(P, mats, "cream", 0.046)
+    for side in ("L", "R"):
+        parts += boots(P, mats, side, top=0.3)
+    finish(name, body, rig, parts)
+
+
+def build_ewan():
+    """Ewan Reid, frontline: tall and young, a yellow oilskin coat to the knee buttoned
+    up, a sou'wester, dark stubble."""
+    name = "ewan_keeper"
+    hs = 1.12
+    p = {"height": 1.04, "width": 1.06, "girth": 1.02, "head": hs}
+    oilskin = pmat("oilskin", (0.72, 0.52, 0.06), (0.9, 0.7, 0.14), scale=25, rough=0.3, form=1.8)
+    mats = keeper_mats(oilskin, pmat("trousers", (0.1, 0.1, 0.1), (0.2, 0.19, 0.17), scale=25, pattern='weave', pscale=90, pstrength=0.25, form=1.4), {
+        "beard": pmat("stubble", (0.2, 0.14, 0.1), (0.32, 0.22, 0.15), scale=200, detail=8, form=0.8),
+        "hair": pmat("hair", (0.12, 0.08, 0.05), (0.26, 0.17, 0.1), scale=120, detail=8, pattern='stripes', pscale=220, pstrength=0.4, form=1.8),
+        "toggle": pmat("toggle", (0.15, 0.1, 0.06), (0.3, 0.2, 0.12), scale=40, form=1.4),
+    })
+    body, P = keeper_body(name, p, mats, keeper_region())
+    rig = make_armature(name, P, HUMANOID_BONES)
+    bind_auto(body, rig)
+    C, dims = head_frame(P, hs)
+    a, b, c = dims
+    head = sculpt_head("head", C, dims, mats["skin"], {"jaw": 1.15, "brow": 0.9, "cheeks": 0.9, "chin": 1.2})
+    bind_rigid(head, "head")
+    parts = [head] + head_parts(C, dims, mats, {"nose": 1.0, "brows": "hair"})
+    parts += beard(C, dims, mats["beard"], "short", seed=7)
+    parts.append(hair_back(C, dims, mats["hair"], low=-0.25))
+    # Sou'wester: a rounded crown and a brim that sweeps down longer at the back.
+    crown = dome("hat", Vector(C) + Vector((0, 0.01, c * 0.3)), (a * 1.16, b * 1.12, c * 0.9), cut=0.0, mat=mats["jumper"])
+    brim = tube("brim", Vector(C) + Vector((0, 0.02, c * 0.33)), Vector(C) + Vector((0, 0.03, c * 0.26)), a * 1.12, a * 1.55, 28, mats["jumper"], caps=False)
+    brim = subdivide(brim, 1)
+    for v in brim.data.vertices:
+        back = max(0.0, v.co.y - C[1])
+        v.co.z -= back * 0.45
+        v.co.y += back * 0.25
+    brim.data.update()
+    for o in (crown, brim):
+        bind_rigid(o, "head")
+    parts += [crown, brim]
+    # The coat: a high collar, toggles down the front, a long skirt to the knee.
+    collar = tube("collar", P["neck"] + Vector((0, 0.01, -0.04)), P["neck"] + Vector((0, 0.01, 0.06)), 0.09, 0.085, 20, mats["jumper"], caps=False)
+    bind_rigid(collar, "neck")
+    parts.append(collar)
+    for k in range(4):
+        tg = box("toggle", P["spine"] + Vector((0, -0.135 - 0.005 * k, 0.17 - 0.1 * k)), (0.035, 0.016, 0.014), mats["toggle"], 0.005)
+        bind_rigid(tg, "spine" if k > 1 else "chest")
+        parts.append(tg)
+    coat = skirt("coat", P, P["hips"].z + 0.03, P["knee.L"].z - 0.02, 0.18, 0.22, mats["jumper"], depth=0.8)
+    parts.append(coat)
+    parts += cuffs(P, mats, "jumper", 0.058)
+    for side in ("L", "R"):
+        parts += boots(P, mats, side, top=0.28)
+    finish(name, body, rig, parts)
+
+
 BUILDERS = {
     "callum_keeper": build_callum,
+    "hamish_keeper": build_hamish,
+    "mairi_keeper": build_mairi,
+    "ewan_keeper": build_ewan,
 }
 
 if __name__ == "__main__":

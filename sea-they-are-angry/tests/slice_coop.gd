@@ -61,6 +61,8 @@ func _go() -> void:
 	for i in 200:
 		if not p1.downed:
 			break
+		# The downed keeper's ragdoll can slide a little: stay beside them.
+		p0.global_position = p1.global_position + Vector3(0.6, 0.2, 0.0)
 		await physics_frame
 	Input.action_release("interact")
 	check(not p1.downed and p1.hp == 40, "holding interact beside them revives at 40%% hp (hp %d)" % p1.hp)
