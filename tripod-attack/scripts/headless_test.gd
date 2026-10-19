@@ -15,6 +15,10 @@ func check(cond: bool, what: String) -> void:
 		printerr("  FAIL ", what)
 
 
+func physics_frame_wrap() -> void:
+	await get_tree().physics_frame
+
+
 func frames(n: int) -> void:
 	for i in n:
 		await get_tree().physics_frame
@@ -83,7 +87,7 @@ func _run() -> void:
 	for i in 240:
 		seen[tp.state] = true
 		await get_tree().physics_frame
-	check(seen.has("siren") and seen.has("fire"), "siren then fire (%s)" % str(seen.keys()))
+	check(seen.has("siren") and seen.has("pause") and seen.has("fire"), "siren, a pause, then fire (%s)" % str(seen.keys()))
 	check(G.lives == 3, "standing in the beam cost a life (lives %d)" % G.lives)
 	tp.cool = 0.0
 	bf.player.inv = 0.0
@@ -93,6 +97,58 @@ func _run() -> void:
 	bf.player.duck_held = false
 	check(G.lives == 3, "ducking under the beam kept the life")
 	check(G.stats.dodged == dodged_before + 1, "the dodge was counted")
+	# Leg hardening: a damaged leg reseals one hit when left alone.
+	for t2 in bf.tripods:
+		t2.gone = true
+	bf.wave_info.to_spawn = 0
+	await frames(2)
+	tp = bf.spawn_tripod(bf.wave_config(), false)
+	tp.x = 700.0
+	tp.cool = 999.0
+	tp.legs[0].hp = tp.legs[0].max
+	tp._damage_leg(0, tp.knee(0), Vector2(300, 0))
+	var hp_after_hit: int = tp.legs[0].hp
+	await frames(int((tp.harden_time + 0.5) * 60))
+	check(hp_after_hit == tp.legs[0].max - 1 and tp.legs[0].hp == tp.legs[0].max, "a leg left alone reseals (hp %d -> %d)" % [hp_after_hit, tp.legs[0].hp])
+	# Double sweep: the beam goes out to the shelter and comes back.
+	for t2 in bf.tripods:
+		t2.gone = true
+	await frames(2)
+	var dcfg := bf.wave_config()
+	dcfg.double = true
+	tp = bf.spawn_tripod(dcfg, false)
+	tp.x = 600.0
+	tp.cool = 0.0
+	for i in 3:
+		tp.legs[i].foot.x = tp.x + tp.rest[i]
+	var min_gx := INF
+	var returned := false
+	for i in 420:
+		if tp.state == "fire":
+			min_gx = minf(min_gx, tp.beam.gx)
+			if tp.beam.gx > min_gx + 100.0:
+				returned = true
+		await physics_frame_wrap()
+	check(tp.double_sweep and tp.fire_dur > 2.0 and returned, "double sweep returns (min gx %.0f)" % min_gx)
+	# Difficulty: the menu cycles it and the tables are separate.
+	main.enter_title()
+	var items: Array = main.menu_items()
+	check(items.back().label.begins_with("DIFFICULTY: NORMAL"), "title shows the difficulty item")
+	main.menu_idx = items.size() - 1
+	main.press()
+	check(G.difficulty == 1 and main.menu_items().back().label.ends_with("VETERAN"), "fire on it cycles to VETERAN")
+	check(G.setting().lives == 3 and bf.wave_config().leg_hp >= 3, "VETERAN starts with 3 lives and tougher legs")
+	G.score = 777
+	G.endless = false
+	G.high_campaign = [0, 0, 0]
+	check(G.record_score() and G.hi_campaign() == 777 and G.high_campaign[0] == 0, "high score lands in the VETERAN table only")
+	G.high_campaign = [0, 0, 0]
+	G.difficulty = 0
+	main.start_campaign(true)
+	main.press()
+	main.typed = 100.0
+	main.press()
+	G.lives = 4
 	# Soak: a few minutes of play, shooting and ducking, watching for NaNs and leaks.
 	var nan := 0
 	for i in 60 * 150:

@@ -11,10 +11,12 @@ var endless := false
 var stats := {"saved": 0, "lost": 0, "destroyed": 0, "dodged": 0}
 var cleared: Array = []
 var campaign_done := false
-var high_campaign := 0
-var high_endless := 0
+var difficulty := 0
+var high_campaign: Array = [0, 0, 0]
+var high_endless: Array = [0, 0, 0]
 var lost_sector := -1
 var clear_bonus := 0
+var new_high := false
 
 
 func _ready() -> void:
@@ -35,14 +37,19 @@ func load_save() -> void:
 		if c.size() == 10:
 			cleared = c
 		campaign_done = cf.get_value("campaign", "done", false)
-		high_campaign = cf.get_value("scores", "campaign", 0)
-		high_endless = cf.get_value("scores", "endless", 0)
+		difficulty = clampi(int(cf.get_value("campaign", "difficulty", 0)), 0, 2)
+		var hc = cf.get_value("scores", "campaign", [0, 0, 0])
+		var he = cf.get_value("scores", "endless", [0, 0, 0])
+		# older saves kept one number per mode: that was NORMAL
+		high_campaign = hc if hc is Array and hc.size() == 3 else [int(hc), 0, 0]
+		high_endless = he if he is Array and he.size() == 3 else [int(he), 0, 0]
 
 
 func persist() -> void:
 	var cf := ConfigFile.new()
 	cf.set_value("campaign", "cleared", cleared)
 	cf.set_value("campaign", "done", campaign_done)
+	cf.set_value("campaign", "difficulty", difficulty)
 	cf.set_value("scores", "campaign", high_campaign)
 	cf.set_value("scores", "endless", high_endless)
 	cf.save(SAVE_PATH)
@@ -71,3 +78,24 @@ func cleared_count() -> int:
 
 func has_progress() -> bool:
 	return cleared.any(func(c): return c) and not campaign_done
+
+
+func setting() -> Dictionary:
+	return Difficulty.get_setting(difficulty)
+
+
+func hi_campaign() -> int:
+	return high_campaign[difficulty]
+
+
+func hi_endless() -> int:
+	return high_endless[difficulty]
+
+
+## Records the score against the current mode's table. Returns true for a new high score.
+func record_score() -> bool:
+	var table: Array = high_endless if endless else high_campaign
+	if score > table[difficulty]:
+		table[difficulty] = score
+		return true
+	return false

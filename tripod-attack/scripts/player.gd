@@ -2,7 +2,7 @@ class_name Player
 extends Node2D
 ## The artilleryman: kneels behind the sandbags with a rocket launcher, ducks under the Heat-Ray.
 
-const RELOAD_TIME := 1.05
+var reload_time := 1.05
 
 var angle := -0.55
 var power := 680.0
@@ -59,7 +59,7 @@ func try_fire() -> Dictionary:
 		return {}
 	var m := muzzle()
 	var dir := Vector2(cos(angle), sin(angle))
-	reload = RELOAD_TIME
+	reload = reload_time
 	recoil = 1.0
 	fire_flash = 0.08
 	if fx:
@@ -125,7 +125,7 @@ func _draw() -> void:
 				Vec.line(self, m, m + Vector2(cos(aa), sin(aa)) * randf_range(14, 40), Vec.WHITE, 1.5)
 		if reload > 0.0 and not duck:
 			var w := 40.0
-			var f := 1.0 - reload / RELOAD_TIME
+			var f := 1.0 - reload / reload_time
 			Vec.line(self, Vector2(x - w / 2, head_y - 26), Vector2(x - w / 2 + w * f, head_y - 26), Vec.DIM, 2.0)
 	# sandbags, drawn over the man
 	for row in [[C.SANDBAG_L, C.SANDBAG_R, C.GROUND - 15.0], [C.SANDBAG_L + 10.0, C.SANDBAG_R - 8.0, C.GROUND - 30.0], [C.SANDBAG_L + 22.0, C.SANDBAG_R - 20.0, C.GROUND - 45.0]]:

@@ -141,14 +141,28 @@ func set_attract(on: bool) -> void:
 # --- waves --------------------------------------------------------------------------------------
 
 func wave_config() -> Dictionary:
+	var d := G.setting()
+	var cfg: Dictionary
 	if G.endless:
 		var n := G.wave
-		return {"count": 2 + n / 2, "speed": 20.0 + n * 1.5, "leg_hp": 2 + n / 3, "cooldown": maxf(2.4, 6.5 - n * 0.3),
-			"siren": maxf(0.7, 1.4 - n * 0.05), "big": n >= 2 and n % 2 == 0, "gap": maxf(2.5, 6.0 - n * 0.3), "civ_rate": 1.0 + n * 0.08}
-	var si := G.sector_idx
-	var wi := G.wave - 1
-	return {"count": 2 + wi + si / 4, "speed": 15.0 + si * 1.6 + wi * 2.0, "leg_hp": 2 + si / 2, "cooldown": maxf(3.0, 8.0 - si * 0.5),
-		"siren": maxf(0.8, 1.6 - si * 0.08), "big": si >= 2 and wi == C.WAVES_PER_SECTOR - 1, "gap": maxf(3.0, 7.0 - si * 0.4), "civ_rate": 1.0}
+		cfg = {"count": 2 + n / 2, "speed": 20.0 + n * 1.5, "leg_hp": 2 + n / 3, "cooldown": maxf(2.4, 6.5 - n * 0.3),
+			"siren": maxf(0.7, 1.4 - n * 0.05), "big": n >= 2 and n % 2 == 0, "gap": maxf(2.5, 6.0 - n * 0.3), "civ_rate": 1.0 + n * 0.08,
+			"double": n >= int(d.double_from_wave)}
+	else:
+		var si := G.sector_idx
+		var wi := G.wave - 1
+		cfg = {"count": 2 + wi + si / 4, "speed": 15.0 + si * 1.6 + wi * 2.0, "leg_hp": 2 + si / 2, "cooldown": maxf(3.0, 8.0 - si * 0.5),
+			"siren": maxf(0.8, 1.6 - si * 0.08), "big": si >= int(d.big_from) and wi == C.WAVES_PER_SECTOR - 1, "gap": maxf(3.0, 7.0 - si * 0.4),
+			"civ_rate": 1.0, "double": si >= int(d.double_from_sector)}
+	cfg.count += int(d.count)
+	cfg.speed *= float(d.speed)
+	cfg.leg_hp += int(d.leg_hp)
+	cfg.cooldown *= float(d.cooldown)
+	cfg.siren = maxf(0.6, cfg.siren * float(d.siren))
+	cfg.gap *= float(d.gap)
+	cfg.pause = d.pause
+	cfg.harden = float(d.harden)
+	return cfg
 
 
 func spawn_tripod(cfg: Dictionary, big: bool) -> Tripod:
@@ -159,7 +173,8 @@ func spawn_tripod(cfg: Dictionary, big: bool) -> Tripod:
 	_spawn_root.add_child(tp)
 	tp.setup({"x": C.W + 130.0 + randf() * 100.0, "scale": 1.3 if big else randf_range(0.92, 1.08),
 		"speed": cfg.speed * randf_range(0.9, 1.1) * (0.8 if big else 1.0), "leg_hp": cfg.leg_hp + (2 if big else 0),
-		"cooldown": cfg.cooldown * (0.85 if big else 1.0), "siren": cfg.siren, "big": big})
+		"cooldown": cfg.cooldown * (0.85 if big else 1.0), "siren": cfg.siren, "big": big, "double": cfg.get("double", false),
+		"pause": cfg.get("pause", [0.3, 1.0]), "harden": cfg.get("harden", 4.0)})
 	tp.collapsed.connect(_on_tripod_collapsed)
 	tp.hood_slammed.connect(_on_hood_slammed)
 	tp.reached_sandbags.connect(_on_reached_sandbags)
@@ -179,6 +194,7 @@ func start_wave() -> void:
 	attract = false
 	player.visible = true
 	player.show_preview = true
+	player.reload_time = float(G.setting().reload)
 	Sfx.play("alarm")
 	Sfx.play_music("battle")
 	battle_quote_t = 12.0
@@ -191,7 +207,8 @@ func _on_wave_cleared() -> void:
 	banner = {"text": "WAVE CLEARED", "sub": ("SCORE " + str(G.score)) if G.endless else "", "t": 0.0, "dur": 2.4}
 	next_wave_t = 2.8
 	Sfx.play("fanfare")
-	if G.endless and G.wave % 3 == 0 and G.lives < 6:
+	var d := G.setting()
+	if G.endless and G.wave % int(d.extra_life_every) == 0 and G.lives < int(d.max_lives):
 		G.lives += 1
 		fx.float_text(Vector2(C.W / 2, 260), "EXTRA LIFE", Vec.AMBER, 14.0, 2.0)
 
@@ -203,10 +220,9 @@ func _sector_cleared() -> void:
 	G.cleared[G.sector_idx] = true
 	if G.all_cleared():
 		G.campaign_done = true
-	if G.score > G.high_campaign:
-		G.high_campaign = G.score
+	G.record_score()
 	G.persist()
-	G.lives = mini(6, G.lives + 1)
+	G.lives = mini(int(G.setting().max_lives), G.lives + 1)
 	mode = "idle"
 	player.show_preview = false
 	Sfx.play("cleared")
@@ -224,7 +240,7 @@ func begin_game_over() -> void:
 
 func silence() -> void:
 	for tp in tripods:
-		if tp.state == "siren" or tp.state == "fire":
+		if tp.state in ["siren", "pause", "fire"]:
 			tp.state = "walk"
 			tp.beam = {}
 			tp.hood_glow = 0.0
@@ -280,7 +296,7 @@ func remaining() -> int:
 
 func danger() -> bool:
 	for tp in tripods:
-		if tp.alive and (tp.state == "siren" or tp.state == "fire"):
+		if tp.alive and tp.state in ["siren", "pause", "fire"]:
 			return true
 	return false
 

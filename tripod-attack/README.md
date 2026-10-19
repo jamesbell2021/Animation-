@@ -79,7 +79,22 @@ is detected, so one thumb ducks while the other drags and fires.
   anyone in the open, your own rocket blasts kill, and a falling tripod crushes. When the cry
   sounds, people near a rubble pile hide behind it until the beam has passed.
 * **Hold the line.** A machine that reaches the sandbags stamps the position flat, costs a life and
-  is driven back a few paces. Four lives to start, one more for each sector cleared (up to six).
+  is driven back a few paces. Four lives to start on Normal, one more for each sector cleared.
+* **Commit to a leg.** A damaged leg reseals one hit if you leave it alone for a few seconds, so
+  spraying rockets across three legs gets you nowhere.
+* **Don't count the beat.** After the cry there is a random gap before the beam. From the fourth
+  sector the beam sweeps out to the shelter and back, so standing up early gets you on the return.
+
+### Difficulty
+
+The title screen has a DIFFICULTY line; fire on it (or left/right) cycles it, and each setting
+keeps its own campaign and endless high scores.
+
+| Setting | Lives | Reload | Machines | Warning | Double sweep from |
+|---|---|---|---|---|---|
+| NORMAL | 4 (max 6) | 1.05 s | as tuned | full | sector 4 / endless wave 6 |
+| VETERAN | 3 (max 5) | 1.25 s | 20% faster, one more per wave, one more hit per leg, fire 25% more often, big one from sector 2 | 15% shorter | sector 3 / wave 4 |
+| MASSACRE | 3 (max 4) | 1.4 s | 40% faster, one more per wave, one more hit per leg, fire 50% more often, big one from sector 1 | 30% shorter, longer random gap | sector 2 / wave 3 |
 
 The buildings behind you burn and fall when the beam catches them, so a long fight leaves the city
 in ruins.
@@ -144,7 +159,8 @@ themes for the title, the map and the battle.
 | `scripts/skyline.gd` | the ten city skylines as polylines, ruined filler buildings, burning and crumbling |
 | `scripts/screens.gd` | the title, map, briefing, HUD and end screens |
 | `scripts/sfx.gd` (autoload `Sfx`) | the synthesiser, sound effects and music sequencer |
-| `scripts/game_state.gd` (autoload `G`) | score, lives, campaign progress, high scores, save file |
+| `scripts/game_state.gd` (autoload `G`) | score, lives, campaign progress, per-difficulty high scores, save file |
+| `scripts/difficulty.gd` | the three difficulty settings |
 | `scripts/vec.gd` | drawing helpers and the stroke font every letter and digit is drawn with |
 | `scripts/euro_map.gd`, `wells.gd`, `consts.gd` | the coastline and sectors, the quotations, the screen layout |
 | `shaders/crt.gdshader` | glow from blurred mips of the screen, barrel curve, scanlines, vignette, flash |

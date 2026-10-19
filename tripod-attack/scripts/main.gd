@@ -95,7 +95,13 @@ func menu_items() -> Array:
 	else:
 		items.append({"label": "REPLAY CAMPAIGN" if G.campaign_done else "CAMPAIGN", "act": start_campaign.bind(true), "locked": false})
 	items.append({"label": "ENDLESS: BELFAST" if G.campaign_done else "ENDLESS: BELFAST (LOCKED - CLEAR EUROPE)", "act": start_endless, "locked": not G.campaign_done})
+	items.append({"label": "DIFFICULTY: " + Difficulty.name_of(G.difficulty), "act": cycle_difficulty, "locked": false, "cycle": true})
 	return items
+
+
+func cycle_difficulty() -> void:
+	G.difficulty = (G.difficulty + 1) % Difficulty.NAMES.size()
+	G.persist()
 
 
 func start_campaign(fresh: bool) -> void:
@@ -103,7 +109,7 @@ func start_campaign(fresh: bool) -> void:
 		G.reset_campaign()
 	G.endless = false
 	G.score = 0
-	G.lives = 4
+	G.lives = int(G.setting().lives)
 	G.lost_sector = -1
 	map_anim = 0.0
 	bf.mode = "off"
@@ -115,7 +121,7 @@ func start_campaign(fresh: bool) -> void:
 func start_endless() -> void:
 	G.endless = true
 	G.score = 0
-	G.lives = 4
+	G.lives = int(G.setting().lives)
 	start_sector(0)
 
 
@@ -140,12 +146,8 @@ func _on_sector_cleared() -> void:
 func _on_game_over() -> void:
 	_set_state("gameover")
 	Sfx.play("game_over")
-	if G.endless:
-		if G.score > G.high_endless:
-			G.high_endless = G.score
-	else:
-		if G.score > G.high_campaign:
-			G.high_campaign = G.score
+	G.new_high = G.record_score()
+	if not G.endless:
 		# The Martians retake the last liberated sector.
 		var last := -1
 		for i in 10:
@@ -247,6 +249,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			menu_move(-1)
 		elif event.is_action_pressed("menu_down"):
 			menu_move(1)
+		elif (event.is_action_pressed("power_up") or event.is_action_pressed("power_down")) and menu_items()[menu_idx].get("cycle", false):
+			press()
 		elif event.is_action_pressed("fire") or event.is_action_pressed("duck"):
 			press()
 		return

@@ -76,6 +76,11 @@ the Brandenburg Gate, the Riesenrad, the Colosseum, the Parthenon. Lose all your
 Martians retake the last sector you freed. Clear Athens to win, and unlock an endless high-score
 mode set in Belfast.
 
+Three difficulties, each with its own high score tables. On VETERAN and MASSACRE the machines
+are faster, better armoured and fire more often, you start with fewer lives and reload slower,
+and the Heat-Ray sweeps out and back sooner. On every setting a damaged leg reseals if you leave
+it alone, and the gap between the cry and the beam is never the same twice.
+
 Every line of text in the game is Wells's own, from the 1898 novel.
 
 **Controls**

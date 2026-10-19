@@ -17,6 +17,10 @@ var leg_hp := 2
 var cooldown := 8.0
 var siren_dur := 1.5
 var fire_dur := 1.15
+var double_sweep := false
+var pause_range: Array = [0.3, 1.0]
+var harden_time := 4.0
+var pause_dur := 0.5
 var big := false
 var attract := false
 
@@ -63,6 +67,10 @@ func setup(cfg: Dictionary) -> void:
 	cooldown = cfg.get("cooldown", 8.0)
 	siren_dur = cfg.get("siren", 1.5)
 	big = cfg.get("big", false)
+	double_sweep = cfg.get("double", false)
+	fire_dur = 1.15 * (2.0 if double_sweep else 1.0)
+	pause_range = cfg.get("pause", [0.3, 1.0])
+	harden_time = cfg.get("harden", 4.0)
 	cool = cfg.get("first_cool", randf_range(2.5, 5.0))
 	score = 2500 if big else 1000
 	r = 44.0 * s
@@ -78,7 +86,7 @@ func setup(cfg: Dictionary) -> void:
 	legs.clear()
 	for i in 3:
 		legs.append({"hp": leg_hp, "max": leg_hp, "foot": Vector2(x + rest[i], C.GROUND), "swing": false, "from_x": 0.0,
-			"phase": i / 3.0, "knee_side": 1.0 if i == 1 else signf(rest[i]), "broken": false, "flash": 0.0})
+			"phase": i / 3.0, "knee_side": 1.0 if i == 1 else signf(rest[i]), "broken": false, "flash": 0.0, "heal_t": 0.0})
 	_hood_shape = hood_shape()
 	_build_bodies()
 	_place_bodies()
@@ -193,6 +201,7 @@ func update(dt: float) -> void:
 		queue_redraw()
 		return
 	t += dt
+	_harden_legs(dt)
 	tent += dt
 	match state:
 		"walk":
@@ -214,16 +223,30 @@ func update(dt: float) -> void:
 			_settle_feet(dt)
 			hood_glow = 0.5 + 0.5 * sin(t * 28.0)
 			if t > siren_dur:
+				# The cry is over. The beam comes after a gap nobody can count on.
+				state = "pause"
+				t = 0.0
+				pause_dur = randf_range(pause_range[0], pause_range[1])
+		"pause":
+			_settle_feet(dt)
+			hood_glow = 1.0 if int(t * 40.0) % 3 == 0 else 0.35
+			if t > pause_dur:
 				state = "fire"
 				t = 0.0
-				Sfx.play("heat_ray")
+				Sfx.play("heat_ray", 0.5 if double_sweep else 1.0)
 				beam = {"gx": x - 70.0 * s, "prev": x - 70.0 * s, "e": emitter(), "touched": [], "dodged": false, "fresh": true}
 		"fire":
 			_settle_feet(dt)
 			hood_glow = 1.0
 			var u := clampf(t / fire_dur, 0.0, 1.0)
 			beam.prev = beam.gx
-			beam.gx = lerpf(x - 70.0 * s, 20.0, _ease(u))
+			var start := x - 70.0 * s
+			if double_sweep:
+				# out to the shelter and back again: stand up early and the return catches you
+				var k := u * 2.0
+				beam.gx = lerpf(start, 20.0, _ease(k)) if k <= 1.0 else lerpf(20.0, start, _ease(k - 1.0))
+			else:
+				beam.gx = lerpf(start, 20.0, _ease(u))
 			beam.e = emitter()
 			if t > fire_dur:
 				state = "walk"
@@ -320,6 +343,7 @@ func _damage_leg(i: int, pos: Vector2, vel: Vector2) -> void:
 	var leg: Dictionary = legs[i]
 	leg.hp -= 1
 	leg.flash = 0.25
+	leg.heal_t = harden_time
 	hit_flash = 0.1
 	if fx:
 		fx.sparks(pos, 34, {"speed": 320.0, "life": 0.7, "white": 0.5})
@@ -343,6 +367,23 @@ func _damage_leg(i: int, pos: Vector2, vel: Vector2) -> void:
 		if field:
 			field.shake(12.0)
 		collapse(vel * 0.35)
+
+
+## A damaged leg reseals one hit if it is left alone: commit to a leg.
+func _harden_legs(dt: float) -> void:
+	for i in 3:
+		var leg: Dictionary = legs[i]
+		if leg.broken or leg.hp >= leg.max:
+			continue
+		leg.heal_t -= dt
+		if leg.heal_t <= 0.0:
+			leg.hp += 1
+			leg.heal_t = harden_time
+			var k := knee(i)
+			if fx:
+				fx.sparks(k, 10, {"speed": 90.0, "color": Vec.DIM, "life": 0.4})
+				fx.float_text(k + Vector2(0, -24), "RESEALED", Vec.DIM, 9.0, 0.9)
+			Sfx.play("ricochet", 0.7, -6.0)
 
 
 ## Breaks leg `i` outright (attract mode).

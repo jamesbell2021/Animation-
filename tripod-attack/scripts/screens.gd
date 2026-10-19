@@ -63,7 +63,7 @@ func _draw_title() -> void:
 			Vec.poly(self, PackedVector2Array([Vector2(C.W / 2 - 170, y0 + i * 36 + 2), Vector2(C.W / 2 - 156, y0 + i * 36 + 8), Vector2(C.W / 2 - 170, y0 + i * 36 + 14)]), Vec.WHITE, 2.0, true)
 		Vec.text(self, it.label, Vector2(C.W / 2, y0 + i * 36), 16.0, "center", col)
 	var hy := y0 + items.size() * 36 + 14
-	Vec.text(self, "HIGH SCORES   CAMPAIGN %06d   ENDLESS %06d" % [G.high_campaign, G.high_endless], Vector2(C.W / 2, hy), 9.0, "center", Vec.DIM)
+	Vec.text(self, "%s HIGH SCORES   CAMPAIGN %06d   ENDLESS %06d" % [Difficulty.name_of(G.difficulty), G.hi_campaign(), G.hi_endless()], Vector2(C.W / 2, hy), 9.0, "center", Vec.DIM)
 	Vec.text(self, "EUROPE IS FREE" if G.campaign_done else "SECTORS LIBERATED %d / 10" % G.cleared_count(), Vector2(C.W / 2, hy + 18), 9.0, "center", Vec.DIM)
 	_typewriter(Wells.opening(), Vector2(C.W / 2, hy + 48), 10.0, 720.0, Vec.GREEN, 30.0)
 	if not Sfx.is_ready:
@@ -177,9 +177,9 @@ func _draw_cleared() -> void:
 func _draw_game_over() -> void:
 	Vec.text(self, "GAME OVER", Vector2(C.W / 2, 70), 44.0, "center", Vec.RED, 3.5)
 	_typewriter(Wells.game_over(), Vector2(C.W / 2, 140), 12.0, 820.0, Vec.GREEN, 36.0)
-	Vec.text(self, "SCORE %06d" % G.score, Vector2(C.W / 2, 200), 16.0, "center", Vec.WHITE)
-	var hi: int = G.high_endless if G.endless else G.high_campaign
-	var is_new: bool = G.score >= hi and G.score > 0
+	Vec.text(self, "SCORE %06d   %s" % [G.score, Difficulty.name_of(G.difficulty)], Vector2(C.W / 2, 200), 16.0, "center", Vec.WHITE)
+	var hi: int = G.hi_endless() if G.endless else G.hi_campaign()
+	var is_new: bool = G.new_high and G.score > 0
 	Vec.text(self, ("NEW HIGH SCORE  " if is_new else "HIGH SCORE  ") + "%06d" % hi, Vector2(C.W / 2, 228), 11.0, "center", Vec.AMBER if is_new else Vec.DIM)
 	if G.endless:
 		Vec.text(self, "WAVES SURVIVED %d" % (G.wave - 1), Vector2(C.W / 2, 250), 11.0, "center", Vec.GREEN)
@@ -205,7 +205,7 @@ func _draw_hud() -> void:
 	Vec.text(self, "SCORE: %06d" % G.score, Vector2(40, 22), 14.0, "left", Vec.GREEN)
 	Vec.text(self, "TRIPOD ATTACK!", Vector2(C.W / 2, 18), 15.0, "center", Vec.GREEN)
 	Vec.text(self, "WAVE: %d" % G.wave if G.endless else "WAVE: %d/%d" % [G.wave, C.WAVES_PER_SECTOR], Vector2(C.W - 40, 22), 14.0, "right", Vec.GREEN)
-	Vec.text(self, ("ENDLESS - " if G.endless else "SECTOR %d: " % (G.sector_idx + 1)) + EuroMap.SECTORS[G.sector_idx].name, Vector2(40, 44), 8.0, "left", Vec.DIM)
+	Vec.text(self, ("ENDLESS - " if G.endless else "SECTOR %d: " % (G.sector_idx + 1)) + EuroMap.SECTORS[G.sector_idx].name + "   " + Difficulty.name_of(G.difficulty), Vector2(40, 44), 8.0, "left", Vec.DIM)
 	Vec.text(self, "SAVED: %d   LOST: %d" % [G.stats.saved, G.stats.lost], Vector2(C.W - 40, 44), 8.0, "right", Vec.DIM)
 	var ready := p.reload <= 0.0 and not p.duck
 	Vec.text(self, "CANNON: " + ("DUCKED" if p.duck else ("READY" if ready else "LOADING")), Vector2(60, C.H - 40), 14.0, "left", Vec.AMBER if p.duck else (Vec.GREEN if ready else Vec.DIM))
