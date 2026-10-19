@@ -2,6 +2,8 @@ class_name Fence
 extends Structure
 
 const WOOD := Color(0.40, 0.30, 0.20)
+# Upgraded fences are tarred black and bound with iron.
+const TARRED := Color(0.17, 0.14, 0.12)
 const ROT := Color(0.2, 0.15, 0.1)
 const HEIGHT := 1.4
 const THICKNESS := 0.3
@@ -17,6 +19,8 @@ var _stumps: Array[MeshInstance3D] = []
 var _braces: Array[MeshInstance3D] = []
 var _top_rail: MeshInstance3D
 var _low_rail: MeshInstance3D
+var _wood := WOOD
+var _bands: Array[MeshInstance3D] = []
 
 # Stakes are quick to drive back in: one driftwood mends half a fence, so a day's
 # beachcombing can stand most of the line back up.
@@ -110,12 +114,39 @@ func _build() -> void:
 		_braces.append(brace)
 		_meshes.append(brace)
 	_shape = Geo.box_shape(self, Vector3(length, HEIGHT, THICKNESS), Vector3(0.0, HEIGHT * 0.5, 0.0))
+	# Iron straps round each post, shown from defences level 3.
+	var iron := Look.flat_mat(Color(0.2, 0.2, 0.22), 0.4)
+	for post in _posts:
+		for y in [0.3, 0.75]:
+			var band := MeshInstance3D.new()
+			var cm := CylinderMesh.new()
+			cm.top_radius = 0.11
+			cm.bottom_radius = 0.11
+			cm.height = 0.07
+			cm.radial_segments = 6
+			cm.rings = 1
+			band.mesh = cm
+			band.material_override = iron
+			band.position = Vector3(0.0, y - (post.mesh as CylinderMesh).height * 0.5, 0.0)
+			post.add_child(band)
+			band.visible = false
+			_bands.append(band)
+
+## Defences level 1 to 3: tarred, thicker rails at 2, iron-strapped posts at 3.
+func set_level(l: int) -> void:
+	_wood = WOOD if l <= 1 else TARRED
+	var thick := 1.0 if l <= 1 else 1.6
+	for rail in [_low_rail, _top_rail]:
+		rail.scale = Vector3(1.0, thick, thick)
+	for b in _bands:
+		b.visible = l >= 3
+	_refresh()
 
 func _refresh() -> void:
 	if _mat == null:
 		return
 	var r := health_ratio()
-	_mat.albedo_color = ROT.lerp(WOOD, r)
+	_mat.albedo_color = ROT.lerp(_wood, r)
 	var standing := hp > 0
 	for m in _meshes:
 		m.visible = standing

@@ -14,10 +14,15 @@ const GLASS_DARK := Color(0.10, 0.13, 0.16)
 const GLASS_LIT := Color(1.0, 0.78, 0.45)
 const REFUEL_UNITS := 40.0
 const REFUEL_COST := {"bio": 1}
+const DIRTY_UNITS := 30.0
+const BRASS := Color(0.78, 0.6, 0.28)
+const COPPER := Color(0.72, 0.4, 0.24)
 
 var lamp: Lamp
 var _body_mat: StandardMaterial3D
 var _glass_mat: StandardMaterial3D
+# Fittings added by upgrades, shown from the level in the key on.
+var _fittings := {2: [], 3: []}
 
 func _init() -> void:
 	id = "lighthouse"
@@ -101,11 +106,53 @@ func _build() -> void:
 	roof.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	var ball := Geo.sphere(self, 0.13, IRON, Vector3(0.0, 10.05, 0.0))
 	ball.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_build_fittings()
 	Geo.cyl_shape(self, RADIUS, 8.0, Vector3(0.0, 4.0, 0.0))
 	lamp = Lamp.new()
 	lamp.lighthouse = self
 	lamp.position = Vector3(0.0, 8.6, 0.0)
 	add_child(lamp)
+
+# Level 2: brass hoops round the tower and a brass gallery rail. Level 3: a copper
+# dome and iron storm shutters braced against the wall.
+func _build_fittings() -> void:
+	var brass := Look.flat_mat(BRASS, 0.35)
+	brass.metallic = 0.6
+	for y in [2.6, 5.3, 8.0]:
+		var hoop := _ring(y, y + 0.14, 0.05, brass)
+		_fittings[2].append(hoop)
+	var rail := MeshInstance3D.new()
+	var torus := TorusMesh.new()
+	torus.inner_radius = 1.5
+	torus.outer_radius = 1.58
+	torus.rings = 20
+	torus.ring_segments = 4
+	rail.mesh = torus
+	rail.material_override = brass
+	rail.position = Vector3(0.0, 8.62, 0.0)
+	add_child(rail)
+	_fittings[2].append(rail)
+	var copper := Look.flat_mat(COPPER, 0.4)
+	copper.metallic = 0.5
+	var dome := _cyl(1.02, 0.14, 0.66, 9.69, copper, 10)
+	_fittings[3].append(dome)
+	var iron := Look.flat_mat(IRON, 0.6)
+	for y in [4.6, 7.2]:
+		var r := _radius_at(y)
+		for side in [-1.0, 1.0]:
+			var shutter := Geo.box(self, Vector3(0.2, 0.56, 0.05), IRON, Vector3(side * 0.27, y, r + 0.02))
+			shutter.material_override = iron
+			shutter.rotation.y = side * 0.5
+			_fittings[3].append(shutter)
+	for n in _fittings[2] + _fittings[3]:
+		n.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		n.visible = false
+
+## Show the fittings for an upgrade level, 1 to 3.
+func set_level(l: int) -> void:
+	for k in _fittings:
+		for n in _fittings[k]:
+			n.visible = l >= k
 
 ## Lantern glazing brightness, 0 (unlit) to about 1.3 (boosted). Called by the lamp.
 func set_lantern(k: float) -> void:
@@ -142,6 +189,8 @@ func interact_prompt() -> String:
 		parts.append(super.interact_prompt())
 	elif _can_refuel():
 		parts.append("[E] Refuel (1 bio)")
+	if Stock.get_amount("dirty_fuel") > 0 and lamp != null:
+		parts.append("[F] Dirty fuel")
 	parts.append("[R] Operate lamp")
 	return "   ".join(parts)
 
@@ -163,3 +212,13 @@ func interact(player: Node) -> bool:
 		Events.message.emit("Lamp refuelled  (%d%%)" % roundi(lamp.fuel))
 		return true
 	return false
+
+## Dirty fuel: oil and all, poured in. Burns hot for a while, and the sea knows.
+func use_dirty(_player: Node) -> bool:
+	if lamp == null or not Stock.spend({"dirty_fuel": 1}):
+		return false
+	lamp.refuel_dirty(DIRTY_UNITS)
+	Audio.sfx("refuel", global_position + Vector3(0.0, 1.0, 0.0), 0.0, 0.0)
+	Audio.sfx("ignite", global_position + Vector3(0.0, 8.0, 0.0), -4.0, 0.0)
+	Events.message.emit("Dirty fuel in: the light burns hot  (%d%%).  The sea smells it..." % roundi(lamp.fuel))
+	return true

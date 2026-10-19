@@ -1,6 +1,6 @@
 # Sea They Are Angry
 
-A lighthouse keeper on a tiny North Sea rock, late 1980s. By day you gather driftwood, scrap and bioluminescent matter from the shoreline, mend the fences and refuel the lamp. At dusk the fog rolls in. At night things walk up out of the water toward the light. The lamp's beam slows them; your boathook does the rest. If the lamp goes dark, the run is over. There is no winning, only how many nights you last.
+A lighthouse keeper on a tiny North Sea rock, late 1980s. By day you gather driftwood, scrap, kelp and bioluminescent matter from the shoreline, mend the fences, plant the garden, set traps and refuel the lamp. At dusk the fog and the storm roll in. At night things walk up out of the water toward the light. The lamp's beam slows them; your boathook does the rest. If the lamp goes dark, the run is over. There is no winning, only how many nights you last.
 
 This folder holds the **grey-box vertical slice**: every object is a primitive mesh built in code, with no art or audio yet.
 
@@ -12,7 +12,7 @@ This folder holds the **grey-box vertical slice**: every object is a primitive m
 
 On a fresh clone, launching with `godot --path` alone fails with "Could not find type Lighthouse" and similar errors. Godot builds its list of script classes in the git-ignored `.godot/` folder the first time the editor opens the project. The same error appears after a `git pull` that adds new scripts, because the list is then out of date. The launchers re-import automatically whenever anything changed; by hand it is `godot --headless --editor --quit --path sea-they-are-angry`.
 
-Balance playtest: a bot plays several nights and prints what happened, with `--` then the number of nights, `bot` or `idle`, and 1 to 3 keepers. Your own save and best night are backed up and put back.
+Balance playtest: a bot plays several nights and prints what happened, with `--` then the number of nights, `bot`, `eco` (the bot also plants, eats, buys upgrades and sets traps) or `idle`, and 1 to 3 keepers. Your own save and best night are backed up and put back.
 
 ```
 godot --headless --path sea-they-are-angry --script res://tools/playtest.gd -- 6 bot 1
@@ -38,6 +38,8 @@ Choose 1 to 3 keepers on the title screen, then New Run (or Continue).
 | Use: gather, repair, refuel, climb a ladder, revive (hold) | E | Shift | A |
 | Work the lamp (walk in at the door) / leave it | R (within 3.8 m of the lighthouse) | / | Y |
 | Switch beam: wide slows, focused burns | Q | . | B |
+| Fire a flare (lobbed to the cursor) | Right mouse | ; | Left trigger |
+| Pour dirty fuel (at the lighthouse) | F | ' | Left shoulder |
 | Sprint | Space | , | Right shoulder |
 | Skip the rest of the day or dawn | Enter | | |
 | Pause | Esc | | Start |
@@ -49,7 +51,15 @@ Keepers face the way they walk and turn to their aim to swing. Each carries a pa
 - The island, after Bad North: a meadow ringed by cliffs, three beaches where the sea comes ashore, and the lighthouse on a crag in the middle. The only way up is a ledge path that winds round the crag. Fixed camera, day/dusk/night/dawn lighting with fog.
 - Keeper movement, mouse aim, boathook attack. A blow aimed outward on the ledge knocks a creature over the edge. Keepers have their own ladders down the crag.
 - The lamp: fuel, wide and focused beams (the focused one reaches the beaches), auto-sweep when nobody operates it, Burning to Guttering to Dark.
-- Six scavenge points on the beaches that refill at dawn, five fences at the chokepoints (beach heads and the ledge), repair, refuel.
+- Seven scavenge points on the beaches that refill at dawn (an eighth with three keepers), five fences at the chokepoints (beach heads and the ledge), repair, refuel.
+- The keepers' economy:
+  - **Garden:** dig kelp into the potato beds by day; they are ready at dawn.
+  - **Cottage:** go in to eat (full heal and more max health), load flares, mix oil into dirty fuel, and buy upgrades for the lighthouse, the defences and the garden.
+  - **Traps:** spike boards, kelp nets and chain plates on cairns up the beaches and the ledge.
+  - **Oil:** a drum washes up every third night.
+  - **Flare gun:** two shots that burn red where they land.
+  - **Campfire:** warms a keeper back up by the cottage.
+- Storm weather that builds through dusk to a full gale at night: driving rain, thrashing grass, breakers crashing on the beaches, lightning and thunder, and pale shapes standing in the surf that only the flashes show. Every creature's eyes glow in the dark.
 - Five creatures:
   - **The Bloated Dead** land on a beach and walk the long way up to the light, batter fences, swell and burst. Some groups raid the homestead instead.
   - **The Wall-Crawling Squid** climbs straight up cliffs and the crag at the keepers, lunges, and hides the others in ink.
@@ -66,7 +76,7 @@ Design choices the spec left open are recorded in [docs/DECISIONS.md](docs/DECIS
 
 ## Next milestone
 
-Specified in [docs/NEXT_MILESTONE.md](docs/NEXT_MILESTONE.md): the Wall-Crawling Squid, the Armoured Crab, the Giant Constrictor Eel, then the garden, traps, upgrades, dirty fuel, flare gun, downed and revive, 2 to 4 player local co-op, fog volumes and audio.
+Plan 2 ([docs/prompts/02_first_release_phases_A-G.md](docs/prompts/02_first_release_phases_A-G.md)). Its Phase B creatures and Phase C economy are already in; Phase A (the `Balance` and `Loot` plumbing) is next, see [HANDOFF.md](HANDOFF.md).
 
 ## For the next session
 

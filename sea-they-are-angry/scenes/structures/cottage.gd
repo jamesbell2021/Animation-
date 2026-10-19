@@ -1,7 +1,7 @@
 class_name Cottage
 extends Structure
 ## The keepers' cottage: whitewashed stone, slate roof, chimney, windows that
-## glow from dusk to dawn. Its menu (eat, flares, dirty fuel, upgrades) is Phase C.
+## glow from dusk to dawn. Inside: eat, load flares, mix dirty fuel, buy upgrades.
 
 const WIDTH := 4.2
 const DEPTH := 3.0
@@ -11,6 +11,11 @@ const STONE := Color(0.42, 0.41, 0.38)
 const SLATE := Color(0.20, 0.22, 0.25)
 const WINDOW_DARK := Color(0.10, 0.12, 0.15)
 const WINDOW_LIT := Color(1.0, 0.72, 0.38)
+const MEAL := {"food": 1}
+const MEAL_MAX_HP := 10
+const FLARE_COST := {"scrap": 1}
+const MIX_COST := {"oil": 1, "driftwood": 1}
+const MIX_YIELD := 2
 
 var _wall_mat: StandardMaterial3D
 var _window_mat: StandardMaterial3D
@@ -105,3 +110,68 @@ func surface_distance(p: Vector3) -> float:
 	var dx := maxf(0.0, absf(local.x) - WIDTH * 0.5)
 	var dz := maxf(0.0, absf(local.z) - DEPTH * 0.5)
 	return Vector2(dx, dz).length()
+
+# ---- inside: the keepers' menu ----
+
+# Badly damaged and the means to mend it: the hammer comes first. Otherwise, go in.
+func _wants_repair() -> bool:
+	return is_destroyed() or (is_damaged() and Stock.can_afford(repair_cost()))
+
+func interact_prompt() -> String:
+	if _wants_repair():
+		return super.interact_prompt()
+	return "[E] Go in: eat, flares, dirty fuel, upgrades"
+
+func work_kind() -> String:
+	return super.work_kind() if _wants_repair() else ""
+
+func interact(player: Node) -> bool:
+	if _wants_repair():
+		return super.interact(player)
+	if not (player is Player):
+		return false
+	ChoiceMenu.open(player, "The cottage", menu_rows.bind(player))
+	return true
+
+## The menu's rows for this keeper (see ChoiceMenu).
+func menu_rows(p: Player) -> Array:
+	var rows := []
+	var cap: int = Upgrades.pick("garden", Upgrades.MAXHP_CAP)
+	var bonus: int = Run.max_hp_bonus[p.idx]
+	var gain := mini(MEAL_MAX_HP, cap - bonus)
+	var meal := "Eat a meal (1 food): full health"
+	if gain > 0:
+		meal += ", +%d max health" % gain
+	rows.append({"text": meal, "enabled": Stock.can_afford(MEAL) and (p.hp < p.max_hp or gain > 0), "do": eat.bind(p)})
+	rows.append({"text": "Load a flare (%s)   %d / %d" % [Stock.cost_str(FLARE_COST), p.flares(), Player.FLARES_MAX],
+		"enabled": p.flares() < Player.FLARES_MAX and Stock.can_afford(FLARE_COST), "do": load_flare.bind(p)})
+	rows.append({"text": "Mix dirty fuel (1 oil, 1 driftwood: %d cans)" % MIX_YIELD, "enabled": Stock.can_afford(MIX_COST), "do": mix_fuel})
+	for path in Upgrades.PATHS:
+		var cost := Upgrades.next_cost(path)
+		if cost.is_empty():
+			rows.append({"text": "%s: fully upgraded" % Upgrades.TITLES[path], "enabled": false, "do": func() -> void: pass})
+		else:
+			rows.append({"text": "Upgrade %s to %d (%s): %s" % [Upgrades.TITLES[path], Upgrades.level(path) + 1, Stock.cost_str(cost), Upgrades.next_blurb(path)],
+				"enabled": Stock.can_afford(cost), "do": Upgrades.buy.bind(path, get_tree())})
+	return rows
+
+func eat(p: Player) -> void:
+	if not Stock.spend(MEAL):
+		return
+	var cap: int = Upgrades.pick("garden", Upgrades.MAXHP_CAP)
+	Run.max_hp_bonus[p.idx] = mini(cap, int(Run.max_hp_bonus[p.idx]) + MEAL_MAX_HP)
+	p.max_hp = Player.BASE_HP + int(Run.max_hp_bonus[p.idx])
+	p.hp = p.max_hp
+	Audio.sfx("gather", global_position, 0.0, 0.0)
+	Events.message.emit("A hot meal: %s is at full strength  (%d)" % [p.keeper_name(), p.max_hp])
+
+func load_flare(p: Player) -> void:
+	if p.flares() < Player.FLARES_MAX and Stock.spend(FLARE_COST):
+		Run.flares[p.idx] = p.flares() + 1
+		Audio.sfx("repair", global_position, -6.0, 0.1)
+
+func mix_fuel() -> void:
+	if Stock.spend(MIX_COST):
+		Stock.add("dirty_fuel", MIX_YIELD)
+		Audio.sfx("refuel", global_position, -2.0, 0.1)
+		Events.message.emit("+%d dirty fuel: pour it in at the lighthouse [F]" % MIX_YIELD)

@@ -61,6 +61,8 @@ const SOUNDS := {
 	"rain": ["_s_rain", true],
 	"gust": ["_s_gust", false],
 	"wave_crash": ["_s_wave_crash", false],
+	"flare_shot": ["_s_flare_shot", false],
+	"trap_snap": ["_s_trap_snap", false],
 }
 
 func _ready() -> void:
@@ -674,3 +676,26 @@ func _s_wave_crash() -> PackedFloat32Array:
 	var hiss := _env(_highpass(_lowpass(_noise(n, 75), 4500.0), 600.0), 0.25, 2.2)
 	return _mix(boom, hiss, 0.9, _n(0.08))
 
+
+# A flare gun: a hollow pop, then the hiss of the flare climbing away.
+func _s_flare_shot() -> PackedFloat32Array:
+	var n := _n(0.9)
+	var pop := _env(_tone(_n(0.12), 220.0, 90.0), 0.001, 30.0)
+	_mix(pop, _env(_lowpass(_noise(_n(0.08), 41), 2000.0), 0.001, 60.0), 1.0)
+	var hiss := _highpass(_noise(n, 42), 1800.0)
+	for i in n:
+		var t := float(i) / float(n)
+		hiss[i] *= smoothstep(0.0, 0.08, t) * (1.0 - t) * (0.7 + 0.3 * sin(t * 90.0))
+	var out := _gain(hiss, 0.45)
+	_mix(out, pop, 1.2)
+	return out
+
+# A trap going off: a wooden clack and an iron rattle.
+func _s_trap_snap() -> PackedFloat32Array:
+	var n := _n(0.4)
+	var clack := _env(_tone(n, 330.0, 180.0), 0.001, 40.0)
+	_mix(clack, _env(_highpass(_noise(n, 43), 1200.0), 0.0005, 70.0), 0.9)
+	for k in 3:
+		var link := _env(_tone(_n(0.1), 2300.0 + 400.0 * k, 2200.0 + 400.0 * k), 0.001, 50.0)
+		_mix(clack, link, 0.25, _n(0.05) * (k + 1))
+	return _gain(clack, 1.0)

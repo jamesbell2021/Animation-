@@ -32,6 +32,13 @@ const GLOW_RANGE := 5.0
 # A Smotherer wrapped over the lantern: the light barely gets out.
 const SMOTHER_ENERGY := 0.12
 const SMOTHER_RANGE := 0.3
+# Dirty fuel: a brighter, hotter flame for a while (the sea doesn't like the smell).
+const BOOST_DPS := 1.5
+
+## Focused-beam damage multiplier from the lighthouse upgrades (Upgrades.apply sets it).
+static var focus_mult := 1.0
+## What creatures multiply their beam burn by: the upgrade, and dirty fuel's boost.
+static var dps_mult := 1.0
 
 var lighthouse: Structure
 var state: int = State.OFF
@@ -91,7 +98,7 @@ func current_angle() -> float:
 	return WIDE_ANGLE if mode == Mode.WIDE else FOCUS_ANGLE
 
 func current_range() -> float:
-	var r := WIDE_RANGE if mode == Mode.WIDE else FOCUS_RANGE
+	var r: float = (WIDE_RANGE if mode == Mode.WIDE else FOCUS_RANGE) + Upgrades.pick("lighthouse", Upgrades.RANGE_BONUS)
 	return r * SMOTHER_RANGE if is_smothered() else r
 
 ## Something is wrapped over the lantern (counted, in case more than one is up there).
@@ -112,7 +119,7 @@ func burn_rate() -> float:
 	var rate := BURN_WIDE if mode == Mode.WIDE else BURN_FOCUSED
 	if operator == null:
 		rate *= UNMANNED_MULT
-	return rate
+	return rate * Upgrades.pick("lighthouse", Upgrades.BURN_MULT)
 
 func _apply_mode() -> void:
 	var a := current_angle()
@@ -186,6 +193,7 @@ func _aim(delta: float) -> void:
 func _burn(delta: float) -> void:
 	if _boost_t > 0.0:
 		_boost_t = maxf(0.0, _boost_t - delta)
+	Lamp.dps_mult = focus_mult * (BOOST_DPS if _boost_t > 0.0 else 1.0)
 	if state == State.GUTTERING:
 		_gutter_t += delta
 		if _gutter_t >= GUTTER_WINDOW:
@@ -244,6 +252,12 @@ func refuel_dirty(units: float) -> void:
 	_boost_t = BOOST_TIME
 	Anger.add(1)
 	_recover()
+
+func is_boosted() -> bool:
+	return _boost_t > 0.0
+
+func boost_left() -> float:
+	return _boost_t
 
 func _recover() -> void:
 	if state == State.GUTTERING and fuel > 0.0 and lighthouse != null and lighthouse.hp > 0:

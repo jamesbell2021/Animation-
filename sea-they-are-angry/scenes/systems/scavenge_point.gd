@@ -6,11 +6,14 @@ const COLORS := {
 	"scrap": Color(0.55, 0.35, 0.25),
 	"bio": Color(0.3, 0.9, 0.9),
 	"seaweed": Color(0.2, 0.5, 0.3),
+	"oil": Color(0.45, 0.2, 0.12),
 }
 
 var kind := "driftwood"
 var amount := 1
 var available := true
+## Washed up once (an oil drum): gone for good when gathered.
+var once := false
 var _mesh: Node3D
 
 func _init(p_kind: String = "driftwood", p_amount: int = 1) -> void:
@@ -30,6 +33,8 @@ func _ready() -> void:
 			_build_bio()
 		"seaweed":
 			_build_seaweed()
+		"oil":
+			_build_oil()
 		_:
 			Geo.box(_mesh, Vector3(0.9, 0.35, 0.6), COLORS.get(kind, Color.GRAY), Vector3(0.0, 0.175, 0.0))
 	rotation.y = randf() * TAU
@@ -77,6 +82,20 @@ func _build_seaweed() -> void:
 		frond.material_override = kelp
 		frond.rotation = Vector3(0.25 * float(i % 2), a, 0.3)
 
+# A rusted oil drum on its side in the shingle, with a rainbow-black slick round it.
+func _build_oil() -> void:
+	var drum := Geo.cyl(_mesh, 0.3, 0.85, Color.WHITE, Vector3(0.0, 0.24, 0.0))
+	drum.material_override = Look.flat_mat(COLORS["oil"], 0.6)
+	drum.rotation = Vector3(0.0, 0.0, deg_to_rad(90.0))
+	for x in [-0.28, 0.28]:
+		var hoop := Geo.cyl(_mesh, 0.32, 0.05, Color.WHITE, Vector3(x, 0.24, 0.0))
+		hoop.material_override = Look.flat_mat(Look.RUST, 0.7)
+		hoop.rotation = Vector3(0.0, 0.0, deg_to_rad(90.0))
+	var slick := Geo.cyl(_mesh, 0.75, 0.01, Color.WHITE, Vector3(0.15, 0.02, 0.1))
+	var m := Look.flat_mat(Color(0.04, 0.04, 0.05), 0.05)
+	m.metallic = 0.8
+	slick.material_override = m
+
 func _build_bio() -> void:
 	Look.rock(_mesh, 44, Vector3(0.7, 0.35, 0.6), Vector3(0.0, 0.05, 0.0), Look.STONE, 0.3)
 	var glow := Look.glow_mat(COLORS["bio"], 3.0)
@@ -87,7 +106,7 @@ func _build_bio() -> void:
 		g.material_override = glow
 
 func _on_phase_changed(p: int) -> void:
-	if p == Cycle.Phase.DAWN:
+	if p == Cycle.Phase.DAWN and not once:
 		available = true
 		_mesh.visible = true
 
@@ -103,5 +122,7 @@ func interact(_player: Node) -> bool:
 	_mesh.visible = false
 	Stock.add(kind, amount)
 	Audio.sfx("gather", global_position, -2.0, 0.05)
-	Events.message.emit("+%d %s" % [amount, kind])
+	Events.message.emit("+%d %s" % [amount, kind.replace("_", " ")] + ("  (mix it into dirty fuel at the cottage)" if kind == "oil" else ""))
+	if once:
+		queue_free()
 	return true

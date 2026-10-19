@@ -11,6 +11,8 @@ func save_run() -> void:
 		"fuel": Run.lamp_fuel,
 		"upgrades": Run.upgrades,
 		"max_hp_bonus": Run.max_hp_bonus,
+		"crops": Run.crops,
+		"flares": Run.flares,
 	}
 	var f := FileAccess.open(RUN_PATH, FileAccess.WRITE)
 	if f:

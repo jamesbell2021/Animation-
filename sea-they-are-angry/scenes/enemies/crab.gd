@@ -46,6 +46,9 @@ var _hits := {}
 var _grudge: Node3D
 var _grudge_t := 0.0
 var _hit_t := 0.0
+## Seconds left flipped by a chain plate: the boathook bites twice as deep.
+var exposed_t := 0.0
+const EXPOSED_MULT := 2.0
 
 func _init() -> void:
 	max_hp = BASE_HP
@@ -182,6 +185,9 @@ func _enter_Slam() -> void:
 			p.take_damage(SLAM_PLAYER_DMG)
 			p.shove(tp.normalized() * SLAM_SHOVE)
 	var at := c + fwd * 1.4
+	for t in get_tree().get_nodes_in_group("trap_slots"):
+		if t.is_armed() and Geo.flat_dist(t.global_position, at) <= SLAM_RANGE * 0.7:
+			t.wreck()
 	FX.splinters(get_parent(), at + Vector3(0.0, 0.3, 0.0))
 	FX.emitter(get_parent(), at, FX._puff_mesh_ref(), Color(0.45, 0.4, 0.33, 0.5), 10, 1.0, Vector3.UP, 80.0, 1.0, 2.5, 1.0, 0.4, 0.9, true, true)
 	Audio.sfx("crab_slam", c, 0.0, 0.05)
@@ -249,6 +255,8 @@ func take_damage(amount: int, from_dir: Vector3 = Vector3.ZERO, source: Node = n
 		Audio.sfx("hammer", global_position, -4.0, 0.2)
 	if state == &"Recover":
 		mult = RECOVER_MULT
+	if exposed_t > 0.0 and source is Player:
+		mult = maxf(mult, 1.0) * EXPOSED_MULT
 	if source is Player:
 		_note_hit(source)
 	_hit_t = 0.1
@@ -283,6 +291,7 @@ func _tick_Stagger(delta: float) -> void:
 func _physics_process(delta: float) -> void:
 	_stagger_cd = maxf(0.0, _stagger_cd - delta)
 	_grudge_t = maxf(0.0, _grudge_t - delta)
+	exposed_t = maxf(0.0, exposed_t - delta)
 	_hit_t = maxf(0.0, _hit_t - delta)
 	super._physics_process(delta)
 	if is_inside_tree() and _shell_mat:

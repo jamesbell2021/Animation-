@@ -105,7 +105,7 @@ func in_light(mode: int, delta: float) -> void:
 		_lit_t = LIT_HOLD
 	elif state != &"Emerge" and not is_bursting():
 		_burn_t = LIT_HOLD
-		_burn_acc += BEAM_DPS * delta
+		_burn_acc += BEAM_DPS * Lamp.dps_mult * delta
 		var dmg := floori(_burn_acc)
 		if dmg > 0:
 			_burn_acc -= float(dmg)

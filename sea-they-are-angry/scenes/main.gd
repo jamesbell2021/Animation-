@@ -30,14 +30,26 @@ const LADDER_ANGLE := 66.0
 # Scavenge washes up on the beaches: [beach index, t up the beach, lateral offset, kind, amount].
 const SCAVENGE := [
 	[0, 0.55, 2.0, "driftwood", 2],
-	[0, 0.62, -2.0, "scrap", 1],
+	[0, 0.62, -2.0, "scrap", 2],
 	[1, 0.55, 2.0, "driftwood", 2],
 	[1, 0.62, -2.0, "bio", 1],
 	[2, 0.55, -2.0, "driftwood", 2],
 	[2, 0.62, 2.0, "bio", 1],
-	# Kelp for mending the garden, low on the west beach by the tideline.
+	# Kelp for the garden (mending it, and digging into the beds), by the tideline.
 	[2, 0.46, 0.0, "seaweed", 2],
+	[0, 0.4, -1.6, "seaweed", 1],
 ]
+# A third keeper finds a little more on the south beach.
+const SCAVENGE_CROWD := [1, 0.46, -0.6, "driftwood", 1]
+# Trap cairns up the middle of each beach, short of the fence (a Bloated burst there
+# can't reach it), then on the ledge and at its foot as defences are upgraded.
+const TRAP_BEACH_T := 0.6
+const TRAP_LEDGE_S := 0.3
+# An oil drum washes up at dawn after every third night, from the second on.
+const OIL_EVERY := 3
+const OIL_FIRST := 2
+# The fire pit, out front of the cottage between it and the shed.
+const CAMPFIRE_AT := [-22.0, 10.4]
 
 # Per phase: background, ambient colour and energy, sun colour and energy,
 # distance fog density, volumetric fog density, fog glow tint.
@@ -82,6 +94,8 @@ func _ready() -> void:
 	_build_fences()
 	_build_ladders()
 	_build_scavenge()
+	_build_trap_slots()
+	_build_campfire()
 	_build_camera()
 	_enemies = Node3D.new()
 	_enemies.name = "Enemies"
@@ -159,6 +173,12 @@ func begin_run(continue_save: bool, n: int) -> void:
 	else:
 		Run.start_new()
 	lighthouse.lamp.fuel = Run.lamp_fuel
+	for p in players:
+		p.max_hp = Player.BASE_HP + int(Run.max_hp_bonus[p.idx])
+		p.hp = p.max_hp
+	Upgrades.apply(get_tree())
+	if Players.wanted >= 3:
+		_add_scavenge(SCAVENGE_CROWD)
 	if d.is_empty():
 		hud.report("The first day.", [
 			"Gather driftwood, scrap and bio on the three beaches. The ladders down the crag are on its east side.",
@@ -472,9 +492,29 @@ func _at(a_deg: float, r: float, y: float) -> Vector3:
 
 func _build_scavenge() -> void:
 	for s in SCAVENGE:
-		var sp := ScavengePoint.new(String(s[3]), int(s[4]))
-		sp.position = Terrain.beach_point(int(s[0]), float(s[1]), float(s[2]))
-		add_child(sp)
+		_add_scavenge(s)
+
+func _add_scavenge(s: Array) -> void:
+	var sp := ScavengePoint.new(String(s[3]), int(s[4]))
+	sp.position = Terrain.beach_point(int(s[0]), float(s[1]), float(s[2]))
+	add_child(sp)
+
+func _build_trap_slots() -> void:
+	var spots: Array[Vector3] = []
+	for i in Terrain.BEACHES.size():
+		spots.append(Terrain.beach_point(i, TRAP_BEACH_T, 0.0))
+	spots.append(Terrain.ledge_point(TRAP_LEDGE_S))
+	spots.append(Terrain.at_angle(Terrain.LEDGE_START - Nav.ENTRY_BEFORE, Terrain.LEDGE_R0))
+	for i in spots.size():
+		var slot := TrapSlot.new()
+		slot.index = i
+		slot.position = spots[i]
+		add_child(slot)
+
+func _build_campfire() -> void:
+	var fire := Campfire.new()
+	fire.position = Terrain.at_angle(CAMPFIRE_AT[0], CAMPFIRE_AT[1])
+	add_child(fire)
 
 func _build_camera() -> void:
 	camera = Camera3D.new()
@@ -538,6 +578,7 @@ func _on_phase_changed(p: int) -> void:
 	if p == Cycle.Phase.DUSK:
 		_tally = {}
 	if p == Cycle.Phase.DAWN and Run.active:
+		_wash_up_oil()
 		_dawn_report()
 		var damaged := 0
 		for s in get_tree().get_nodes_in_group("structures"):
@@ -557,6 +598,10 @@ func _dawn_report() -> void:
 		how.append("%d over the edge" % g.call("fall"))
 	if g.call("hook") > 0:
 		how.append("%d to the boathook" % g.call("hook"))
+	if g.call("trap") > 0:
+		how.append("%d in traps" % g.call("trap"))
+	if g.call("flare") > 0:
+		how.append("%d to flares" % g.call("flare"))
 	var lines: Array[String] = []
 	lines.append("%d came ashore%s" % [g.call("ashore"), (" · " + " · ".join(how)) if not how.is_empty() else ""])
 	var cost: Array[String] = []
@@ -584,12 +629,39 @@ func _dawn_report() -> void:
 		tip = "Mend broken fences with driftwood before dark."
 	elif not hurt_home.is_empty():
 		tip = "Take the hammer to the homestead: the cottage and shed take driftwood, the garden kelp too."
+	elif _hurt_keeper() and Stock.get_amount("food") > 0:
+		tip = "Eat at the cottage: a meal heals fully and toughens the keeper."
+	elif Stock.get_amount("food") == 0 and Run.night <= 4:
+		tip = "Dig kelp into the garden beds by day: potatoes by dawn, a meal at the cottage."
 	elif g.call("beam") < g.call("ashore") / 2:
 		tip = "The focused beam (Q) burns them on the beaches, long before they climb."
 	if tip != "":
 		lines.append("")
 		lines.append(tip)
+	if _oil_tonight:
+		lines.append("An oil drum has washed up on the %s beach." % compass(_oil_at))
 	hud.report("Night %d held." % Run.night, lines)
+
+func _hurt_keeper() -> bool:
+	for p in players:
+		if is_instance_valid(p) and p.hp < p.max_hp * 0.6:
+			return true
+	return false
+
+var _oil_tonight := false
+var _oil_at := Vector3.ZERO
+
+# After the second night and every third after, a drum of oil comes ashore.
+func _wash_up_oil() -> void:
+	_oil_tonight = Run.night >= OIL_FIRST and (Run.night - OIL_FIRST) % OIL_EVERY == 0
+	if not _oil_tonight:
+		return
+	var beach := (Run.night / OIL_EVERY) % Terrain.BEACHES.size()
+	var sp := ScavengePoint.new("oil", 1)
+	sp.once = true
+	sp.position = Terrain.beach_point(beach, 0.5, 0.8)
+	_oil_at = sp.position
+	add_child(sp)
 
 func _on_run_ended(_reason: String, _night: int) -> void:
 	Cycle.stop()

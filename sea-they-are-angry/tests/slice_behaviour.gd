@@ -109,7 +109,7 @@ func _run() -> void:
 	Input.action_press("interact")
 	await frames(2)
 	Input.action_release("interact")
-	check(Stock.get_amount("scrap") == scrap0 + 1 and not sp.available, "E gathers scrap")
+	check(Stock.get_amount("scrap") == scrap0 + sp.amount and not sp.available, "E gathers scrap")
 
 	# Boathook attack on an emerged Bloated.
 	var b := Bloated.new()

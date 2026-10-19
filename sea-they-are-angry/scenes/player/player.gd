@@ -29,7 +29,11 @@ const PUSH_DECAY := 10.0
 const FALL_SPEED := -5.0
 const BODY_COLOR := Color(0.85, 0.65, 0.2)
 const MODEL_DIR := "res://art/characters/%s.glb"
-const REVIVE_TIME := 3.0
+const BASE_HP := 100
+# The flare gun: two shots, reloaded at the cottage.
+const FLARES_MAX := 2
+const FLARE_RANGE := 14.0
+const FLARE_PAD_DIST := 10.0
 const REVIVE_RANGE := 1.5
 const REVIVE_HP := 0.4
 const DAWN_HP := 0.5
@@ -103,6 +107,10 @@ var _job_target: Node
 var _job_strikes := 0
 var _prone_t := 0.0
 var _push := Vector3.ZERO
+# What the finished job calls on its target: "interact", or "use_dirty" at the lighthouse.
+var _job_action := "interact"
+## In a menu (the cottage, a trap slot): stands still, takes no other input.
+var in_menu := false
 
 func _ready() -> void:
 	add_to_group("player")
@@ -357,6 +365,10 @@ func _physics_process(delta: float) -> void:
 	if _prone_t > 0.0:
 		_lying(delta)
 		return
+	if in_menu:
+		velocity = Vector3.ZERO
+		_animate(delta)
+		return
 	if _scripted:
 		if _job_tool != "":
 			_work(delta)
@@ -382,6 +394,10 @@ func _physics_process(delta: float) -> void:
 		_move(delta)
 		if Input.is_action_just_pressed(_act("attack")) and _attack_cd <= 0.0:
 			_attack()
+		if Input.is_action_just_pressed(_act("flare")):
+			_fire_flare()
+		if Input.is_action_just_pressed(_act("use_dirty")):
+			_pour_dirty()
 	velocity.y = 0.0 if is_on_floor() else FALL_SPEED
 	velocity.x += _push.x
 	velocity.z += _push.z
@@ -393,7 +409,7 @@ func _physics_process(delta: float) -> void:
 	_animate(delta)
 	var mate := _downed_mate()
 	if mate != null and Input.is_action_pressed(_act("interact")):
-		mate.revive_progress += delta / REVIVE_TIME
+		mate.revive_progress += delta / float(Upgrades.pick("garden", Upgrades.REVIVE_TIME))
 		if mate.revive_progress >= 1.0:
 			mate.revive(REVIVE_HP)
 		return
@@ -720,8 +736,9 @@ func _out_of_door() -> void:
 
 # ---- tools: hammer for repairs, oil can for the lamp ----
 
-func _start_job(tool: String, target: Node) -> void:
+func _start_job(tool: String, target: Node, action: String = "interact") -> void:
 	_scripted = true
+	_job_action = action
 	_job_tool = tool
 	_job_target = target
 	_job_t = 0.0
@@ -766,7 +783,55 @@ func _end_job(done: bool) -> void:
 	_scripted = false
 	# The work is done: now the stock is spent and the repair or the oil goes in.
 	if done and target != null and is_instance_valid(target):
-		target.interact(self)
+		target.call(_job_action, self)
+
+# ---- flare gun and dirty fuel ----
+
+func flares() -> int:
+	return int(Run.flares[idx]) if idx < Run.flares.size() else 0
+
+## Where a flare would land: under the mouse, or ahead along the aim on a pad.
+func flare_point() -> Vector3:
+	var to := Vector3.INF
+	if camera != null and idx == 0 and (Players.devices.size() <= idx or Players.devices[idx] == Players.KEYBOARD_MOUSE):
+		var mp := get_viewport().get_mouse_position()
+		to = _ground_hit(camera.project_ray_origin(mp), camera.project_ray_normal(mp))
+	if to == Vector3.INF:
+		to = global_position + _aim * FLARE_PAD_DIST
+	var d := to - global_position
+	d.y = 0.0
+	if d.length() > FLARE_RANGE:
+		to = global_position + d.normalized() * FLARE_RANGE
+	to.y = maxf(Terrain.height_at(to.x, to.z), Terrain.SEA_LEVEL)
+	return to
+
+func _fire_flare() -> void:
+	if flares() <= 0:
+		Events.message.emit("No flares left: load them at the cottage (1 scrap each).")
+		return
+	var to := flare_point()
+	Run.flares[idx] = flares() - 1
+	var d := to - global_position
+	if Vector2(d.x, d.z).length() > 0.05:
+		_aim = Vector3(d.x, 0.0, d.z).normalized()
+		facing = aim_yaw()
+		rotation.y = facing
+	_aim_face_t = AIM_FACE_TIME
+	var f := Flare.new()
+	f.from = global_position + Vector3(0.0, 1.4, 0.0) + _aim * 0.4
+	f.to = to
+	get_parent().add_child(f)
+
+func _pour_dirty() -> void:
+	if lamp == null or lamp.lighthouse == null:
+		return
+	var lh: Structure = lamp.lighthouse
+	if absf(lh.global_position.y - global_position.y) > REACH_HEIGHT or lh.surface_distance(global_position) > INTERACT_RANGE:
+		return
+	if Stock.get_amount("dirty_fuel") <= 0:
+		Events.message.emit("No dirty fuel: mix oil and driftwood at the cottage.")
+		return
+	_start_job("can", lh, "use_dirty")
 
 func is_busy() -> bool:
 	return _scripted
@@ -853,8 +918,8 @@ func _keys(text: String) -> String:
 	if d == Players.KEYBOARD_MOUSE:
 		return text
 	if d == Players.KEYBOARD_ARROWS:
-		return text.replace("[E]", "[Shift]").replace("[R]", "[/]").replace("[Q]", "[.]").replace("[LMB]", "[Ctrl]")
-	return text.replace("[E]", "(A)").replace("[R]", "(Y)").replace("[Q]", "(B)").replace("[LMB]", "(X)")
+		return text.replace("[E]", "[Shift]").replace("[R]", "[/]").replace("[Q]", "[.]").replace("[LMB]", "[Ctrl]").replace("[F]", "[']").replace("[RMB]", "[;]")
+	return text.replace("[E]", "(A)").replace("[R]", "(Y)").replace("[Q]", "(B)").replace("[LMB]", "(X)").replace("[F]", "(LB)").replace("[RMB]", "(LT)")
 
 func _downed_mate() -> Node:
 	for p in get_tree().get_nodes_in_group("player"):

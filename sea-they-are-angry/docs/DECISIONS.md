@@ -171,3 +171,44 @@ Judgement calls made where the spec was open, contradictory, or would not work a
   - Solo: the lamp is smothered for 4–41 s a night from night 4, and each time the keeper has to go out and shake it down.
   - Co-op: the keeper holding the ledge kills every Smotherer on the way up, so the lamp is never smothered. That gives the second keeper a clear job.
 
+
+## Storm weather and glowing eyes (owner's request: "really creepy")
+
+- **One storm value drives everything.** `scenes/world/weather.gd` (`Weather`, created by `Atmosphere`) eases a global shader uniform `storm` (declared in `project.godot` under `[shader_globals]`) toward a level per phase: day 0.12, dusk 0.6, night 1.0, dawn 0.3, over 12 s. The grass, sea and beam shaders read it, so nothing has to be wired per material.
+- **Rain:** 5,000 stretched GPU particles over the whole island, thinning out below storm 0.35. The vignette shader gets slanting streaks, and the lamp's beam shows rain falling through it, which is the cheapest way to make the beam feel wet.
+- **Wind:** the grass sways harder and faster as the storm rises, with a gust band sweeping across the meadow and a lean downwind. Gust sounds come at random.
+- **Sea:** storm rollers, a swell up to 6× higher offshore, darker water and wider foam. The water inside about 16 m stays calmer so the beaches still read. Breakers burst on the three beaches (`FX.breaker`), from every 1.6 s in calm weather to every 0.32 s at full storm, each with a synthesised crash.
+- **Lightning:** above storm 0.45, a strike comes every 5–12 s (more often in heavier weather). A jagged bolt with a fork drops into the sea, the sky and the whole island flash white, and thunder follows after a delay. One strike in six hits the lighthouse's rod instead.
+- **The watchers:** 70 pale drowned figures standing in the surf 18–30 m out, all facing the light, with pinprick eyes. They are only ever visible for half a second during a flash (40% of flashes), so they read as a glimpse rather than something to fight. They are not creatures and nothing touches them.
+- **Glowing eyes:** every creature's eyes use `Look.eye_mat` (unshaded, high energy) plus `Look.glint`, a camera-facing additive halo. The halo matters: the eyes are a few pixels across from the game camera, so the glow alone vanished at distance. Colours: Bloated sickly yellow-green, Squid cyan, Crab red, Eel yellow, Smotherer pale pinpoints in black sockets.
+- **Tuning from renders:** the first breakers were white cotton balls, so they are now a burst of spray with a few faint puffs. The whitecaps blew out to white in a lightning flash, so they are toned down at full storm. The watchers were too small to notice, so they are 1.5–2.2× scale and closer in.
+
+## Phase C: garden, cottage, upgrades, traps, oil, flares, campfire (owner's request)
+
+Built to plan 2's Phase C, with these departures:
+
+- **Garden (`garden.gd`, `garden_plot.gd`):** five narrow potato beds inside the existing drystone wall; upgrades show 3, 4 or 5. Planting digs in 1 kelp (seaweed was a real island fertiliser); planted beds show kelp and shoots, and at dawn they are ready, with bushy flowering haulms. Lifting a bed gives 1 food. Any damage to the garden ruins one bed with a crop in it, and wrecking it loses them all. That covers the plan's "a burst near a plot ruins it", and the Crab too. Bed states live in `Run.crops` and are saved. A second kelp heap on the east beach (1) joins the west beach's (2), since kelp now goes on planting, mending the garden and nets.
+- **Cottage menu:** a generic `ChoiceMenu` (`scenes/ui/choice_menu.gd`). The keeper who opened it stands still; the night carries on. Mouse, number keys, arrows or d-pad pick; Esc or B leaves. One menu at a time across keepers. Rows:
+  - Eat (1 food): full heal and +10 max health, up to the garden level's cap (10/20/30). The bonus is per keeper in `Run.max_hp_bonus` and saved.
+  - Load a flare (1 scrap).
+  - Mix dirty fuel: **1 oil + 1 driftwood makes 2 cans** (plan: 1 oil + 2 driftwood makes 1). Oil comes only every third night, so one can per drum felt like too little to bother with.
+  - The three upgrades, with cost and what the next level gives.
+  A damaged cottage asks for the hammer first when the keeper can pay for it.
+- **Upgrades (`scenes/systems/upgrades.gd`):** the plan's tables and costs as written. `Upgrades.apply()` runs at the start of a run and after each purchase, keeping health ratios. The lighthouse gains brass hoops and a brass gallery rail at level 2, then a copper dome and iron storm shutters at level 3. Plan 2 said more red bands; brass reads better against the white tower at night. Fences go tarred black with thicker rails at 2, and get iron straps at 3. `Lamp.focus_mult` and `Lamp.dps_mult` carry the focused-damage multiplier into the Bloated's, Squid's and Eel's beam burn.
+- **Traps (`scenes/structures/trap_slot.gd`):** one class handles both slot and trap (no separate StaticBody or Area3D). It checks creatures within 1.1 m each physics frame and skips any it has already caught. The slots sit where the creatures actually walk on this island, not on a ring at radius 10.5 as plan 2 had it:
+  - three up the middle of the beaches (t 0.6, short enough of the fence that a Bloated bursting there can't reach it);
+  - one on the ledge (defences 2);
+  - one at the ledge's foot (defences 3).
+  Each slot is a cairn with a red rag. The trap kinds:
+  - **Spike:** 3 uses, 25 × the trap multiplier; a Bloated bursts where it stands; Squid skitter over.
+  - **Net:** 2 uses, a 3 s tangle for the Bloated, Squid and Smotherer; Crabs ignore it.
+  - **Chain plate:** 2 uses; flips a Crab for 3 s, then 5 s of double boathook damage; others reel for 1 s.
+  A Crab's slam smashes any trap in front of it. Kills count as "in traps" in the dawn log.
+- **Dirty fuel:** at the lighthouse, F (or LB) pours a can with the oil-can job: +30 fuel, 30 s burning hot (light ×1.3, beam burn ×1.5), Anger +1. The HUD says "BURNING HOT on dirty fuel".
+- **Oil:** a rusted drum on its side with a black slick washes up at dawn after nights 2, 5, 8…, once only, and the dawn log says on which beach. There is no cap of 1 on oil in stock.
+- **Flare gun:** RMB (LT on a pad) lobs a flare in an arc to the ground under the cursor, up to 14 m, or 10 m along the aim on a pad. The plan's straight shot along the aim, at 12 m, was hard to place from this camera with the crag in the way. The first creature within 1 m of where it lands takes 40, and a Bloated bursts. It then burns red for 8 s (plan: 4 s), lighting 3.5 m around it like the wide beam: slows, cows, and shows creatures hidden by ink. Two shots per keeper, saved in `Run.flares`.
+- **Campfire (`campfire.gd`):** a stone fire pit in front of the cottage, towards the shed. It burns low by day and up at dusk, and smokes. Throw on 1 driftwood for +30 health; the plan said 1 seaweed, but kelp already has three jobs.
+- **Scrap:** the scrap heap gives 2 a day, not 1. In a 10-night bot playtest, 1 scrap a day bought only two upgrades in ten nights, because flares, chain plates and every upgrade but the garden all want scrap.
+- **Co-op:** a third keeper adds a driftwood point on the south beach.
+- **Revive time** follows the garden level (3/2.5/2 s).
+- **Tests:** `tests/slice_economy.gd` covers all of the above (37 checks).

@@ -1,15 +1,16 @@
 class_name Garden
 extends Structure
-## The keepers' kitchen garden: a low drystone wall around tilled plots.
-## Planting and harvesting are Phase C; for now the plots are bare, freshly dug earth.
+## The keepers' kitchen garden: a low drystone wall around potato beds. Dig kelp into a
+## bed by day and the crop is up by the next dawn; lift it for food to eat at the cottage.
+## Anything that tramples the garden ruins a bed; wrecked, it loses the lot.
 
 const WIDTH := 3.4
 const DEPTH := 2.6
 const WALL := Color(0.40, 0.39, 0.36)
-const SOIL := Color(0.15, 0.11, 0.08)
-const PLOTS_L1 := 3
+const PLOT_COUNT := 5
+const PLOT_STEP := 0.64
 
-var plots: Array[Node3D] = []
+var plots: Array[GardenPlot] = []
 var _wall_mat: StandardMaterial3D
 var _ridges: Array[MeshInstance3D] = []
 
@@ -37,33 +38,60 @@ func _build() -> void:
 			var p := centre + along * t + Vector3(0.0, 0.18, 0.0)
 			var rock := Look.rock(self, 300 + i, Vector3(0.48, 0.42, 0.36), p, WALL, 0.5)
 			rock.rotation.y = atan2(along.x, along.z)
-	# Tilled plots with furrows.
-	for k in PLOTS_L1:
-		var plot := Node3D.new()
-		plot.position = Vector3(-1.05 + float(k) * 1.05, 0.0, 0.1)
+	# Narrow beds side by side; upgrades open more of them.
+	for k in PLOT_COUNT:
+		var plot := GardenPlot.new()
+		plot.index = k
+		plot.garden = self
+		plot.position = Vector3((float(k) - float(PLOT_COUNT - 1) * 0.5) * PLOT_STEP, 0.0, 0.1)
 		add_child(plot)
-		var bed := Geo.box(plot, Vector3(0.85, 0.16, 1.6), SOIL, Vector3(0.0, 0.08, 0.0))
-		bed.material_override = Look.flat_mat(SOIL, 1.0)
-		# Earthed-up rows: low rounded ridges rather than planks.
-		for f in 3:
-			var ridge := MeshInstance3D.new()
-			var cyl := CylinderMesh.new()
-			cyl.top_radius = 0.09
-			cyl.bottom_radius = 0.11
-			cyl.height = 1.45
-			cyl.radial_segments = 5
-			cyl.rings = 1
-			ridge.mesh = cyl
-			ridge.material_override = Look.flat_mat(Color(0.20, 0.15, 0.11), 1.0)
-			ridge.rotation.x = PI * 0.5
-			ridge.position = Vector3(-0.27 + float(f) * 0.27, 0.15, 0.0)
-			plot.add_child(ridge)
-			_ridges.append(ridge)
+		_ridges.append_array(plot.ridges)
 		plots.append(plot)
 	# A water butt by the gate.
 	var butt := Geo.cyl(self, 0.3, 0.75, Look.WOOD, Vector3(WIDTH * 0.5 - 0.35, 0.38, -DEPTH * 0.5 - 0.45))
 	butt.material_override = Look.flat_mat(Look.WOOD)
 	Geo.cyl(self, 0.32, 0.06, Color(0.2, 0.2, 0.22), Vector3(WIDTH * 0.5 - 0.35, 0.6, -DEPTH * 0.5 - 0.45))
+	Cycle.phase_changed.connect(_on_phase_changed)
+	set_plots(Upgrades.pick("garden", Upgrades.PLOTS))
+
+## How many beds are dug (garden upgrade level).
+func set_plots(n: int) -> void:
+	for p in plots:
+		p.set_open(p.index < n)
+
+func open_plots() -> int:
+	var n := 0
+	for p in plots:
+		if p.is_open:
+			n += 1
+	return n
+
+func _on_phase_changed(p: int) -> void:
+	# Whatever was dug in yesterday is up by morning.
+	if p == Cycle.Phase.DAWN and not is_destroyed():
+		for plot in plots:
+			if plot.is_open and Run.crops[plot.index] == GardenPlot.PLANTED:
+				Run.crops[plot.index] = GardenPlot.RIPE
+				plot.refresh()
+
+func _on_damaged() -> void:
+	super._on_damaged()
+	# Each blow ruins one bed; a wrecked garden loses every one.
+	var growing: Array[GardenPlot] = []
+	for plot in plots:
+		if plot.is_open and Run.crops[plot.index] != GardenPlot.BARE:
+			growing.append(plot)
+	if growing.is_empty():
+		return
+	var lost: Array[GardenPlot] = []
+	if hp <= 0:
+		lost = growing
+	else:
+		lost.append(growing.pick_random())
+	for plot in lost:
+		Run.crops[plot.index] = GardenPlot.BARE
+		plot.refresh()
+	Events.message.emit("The garden is trampled: %s lost." % ("every bed" if lost.size() > 1 else "a bed of potatoes"))
 
 func _refresh() -> void:
 	if _wall_mat:

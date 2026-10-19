@@ -9,7 +9,7 @@ const REPORT_TIME := 7.0
 const RED := Color(1.0, 0.35, 0.3)
 const AMBER := Color(1.0, 0.8, 0.45)
 const PALE := Color(0.92, 0.94, 0.96)
-const CONTROLS := "WASD move · Mouse aim · LMB attack · E interact · R operate lamp · Q beam · Space sprint · Enter skip day/dawn"
+const CONTROLS := "WASD move · Mouse aim · LMB attack · RMB flare · E interact · R operate lamp · Q beam · F dirty fuel · Space sprint · Enter skip day/dawn"
 
 var player: Player
 var players: Array = []
@@ -163,7 +163,12 @@ func _build_game_over(root: Control) -> void:
 
 func _process(delta: float) -> void:
 	_phase_label.text = "Night %d — %s  (%s)" % [Run.night, Cycle.phase_name(), _mmss(Cycle.time_left)]
-	_stock_label.text = "Driftwood %d · Scrap %d · Bio %d" % [Stock.get_amount("driftwood"), Stock.get_amount("scrap"), Stock.get_amount("bio")]
+	var stock := "Driftwood %d · Scrap %d · Bio %d · Kelp %d · Food %d" % [Stock.get_amount("driftwood"), Stock.get_amount("scrap"), Stock.get_amount("bio"), Stock.get_amount("seaweed"), Stock.get_amount("food")]
+	if Stock.get_amount("oil") > 0:
+		stock += " · Oil %d" % Stock.get_amount("oil")
+	if Stock.get_amount("dirty_fuel") > 0:
+		stock += " · Dirty fuel %d" % Stock.get_amount("dirty_fuel")
+	_stock_label.text = stock
 	if player and is_instance_valid(player):
 		var parts: Array[String] = []
 		var list: Array = players if players.size() > 1 else [player]
@@ -171,7 +176,7 @@ func _process(delta: float) -> void:
 			if not is_instance_valid(p):
 				continue
 			var who := ("P%d %s " % [p.idx + 1, p.keeper_name()]) if list.size() > 1 else "Keeper "
-			parts.append(who + ("DOWN" if p.downed else "HP %d / %d" % [p.hp, p.max_hp]))
+			parts.append(who + ("DOWN" if p.downed else "HP %d / %d · Flares %d" % [p.hp, p.max_hp, p.flares()]))
 		_player_label.text = "   ".join(parts)
 		_prompt_label.text = player.interact_prompt() if Run.active else ""
 	if lighthouse and is_instance_valid(lighthouse):
@@ -206,6 +211,9 @@ func _update_lamp_label() -> void:
 			if lamp.is_smothered():
 				_lamp_label.text = "Lamp: SMOTHERED — shake it off the tower!"
 				color = RED
+			elif lamp.is_boosted():
+				_lamp_label.text = "Lamp: BURNING HOT on dirty fuel (%ds)" % ceili(lamp.boost_left())
+				color = Color(1.0, 0.45, 0.2)
 			elif lamp.mode == Lamp.Mode.FOCUSED:
 				_lamp_label.text = "Lamp: FOCUSED — burns oil fast"
 				color = Color(1.0, 0.55, 0.25)

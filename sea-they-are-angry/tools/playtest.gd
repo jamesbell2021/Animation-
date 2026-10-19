@@ -72,7 +72,7 @@ func _go() -> void:
 			main.players[k].global_position = Terrain.ledge_point(POST_S) + Vector3(0.0, 0.1, 0.0)
 			if main.players[k].downed:
 				main.players[k].revive(0.5)
-		if mode == "bot" and not player.operating:
+		if mode in ["bot", "eco"] and not player.operating:
 			# In at the lighthouse door, like a keeper would.
 			player._toggle_operate()
 		while run.active and cycle.phase != cycle.Phase.DAWN:
@@ -96,7 +96,7 @@ func _go() -> void:
 							burning = true
 					if burning:
 						stats["burn_s"] = stats.get("burn_s", 0.0) + Engine.time_scale / 60.0
-			if mode == "bot" and cycle.phase == cycle.Phase.NIGHT:
+			if mode in ["bot", "eco"] and cycle.phase == cycle.Phase.NIGHT:
 				# Something on the tower: in co-op the ledge keeper runs up to shake it down;
 				# solo the lamp keeper has to go out and do it.
 				var climber := _climber_up()
@@ -129,8 +129,8 @@ func _go() -> void:
 		for s in get_nodes_in_group("structures"):
 			if s is Fence and s.is_destroyed():
 				fences_down += 1
-		print("NIGHT %d [%s x%d]: landed %d  beam %d  hook %d  fall %d  reached the light %d (avg %.0f s after landing)  lighthouse %d->%d  fences down %d/5  fuel %.0f->%.0f (refuels %d)  run active %s" % [
-			run.night - 1 if cycle.phase == cycle.Phase.DAWN else run.night, mode, keepers, landed.size(), stats.get("beam", 0), stats.get("hook", 0), stats.get("fall", 0),
+		print("NIGHT %d [%s x%d]: landed %d  beam %d  hook %d  fall %d  trap %d  reached the light %d (avg %.0f s after landing)  lighthouse %d->%d  fences down %d/5  fuel %.0f->%.0f (refuels %d)  run active %s" % [
+			run.night - 1 if cycle.phase == cycle.Phase.DAWN else run.night, mode, keepers, landed.size(), stats.get("beam", 0), stats.get("hook", 0), stats.get("fall", 0), stats.get("trap", 0),
 			reached, avg_reach, lh_start, main.lighthouse.hp, fences_down, fuel_start, lamp.fuel, stats.get("refuels", 0), run.active])
 		var home: Array[String] = []
 		var kinds := {}
@@ -287,12 +287,48 @@ func _day_repairs(main) -> void:
 	var stock = root.get_node("Stock")
 	# A day's scavenging: everything on the beaches.
 	stock.add("driftwood", 6)
-	stock.add("scrap", 1)
+	stock.add("scrap", 2)
 	stock.add("bio", 2)
-	stock.add("seaweed", 2)
+	stock.add("seaweed", 3)
 	for s in get_nodes_in_group("structures"):
 		while s is Structure and s.is_damaged() and stock.spend(s.repair_cost()):
 			s.repair(s.repair_amount())
 	while main.lighthouse.lamp.fuel <= Lamp.FUEL_MAX - Lighthouse.REFUEL_UNITS and stock.spend({"bio": 1}):
 		main.lighthouse.lamp.refuel_clean(Lighthouse.REFUEL_UNITS)
+	if mode == "eco":
+		_day_economy(main)
 	print("   day: stock ", stock.all(), "  lighthouse ", main.lighthouse.hp, "  fuel ", roundi(main.lighthouse.lamp.fuel))
+
+# The "eco" bot also lives off the land: lifts and plants the beds, eats when hurt,
+# buys upgrades and keeps every trap cairn set.
+func _day_economy(main) -> void:
+	var stock = root.get_node("Stock")
+	var run = root.get_node("Run")
+	var garden: Garden = null
+	var cottage: Cottage = null
+	for s in get_nodes_in_group("structures"):
+		if s is Garden:
+			garden = s
+		elif s is Cottage:
+			cottage = s
+	for plot in garden.plots:
+		if plot.state() == GardenPlot.RIPE:
+			plot.interact(main.player)
+	for k in main.players:
+		if k.hp < k.max_hp * 0.8 and stock.get_amount("food") > 0:
+			cottage.eat(k)
+	for plot in garden.plots:
+		if plot.is_open and plot.state() == GardenPlot.BARE and stock.get_amount("seaweed") > 1:
+			plot.interact(main.player)
+	if stock.get_amount("oil") > 0:
+		cottage.mix_fuel()
+	for path in ["defences", "lighthouse", "garden"]:
+		if Upgrades.buy(path, main.get_tree()):
+			print("   bought ", path, " -> ", Upgrades.level(path))
+	for slot in get_nodes_in_group("trap_slots"):
+		if slot.unlocked and slot.kind == "" and stock.get_amount("driftwood") >= 5:
+			slot.arm("spike")
+	for i in main.players.size():
+		while run.flares[i] < Player.FLARES_MAX and stock.spend(Cottage.FLARE_COST):
+			run.flares[i] += 1
+	print("   economy: food %d  beds %s  upgrades %s  max hp %s" % [stock.get_amount("food"), run.crops, run.upgrades, run.max_hp_bonus])

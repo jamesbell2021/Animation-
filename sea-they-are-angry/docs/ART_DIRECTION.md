@@ -54,6 +54,18 @@ The creatures and the hammer:
 |---|
 | ![smotherer](screenshots/creature_smotherer.png) |
 
+| Night storm: rain, breakers, glowing eyes | A lightning flash shows the watchers in the surf |
+|---|---|
+| ![storm](screenshots/storm_night.png) | ![flash](screenshots/storm_flash.png) |
+
+| The homestead: potato beds, campfire, a trap on the ledge | The lighthouse at upgrade level 3 |
+|---|---|
+| ![homestead](screenshots/eco_homestead.png) | ![upgraded](screenshots/eco_lighthouse.png) |
+
+| The cottage menu | A flare burning on the north beach |
+|---|---|
+| ![menu](screenshots/eco_menu.png) | ![flare](screenshots/eco_flare.png) |
+
 Regenerate with `tools/screenshot.gd`.
 
 The owner's brief is "a Valheim look". In practice that means simple, faceted low-poly shapes with flat colour, carried by modern, moody lighting. It is the lighting and atmosphere that make Valheim read as beautiful, not texture detail. The checklist the game now follows:
@@ -69,7 +81,7 @@ The owner's brief is "a Valheim look". In practice that means simple, faceted lo
 | Filmic grade | ACES tonemapping, screen-blend bloom, SSAO, slight contrast lift |
 | Rugged props | Faceted rocks with moss on top (`Look.rock`), sea stacks, bleached driftwood, rusty scrap, weathered leaning fence posts |
 
-Still to do for the full look: real creature models, foliage variety (heather, thrift, kelp on the shingle), weather (rain and storm nights), and a sky that shows at the horizon.
+Weather is in: storm nights with rain, gusts, breakers and lightning (see DECISIONS). Still to do for the full look: real creature models, foliage variety (heather, thrift, kelp on the shingle), and a sky that shows at the horizon.
 
 ## The four keepers
 
