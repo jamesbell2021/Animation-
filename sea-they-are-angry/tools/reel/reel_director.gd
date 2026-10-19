@@ -230,9 +230,6 @@ func _setup() -> void:
 			game_camera()
 			for i in 3:
 				var b := spawn(Bloated, Terrain.beach_point(0, 0.12 + 0.12 * float(i), -1.0 + float(i)))
-				if i == 0:
-					b.max_hp = 30
-					b.hp = 30
 			spawn(Bloated, Terrain.beach_point(2, 0.25))
 			spawn(Bloated, Terrain.beach_point(1, 0.3))
 			weather()._strike_t = 7.5
@@ -384,12 +381,17 @@ func _direct(t: float) -> void:
 				if e.global_position.x > 10.0:
 					first = e
 					break
-			if t < 7.5 and first != null:
+			if t < 10.0 and first != null:
 				aim_at(first.global_position)
-			elif t >= 7.5:
+			elif t >= 10.0:
 				aim_at(Terrain.beach_point(2, 0.4))
-			if at(2.5, t, "focus"):
+			if at(2.0, t, "focus"):
 				lamp.toggle_mode()
+			# Then down onto the east beach to see it burn.
+			if at(5.0, t, "close"):
+				var bp := Terrain.beach_point(0, 0.3)
+				camera(bp + Vector3(-4.0, 7.0, 7.5), bp + Vector3(0.0, 0.8, 0.0), 50.0)
+				main.hud.visible = false
 		"ledge":
 			if at(0.0, t, "c"):
 				caption("The ledge", "The only way up. A blow aimed outward knocks them off.")
