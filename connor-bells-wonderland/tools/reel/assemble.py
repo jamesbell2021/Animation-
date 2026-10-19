@@ -13,8 +13,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-SHOTS = ["title", "race", "paintball", "finale", "end"]
-TRANSITIONS = ["circleopen", "slideleft", "fadewhite", "fade"]
+SHOTS = ["title", "race", "paintball", "dodgems", "tower", "seagull", "finale", "end"]
+TRANSITIONS = ["circleopen", "slideleft", "slideup", "pixelize", "radial", "fadewhite", "fade"]
 T = 0.35  # transition length (s)
 MUSIC_VOLUME = 0.55
 
