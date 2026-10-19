@@ -18,6 +18,8 @@ Balance playtest: a bot plays several nights and prints what happened, with `--`
 godot --headless --path sea-they-are-angry --script res://tools/playtest.gd -- 6 bot 1
 ```
 
+Gameplay reel: `tools/reel/make_reel.sh` records 16 captioned shots of the main gameplay with Godot's Movie Maker and joins them into one MP4 (needs ffmpeg, and `xvfb-run` with no display; set `GODOT=` to the binary). It takes about an hour, since every frame is fully rendered.
+
 Headless load check (no window):
 
 ```
