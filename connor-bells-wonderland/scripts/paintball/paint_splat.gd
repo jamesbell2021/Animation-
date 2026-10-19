@@ -4,7 +4,7 @@ extends RefCounted
 ## fade away past a limit) and blobs stuck to the contestants who got hit.
 
 const MAX_SPLATS := 240
-const MAX_BLOBS := 10
+const MAX_BLOBS := 18
 
 static var _splats: Array[Node3D] = []
 static var _materials: Dictionary = {}
@@ -12,8 +12,9 @@ static var _disc: CylinderMesh
 static var _blob: SphereMesh
 
 
-## A splat of [param colour] on the surface at [param pos] facing [param normal].
-static func place(parent: Node, pos: Vector3, normal: Vector3, colour: Color) -> void:
+## A splat of [param colour] on the surface at [param pos] facing [param normal],
+## [param size] times the usual size.
+static func place(parent: Node, pos: Vector3, normal: Vector3, colour: Color, size: float = 1.0) -> void:
 	if parent == null or not parent.is_inside_tree():
 		return
 	if _disc == null:
@@ -37,11 +38,11 @@ static func place(parent: Node, pos: Vector3, normal: Vector3, colour: Color) ->
 		mi.mesh = _disc
 		mi.material_override = _material(colour)
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		var s := randf_range(0.8, 1.5) if i == 0 else randf_range(0.15, 0.4)
+		var s := (randf_range(0.8, 1.5) if i == 0 else randf_range(0.15, 0.4)) * size
 		mi.scale = Vector3(s * randf_range(0.8, 1.2), 1.0, s)
 		if i > 0:
 			var a := randf() * TAU
-			mi.position = Vector3(cos(a), 0.003 * float(i), sin(a)) * randf_range(0.6, 1.1)
+			mi.position = Vector3(cos(a) * randf_range(0.6, 1.1) * size, 0.003 * float(i), sin(a) * randf_range(0.6, 1.1) * size)
 		splat.add_child(mi)
 	_splats.append(splat)
 	while _splats.size() > MAX_SPLATS:
@@ -59,8 +60,8 @@ static func stick(contestant: Contestant, colour: Color) -> void:
 		return
 	if _blob == null:
 		_blob = SphereMesh.new()
-		_blob.radius = 0.16
-		_blob.height = 0.12
+		_blob.radius = 0.21
+		_blob.height = 0.14
 		_blob.radial_segments = 8
 		_blob.rings = 4
 	var count := 0

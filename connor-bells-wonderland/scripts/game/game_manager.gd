@@ -563,7 +563,7 @@ func _on_paint_splatted(victim_name: String, shooter_name: String, lives: int) -
 	var me := str(player.name)
 	if victim_name == me:
 		var shooter := find_contestant(shooter_name)
-		hud.splat(1.2, PaintballManager.paint_colour(shooter), 4)
+		hud.splat(1.8, PaintballManager.paint_colour(shooter), 6)
 		camera.add_shake(0.45)
 		if lives > 0:
 			hud.show_message("%s splatted you! %d %s left" % [shooter_name, lives, "life" if lives == 1 else "lives"], 1.5)

@@ -1,6 +1,6 @@
 # Credits
 
-**Connor Bell's Wonderland**, a 3BL_Indie game.
+**Connor's Carnival Chaos**, a 3BL_Indie game.
 
 Made by James, Aaron, Connor and Bonnie.
 

@@ -21,6 +21,9 @@ const BALL_SPEED := 24.0
 const SAFE_SECONDS := 1.5
 ## Random aim error for players (degrees); bots set their own.
 const PLAYER_SPREAD := 3.0
+## How hard a hit throws you (horizontal and upward speed).
+const KNOCK_SPEED := 11.0
+const KNOCK_UP := 7.5
 const REGEN_SECONDS := 2.5
 const CRATE_RESPAWN := 8.0
 const SUDDEN_DEATH_AT := 150.0
@@ -272,9 +275,10 @@ func _on_ball_hit(ball: Paintball, victim: Contestant) -> void:
 	if _state.has(shooter_key):
 		_state[shooter_key]["hits"] = int(_state[shooter_key]["hits"]) + 1
 	var push := Vector3(ball.velocity.x, 0.0, ball.velocity.z).normalized()
-	victim.knock(push * 5.0 + Vector3.UP * 3.0, 0.35)
-	_apply_hit(key, shooter_key, int(st["lives"]))
-	_send("hit", [key, shooter_key, int(st["lives"])])
+	# Knocked flying: thrown back and up, tumbling, sailing through the air.
+	victim.knock(push * KNOCK_SPEED + Vector3.UP * KNOCK_UP, 1.0, true)
+	_apply_hit(key, shooter_key, int(st["lives"]), push)
+	_send("hit", [key, shooter_key, int(st["lives"]), push])
 	if int(st["lives"]) <= 0:
 		_eliminate(key, shooter_key)
 
@@ -335,7 +339,7 @@ func apply_remote_event(event: String, args: Array) -> void:
 			var key := str(args[0])
 			if _state.has(key):
 				_state[key]["lives"] = int(args[2])
-			_apply_hit(key, str(args[1]), int(args[2]))
+			_apply_hit(key, str(args[1]), int(args[2]), args[3] if args.size() > 3 else Vector3.FORWARD)
 		"out":
 			var key := str(args[0])
 			if _state.has(key):
@@ -358,18 +362,36 @@ func apply_remote_event(event: String, args: Array) -> void:
 			announcement.emit(str(args[0]))
 
 
-func _apply_hit(victim_name: String, shooter_name: String, lives: int) -> void:
+func _apply_hit(victim_name: String, shooter_name: String, lives: int, push: Vector3) -> void:
 	var victim := game.find_contestant(victim_name)
 	var shooter := game.find_contestant(shooter_name)
 	if victim != null:
 		var colour := paint_colour(shooter)
 		var pos := victim.global_position + Vector3.UP * 0.9
 		_blink(victim)
-		FX.burst(self, "paint", pos, colour, 1.4)
-		FX.burst(self, "impact", pos, Color.WHITE, 0.8)
-		PaintSplat.stick(victim, colour)
-		SoundManager.world(self, "splat", pos, randf_range(0.9, 1.2), 3.0)
+		FX.burst(self, "paint", pos, colour, 2.2)
+		FX.burst(self, "paint", pos + push * 0.6, colour, 1.4)
+		FX.burst(self, "impact", pos, Color.WHITE, 1.0)
+		FX.ring(self, victim.global_position, 2.5, colour)
+		# Paint all over them, a puddle where they stood and spatter on whatever's behind.
+		for i in range(3):
+			PaintSplat.stick(victim, colour)
+		PaintSplat.place(game, victim.global_position + Vector3.UP * 0.05, Vector3.UP, colour, 1.6)
+		_spatter_behind(pos, push, colour)
+		SoundManager.world(self, "splat", pos, randf_range(0.9, 1.2), 4.0)
+		SoundManager.world(self, "punch", pos, randf_range(1.1, 1.3), 0.0)
 	splatted.emit(victim_name, shooter_name, lives)
+
+
+## Paint sprays on through the victim onto the floor and any wall behind them.
+func _spatter_behind(from: Vector3, push: Vector3, colour: Color) -> void:
+	var space := game.get_world_3d().direct_space_state
+	for i in range(3):
+		var dir := (push + Vector3(randf_range(-0.35, 0.35), randf_range(-0.7, 0.1), randf_range(-0.35, 0.35))).normalized()
+		var query := PhysicsRayQueryParameters3D.create(from, from + dir * 7.0, Contestant.COURSE_LAYER)
+		var hit_info := space.intersect_ray(query)
+		if not hit_info.is_empty():
+			PaintSplat.place(game, hit_info["position"], hit_info["normal"], colour, randf_range(0.6, 1.1))
 
 
 func _apply_out(victim_name: String, shooter_name: String) -> void:

@@ -1,4 +1,7 @@
-# Connor Bell's Wonderland
+# Connor's Carnival Chaos
+
+(The folder is still called `connor-bells-wonderland` so existing clones and
+commands keep working.)
 
 *Tower of Frustration at the Travelling Fair.* A Godot 4.3 obstacle race for up to
 8 contestants: you, friends on the same Wi-Fi, and AI leprechauns. Six fairground
@@ -72,8 +75,9 @@ a llama called Gary...). Everyone in a Wi-Fi race sees the same prize.
 Everyone starts round the edge of a walled, floodlit arena full of crates, bunkers
 and low walls, with 5 lives and 12 paintballs. Hold the use button to fire: it
 aims for a rival roughly in front of you that you can see. Each hit knocks a life
-off and leaves your paint on them (and the screen goes your colour for whoever got
-hit); after a hit you flash and can't be hit for a moment. Paint comes back slowly
+off and sends the victim flying, tumbling through the air, plastered in your paint,
+with a puddle where they stood and spatter on the wall behind (and the screen goes
+your colour for whoever got hit); after a hit you flash and can't be hit for a moment. Paint comes back slowly
 on its own, or grab a glowing PAINT crate for a full refill. Lose all 5 lives and
 you're out and watch the rest. After 2:30 it's sudden death (one life each), and
 at 4:00 whoever has the most lives left wins.
