@@ -147,3 +147,29 @@ with a link sticker to the itch page, then `screenshots/02-leg-down.jpg` with a 
 * Upload the gameplay video to YouTube first so the itch trailer slot and the tweet have it.
 * Play one wave on each file you downloaded from the itch page. If the Android install refuses,
   it is because an older APK with the throwaway key is still on the phone: uninstall it first.
+
+## 6. itch.io page theme (Edit theme, top right of the project page)
+
+The page should look like the game: green phosphor on black, with the studio orange on the one
+thing people click.
+
+| Setting | Value |
+|---|---|
+| Background color | `#000000` |
+| Background image | none (the scanline look comes from the banner and screenshots) |
+| Text color | `#EAFFEA` |
+| Link color | `#3CFF5A` |
+| Button color | `#FF8C2B` (3BL_Indie orange) |
+| Button text color | `#000000` |
+| Font | Monospace (closest itch offers to the game's stroke lettering; "Default" is fine if you prefer readable body text) |
+| Banner image | `itch_banner_960x260.png` (replaces the title text; keep *Title* unticked) |
+| Header text color (if title text is shown instead) | `#3CFF5A` |
+| Header background color | `#000000` |
+| Screenshots | Right of the description, "default" size |
+| Layout | Default width, single column |
+| Download button text | `Download`; the Android button itch labels on its own |
+| Project theme colour for your profile and collection cards | `#3CFF5A` |
+
+Hex reference, in case a field wants a different one: game green `#3CFF5A`, dim green `#1D8A33`,
+Heat-Ray red `#FF3B3B`, amber `#FFD24A`, white `#EAFFEA`, studio orange `#FF8C2B`, studio cyan
+`#1FC8DA`.

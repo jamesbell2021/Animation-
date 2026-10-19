@@ -138,8 +138,30 @@ def x_card():
     return img
 
 
+def banner():
+    """960x260 header banner for the itch.io page theme (replaces the plain title text)."""
+    W, H = 960, 260
+    img = Image.new("RGBA", (W, H), (0, 0, 0, 255))
+    scanlines(img, 12)
+    ground_and_skyline(img, 236)
+    tripod_icon(img, 820, 100, 0.9, GREEN, 4)
+    layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    d = ImageDraw.Draw(layer)
+    e = (820 - 27 * 0.9, 100 - 4 * 0.9)
+    d.line([e, (420, 236)], fill=RED + (90,), width=12)
+    d.line([e, (420, 236)], fill=RED + (230,), width=4)
+    d.line([e, (420, 236)], fill=WHITE + (255,), width=1)
+    img.alpha_composite(layer)
+    neon_text(img, "TRIPOD ATTACK!", (40, 92), 96, GREEN, anchor="lm", glow=14)
+    neon_text(img, "A VECTOR ARCADE GAME AFTER H. G. WELLS", (44, 160), 26, DIM, anchor="lm", glow=5)
+    neon_text(img, "SHOOT THE LEGS.  DUCK THE HEAT-RAY.  TAKE EUROPE BACK.", (44, 198), 24, WHITE, anchor="lm", glow=5)
+    draw_lockup(img, 880, 222, 2, wordmark=True)
+    return img
+
+
 if __name__ == "__main__":
     os.makedirs(OUT, exist_ok=True)
+    banner().save(os.path.join(OUT, "itch_banner_960x260.png"))
     cover().save(os.path.join(OUT, "cover_630x500.png"))
     icon().save(os.path.join(OUT, "icon_512.png"))
     social_square().convert("RGB").save(os.path.join(OUT, "instagram_1080x1080.jpg"), quality=92)
