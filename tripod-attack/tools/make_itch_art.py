@@ -13,6 +13,7 @@ from PIL import Image, ImageDraw
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from make_reel import AMBER, DIM, GREEN, RED, WHITE, neon_text, tripod_icon  # noqa: E402
+from brand import draw_lockup  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.normpath(os.path.join(HERE, "..", "launch", "out"))
@@ -71,8 +72,8 @@ def cover():
     neon_text(img, "SHOOT THE LEGS.", (40, 310), 28, WHITE, anchor="lm", glow=6)
     neon_text(img, "DUCK THE HEAT-RAY.", (40, 345), 28, RED, anchor="lm", glow=6)
     neon_text(img, "TAKE EUROPE BACK.", (40, 380), 28, AMBER, anchor="lm", glow=6)
-    neon_text(img, "WINDOWS · LINUX · ANDROID", (W / 2, 470), 20, DIM, glow=4)
-    neon_text(img, "3BL", (W - 40, 470), 26, WHITE, anchor="rm", glow=6)
+    neon_text(img, "WINDOWS · LINUX · ANDROID", (W / 2 - 60, 470), 20, DIM, glow=4)
+    draw_lockup(img, W - 70, 462, 2)
     return img
 
 

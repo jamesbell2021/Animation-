@@ -4,8 +4,8 @@
     python3 tools/make_reel.py take.avi launch/out/tripod-attack-reel.mp4
 
 The gameplay (1024x576) sits in the middle third, sharp, over a blurred and darkened copy of
-itself. A title band with the 3BL mark and the game's name sits above; captions timed to the
-EVENT lines the reel script prints run below; a "3BL presents" card opens and an "out now" card
+itself. A title band with the 3BL_Indie lockup and the game's name sits above; captions timed to the
+EVENT lines the reel script prints run below; a "3BL_Indie presents" card opens and an "out now" card
 closes. Needs Pillow and ffmpeg. The font is DotGothic16 (OFL) from the Neon Mega Tank folder.
 """
 import os
@@ -14,6 +14,9 @@ import sys
 import tempfile
 
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from brand import draw_lockup  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 FONT = os.path.normpath(os.path.join(HERE, "..", "..", "neon-mega-tank", "fonts", "DotGothic16-Regular.ttf"))
@@ -89,9 +92,11 @@ def scanlines(img, shade=18):
 
 
 def mark_3bl(img, cx, cy, size=64, sub=True):
-    neon_text(img, "3BL", (cx, cy), size, WHITE, glow=10)
+    """The 3BL_Indie lockup; `size` is roughly its height in pixels."""
+    px = max(2, int(size / 20))
+    draw_lockup(img, cx, cy, px)
     if sub:
-        neon_text(img, "gamesdevni.site", (cx, cy + size * 0.85), int(size * 0.42), DIM, glow=6)
+        neon_text(img, "gamesdevni.site", (cx, cy + px * 10 + size * 0.45), int(size * 0.42), DIM, glow=6)
 
 
 def top_band():
@@ -118,8 +123,8 @@ def caption(line1, line2, colour):
 def intro_card():
     img = Image.new("RGBA", (W, H), (0, 0, 0, 255))
     scanlines(img)
-    neon_text(img, "3BL", (W // 2, 820), 220, WHITE, glow=24)
-    neon_text(img, "PRESENTS", (W // 2, 990), 64, GREEN, glow=12)
+    draw_lockup(img, W // 2, 860, 14)
+    neon_text(img, "PRESENTS", (W // 2, 1090), 64, GREEN, glow=12)
     return img
 
 
@@ -132,7 +137,7 @@ def outro_card():
     neon_text(img, "WINDOWS  ·  LINUX  ·  ANDROID", (W // 2, 1070), 48, AMBER, glow=10)
     neon_text(img, "SHOOT THE LEGS. DUCK THE HEAT-RAY.", (W // 2, 1200), 40, DIM, glow=6)
     neon_text(img, "PROTECT THE PEOPLE. TAKE EUROPE BACK.", (W // 2, 1255), 40, DIM, glow=6)
-    mark_3bl(img, W // 2, 1560, 110)
+    mark_3bl(img, W // 2, 1560, 180)
     return img
 
 

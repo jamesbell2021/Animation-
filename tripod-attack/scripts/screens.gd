@@ -69,6 +69,7 @@ func _draw_title() -> void:
 	if not Sfx.is_ready:
 		Vec.text(self, "WARMING UP THE SOUND BOARD" + ".".repeat(int(main.t * 2.0) % 4), Vector2(C.W / 2, C.H - 48), 8.0, "center", Vec.DIM)
 	Vec.text(self, "DRAG BACK AND RELEASE TO FIRE   ARROWS AIM   ENTER FIRE   SPACE DUCK   M MUTE", Vector2(C.W / 2, C.H - 28), 8.0, "center", Vec.DIM)
+	Brand.draw(self, Vector2(C.W - 56.0 * 2.0 - 24.0, C.H - 20.0 * 2.0 - 44.0), 2.0, 0.9)
 
 
 func _tripod_icon(p: Vector2, s: float, col: Color) -> void:

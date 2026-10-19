@@ -14,7 +14,7 @@ builds come from the **Tripod Attack builds** GitHub Actions run (also in `build
 | Classification | Game |
 | Kind of project | Downloadable |
 | Release status | Released |
-| Pricing | Your call. The other 3BL arcade games are $4.99 with the bundle at $5.99; this one is a single-player arcade game of similar size. "$0 or donate" is the other sensible option for a launch. |
+| Pricing | Your call. The other 3BL_Indie arcade games are $4.99 with the bundle at $5.99; this one is a single-player arcade game of similar size. "$0 or donate" is the other sensible option for a launch. |
 | Genre | Action (Shooter) |
 | Tags (itch allows 10) | arcade, retro, vectrex, war-of-the-worlds, physics, godot, 2d, singleplayer, sci-fi, destruction |
 | Custom noun | game |
@@ -45,7 +45,7 @@ set in the repository secrets.
 
 | Slot | File | Notes |
 |---|---|---|
-| Cover image (630x500) | `launch/out/cover_630x500.png` | Title, the machine, the Heat-Ray, the three taglines, the 3BL mark |
+| Cover image (630x500) | `launch/out/cover_630x500.png` | Title, the machine, the Heat-Ray, the three taglines, the 3BL_Indie logo |
 | Screenshots (in this order) | `launch/out/screenshots/01-heat-ray.jpg` … `09-game-over.jpg` | Nine 1920x1080 frames from the engine: the Heat-Ray over the ducked artilleryman, a leg blown off, the wreck, a machine walking in, the cry, the campaign map, the sector briefing, the title, game over. Use at least the first six. |
 | Trailer (YouTube or Vimeo link) | `launch/out/tripod-attack-gameplay-1080p.mp4` | 34 s of the scripted take, 1920x1080, with the game audio. Upload it to YouTube as the trailer; the vertical reel (`tripod-attack-reel.mp4`) can go up as a Short. |
 | Icon (for the bundle/collection page) | `launch/out/icon_512.png` | |
@@ -90,7 +90,7 @@ Every line of text in the game is Wells's own, from the 1898 novel.
 * Keyboard: arrows or WASD aim and set power, Enter fires, Space ducks, P pauses, M mutes.
 * Gamepad: left stick aims, A fires, B ducks.
 
-Windows, Linux and Android. Made with Godot 4 by 3BL. No music or sound files: it is all
+Windows, Linux and Android. Made with Godot 4 by 3BL_Indie. No music or sound files: it is all
 synthesised when the game starts.
 
 ## Devlog post: "Tripod Attack! is out"

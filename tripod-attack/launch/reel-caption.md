@@ -29,12 +29,12 @@ after H. G. Wells with full-physics collapsing tripods. Windows · Linux · Andr
 ## Alt text for the cover image
 
 A green vector-graphics fighting-machine collapsing in a shower of sparks over a ruined Belfast
-skyline, with the words TRIPOD ATTACK! above and the 3BL mark below.
+skyline, with the words TRIPOD ATTACK! above and the 3BL_Indie logo below.
 
 ## Notes
 
 * The reel opens on a "3BL PRESENTS" card and closes on an "OUT NOW · WINDOWS · LINUX · ANDROID"
-  card with the 3BL mark and gamesdevni.site. Put the download link (the itch.io page or the
+  card with the 3BL_Indie logo and gamesdevni.site. Put the download link (the itch.io page or the
   GitHub Actions artifacts) in the bio before posting.
-* There is no logo file in the repository; the 3BL wordmark is set in DotGothic16, the font the
-  Neon Mega Tank launch art uses, so the two games match.
+* The logo is the 3BL_Indie lockup from gamesdevni.site (three figures over 3BL_INDIE), drawn
+  from the site's SVG by `tools/brand.py`.
