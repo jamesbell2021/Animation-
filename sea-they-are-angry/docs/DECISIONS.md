@@ -230,11 +230,11 @@ Built to plan 2's Phase C, with these departures:
   - Stocky proportions: big hands, broad shoulders, shorter legs.
 
   It is still procedural modelling, not hand sculpting: up close the forms are simpler than Valheim's. The script is where to push further (more head detail, cloth folds, a second texture pass).
-- **Animation is code, not clips.** `CharacterRig.pose(bone, euler)` rotates a bone about the model's own axes. The keeper's walk, swing, hammer and pour, the creatures' walks, the Smotherer's climb and lantern wrap, the Crab's scuttle and claw, and the Squid's rippling arms are all posed each frame. Tools sit in the keeper's right hand and the lantern hangs from the left, on bone attachments.
+- **Animation was first posed in code** (sine cycles through `CharacterRig.pose()`); it is now clips, below. Tools sit in the keeper's right hand and the lantern hangs from the left, on bone attachments.
 - **Ragdolls (`CharacterRig.ragdoll()`):** on demand, the rig builds a `PhysicalBoneSimulator3D` with a capsule per bone and cone joints with swing and twist limits.
   - **Collisions:** the bodies sit on their own collision layer (32) and collide only with the ground and buildings.
   - **Speed cap:** speeds are capped at 7 m/s (and spin at 14 rad/s). Without the cap, a body that starts against the crag wall was flung 10 m into the air.
-  - **Getting up:** the owner moves to where the ragdoll lies, found with a ray down because the island has several levels, faces the way it fell, and the ragdoll blends back into the animated pose over 0.55 s. If the ragdoll is lying somewhere it can't stand (the sea), it snaps up on the last safe ground instead of stretching across the gap.
+  - **Getting up:** the owner moves to where the ragdoll lies, found with a ray down because the island has several levels, and gets up with a get-up clip (see the next section). With no clip it blends back into the animated pose over 0.55 s. If the ragdoll is lying somewhere it can't stand (the sea), it snaps up on the last safe ground instead of stretching across the gap.
   - **Lifetime:** the physics bodies are freed after getting up, so idle characters cost nothing.
 - **When keepers go down:**
   - Any hit of 10 or more (a Squid's lunge, a Crab's slam, a Bloated's burst) knocks them flat for about a second.
@@ -248,3 +248,28 @@ Built to plan 2's Phase C, with these departures:
 - **The Eel** keeps its tube body (it has to wrap the tower) but gains a mottled texture, a pale belly, a ragged dorsal fin and a moray head modelled in Blender.
 - **Eyes** are placed from points the build script writes alongside each model (`*.json`), so the glows sit in the sockets.
 - **Character models go through Git LFS** (path rule for `sea-they-are-angry/art/**/*.glb`). The textures Godot extracts from them are git-ignored.
+
+## Animation clips (owner's request: "make sure the animations are more realistic"; "take any you need from Forged in Formation")
+
+- **What came from Forged in Formation:** the method, not files. Its own Blender scripts (`Art/Characters/build_human_anims.py` and `crouch_solver.py` in the Formnation repo) solve poses rather than ease between them by eye. Every frame is worked out in full and keyed, the legs by two-bone IK on the true hip, knee and ankle joints with an explicit knee pole, so a planted foot stays put. `art/source/characters/animate.py` ports that solver to Sea's rig.
+  - Its Unreal Mannequin clips can't be reused: they are Epic's content, licensed for Unreal Engine only, and on a different skeleton.
+- **The clips are baked into each character's GLB** by the same build, solved on that character's own skeleton. The squat Bloated and the long-legged Smotherer get steps that fit their legs, because distances are in leg lengths. `<name>.anims.json` beside each GLB gives each clip's length and loop, the locomotion cycles' real period and speed, how high a climb cycle rises, and where the hips lie at the start of each get-up.
+- **What each character has:**
+  - Keepers: idle, walk, run, sprint, swing, hammer, pour, climb, flare, hit, revive, get up from the back, get up from the front.
+  - Bloated: idle, a shambling walk dragging the right leg, swelling to burst, a two-handed strike, hit, both get-ups (slower and heavier).
+  - Smotherer: idle, a hunched stalking creep, the tower climb, smothering the lamp, strike, hit, both get-ups.
+  - Crab: idle, a tripod walk with each leg tip planted by IK, rummaging in wreckage.
+  - Squid: idle, a crawl that drags the body after alternating sets of arms, the lunge.
+- **Walking that isn't skating:** walk, run and sprint are one-second cycles in step: left heel strike at 0, right at 0.5. The game blends them by speed and plays them at the rate that matches how fast the character really moves, so a foot on the ground stays put.
+  - The cycles carry the detail of a real gait: heel strike and toe-off rolling over the heel and ball of the foot, the hips rising over the standing leg and swaying toward it, the pelvis turning and dropping on the swing side, the shoulders turning against it, and the head held steady.
+  - Measured on Callum's walk: the knee is about 15° at heel strike, 4° at mid-stance, 38° at toe-off and 57° in the swing. The run is about 45° at mid-stance and 110° in the swing, with a flight phase.
+- **How the game plays them (`CharacterRig`):**
+  - **The blend:** one AnimationTree per character, advanced by hand each physics frame: idle into walk/run/sprint by `locomote(speed)`, then a held `activity()` (hammering, pouring, the ladder, kneeling to revive, a creature climbing or swelling), then an upper-body `shot()` that the legs walk under (the swing, the flare, a flinch, a creature's strike), then a full-body `shot()` (the get-ups, the Squid's lunge).
+  - **Code on top:** `layer()` adds code turns over the clips: the Crab's claw cocked for a slam, the Bloated and Smotherer hunching from the beam.
+  - **Timing:** the hammer clip is one blow in `STRIKE_TIME`, landing when the game plays the sound. A creature's strike is fired so it lands as the fence takes the damage, and the Squid's arms snap shut as its lunge strikes.
+- **Getting up for real:** when a ragdoll gets up, `getup_plan()` works out whether it is lying face up or face down (from which way its chest faces), which way to face, and where to stand the owner so that the clip's first frame lies where the body does. The limp body blends into that first frame over 0.3 s and the clip takes it up:
+  - off the back: up on the elbows, sit up with the knees drawn in, rock forward over a hand onto the feet, hands to the knees, stand;
+  - off the front: a push-up, a knee under, a foot planted, stand.
+  Keepers take about 1.4 s, the heavy Bloated nearer 2.3 s.
+- **Checked:** every clip was rendered as frame strips in Blender and through the game's own rig in Godot, and in the reel's new "moves" shot (a swing that floors a Bloated, which gets up; a keeper floored and getting up). All seven test suites still pass.
+- **Limits:** the clips are authored in code, not motion-captured or keyed by an animator. There are no hand or finger poses and no facial animation. Turning on the spot doesn't step, it slides. Climbing a ladder still moves the keeper in straight lines, with the clip on top.

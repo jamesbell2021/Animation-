@@ -16,7 +16,7 @@ const SPAWN := Vector3(-1.6, 0.0, 2.7)
 const FPS := 30.0
 const SAVES := ["user://run.json", "user://profile.json"]
 const LENGTHS := {
-	"title": 6.0, "day": 12.0, "dusk": 8.0, "beam": 12.0, "ledge": 8.0, "squid": 7.0, "crab": 7.0,
+	"title": 6.0, "day": 12.0, "moves": 11.0, "dusk": 8.0, "beam": 12.0, "ledge": 8.0, "squid": 7.0, "crab": 7.0,
 	"eel": 13.0, "smotherer": 10.0, "storm": 9.0, "garden": 8.0, "cottage": 7.0, "trap": 7.0,
 	"flare": 7.0, "dawn": 7.0, "end": 5.0,
 }
@@ -234,6 +234,14 @@ func _setup() -> void:
 					_actors["fence"] = s
 			place(Terrain.beach_point(0, 0.42, 0.5))
 			main.hud.visible = true
+		"moves":
+			# Close in on the keeper and a Bloated on the east beach: the run, the swing,
+			# a fall and a get-up, a walk.
+			scene(PH_DAY, 0.15, false)
+			place(Terrain.beach_point(0, 0.8, 0.5))
+			var mb := spawn(Bloated, Terrain.beach_point(0, 0.42, 0.5))
+			hold(mb)
+			_actors["b"] = mb
 		"dusk":
 			scene(PH_DAY, 0.3, false)
 			place(Vector3(-2.6, 0.0, 3.4))
@@ -382,6 +390,37 @@ func _direct(t: float) -> void:
 			var p := player.global_position
 			if t > -1.5:
 				camera(p + Vector3(5.5, 7.0, 7.5), p + Vector3(0.0, 0.6, 0.0), 45.0)
+		"moves":
+			if at(0.0, t, "c"):
+				caption("Moving", "Clips solved in Blender: planted feet, real get-ups.")
+			var mb: Enemy = _actors["b"]
+			var bp: Vector3 = mb.global_position if is_instance_valid(mb) else Terrain.beach_point(0, 0.45)
+			if t < 2.3:
+				var to := bp - player.global_position
+				to.y = 0.0
+				walk_to(bp - to.normalized() * 1.6, 0.2)
+			elif at(2.3, t, "swing"):
+				walk_to(player.global_position)
+				aim_at(bp)
+				tap("attack")
+			elif at(5.2, t, "floored"):
+				var away := player.global_position - bp
+				away.y = 0.0
+				player.knock((away.normalized() + Vector3(0.0, 0.5, 0.0)) * 30.0 * 3.5, 0.9)
+			elif t > 8.2 and t < 10.8:
+				# A slow walk back up the beach: a gentle push on the stick.
+				var up := Terrain.beach_point(0, 0.9) - player.global_position
+				up.y = 0.0
+				up = up.normalized() * 0.28
+				_axis("move_right", "move_left", up.x)
+				_axis("move_down", "move_up", up.z)
+			elif at(10.8, t, "stop"):
+				walk_to(player.global_position)
+			var mid := (player.global_position + bp) * 0.5
+			var along := Terrain.beach_point(0, 0.42) - Terrain.beach_point(0, 0.8)
+			along.y = 0.0
+			var side := along.normalized().cross(Vector3.UP)
+			camera(mid + side * 5.0 + Vector3(0.0, 2.4, 0.0), mid + Vector3(0.0, 0.8, 0.0), 42.0)
 		"dusk":
 			if at(0.0, t, "c"):
 				caption("Dusk", "The lamp lights. The keeper works it from inside the tower.")

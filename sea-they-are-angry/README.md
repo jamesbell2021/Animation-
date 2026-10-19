@@ -51,7 +51,7 @@ Keepers face the way they walk and turn to their aim to swing. Each carries a pa
 ## What is in the slice
 
 - The island, after Bad North: a meadow ringed by cliffs, three beaches where the sea comes ashore, and the lighthouse on a crag in the middle. The only way up is a ledge path that winds round the crag. Fixed camera, day/dusk/night/dawn lighting with fog.
-- Characters modelled, rigged and textured in Blender by a script (`art/source/characters/build_characters.py`), animated in code. Hard hits knock keepers and creatures down as ragdolls, and they get back up.
+- Characters modelled, rigged, textured and animated in Blender by scripts (`art/source/characters/build_characters.py`, `animate.py`): IK-solved walks, runs and sprints with planted feet, tool work, ladder climbs and creature gaits. Hard hits knock keepers and creatures down as ragdolls, and they get back up with real get-up animations from where they fall.
 - Keeper movement, mouse aim, boathook attack. A blow aimed outward on the ledge knocks a creature over the edge. Keepers have their own ladders down the crag.
 - The lamp: fuel, wide and focused beams (the focused one reaches the beaches), auto-sweep when nobody operates it, Burning to Guttering to Dark.
 - Seven scavenge points on the beaches that refill at dawn (an eighth with three keepers), five fences at the chokepoints (beach heads and the ledge), repair, refuel.

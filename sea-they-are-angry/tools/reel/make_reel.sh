@@ -14,7 +14,7 @@ RUN=()
 if [ -z "${DISPLAY:-}" ] && command -v xvfb-run >/dev/null; then
 	RUN=(xvfb-run -a -s "-screen 0 1280x720x24")
 fi
-ALL=(title day dusk beam ledge squid crab eel smotherer storm garden cottage trap flare dawn end)
+ALL=(title day moves dusk beam ledge squid crab eel smotherer storm garden cottage trap flare dawn end)
 read -r -a TODO <<< "${SHOTS:-${ALL[*]}}"
 "$GODOT" --headless --editor --quit --path . >/dev/null 2>&1 || true
 if [ "${SKIP_RECORD:-0}" != "1" ]; then

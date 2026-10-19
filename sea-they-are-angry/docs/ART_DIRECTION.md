@@ -74,6 +74,18 @@ The creatures and the hammer:
 |---|
 | ![ragdoll](screenshots/ragdoll_keeper.png) |
 
+| Walk, run and sprint (one row each), played by the game's rig: feet planted, heel to toe |
+|---|
+| ![gaits](screenshots/anim_walk_run_sprint.png) |
+
+| The Bloated's shamble, the Smotherer's creep, the Crab's tripod walk, the Squid's crawl |
+|---|
+| ![creature gaits](screenshots/anim_creatures.png) |
+
+| Getting up for real: from the ragdoll into the clip, onto the elbows, sit, rock forward, stand |
+|---|
+| ![get up](screenshots/anim_getup.png) |
+
 | Clear, squalls and storm: each night's weather is rolled at dusk |
 |---|
 | ![weather](screenshots/weather_nights.png) |

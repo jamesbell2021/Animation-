@@ -24,6 +24,7 @@ Blender 4.2 LTS. A full rebuild takes about two minutes on a CPU. After rebuildi
 | characters/squid.glb | The Wall-Crawling Squid | mantle, 6 three-part arms |
 | characters/eel_head.glb | The Constrictor Eel's head (the body is a tube drawn in code) | none |
 | characters/*.json | Points the game needs (eyes, mouth), in the game's model space | |
+| characters/*.anims.json | The clips in each GLB: length, loop, and for walks the real period and speed; where a get-up starts | |
 
 How the script works:
 
@@ -34,7 +35,21 @@ How the script works:
 - **Materials** are procedural: two-colour noise with a knit, cable, weave, rib or stripe pattern. Curvature lightens raised edges and darkens creases, the way a hand-painted texture does, and a vertical grade lightens toward the head. Each character is baked with ambient occlusion into one 1024² texture, so it draws with a single material.
 - **Coordinates:** Z up, facing -Y, left is +X (bones named `.L`). Godot sees +Y up, facing +Z; `CharacterRig` turns the model round to face -Z.
 
-The game animates the bones in code (`CharacterRig.pose()` takes rotations about the model's own axes) and turns them into physics for ragdolls on demand. There are no baked animations.
+## Animation
+
+`source/characters/animate.py` authors every clip in code and the build bakes them into the GLBs, solved on each character's own skeleton. It is a port of Forged in Formation's crouch solver: every frame is solved and keyed, and feet and planted hands are placed by two-bone IK, so contacts don't slide.
+
+- Distances are in leg lengths, so steps fit each body.
+- Walk, run and sprint are one-second cycles in step; their real period and speed go in the `.anims.json`.
+- `CharacterRig` plays the clips through an AnimationTree:
+  - `locomote(speed)` picks and paces the walk, run or sprint.
+  - `activity(name)` holds a looped or one-time action.
+  - `shot(name)` plays a one-off: upper body for swings and flinches, the whole body for get-ups and lunges.
+  - `layer(bone, euler)` adds code on top.
+  - A ragdoll gets up with `getup_plan()` and `get_up(time, clip)`.
+- The build prints any clip where a limb can't reach its target ("overreaches"). A few centimetres is fine.
+
+To change a clip, edit its pose function in `animate.py` and rebuild the character.
 
 ## Older drop-ins
 
