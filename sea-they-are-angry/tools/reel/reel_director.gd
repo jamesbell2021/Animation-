@@ -235,10 +235,12 @@ func _setup() -> void:
 			weather()._strike_t = 7.5
 		"ledge":
 			scene(PH_NIGHT, 0.9, false)
-			place(Terrain.ledge_point(0.5))
-			_actors["b"] = spawn(Bloated, Terrain.ledge_point(0.4))
 			var lp := Terrain.ledge_point(0.46)
 			var out := Vector3(lp.x, 0.0, lp.z).normalized()
+			place(Terrain.ledge_point(0.5) - out * 0.7)
+			var lb := spawn(Bloated, Terrain.ledge_point(0.37))
+			lb.speed = 0.0
+			_actors["b"] = lb
 			camera(lp + out * 7.0 + Vector3(0.0, 4.5, 0.0), lp + Vector3(0.0, 0.3, 0.0), 50.0)
 		"squid":
 			scene(PH_NIGHT, 0.9, false)
@@ -396,9 +398,11 @@ func _direct(t: float) -> void:
 			if at(0.0, t, "c"):
 				caption("The ledge", "The only way up. A blow aimed outward knocks them off.")
 			var b = _actors["b"]
+			if at(0.0, t, "go") and is_instance_valid(b):
+				b.speed = 1.15
 			if is_instance_valid(b):
 				aim_at(b.global_position)
-				if Geo.flat_dist(b.global_position, player.global_position) < 2.0 and at(0.0, t, "swing"):
+				if t > 2.0 and Geo.flat_dist(b.global_position, player.global_position) < 1.7 and at(0.0, t, "swing"):
 					player._attack()
 					var out := Vector3(b.global_position.x, 0.0, b.global_position.z).normalized()
 					b._knock = out * Enemy.SHOVE_SPEED
