@@ -54,6 +54,17 @@ func _part_sphere(r: float, scale: Vector3, pos: Vector3, mat: Material) -> Mesh
 func _build() -> void:
 	_visual = Node3D.new()
 	add_child(_visual)
+	if _load_rig("bloated", _visual):
+		rig.mass = 4.0
+		rig.thickness = 1.5
+		var eye := Color(0.8, 1.0, 0.35)
+		_rig_eye("eye.L", eye, 0.32)
+		_rig_eye("eye.R", eye, 0.32)
+		Geo.cyl_shape(self, 0.5, 1.7, Vector3(0.0, 0.9, 0.0))
+		return
+	_build_primitive()
+
+func _build_primitive() -> void:
 	# Low roughness gives the drowned skin a wet sheen in the lamp light.
 	_body_mat = Look.flat_mat(BODY_COLOR, 0.32)
 	var limb := Look.flat_mat(Color(0.33, 0.39, 0.32), 0.4)
@@ -139,6 +150,13 @@ func _physics_process(delta: float) -> void:
 		c = c.lerp(BURN_COLOR, _burn_k * flicker)
 	if _hit_t > 0.0:
 		c = c.lerp(HIT_COLOR, _hit_t / 0.1)
+	if rig != null:
+		# The texture carries the colour: tint it by how far the look has moved.
+		rig.tint(Color(c.r / BODY_COLOR.r, c.g / BODY_COLOR.g, c.b / BODY_COLOR.b), BURN_COLOR, _burn_k * 0.6)
+		_animate_walk(delta, 2.2, 0.45, 0.25, 0.35 + _lit_k * 0.3, 0.15 + _lit_k * 0.6)
+		if not rig.is_ragdoll():
+			_visual.scale = Vector3.ONE.lerp(COWER_SCALE, _lit_k)
+		return
 	_body_mat.albedo_color = c
 	# Cower: squat and swell while the light is on it.
 	_visual.scale = Vector3.ONE.lerp(COWER_SCALE, _lit_k)
@@ -152,6 +170,9 @@ func _enter_Arrived() -> void:
 
 func is_bursting() -> bool:
 	return state == &"Bloat" or state == &"Burst"
+
+func can_ragdoll() -> bool:
+	return not is_bursting()
 
 func _die() -> void:
 	if is_bursting():
@@ -167,13 +188,23 @@ func _enter_Bloat() -> void:
 	velocity = Vector3.ZERO
 	Audio.sfx("groan", global_position, -2.0, 0.05)
 	_knock = Vector3.ZERO
+	if rig != null:
+		# Swelling to burst: up off the ground at once, wherever it was lying.
+		if rig.is_ragdoll():
+			rig.get_up(0.1)
+		return
 	_body_mat.emission_enabled = true
 
 func _tick_Bloat(_delta: float) -> void:
 	velocity = Vector3.ZERO
 	var k := clampf(state_t / BLOAT_TIME, 0.0, 1.0)
-	_body_mat.albedo_color = BODY_COLOR.lerp(GLOW_COLOR, k)
-	_body_mat.emission = GLOW_COLOR * k * 0.6
+	if rig != null:
+		rig.tint(Color.WHITE.lerp(Color(1.6, 1.8, 1.3), k), GLOW_COLOR, k * 1.2)
+		rig.pose("upper_arm.L", Vector3(-0.4 * k, 0.0, -0.6 * k))
+		rig.pose("upper_arm.R", Vector3(-0.4 * k, 0.0, 0.6 * k))
+	else:
+		_body_mat.albedo_color = BODY_COLOR.lerp(GLOW_COLOR, k)
+		_body_mat.emission = GLOW_COLOR * k * 0.6
 	var s := 1.0 + MAX_PULSE * k * absf(sin(state_t * 12.0))
 	_visual.scale = Vector3(s, s, s)
 	if state_t >= BLOAT_TIME:

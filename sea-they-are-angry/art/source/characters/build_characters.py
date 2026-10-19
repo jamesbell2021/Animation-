@@ -18,6 +18,7 @@ Every character is made the same way, so they can be rebuilt and tweaked from he
 Blender coordinates: Z up, the character faces -Y, its left is +X (bone names .L).
 """
 
+import json
 import math
 import os
 import sys
@@ -468,8 +469,21 @@ def bake_textures(ob, size=TEX):
     return final
 
 
+MARKERS = {}
+
+
+def mark(key, p):
+    """Remember a point (eyes, mouth) for the game, which puts glows and effects there.
+    Written in the game's model space: +Y up, the character faces -Z, its left is -X."""
+    MARKERS[key] = [-p[0], p[2], p[1]]
+
+
 def export(name, rig, body):
     os.makedirs(OUT, exist_ok=True)
+    if MARKERS:
+        with open(os.path.join(OUT, name + ".json"), "w") as f:
+            json.dump(MARKERS, f, indent=1)
+        MARKERS.clear()
     activate(rig, [body])
     path = os.path.join(OUT, name + ".glb")
     bpy.ops.export_scene.gltf(filepath=path, export_format='GLB', use_selection=True, export_apply=False,
@@ -610,6 +624,7 @@ def head_parts(C, dims, mats, look):
         parts.append(blob("nostril", C + Vector((s * 0.016 * nose, -b * 1.03, -c * 0.27)), (0.012, 0.012, 0.01), 10, 6, mats["skin"]))
         # Small, deep-set eyes under heavy lids.
         e = C + Vector((s * a * 0.4, -b * 0.76, c * 0.1))
+        mark("eye." + ("L" if s > 0 else "R"), e + Vector((0, -0.012, 0)))
         parts.append(blob("eye", e, (0.0135, 0.009, 0.0105), 12, 8, mats["eye_white"]))
         parts.append(blob("iris", e + Vector((0, -0.0072, 0)), (0.0072, 0.004, 0.0072), 10, 6, mats["iris"]))
         lid = dome("lid", e + Vector((0, -0.0015, 0.001)), (0.0165, 0.0125, 0.0135), cut=-0.05, mat=mats["skin"], segs=12, rings=8)
@@ -1017,7 +1032,179 @@ def build_ewan():
     finish(name, body, rig, parts)
 
 
+# ---------------------------------------------------------------- the drowned
+
+def creature_mats(skin1, skin2, extra=None, skin_scale=14):
+    m = {
+        "skin": pmat("skin", skin1, skin2, scale=skin_scale, detail=8, lo=0.25, hi=0.8, rough=0.3, form=1.8),
+        "dark": pmat("dark", (0.04, 0.05, 0.05), (0.08, 0.09, 0.09), rough=0.6, form=0.4, grade=False),
+        "kelp": pmat("kelp", (0.06, 0.12, 0.06), (0.14, 0.22, 0.1), scale=60, pattern='stripes', pscale=120, pstrength=0.3, rough=0.3, form=1.2),
+        "barnacle": pmat("barnacle", (0.55, 0.53, 0.48), (0.8, 0.78, 0.7), scale=80, detail=8, rough=0.8, form=2.0),
+        "rags": pmat("rags", (0.12, 0.1, 0.08), (0.24, 0.2, 0.15), scale=40, pattern='weave', pscale=120, pstrength=0.3, form=1.6),
+    }
+    m.update(extra or {})
+    return m
+
+
+def on_arm(c, P, r=0.13):
+    for side in ("L", "R"):
+        for a, b in (("shoulder", "elbow"), ("elbow", "wrist"), ("wrist", "fingers")):
+            d, t = seg_dist(c, P[a + "." + side], P[b + "." + side])
+            if d < r and (a != "shoulder" or t > 0.2):
+                return True
+    return False
+
+
+def creature_region(rag_top, rag_bottom):
+    def region(c, n, P):
+        if rag_bottom < c.z < rag_top and abs(c.x) < 0.45 and not on_arm(c, P):
+            return "rags"
+        return "skin"
+    return region
+
+
+def kelp_strands(origin_pts, mat, bone, length=(0.3, 0.6), seed=2):
+    import random
+    rnd = random.Random(seed)
+    parts = []
+    for p0 in origin_pts:
+        # A frond: flat, wavy and tapering, hanging and curling a little.
+        p0 = Vector(p0)
+        L = rnd.uniform(*length)
+        sway = Vector((rnd.uniform(-0.05, 0.05), rnd.uniform(0.0, 0.05), 0))
+        pts = [p0 + sway * (k / 3.0) ** 2 + Vector((0.015 * math.sin(k * 2.1 + rnd.random() * 3), 0, -L * k / 3.0)) for k in range(4)]
+        widths = [(0.02, 0.007), (0.026, 0.007), (0.02, 0.006), (0.007, 0.003)]
+        st = skin_body("kelp", list(zip(pts, widths)), [(0, 1), (1, 2), (2, 3)], levels=1)
+        add_mat(st, mat)
+        bind_rigid(st, bone)
+        parts.append(st)
+    return parts
+
+
+def barnacles(points, mat, bone, seed=4):
+    import random
+    rnd = random.Random(seed)
+    parts = []
+    for p in points:
+        n = Vector(p).normalized()
+        cone = tube("barnacle", Vector(p), Vector(p) + Vector((n.x, n.y, 0.4)).normalized() * 0.03, 0.02 * rnd.uniform(0.7, 1.3), 0.008, 7, mat)
+        bind_rigid(cone, bone)
+        parts.append(cone)
+    return parts
+
+
+def build_bloated():
+    """The Bloated Dead: a drowned hulk, swollen with seawater. A distended belly and
+    chest, a small head sunk forward between the shoulders, long swollen arms, short legs,
+    mottled grey-green skin, rotten rags, barnacles and trailing kelp."""
+    name = "bloated"
+    hs = 0.95
+    p = {"height": 1.06, "legs": 0.82, "width": 1.35, "girth": 1.0, "head": hs, "arms": 1.18, "hunch": 0.07, "stance": 1.3,
+         "r": {"hips": (0.27, 0.23), "spine": (0.34, 0.31), "chest": (0.33, 0.27), "upper": (0.27, 0.2), "neck": 0.12,
+               "shoulder": 0.105, "elbow": 0.085, "wrist": 0.068, "hand": (0.075, 0.045), "fingers": (0.06, 0.036), "thumb": 0.03,
+               "hip": 0.14, "knee": 0.105, "ankle": 0.08, "toe": (0.075, 0.05)}}
+    mats = creature_mats((0.26, 0.31, 0.25), (0.46, 0.5, 0.4), {
+        "mouth": pmat("mouth", (0.08, 0.04, 0.04), (0.16, 0.06, 0.06), rough=0.2, form=0.4, grade=False),
+        "eye_white": pmat("eye_white", (0.85, 0.85, 0.6), (0.95, 0.95, 0.7), rough=0.2, form=0.0, grade=False),
+        "iris": pmat("iris", (0.5, 0.6, 0.2), (0.7, 0.8, 0.3), rough=0.2, form=0.0, grade=False),
+    })
+    joints, edges, P = humanoid_joints(p, skip=("head_low", "head_mid", "head_top"))
+    body = skin_body(name, joints, edges)
+    body = roughen(body, 0.02, 0.18)
+    for m in mats.values():
+        add_mat(body, m)
+    paint_regions(body, lambda c, n: creature_region(P["hips"].z + 0.02, P["knee.L"].z + 0.05)(c, n, P), mats)
+    rig = make_armature(name, P, HUMANOID_BONES)
+    bind_auto(body, rig)
+    C, dims = head_frame(P, hs)
+    C = C + Vector((0, -0.06, -0.06))
+    a, b, c = dims
+    head = sculpt_head("head", C, dims, mats["skin"], {"jaw": 1.5, "chin": 0.4, "brow": 0.5, "cheeks": 1.8})
+    head = roughen(head, 0.006, 0.05)
+    bind_rigid(head, "head")
+    parts = [head] + head_parts(C, dims, mats, {"nose": 0.6})
+    mouth = blob("mouth", C + Vector((0, -b * 0.82, -c * 0.45)), (0.035, 0.02, 0.028), 12, 8, mats["mouth"])
+    bind_rigid(mouth, "head")
+    parts.append(mouth)
+    mark("mouth", C + Vector((0, -b * 0.9, -c * 0.45)))
+    parts += barnacles([P["upper"] + Vector((0.12, 0.15, 0.06)), P["upper"] + Vector((-0.15, 0.13, 0.02)), P["chest"] + Vector((0.2, 0.18, 0.0)),
+                        P["chest"] + Vector((0.05, 0.25, -0.05)), P["spine"] + Vector((-0.2, 0.22, 0.02))], mats["barnacle"], "chest")
+    parts += barnacles([P["shoulder.L"] + Vector((0.04, 0.0, 0.06)), P["elbow.L"] + Vector((0.05, 0.04, 0.0))], mats["barnacle"], "upper_arm.L", seed=6)
+    parts += kelp_strands([P["upper"] + Vector((x, 0.12, 0.06)) for x in (-0.18, -0.06, 0.1, 0.2)], mats["kelp"], "chest", (0.3, 0.55))
+    parts += kelp_strands([C + Vector((x, 0.03, c * 0.6)) for x in (-0.05, 0.02, 0.06)], mats["kelp"], "head", (0.15, 0.3), seed=9)
+    rag = skirt("rags", P, P["hips"].z + 0.05, P["knee.L"].z + 0.08, 0.3, 0.33, mats["rags"], depth=0.85)
+    rag = roughen(rag, 0.03, 0.06)
+    parts.append(rag)
+    finish(name, body, rig, parts)
+
+
+def build_smotherer():
+    """The Smotherer: tall, gaunt and pale, with arms that reach past its knees and long
+    webbed fingers, a long hollow-cheeked face with black sockets, a hood of kelp and a
+    tattered shroud about its hips."""
+    name = "smotherer"
+    hs = 1.0
+    p = {"height": 1.1, "legs": 1.05, "width": 0.92, "girth": 0.62, "head": hs, "arms": 1.4, "fingers": 1.25, "hunch": 0.06,
+         "r": {"neck": 0.04, "shoulder": 0.05, "elbow": 0.036, "wrist": 0.028, "hand": (0.048, 0.016), "fingers": (0.044, 0.012),
+               "thumb": 0.014, "hip": 0.07, "knee": 0.048, "ankle": 0.035, "toe": (0.04, 0.026), "chest": (0.17, 0.11), "upper": (0.16, 0.1)}}
+    mats = creature_mats((0.5, 0.56, 0.55), (0.7, 0.75, 0.72), {
+        "socket": pmat("socket", (0.01, 0.01, 0.02), (0.03, 0.03, 0.04), rough=0.9, form=0.0, grade=False),
+        "ribs": pmat("ribs", (0.47, 0.53, 0.52), (0.68, 0.72, 0.7), scale=12, pattern='rings', pscale=16, pstrength=0.28, rough=0.35, form=1.8),
+    }, skin_scale=12)
+    joints, edges, P = humanoid_joints(p, skip=("head_low", "head_mid", "head_top"))
+    body = skin_body(name, joints, edges)
+    for m in mats.values():
+        add_mat(body, m)
+
+    def region(c, n, P):
+        if on_arm(c, P, 0.08):
+            return "skin"
+        if P["hips"].z - 0.18 < c.z < P["hips"].z + 0.06 and abs(c.x) < 0.3:
+            return "rags"
+        if P["spine"].z < c.z < P["upper"].z and abs(c.x) < 0.17:
+            return "ribs"
+        return "skin"
+    paint_regions(body, lambda c, n: region(c, n, P), mats)
+    rig = make_armature(name, P, HUMANOID_BONES)
+    bind_auto(body, rig)
+    C, dims = head_frame(P, hs)
+    dims = (dims[0] * 0.85, dims[1], dims[2] * 1.25)
+    C = C + Vector((0, -0.03, 0.02))
+    a, b, c = dims
+    head = sculpt_head("head", C, dims, mats["skin"], {"jaw": 0.8, "chin": 1.3, "brow": 1.6, "cheeks": 1.5, "gaunt": 1.6})
+    bind_rigid(head, "head")
+    parts = [head]
+    for s in (-1, 1):
+        sock = blob("socket", C + Vector((s * a * 0.4, -b * 0.8, c * 0.08)), (0.022, 0.012, 0.02), 12, 8, mats["socket"])
+        bind_rigid(sock, "head")
+        parts.append(sock)
+        mark("eye." + ("L" if s > 0 else "R"), C + Vector((s * a * 0.4, -b * 0.9, c * 0.08)))
+    nose = skin_body("nose", [(C + Vector((0, -b * 0.92, c * 0.05)), (0.008, 0.01)), (C + Vector((0, -b * 1.02, -c * 0.15)), (0.012, 0.012))], [(0, 1)], levels=2)
+    add_mat(nose, mats["skin"])
+    bind_rigid(nose, "head")
+    mouth = box("mouth", C + Vector((0, -b * 0.86, -c * 0.45)), (0.05, 0.012, 0.008), mats["socket"], 0.003)
+    bind_rigid(mouth, "head")
+    parts += [nose, mouth]
+    # A hood of kelp hanging from the crown down the back and over the shoulders.
+    hood = dome("hood", C + Vector((0, 0.01, 0.0)), (a * 1.12, b * 1.1, c * 1.06), cut=-0.2, mat=mats["kelp"], segs=24, rings=12)
+    bm = bmesh.new()
+    bm.from_mesh(hood.data)
+    bmesh.ops.delete(bm, geom=[v for v in bm.verts if (v.co - C).y < -b * 0.62 and (v.co - C).z < c * 0.55], context='VERTS')
+    bm.to_mesh(hood.data)
+    bm.free()
+    hood = roughen(hood, 0.008, 0.03)
+    bind_rigid(hood, "head")
+    parts.append(hood)
+    parts += kelp_strands([C + Vector((x, b * 0.5, -c * 0.1)) for x in (-0.07, -0.03, 0.01, 0.05, 0.08)], mats["kelp"], "head", (0.3, 0.6), seed=12)
+    parts += kelp_strands([C + Vector((x * 1.4, -b * 0.3, -c * 0.2)) for x in (-0.07, 0.07)], mats["kelp"], "head", (0.25, 0.4), seed=13)
+    shroud = skirt("shroud", P, P["hips"].z + 0.06, P["knee.L"].z - 0.05, 0.16, 0.2, mats["rags"], depth=0.8)
+    parts.append(roughen(shroud, 0.03, 0.05))
+    finish(name, body, rig, parts)
+
+
 BUILDERS = {
+    "bloated": build_bloated,
+    "smotherer": build_smotherer,
     "callum_keeper": build_callum,
     "hamish_keeper": build_hamish,
     "mairi_keeper": build_mairi,

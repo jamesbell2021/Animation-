@@ -316,8 +316,9 @@ func _run() -> void:
 		player._attack_cd = 0.0
 		player._attack()
 		await frames(5)
-	await wait_until(func(): return not is_instance_valid(sm), 200)
-	check(not is_instance_valid(sm), "three blows on the tower's foot shake it loose, and the fall kills it")
+	# Dead: freed, or lying as a ragdoll corpse.
+	await wait_until(func(): return not is_instance_valid(sm) or sm.hp <= 0, 300)
+	check(not is_instance_valid(sm) or (sm.hp <= 0 and not sm.is_in_group("enemies")), "three blows on the tower's foot shake it loose, and the fall kills it")
 	check(not lamp.is_smothered() and is_equal_approx(lamp.current_range(), full_range), "the beam comes back")
 	Cycle._enter(Cycle.Phase.DAY)
 	await frames(2)

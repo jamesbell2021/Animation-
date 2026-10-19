@@ -55,12 +55,15 @@ func _run() -> void:
 	player._attack()
 	var top_y: float = b.global_position.y
 	await wait_until(func(): return b.global_position.y < Terrain.PLATEAU_HEIGHT + 0.3, 180)
-	await frames(10)
+	# The fall hurts when the ragdoll comes to rest at the bottom.
+	await wait_until(func(): return b.hp < 60 - Player.ATTACK_DMG, 120)
 	print("   fell from %.1f to %.1f, hp %d" % [top_y, b.global_position.y, b.hp])
 	check(b.global_position.y < Terrain.PLATEAU_HEIGHT + 0.3, "an outward blow shoves a climber off the ledge to the meadow")
 	check(b.hp < 60 - Player.ATTACK_DMG, "the fall hurts on top of the blow (hp %d)" % b.hp)
 	b.speed = 1.15
-	await frames(40)
+	# It lies there a moment as a ragdoll, then gets up and finds a way round.
+	await wait_until(func(): return b.state == &"Approach", 240)
+	await frames(10)
 	check(not b.route.is_empty() and b.route[0].y < Terrain.PLATEAU_HEIGHT + 0.6, "it heads back round by the meadow, not up the wall")
 	b.queue_free()
 

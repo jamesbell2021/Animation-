@@ -52,6 +52,20 @@ const SHOVE_MAX_MASS := 3.0
 var _resume_state: StringName = &""
 var _stagger_len := 0.0
 
+## The rigged model from art/characters, for creatures that have one: animated in code,
+## knocked flat as a ragdoll by a hard blow or a fall, and back up again.
+var rig: CharacterRig
+const HIT_IMPULSE := 3.0
+const SHOVE_IMPULSE := 5.5
+const KNOCKDOWN_TIME := 0.8
+const CORPSE_TIME := 5.0
+var _walk_phase := 0.0
+var _walk_amt := 0.0
+var _rag_left := 0.0
+var _rag_from_y := 0.0
+var _rag_fell := false
+var _rag_layer := 0
+
 var _knock := Vector3.ZERO
 var _detour_t := 0.0
 var _groan_t := 0.0
@@ -72,6 +86,143 @@ func _ready() -> void:
 	Cycle.phase_changed.connect(_on_phase_changed)
 	_build()
 	change_state(&"Emerge")
+
+# ---- the rigged model ----
+
+## Load this creature's model into `parent`; false when there's no model (use primitives).
+func _load_rig(model: String, parent: Node3D) -> bool:
+	rig = CharacterRig.create(model)
+	if rig == null:
+		return false
+	parent.add_child(rig)
+	rig.got_up.connect(_on_got_up)
+	return true
+
+## A glowing eye on the rig's head at its marker (falls back to a guess).
+func _rig_eye(key: String, color: Color, size: float = 0.3, energy: float = 9.0) -> void:
+	var at: Vector3 = rig.markers.get(key, Vector3.ZERO)
+	var e := MeshInstance3D.new()
+	var sm := SphereMesh.new()
+	sm.radius = 0.016
+	sm.height = 0.032
+	sm.radial_segments = 8
+	sm.rings = 4
+	e.mesh = sm
+	e.material_override = Look.eye_mat(color, energy)
+	var holder := Node3D.new()
+	holder.add_child(e)
+	Look.glint(holder, Vector3(0.0, 0.0, -0.02), color, size)
+	rig.attach_at("head", holder, at)
+
+## Walk cycle for humanoids: stride (radians of phase per metre), leg and arm swing,
+## a forward hunch and arms held out in front.
+func _animate_walk(delta: float, stride: float = 2.6, leg: float = 0.55, arm: float = 0.4, hunch: float = 0.0, arms_fwd: float = 0.0) -> void:
+	if rig == null or rig.is_ragdoll():
+		return
+	var v := Vector2(velocity.x, velocity.z).length()
+	_walk_amt = move_toward(_walk_amt, clampf(v / maxf(speed, 0.1), 0.0, 1.2), delta * 4.0)
+	_walk_phase += delta * v * stride
+	var s := sin(_walk_phase) * _walk_amt
+	rig.pose("thigh.L", Vector3(-s * leg, 0.0, 0.0))
+	rig.pose("thigh.R", Vector3(s * leg, 0.0, 0.0))
+	rig.pose("shin.L", Vector3(maxf(0.0, s) * leg * 1.3 + 0.06, 0.0, 0.0))
+	rig.pose("shin.R", Vector3(maxf(0.0, -s) * leg * 1.3 + 0.06, 0.0, 0.0))
+	rig.pose("upper_arm.L", Vector3(s * arm - arms_fwd, 0.0, -0.05))
+	rig.pose("upper_arm.R", Vector3(-s * arm - arms_fwd, 0.0, 0.05))
+	rig.pose("forearm.L", Vector3(-0.25 - arms_fwd * 0.5, 0.0, 0.0))
+	rig.pose("forearm.R", Vector3(-0.25 - arms_fwd * 0.5, 0.0, 0.0))
+	rig.pose("spine", Vector3(hunch * 0.5, s * 0.08, 0.0))
+	rig.pose("chest", Vector3(hunch * 0.5, s * 0.08, s * 0.04))
+	rig.pose("neck", Vector3(-hunch * 0.5, 0.0, 0.0))
+	rig.shift("hips", Vector3(0.0, absf(sin(_walk_phase)) * 0.04 * _walk_amt, 0.0))
+
+## Virtual: whether a blow can knock it flat right now.
+func can_ragdoll() -> bool:
+	return true
+
+## Knocked flat: a ragdoll for `time` seconds, then it gets up and carries on.
+func knock_down(impulse: Vector3, time: float = KNOCKDOWN_TIME) -> void:
+	if rig == null or hp <= 0:
+		return
+	if state == &"Ragdoll":
+		rig.ragdoll(impulse, "chest")
+		_rag_left = maxf(_rag_left, time * 0.5)
+		return
+	if state in [&"Emerge", &"Retreat", &"GetUp"] or not can_ragdoll():
+		return
+	if state != &"Stagger":
+		_resume_state = state
+	_rag_left = time
+	_rag_from_y = global_position.y
+	_rag_fell = false
+	change_state(&"Ragdoll")
+	rig.ragdoll(impulse, "chest")
+
+func _enter_Ragdoll() -> void:
+	velocity = Vector3.ZERO
+	_knock = Vector3.ZERO
+	_rag_layer = collision_layer
+	collision_layer = 0
+
+func _tick_Ragdoll(delta: float) -> void:
+	velocity = Vector3.ZERO
+	# The body goes where the ragdoll lies (a ray down: the island has several levels).
+	var g := rig.ragdoll_ground()
+	if g != Vector3.INF:
+		global_position = g
+	var c := rig.ragdoll_centre()
+	if c.y < Terrain.SEA_LEVEL - 0.6:
+		# Off the rocks and into the sea: gone.
+		last_hit = "fall"
+		hp = 0
+		_die()
+		return
+	_rag_left -= delta
+	var settled := rig.ragdoll_speed() < 1.5
+	# Landed after a drop: the fall hurts, more the further it fell.
+	var on_ground := c.y - global_position.y < 0.5
+	if not _rag_fell and state_t > 0.15 and (on_ground or rig.ragdoll_speed() < 1.0 or (settled and _rag_left <= 0.0)):
+		var drop := _rag_from_y - global_position.y
+		if drop > FALL_HURT_FROM:
+			_rag_fell = true
+			_landed(drop)
+			if not is_inside_tree() or hp <= 0 or state != &"Ragdoll":
+				return
+	if _rag_left <= 0.0 and settled:
+		var f := rig.ragdoll_facing()
+		face(-f)
+		change_state(&"GetUp")
+		rig.get_up(0.05 if Geo.flat_dist(c, global_position) > 1.2 else CharacterRig.GET_UP_TIME)
+
+func _tick_GetUp(_delta: float) -> void:
+	velocity = Vector3.ZERO
+
+func _on_got_up() -> void:
+	if state != &"GetUp":
+		return
+	collision_layer = _rag_layer if _rag_layer != 0 else 8
+	_repath_t = 0.0
+	route.clear()
+	_last_wp = Vector3.INF
+	var back := _resume_state if _resume_state != &"" and _resume_state != &"Ragdoll" else &"Approach"
+	change_state(back)
+	if back == &"Approach":
+		replan()
+
+## Dead: the body goes limp and lies there, then sinks away.
+func _ragdoll_corpse(impulse: Vector3 = Vector3.ZERO) -> bool:
+	if rig == null:
+		return false
+	remove_from_group("enemies")
+	collision_layer = 0
+	collision_mask = 0
+	set_physics_process(false)
+	rig.ragdoll(impulse, "chest")
+	rig.stay_down()
+	var tw := create_tween()
+	tw.tween_interval(CORPSE_TIME)
+	tw.tween_callback(queue_free)
+	return true
 
 # ---- virtuals ----
 
@@ -110,6 +261,9 @@ func _enter_Arrived() -> void:
 	velocity = Vector3.ZERO
 
 func on_dawn() -> void:
+	if rig != null and rig.is_ragdoll():
+		rig.get_up(0.05)
+		collision_layer = 8
 	change_state(&"Retreat")
 
 # ---- state machine ----
@@ -381,11 +535,18 @@ func take_damage(amount: int, from_dir: Vector3 = Vector3.ZERO, source: Node = n
 	if source is Player:
 		last_hit = "hook"
 	hp -= amount
-	_knock += Vector3(from_dir.x, 0.0, from_dir.z) * (KNOCKBACK / mass)
+	var shoved := false
+	var out := Vector3(global_position.x, 0.0, global_position.z).normalized()
 	# On the ledge, a blow aimed outward sends it over the edge.
 	if source != null and hp > 0 and mass < SHOVE_MAX_MASS and Terrain.on_ledge(global_position.x, global_position.z):
-		var out := Vector3(global_position.x, 0.0, global_position.z).normalized()
-		if Vector3(from_dir.x, 0.0, from_dir.z).dot(out) > SHOVE_DOT:
+		shoved = Vector3(from_dir.x, 0.0, from_dir.z).dot(out) > SHOVE_DOT
+	if rig != null and source != null and hp > 0:
+		var flat := Vector3(from_dir.x, 0.0, from_dir.z).normalized()
+		var push := (out * SHOVE_IMPULSE + Vector3(0.0, 1.2, 0.0)) if shoved else (flat * HIT_IMPULSE + Vector3(0.0, 1.0, 0.0))
+		knock_down(push * rig.mass * 10.0)
+	else:
+		_knock += Vector3(from_dir.x, 0.0, from_dir.z) * (KNOCKBACK / mass)
+		if shoved:
 			_knock = out * SHOVE_SPEED
 	if source != null:
 		FX.spray(get_parent(), global_position + Vector3(0.0, 1.1, 0.0), from_dir, Color(0.55, 0.65, 0.45))
@@ -401,4 +562,5 @@ func _on_hit() -> void:
 
 func _die() -> void:
 	Events.enemy_killed.emit(self)
-	queue_free()
+	if not _ragdoll_corpse(Vector3(0.0, 20.0, 0.0)):
+		queue_free()

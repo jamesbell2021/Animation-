@@ -15,6 +15,9 @@ signal got_up
 const DIR := "res://art/characters/%s.glb"
 const RAGDOLL_LAYER := 32
 const GET_UP_TIME := 0.55
+# Bodies that start against rock get shoved out hard: never let a limb fly.
+const MAX_SPEED := 7.0
+const MAX_SPIN := 14.0
 # Per-bone physics for humanoids: capsule radius, cone swing and twist limits (degrees).
 const HUMANOID := {
 	"hips": [0.13, 0, 0], "spine": [0.12, 25, 10], "chest": [0.14, 25, 10], "neck": [0.06, 30, 20], "head": [0.1, 35, 25],
@@ -27,12 +30,16 @@ var mesh: MeshInstance3D
 var material: StandardMaterial3D
 var physics := HUMANOID
 var mass := 2.5
+## Scales the capsules for bigger or smaller bodies than a keeper.
+var thickness := 1.0
 var _rest := {}
 var _rest_global := {}
 var _sim: PhysicalBoneSimulator3D
 var _bodies := {}
 var _getting_up := false
 var _ragdoll := false
+## Named points from the model's build (eyes, mouth), in this rig's space.
+var markers := {}
 
 ## Load a character by name; null when the model is missing (callers keep their fallback).
 static func create(model: String) -> CharacterRig:
@@ -51,6 +58,13 @@ static func create(model: String) -> CharacterRig:
 	inst.rotation.y = PI
 	rig.add_child(inst)
 	rig._setup(inst)
+	var mpath := path.get_basename() + ".json"
+	if FileAccess.file_exists(mpath):
+		var data = JSON.parse_string(FileAccess.get_file_as_string(mpath))
+		if data is Dictionary:
+			for k in data:
+				var a: Array = data[k]
+				rig.markers[k] = Vector3(a[0], a[1], a[2])
 	return rig
 
 func _setup(inst: Node3D) -> void:
@@ -122,6 +136,28 @@ func attach_aligned(bone: String, node: Node3D, offset: Vector3 = Vector3.ZERO) 
 	holder.transform = bone_rig.affine_inverse() * Transform3D(Basis(), bone_rig.origin + offset)
 	holder.add_child(node)
 	return ba
+
+## Hold a node at a point given in this rig's space (a marker), following a bone.
+func attach_at(bone: String, node: Node3D, rig_point: Vector3) -> BoneAttachment3D:
+	var i := skeleton.find_bone(bone)
+	var to_skel := global_transform.affine_inverse() * skeleton.global_transform
+	var bone_rig := to_skel * skeleton.get_bone_global_rest(i)
+	return attach_aligned(bone, node, rig_point - bone_rig.origin)
+
+## How fast the ragdoll's hips are moving (settled when small).
+func ragdoll_speed() -> float:
+	var b: PhysicalBone3D = _bodies.get("hips")
+	return b.linear_velocity.length() if b else 0.0
+
+func _physics_process(_delta: float) -> void:
+	if not _ragdoll:
+		return
+	for b in _bodies.values():
+		var pb := b as PhysicalBone3D
+		if pb.linear_velocity.length() > MAX_SPEED:
+			pb.linear_velocity = pb.linear_velocity.normalized() * MAX_SPEED
+		if pb.angular_velocity.length() > MAX_SPIN:
+			pb.angular_velocity = pb.angular_velocity.normalized() * MAX_SPIN
 
 ## Where a bone is in the world right now (follows the ragdoll too).
 func bone_position(bone: String) -> Vector3:
@@ -236,16 +272,16 @@ func _build_bodies() -> void:
 			pb.set("joint_constraints/softness", 0.8)
 		var col := CollisionShape3D.new()
 		var cap := CapsuleShape3D.new()
-		cap.radius = float(spec[0])
-		cap.height = maxf(length + float(spec[0]) * 0.5, float(spec[0]) * 2.05)
+		cap.radius = float(spec[0]) * thickness * 0.85
+		cap.height = maxf(length + cap.radius * 0.5, cap.radius * 2.05)
 		col.shape = cap
 		pb.add_child(col)
 		pb.mass = mass * (1.6 if bn in ["hips", "chest", "spine"] else 0.6)
 		pb.collision_layer = RAGDOLL_LAYER
 		pb.collision_mask = 1 | 4
 		pb.friction = 0.9
-		pb.linear_damp = 0.2
-		pb.angular_damp = 1.5
+		pb.linear_damp = 0.4
+		pb.angular_damp = 2.5
 		_bodies[bn] = pb
 
 # The nearest ancestor that has a body, or "" for the root of the ragdoll.

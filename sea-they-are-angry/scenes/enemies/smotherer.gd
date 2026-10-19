@@ -50,6 +50,13 @@ func _ready() -> void:
 func _build() -> void:
 	_visual = Node3D.new()
 	add_child(_visual)
+	if _load_rig("smotherer", _visual):
+		rig.mass = 2.0
+		rig.thickness = 0.7
+		_rig_eye("eye.L", EYE, 0.24, 10.0)
+		_rig_eye("eye.R", EYE, 0.24, 10.0)
+		Geo.cyl_shape(self, 0.35, 1.9, Vector3(0.0, 0.95, 0.0))
+		return
 	_skin = Look.flat_mat(SKIN, 0.35)
 	var dark := Look.flat_mat(SKIN_DARK, 0.5)
 	var weed := Look.flat_mat(WEED, 0.9)
@@ -114,11 +121,28 @@ func at_target() -> bool:
 
 func _tick_Approach(delta: float) -> void:
 	super._tick_Approach(delta)
+	if rig != null:
+		_animate_walk(delta, 2.4, 0.5, 0.2, 0.55, 0.45)
+		return
 	var s := sin(state_t * 7.0) * 0.35 * clampf(velocity.length(), 0.0, 1.0)
-	_legs[0].rotation.x = s
-	_legs[1].rotation.x = -s
-	_arms[0].rotation.x = -s * 0.5
-	_arms[1].rotation.x = s * 0.5
+	_limbs(Vector3(-s * 0.5, 0, 0), Vector3(s * 0.5, 0, 0), Vector3(s, 0, 0), Vector3(-s, 0, 0))
+
+# Arms and legs: on the rig's bones, or the primitive's pivots.
+func _limbs(arm_l: Vector3, arm_r: Vector3, leg_l: Vector3, leg_r: Vector3) -> void:
+	if rig != null:
+		if rig.is_ragdoll():
+			return
+		rig.pose("upper_arm.L", arm_l)
+		rig.pose("upper_arm.R", arm_r)
+		rig.pose("thigh.L", leg_l)
+		rig.pose("thigh.R", leg_r)
+		rig.pose("shin.L", Vector3(maxf(0.0, -leg_l.x) * 1.4, 0, 0))
+		rig.pose("shin.R", Vector3(maxf(0.0, -leg_r.x) * 1.4, 0, 0))
+		return
+	_arms[0].rotation = arm_l
+	_arms[1].rotation = arm_r
+	_legs[0].rotation = leg_l
+	_legs[1].rotation = leg_r
 
 func _enter_Arrived() -> void:
 	change_state(&"Climb")
@@ -153,10 +177,7 @@ func _tick_Climb(delta: float) -> void:
 	_place_on_tower()
 	# Hand over hand.
 	var s := sin(state_t * 6.0)
-	_arms[0].rotation.x = -2.6 + s * 0.4
-	_arms[1].rotation.x = -2.6 - s * 0.4
-	_legs[0].rotation.x = -0.6 + s * 0.3
-	_legs[1].rotation.x = -0.6 - s * 0.3
+	_limbs(Vector3(-2.6 + s * 0.4, 0, 0), Vector3(-2.6 - s * 0.4, 0, 0), Vector3(-0.6 + s * 0.3, 0, 0), Vector3(-0.6 - s * 0.3, 0, 0))
 	if _height >= Lighthouse.TOWER_TOP - 0.2:
 		change_state(&"Smother")
 
@@ -177,10 +198,10 @@ func _tick_Smother(delta: float) -> void:
 	# Leaning onto the glass, arms wrapped round the lantern.
 	_visual.rotation.x = 0.25
 	var breathe := sin(state_t * 2.0) * 0.06
-	_arms[0].rotation = Vector3(-1.75 + breathe, 0.75, 0.0)
-	_arms[1].rotation = Vector3(-1.75 - breathe, -0.75, 0.0)
-	_legs[0].rotation.x = -0.4
-	_legs[1].rotation.x = -0.4
+	if rig != null:
+		_limbs(Vector3(-1.75 + breathe, -0.75, 0.0), Vector3(-1.75 - breathe, 0.75, 0.0), Vector3(-0.4, 0, 0), Vector3(-0.4, 0, 0))
+	else:
+		_limbs(Vector3(-1.75 + breathe, 0.75, 0.0), Vector3(-1.75 - breathe, -0.75, 0.0), Vector3(-0.4, 0, 0), Vector3(-0.4, 0, 0))
 	_crack_acc += CRACK_DPS * delta
 	var dmg := floori(_crack_acc)
 	if dmg > 0:
@@ -208,6 +229,19 @@ func shake(_by: Node) -> void:
 	if _shakes >= SHAKES_TO_FALL:
 		_shakes = 0
 		Events.message.emit("It loses its grip!")
+		if rig != null:
+			# Off the tower as a dead weight: the drop does the rest.
+			var out := global_position - lighthouse.global_position
+			out.y = 0.0
+			out = out.normalized()
+			_let_go_of_lamp()
+			# Clear of the tower's wall first, so the limbs don't start inside the stone.
+			global_position = Vector3(lighthouse.global_position.x, global_position.y, lighthouse.global_position.z) + out * (Lighthouse.RADIUS + 0.45)
+			_height = 0.0
+			knock_down((out.normalized() * 2.0 + Vector3(0.0, 0.5, 0.0)) * rig.mass * 10.0, 1.5)
+			_resume_state = &"Approach"
+			Audio.sfx("groan", global_position, 0.0, 0.1)
+			return
 		change_state(&"Fall")
 	elif state == &"Smother":
 		change_state(&"Climb")
@@ -250,6 +284,10 @@ func _tick_Stunned(_delta: float) -> void:
 		route.clear()
 		change_state(&"Approach")
 
+func _on_got_up() -> void:
+	collision_mask = 2 | 4
+	super._on_got_up()
+
 func on_dawn() -> void:
 	_let_go_of_lamp()
 	if is_on_tower() or state == &"Fall":
@@ -284,6 +322,11 @@ func _physics_process(delta: float) -> void:
 	_lit_t = maxf(0.0, _lit_t - delta)
 	# In the light it glistens and hunches.
 	var lit := _lit_t > 0.0
+	if rig != null:
+		rig.tint(Color(1.25, 1.25, 1.15) if lit else Color.WHITE)
+		if state == &"Approach" and not rig.is_ragdoll():
+			rig.pose("spine", Vector3(0.45 if lit else 0.27, 0, 0))
+		return
 	_skin.albedo_color = SKIN.lerp(Color(0.9, 0.92, 0.85), 0.4) if lit else SKIN
 	if state == &"Approach":
 		_visual.rotation.x = move_toward(_visual.rotation.x, 0.35 if lit else 0.0, delta * 3.0)
