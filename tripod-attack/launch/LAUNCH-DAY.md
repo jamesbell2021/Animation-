@@ -1,8 +1,9 @@
 # Tripod Attack! launch day: everything to upload and post
 
-All files are in `launch/out/` (images, videos) and the builds are the three files from the
+All files are in `launch/out/` (images, videos) and the builds are the four files from the
 latest green **Tripod Attack builds** run on GitHub (also sent to you in chat):
-`tripod-attack.apk`, `tripod-attack-windows.zip`, `tripod-attack-linux.zip`. The APK is signed
+`tripod-attack-web.zip` (plays in the browser on the itch page), `tripod-attack.apk`,
+`tripod-attack-windows.zip`, `tripod-attack-linux.zip`. The APK is signed
 with the release key from the repository secrets, so later updates install over it.
 
 ## 1. itch.io: create the project (about 15 minutes)
@@ -14,18 +15,32 @@ with the release key from the repository secrets, so later updates install over 
    secrets).
    **Short description or tagline**:
    `Shoot the legs. Duck the Heat-Ray. Take Europe back. A Vectrex-style arcade game after H. G. Wells, with full-physics collapsing tripods.`
-3. **Classification**: Game. **Kind of project**: Downloadable. **Release status**: Released.
+3. **Classification**: Game. **Kind of project**: **HTML** (this is what puts the playable game on
+   the page; the downloads still appear underneath it). **Release status**: Released.
 4. **Pricing**: your call. Suggested: `$0 or donate` for the launch, or `$2.99` to sit under the
    other 3BL_Indie arcade games at $4.99.
 5. **Uploads** (press *Upload files*, then set the platform box under each file):
 
    | File | Tick | Also |
    |---|---|---|
+   | `tripod-attack-web.zip` | **This file will be played in the browser** | Leave the platform boxes empty. Upload it first so it is the one the page embeds. |
    | `tripod-attack-windows.zip` | Windows | Tick *This file will be played in the browser*? **No.** Leave as download. Mark **Executable**. |
    | `tripod-attack-linux.zip` | Linux | Mark **Executable**. |
    | `tripod-attack.apk` | Android | Nothing else. |
 
-   Every zip contains the executable plus a README; players unzip and run.
+   Every download zip contains the executable plus a README; players unzip and run.
+
+   **Embed options** (appear once the web zip is marked as played in the browser):
+
+   | Option | Setting |
+   |---|---|
+   | Embed in page / Click to launch in fullscreen | **Embed in page** |
+   | Viewport dimensions | **1024 × 576** |
+   | Mobile friendly | **Ticked**, orientation **Landscape** |
+   | Automatically start on page load | **Unticked** (browsers block sound until the player clicks; a click to start keeps the music) |
+   | Fullscreen button | **Ticked** |
+   | Enable scrollbars | Unticked |
+   | SharedArrayBuffer support | **Unticked** (the build is single-threaded and does not need it) |
 6. **Description**: paste the block from "Page description" below (itch's editor keeps the bold
    lines and bullets if you paste as rich text; if it comes in plain, re-bold the five lead-ins).
 7. **Genre**: Action. **Tags** (ten max): `arcade`, `retro`, `vectrex`, `war-of-the-worlds`,
@@ -92,9 +107,9 @@ files: it is all synthesised when the game starts.
 
 Attach `x_card_1200x675.jpg` or the 1080p gameplay video (X takes MP4 up to 2 min 20 s).
 
-**Launch tweet** (248 characters):
+**Launch tweet** (273 characters as X counts them, with the link):
 
-> TRIPOD ATTACK! is out now 🛸 Shoot the legs. Duck the Heat-Ray. Take Europe back. A Vectrex-style arcade game after The War of the Worlds, with full-physics collapsing tripods. Windows · Linux · Android → GAME_URL #indiegame #godot #retrogaming
+> TRIPOD ATTACK! is out now 🛸 Shoot the legs. Duck the Heat-Ray. Take Europe back. A Vectrex-style arcade game after The War of the Worlds, with full-physics collapsing tripods. Play in your browser or on Windows · Linux · Android → GAME_URL #indiegame #godot
 
 **Follow-up replies** (post as a thread under it, one at a time through the day):
 
@@ -121,7 +136,7 @@ Attach `x_card_1200x675.jpg` or the 1080p gameplay video (X takes MP4 up to 2 mi
 >
 > A Vectrex-style vector arcade game after H. G. Wells's The War of the Worlds. The fighting-machines are real physics: break a leg and the whole thing comes down differently every time, in a shower of sparks. Ten sectors from Belfast to Athens, each with its own skyline, then an endless mode in Belfast for the high score. Three difficulties. Every sound synthesised in code, 1980s arcade style.
 >
-> Windows · Linux · Android. Link in bio.
+> Play it in your browser, or download for Windows · Linux · Android. Link in bio.
 >
 > #indiegame #indiedev #godot #godotengine #retrogaming #arcade #vectrex #vectorgraphics #waroftheworlds #hgwells #gamedev #indiegames #androidgames #pcgaming #belfast #northernireland #madeinni #scifi #80s #newrelease
 
@@ -145,6 +160,9 @@ with a link sticker to the itch page, then `screenshots/02-leg-down.jpg` with a 
 
 * Put the itch link in place of GAME_URL and in the Instagram bio.
 * Upload the gameplay video to YouTube first so the itch trailer slot and the tweet have it.
+* Open the itch page in a private window, press *Run game*, and play a wave in the browser. The
+  title says "warming up the sound board" for a few seconds the first time; that is the music
+  and effects being built, and the game is playable while it does.
 * Play one wave on each file you downloaded from the itch page. If the Android install refuses,
   it is because an older APK with the throwaway key is still on the phone: uninstall it first.
 

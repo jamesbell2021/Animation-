@@ -3,7 +3,7 @@
 ![The Heat-Ray sweeps the sandbags while the artilleryman ducks](docs/heat-ray.jpg)
 
 A Vectrex-style vector arcade game after H. G. Wells's *The War of the Worlds*, made in
-**Godot 4.3** for Windows, Linux and Android. You are the artilleryman: one man, one rocket
+**Godot 4.3** for the browser, Windows, Linux and Android. You are the artilleryman: one man, one rocket
 launcher, a wall of sandbags, and the Martian fighting-machines striding in from the right.
 Shoot their legs out and watch them come down. When you hear the cry, duck. Get the people to
 shelter. Then take Europe back, one sector at a time.
@@ -21,6 +21,7 @@ its *Artifacts* section:
 
 | Artifact | What it is |
 |---|---|
+| `tripod-attack-web` | Browser build: unzip and serve the folder (any static web server), or upload the zip to itch.io as a game played in the browser. Single-threaded, so it needs no special server headers. |
 | `tripod-attack-apk` | Android APK. Copy it to the phone and open it; allow installs from that app the first time. Landscape only. |
 | `tripod-attack-windows` | Zip with `TripodAttack.exe` (64-bit, everything embedded). Unzip and run. |
 | `tripod-attack-linux` | Zip with `TripodAttack.x86_64`. Unzip, `chmod +x`, run. |
@@ -164,12 +165,14 @@ themes for the title, the map and the battle.
 | `scripts/vec.gd` | drawing helpers and the stroke font every letter and digit is drawn with |
 | `scripts/euro_map.gd`, `wells.gd`, `consts.gd` | the coastline and sectors, the quotations, the screen layout |
 | `shaders/crt.gdshader` | glow from blurred mips of the screen, barrel curve, scanlines, vignette, flash |
+| `shaders/crt_web.gdshader` | the same for the browser build, which cannot mipmap the screen: the glow comes from rings of direct samples |
 | `scripts/headless_test.gd`, `scripts/demo_shots.gd` | the smoke test and the screenshot demo, attached when the game is started with `-- --smoke-test` or `-- --shots=DIR` |
 | `tools/` | `screenshots.sh` (runs the demo under a virtual display) and `render_audio_preview.gd` (renders the sound board to a WAV) |
 
 The game is drawn at 1024 x 576 and scaled to the window with black bars (`canvas_items` stretch,
-aspect `keep`). It uses the GL Compatibility renderer so it runs on old GPUs and every Android
-device.
+aspect `keep`). It uses the GL Compatibility renderer so it runs on old GPUs, every Android device
+and WebGL 2 in the browser. In the browser the sound board renders one effect or bar of music
+per frame instead of on a thread, so the title screen keeps moving while it warms up.
 
 ### Checks
 
@@ -177,7 +180,8 @@ The smoke test drives the whole game headlessly: title, map, briefing, a rocket 
 a leg and collapses a machine, the siren-then-fire cycle costing a standing player a life and
 sparing a ducked one, a two-and-a-half-minute soak, sector cleared, the Martians retaking a sector
 on game over, victory, endless mode, and the sound board rendering. It runs in about twenty
-seconds and the CI workflow runs it against the exported Linux build:
+seconds and the CI workflow runs it against the exported Linux build. Adding `?smoke-test` to the
+page URL runs the same test in the browser build (results in the browser console):
 
 ```
 godot --headless --fixed-fps 60 --path tripod-attack -- --smoke-test
