@@ -311,3 +311,8 @@ Built to plan 2's Phase C, with these departures:
   - Timber is boards: fences, the jetty and its piles, the boat, crates, barrels and doors.
   - Loose rocks and sea stacks get rock detail over their painted colours.
 - **How it works:** these materials project the texture from three sides in each object's own space (StandardMaterial3D triplanar), so the boxes and cylinders the buildings are made of need no UVs, and a tilted roof slab still has its slates running along the eaves. The normal maps give the relief: slates' lips, rubble faces, pebbles, the bedding in the cliffs.
+
+## Slower out of the sea; the Eel's coils hug the tower (owner's requests)
+
+- **Wading ashore:** creatures coming up a beach, below the meadow, move at half speed: slowed by the surf and the shingle, which gives the beam time to find them and burn them. It applies while they approach, not while they retreat. Rising out of the water takes 1.6 s instead of 0.8. The Eel isn't affected.
+- **The Eel's coils:** they used a fixed 2.1 m radius round a tower that tapers from 1.6 m to 1.15 m on a 2.15 m plinth, so the thick lower coils sank into the stone and the thin upper ones stood off it. Each coil now follows the tower's radius at its height plus the body's thickness there (pressed in a little), and the lowest starts above the plinth.

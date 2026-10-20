@@ -167,19 +167,21 @@ func _run() -> void:
 	check(b.state == &"Bloat" and b.last_hit == "trap" and slot.uses == 2, "a Bloated steps on the spikes and bursts there")
 	await clear_enemies()
 	var sq := spawn(Squid.new(), slot.global_position) as Squid
-	await frames(70)
+	# Out of the water (1.6 s) and over the board.
+	await frames(170)
 	check(slot.uses == 2 and sq.state != &"Stagger", "a Squid skitters over the spikes")
 	await clear_enemies()
 	slot.wreck()
 	slot.arm("net")
 	sq = spawn(Squid.new(), slot.global_position) as Squid
-	await wait_until(func(): return sq.state == &"Stagger", 90)
+	await wait_until(func(): return sq.state == &"Stagger", 200)
 	check(sq.state == &"Stagger" and slot.uses == 1, "the kelp net tangles a Squid")
 	await clear_enemies()
 	slot.wreck()
 	slot.arm("chain")
 	var crab := spawn(Crab.new(), slot.global_position) as Crab
-	await wait_until(func(): return crab.state == &"Stagger" or crab.state == &"Ragdoll", 90)
+	# Out of the water first (traps ignore a creature still emerging), then onto the plate.
+	await wait_until(func(): return crab.state == &"Stagger" or crab.state == &"Ragdoll", 200)
 	check((crab.state == &"Stagger" or crab.state == &"Ragdoll") and crab.exposed_t > 0.0, "the chain plate flips a Crab (%s)" % crab.state)
 	var hp0 := crab.hp
 	crab.take_damage(20, Vector3.ZERO, player)

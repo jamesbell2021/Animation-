@@ -147,6 +147,9 @@ func _run() -> void:
 	e.lighthouse = lh
 	e.position = Terrain.beach_point(0, 0.0)
 	main.get_node("Enemies").add_child(e)
+	# The day's clock held still: wading up the beach takes it longer than a day.
+	var clock_was: bool = Cycle.running
+	Cycle.running = false
 	Engine.time_scale = 6.0
 	await wait_until(func(): return e.state == &"AttackFence", 3000)
 	check(e.state == &"AttackFence" and e.attack_target == fence, "Bloated comes up the beach and attacks the fence at its head")
@@ -178,6 +181,7 @@ func _run() -> void:
 
 	# Cycle: skip day -> dusk lights the lamp.
 	Engine.time_scale = 1.0
+	Cycle.running = clock_was
 	Cycle.skip()
 	await frames(2)
 	check(Cycle.phase == 1 and lamp.state == Lamp.State.BURNING, "Enter in day jumps to dusk; lamp BURNING")
@@ -244,7 +248,8 @@ func _run() -> void:
 	var f_speed: float = Geo.flat_dist(p0, s2.global_position) / 1.0
 	print("   focused on the east beach: hp ", hp0, " -> ", s2.hp, " in 1 s, speed ", snappedf(f_speed, 0.01))
 	check(s2.hp <= hp0 - 9 and s2.hp >= hp0 - 11, "focused beam burns ~10 hp per second down on the beaches")
-	check(f_speed > 0.9, "focused beam burns without slowing")
+	# Still wading up the beach (half speed), but the focused beam doesn't slow it further.
+	check(f_speed > s2.speed * Enemy.WADE_MULT * 0.85, "focused beam burns without slowing (%.2f m/s, wading)" % f_speed)
 	check(s2._burn_k > 0.9, "burning Bloated glows orange")
 	s2.queue_free()
 	lamp.toggle_mode()

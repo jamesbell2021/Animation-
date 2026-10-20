@@ -23,9 +23,10 @@ const MELEE_MULT := 0.25
 const CRUSH_DPS := 5.0
 const SURGE_REACH := 1.2
 const PRONE_TIME := 1.5
-const COIL_RADIUS := 2.1
 const COIL_TURNS := 2.5
-const COIL_RISE := 6.0
+const COIL_RISE := 5.6
+# The lowest coil, above the plinth (which stands 0.7 m and is wider than the tower).
+const COIL_FROM := 1.2
 # The head rears out over the ledge, inside the focused beam's reach.
 const HEAD_RADIUS := 6.6
 const HEAD_HEIGHT := 3.6
@@ -348,10 +349,22 @@ func _enter_Coil() -> void:
 	_sound_t = 3.0
 	Events.message.emit("The Eel has the lighthouse! Burn its head with the focused beam!")
 
-func _coil_point(k: float) -> Vector3:
+# The body's thickness at t along it (0 tail, 1 head), as the tube is drawn.
+func _body_radius(t: float) -> float:
+	return lerpf(0.18, 0.62, smoothstep(0.0, 0.25, t)) * lerpf(1.0, 0.7, smoothstep(0.75, 1.0, t))
+
+# A point on the coils, k 0 (the tail, low down) to 1 (where the neck leaves): hugging
+# the tapering tower at each height, the body pressed tight against the stone and
+# clear of the plinth.
+func _coil_point(k: float, t: float = -1.0) -> Vector3:
 	var base := lighthouse.global_position if lighthouse else Vector3.ZERO
 	var a := k * COIL_TURNS * TAU + _spin * 0.15
-	return base + Vector3(cos(a) * COIL_RADIUS, 0.5 + k * COIL_RISE, sin(a) * COIL_RADIUS)
+	var y := COIL_FROM + k * COIL_RISE
+	var tower := Lighthouse.RADIUS
+	if lighthouse is Lighthouse:
+		tower = lighthouse._radius_at(y)
+	var r := tower + _body_radius(t if t >= 0.0 else k * 0.75) * 0.85
+	return base + Vector3(cos(a) * r, y, sin(a) * r)
 
 func _head_point() -> Vector3:
 	return Vector3(cos(_spin) * HEAD_RADIUS, Terrain.CRAG_TOP + HEAD_HEIGHT + 0.3 * sin(_spin * 3.0), sin(_spin) * HEAD_RADIUS)
@@ -362,8 +375,8 @@ func _tick_Coil(delta: float) -> void:
 	var neck := 5
 	var coil_n := SEGMENTS - neck
 	for i in coil_n:
-		_segs[i].global_position = _coil_point(float(i) / float(coil_n - 1))
-	var top := _coil_point(1.0)
+		_segs[i].global_position = _coil_point(float(i) / float(coil_n - 1), float(i) / float(SEGMENTS - 1))
+	var top := _coil_point(1.0, float(coil_n - 1) / float(SEGMENTS - 1))
 	var head := _head_point()
 	for j in neck:
 		var k := float(j + 1) / float(neck + 1)

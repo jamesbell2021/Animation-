@@ -4,7 +4,11 @@ extends CharacterBody3D
 ## change_state(&"X") calls _exit_<old>() / _enter_X() if they exist,
 ## and _physics_process calls _tick_X(delta) each frame.
 
-const EMERGE_TIME := 0.8
+const EMERGE_TIME := 1.6
+# Coming ashore they wade, slowed by the surf and the shingle, up the beach to the
+# meadow: time for the beam to find them and burn them.
+const WADE_MULT := 0.5
+const WADE_STATES := [&"Approach", &"Stalk"]
 const EMERGE_DEPTH := -0.6
 const FENCE_HIT_INTERVAL := 1.0
 const FENCE_HIT_DMG := 10
@@ -344,6 +348,8 @@ func change_state(s: StringName) -> void:
 
 func _physics_process(delta: float) -> void:
 	state_t += delta
+	if is_wading():
+		speed_mult *= WADE_MULT
 	var tick := "_tick_" + String(state)
 	if has_method(tick):
 		call(tick, delta)
@@ -367,6 +373,13 @@ func _physics_process(delta: float) -> void:
 	# Reset after use: the lamp re-applies these every physics frame through in_light().
 	speed_mult = 1.0
 	lit_this_frame = false
+
+## Still coming up out of the sea: on a beach, below the meadow.
+func is_wading() -> bool:
+	if not (state in WADE_STATES) or self is Eel:
+		return false
+	var p := global_position
+	return p.y < Terrain.PLATEAU_HEIGHT - 0.25 and Terrain.beach_weight(p.x, p.z) > 0.35
 
 func _on_phase_changed(p: int) -> void:
 	if p == Cycle.Phase.DAWN and state != &"Retreat":
