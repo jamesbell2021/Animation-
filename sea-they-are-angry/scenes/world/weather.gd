@@ -33,6 +33,10 @@ const WATCHER_CHANCE := 0.4
 const ROD_CHANCE := 0.16
 
 var storm := 0.0
+## The wind over the island right now (m/s, horizontal): a breeze on a calm night, a
+## gale in a storm, gusting. Smoke and anything else that drifts reads it.
+static var wind_now := Vector3(0.7, 0.0, 0.18)
+const WIND_DIR := Vector3(0.96, 0.0, 0.26)
 var vignette: ShaderMaterial
 var _target := 0.0
 var _rain: GPUParticles3D
@@ -207,6 +211,7 @@ func _place_watchers() -> void:
 func _process(delta: float) -> void:
 	storm = move_toward(storm, _target, delta / RAMP)
 	_gust = maxf(0.0, _gust - delta * 0.6)
+	wind_now = WIND_DIR * (0.7 + storm * 5.0 + _gust * 3.5)
 	_apply_storm()
 	if storm < 0.05:
 		return

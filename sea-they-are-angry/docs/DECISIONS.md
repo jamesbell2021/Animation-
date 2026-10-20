@@ -316,3 +316,10 @@ Built to plan 2's Phase C, with these departures:
 
 - **Wading ashore:** creatures coming up a beach, below the meadow, move at half speed: slowed by the surf and the shingle, which gives the beam time to find them and burn them. It applies while they approach, not while they retreat. Rising out of the water takes 1.6 s instead of 0.8. The Eel isn't affected.
 - **The Eel's coils:** they used a fixed 2.1 m radius round a tower that tapers from 1.6 m to 1.15 m on a 2.15 m plinth, so the thick lower coils sank into the stone and the thin upper ones stood off it. Each coil now follows the tower's radius at its height plus the body's thickness there (pressed in a little), and the lowest starts above the plinth.
+
+## The cottage's fire, chimney smoke in the wind, and the Eel's coils seen through (owner's requests)
+
+- **A fire in the cottage after dark:** from dusk the four-pane windows (glazing bars and stone sills now) glow with firelight that flickers like an open fire and an oil lamp: the glow's brightness wavers on a few beating rhythms with a little randomness, and its colour shifts between lamp-yellow and ember-orange. The light thrown out in front of the cottage flickers with it.
+- **Smoke that follows the wind:** `Weather.wind_now` is the wind over the island (a breeze, up to a gale in a storm, plus gusts), the same wind the rain slants in. The chimney smoke takes its push from it every frame. On a still night it climbs a few metres in a soft, drifting plume. As the wind rises it rises less and leans further, and in a storm it's torn off flat and carried away downwind. It's thin by day and thicker once the fire's built up at night.
+- **Soft smoke:** smoke is drawn with soft, ragged, camera-facing puffs now (`FX.smoke`), not shaded spheres, so it reads as a plume, not a string of beads. A badly damaged building's smoke uses them too.
+- **The Eel's coils were see-through:** the body tube's triangles were wound the wrong way for Godot (counter-clockwise from outside), so the outside was culled and only the inside of the far half drew: the lighthouse showed through each coil. Rewound, with both faces of the back fin drawn.

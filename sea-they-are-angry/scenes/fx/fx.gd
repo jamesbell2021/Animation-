@@ -26,6 +26,50 @@ static func _meshes() -> void:
 	c.size = Vector3(0.1, 0.06, 0.08)
 	_chunk_mesh = c
 
+static var _soft_mesh: QuadMesh
+static var _soft_tex: ImageTexture
+
+## A soft, ragged puff for smoke: a camera-facing quad with a noisy radial falloff, so
+## puffs blend into a plume instead of reading as balls.
+static func soft_puff() -> QuadMesh:
+	if _soft_mesh != null:
+		return _soft_mesh
+	var n := 64
+	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
+	var noise := FastNoiseLite.new()
+	noise.seed = 11
+	noise.frequency = 0.09
+	noise.fractal_octaves = 3
+	for y in n:
+		for x in n:
+			var d := Vector2(x - n * 0.5 + 0.5, y - n * 0.5 + 0.5).length() / (n * 0.5)
+			var a := clampf(1.0 - d, 0.0, 1.0)
+			a = a * a * (3.0 - 2.0 * a)
+			a *= clampf(0.55 + 0.6 * noise.get_noise_2d(x, y), 0.0, 1.0)
+			img.set_pixel(x, y, Color(1.0, 1.0, 1.0, a))
+	_soft_tex = ImageTexture.create_from_image(img)
+	var m := StandardMaterial3D.new()
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.vertex_color_use_as_albedo = true
+	m.albedo_texture = _soft_tex
+	m.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_PER_PIXEL
+	m.roughness = 1.0
+	m.disable_receive_shadows = true
+	_soft_mesh = QuadMesh.new()
+	_soft_mesh.size = Vector2(0.9, 0.9)
+	_soft_mesh.material = m
+	return _soft_mesh
+
+## Smoke from soft puffs: the emitter, with the puffs' own material.
+static func smoke(parent: Node, at: Vector3, color: Color, amount: int, lifetime: float, dir: Vector3, spread: float,
+		speed_min: float, speed_max: float, lift: float, scale_min: float, scale_max: float) -> GPUParticles3D:
+	var p := emitter(parent, at, soft_puff(), color, amount, lifetime, dir, spread, speed_min, speed_max, -lift, scale_min, scale_max, false, true)
+	if p:
+		p.material_override = null
+		p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	return p
+
 static func _puff_mesh_ref() -> Mesh:
 	_meshes()
 	return _puff_mesh
@@ -157,7 +201,7 @@ static func sparks(parent: Node, at: Vector3) -> void:
 ## Continuous chimney smoke.
 static func chimney_smoke(parent: Node, at: Vector3) -> GPUParticles3D:
 	_meshes()
-	return emitter(parent, at, _puff_mesh, Color(0.62, 0.62, 0.64, 0.38), 14, 4.5, Vector3(0.3, 1.0, 0.1).normalized(), 12.0, 0.4, 0.8, -0.15, 0.4, 0.8, false, true)
+	return smoke(parent, at, Color(0.62, 0.62, 0.64, 0.9), 24, 4.5, Vector3(0.3, 1.0, 0.1).normalized(), 12.0, 0.4, 0.8, 0.15, 0.6, 1.0)
 
 ## Spray thrown up where swell hits the rocks.
 static func sea_spray(parent: Node, at: Vector3) -> void:

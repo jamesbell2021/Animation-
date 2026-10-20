@@ -41,8 +41,8 @@ func _update_smoke() -> void:
 		return
 	var want := health_ratio() < SMOKE_BELOW
 	if want and _smoke == null:
-		_smoke = FX.emitter(self, to_global(p), FX._puff_mesh_ref(), Color(0.16, 0.15, 0.15, 0.5),
-			18, 3.5, Vector3(0.2, 1.0, 0.1).normalized(), 18.0, 0.6, 1.2, -0.2, 0.5, 1.0, false, true)
+		_smoke = FX.smoke(self, to_global(p), Color(0.16, 0.15, 0.15, 0.6),
+			28, 3.5, Vector3(0.2, 1.0, 0.1).normalized(), 18.0, 0.6, 1.2, 0.2, 0.9, 1.6)
 	elif not want and _smoke != null:
 		_smoke.queue_free()
 		_smoke = null

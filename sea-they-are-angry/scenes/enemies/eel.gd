@@ -78,6 +78,9 @@ func _ready() -> void:
 func _build() -> void:
 	_body_mat = Look.flat_mat(Color.WHITE, 0.25)
 	_body_mat.vertex_color_use_as_albedo = true
+	# The body colours are sRGB, like everything else painted: read as linear they came
+	# out washed-out grey-green once the outside of the tube was drawn.
+	_body_mat.vertex_color_is_srgb = true
 	# Mottled skin along the body: a noise texture wrapped round the tube.
 	var noise := FastNoiseLite.new()
 	noise.frequency = 0.03
@@ -88,8 +91,8 @@ func _build() -> void:
 	tex.width = 256
 	tex.height = 256
 	var ramp := Gradient.new()
-	ramp.set_color(0, Color(0.55, 0.6, 0.55))
-	ramp.set_color(1, Color(1.25, 1.3, 1.2))
+	ramp.set_color(0, Color(0.5, 0.55, 0.5))
+	ramp.set_color(1, Color(1.1, 1.15, 1.05))
 	tex.color_ramp = ramp
 	_body_mat.albedo_texture = tex
 	var belly := Look.flat_mat(BELLY, 0.4)
@@ -243,10 +246,12 @@ func _rebuild_tube() -> void:
 		var v1 := float(r + 1) / 6.0
 		for k in TUBE_SIDES:
 			var k2 := (k + 1) % TUBE_SIDES
-			var quad := [a[k], b[k], b[k2], a[k], b[k2], a[k2]]
-			var cent := [ca, cb, cb, ca, cb, ca]
-			var uvs := [Vector2(float(k) / TUBE_SIDES, v0), Vector2(float(k) / TUBE_SIDES, v1), Vector2(float(k + 1) / TUBE_SIDES, v1),
-				Vector2(float(k) / TUBE_SIDES, v0), Vector2(float(k + 1) / TUBE_SIDES, v1), Vector2(float(k + 1) / TUBE_SIDES, v0)]
+			# Wound clockwise seen from outside (Godot's front face): the other way, the
+			# outside was culled and the lighthouse showed through the coils.
+			var quad := [a[k], b[k2], b[k], a[k], a[k2], b[k2]]
+			var cent := [ca, cb, cb, ca, ca, cb]
+			var uvs := [Vector2(float(k) / TUBE_SIDES, v0), Vector2(float(k + 1) / TUBE_SIDES, v1), Vector2(float(k) / TUBE_SIDES, v1),
+				Vector2(float(k) / TUBE_SIDES, v0), Vector2(float(k + 1) / TUBE_SIDES, v0), Vector2(float(k + 1) / TUBE_SIDES, v1)]
 			for q in 6:
 				var n: Vector3 = (quad[q] - cent[q]).normalized()
 				# Pale belly underneath, dark back.
@@ -263,11 +268,13 @@ func _rebuild_tube() -> void:
 			var up_a := (ta - ca).normalized() * fin
 			var up_b := (tb - cb).normalized() * fin
 			var side := (tb - ta).cross(up_a).normalized()
-			for v in [ta, tb, tb + up_b, ta, tb + up_b, ta + up_a]:
-				_tube_mesh.surface_set_color(BODY * 0.7)
-				_tube_mesh.surface_set_normal(side)
-				_tube_mesh.surface_set_uv(Vector2(0.5, v0))
-				_tube_mesh.surface_add_vertex(v)
+			# Both faces of the fin, so it shows from either side.
+			for face in [[side, [ta, tb + up_b, tb, ta, ta + up_a, tb + up_b]], [-side, [ta, tb, tb + up_b, ta, tb + up_b, ta + up_a]]]:
+				for v in face[1]:
+					_tube_mesh.surface_set_color(BODY * 0.7)
+					_tube_mesh.surface_set_normal(face[0])
+					_tube_mesh.surface_set_uv(Vector2(0.5, v0))
+					_tube_mesh.surface_add_vertex(v)
 	_tube_mesh.surface_end()
 
 func is_vulnerable() -> bool:

@@ -23,6 +23,12 @@ var _wall_mat: StandardMaterial3D
 var _window_mat: StandardMaterial3D
 var _lamp: OmniLight3D
 var _chimney_top := Vector3.ZERO
+const WINDOW_GLOW := 2.6
+const LAMP_ENERGY := 1.6
+var _lit := false
+var _fire_t := 0.0
+var _flicker := 1.0
+var _smoke_fx: GPUParticles3D
 var _slabs: Array[MeshInstance3D] = []
 var _ridge_y := 0.0
 
@@ -81,6 +87,16 @@ func _build() -> void:
 		w.material_override = _window_mat
 	var back := Geo.box(self, Vector3(0.6, 0.55, 0.08), WINDOW_DARK, Vector3(0.6, 1.45, DEPTH * 0.5 + 0.03))
 	back.material_override = _window_mat
+	# Four-pane sash windows: painted glazing bars and a sill over each glowing pane.
+	var bars := Look.wood(Color(0.82, 0.8, 0.74), 0.4)
+	for spot in [Vector3(-1.45, 1.45, -DEPTH * 0.5 - 0.075), Vector3(0.95, 1.45, -DEPTH * 0.5 - 0.075), Vector3(0.6, 1.45, DEPTH * 0.5 + 0.075)]:
+		for piece in [[Vector3(0.66, 0.05, 0.03), Vector3(0.0, 0.0, 0.0)], [Vector3(0.05, 0.6, 0.03), Vector3(0.0, 0.0, 0.0)],
+				[Vector3(0.68, 0.05, 0.04), Vector3(0.0, 0.3, 0.0)], [Vector3(0.05, 0.6, 0.04), Vector3(-0.32, 0.0, 0.0)],
+				[Vector3(0.05, 0.6, 0.04), Vector3(0.32, 0.0, 0.0)]]:
+			var bar := Geo.box(self, piece[0], Color.WHITE, spot + piece[1])
+			bar.material_override = bars
+		var sill := Geo.box(self, Vector3(0.74, 0.06, 0.16), Color.WHITE, spot + Vector3(0.0, -0.31, signf(spot.z) * 0.05))
+		sill.material_override = Look.stone(Color(0.5, 0.49, 0.46), 0.6)
 	_lamp = OmniLight3D.new()
 	_lamp.light_color = WINDOW_LIT
 	_lamp.omni_range = 4.5
@@ -90,16 +106,54 @@ func _build() -> void:
 	Geo.box_shape(self, Vector3(WIDTH, WALL_H + 0.4, DEPTH), Vector3(0.0, WALL_H * 0.5 + 0.2, 0.0))
 	Cycle.phase_changed.connect(_on_phase_changed)
 	_set_windows(Cycle.phase == Cycle.Phase.DUSK or Cycle.phase == Cycle.Phase.NIGHT)
-	FX.chimney_smoke.call_deferred(self, to_global(_chimney_top))
+	_start_smoke.call_deferred()
 
 func _on_phase_changed(p: int) -> void:
 	_set_windows(p == Cycle.Phase.DUSK or p == Cycle.Phase.NIGHT)
 
 func _set_windows(lit: bool) -> void:
+	_lit = lit
 	_window_mat.albedo_color = WINDOW_LIT if lit else WINDOW_DARK
 	_window_mat.emission = WINDOW_LIT
-	_window_mat.emission_energy_multiplier = 2.2 if lit else 0.0
-	_lamp.light_energy = 1.4 if lit else 0.0
+	_window_mat.emission_energy_multiplier = WINDOW_GLOW if lit else 0.0
+	_lamp.light_energy = LAMP_ENERGY if lit else 0.0
+
+func _start_smoke() -> void:
+	_smoke_fx = FX.chimney_smoke(get_parent(), to_global(_chimney_top))
+	if _smoke_fx:
+		# A warm plume carries: little drag, so it climbs a few metres before it thins.
+		var pm := _smoke_fx.process_material as ParticleProcessMaterial
+		pm.damping_min = 0.05
+		pm.damping_max = 0.25
+		pm.initial_velocity_min = 0.4
+		pm.initial_velocity_max = 0.7
+		# Big soft puffs, overlapping into one plume rather than a string of beads.
+		pm.scale_min = 1.6
+		pm.scale_max = 2.8
+		_smoke_fx.amount = 60
+		_smoke_fx.lifetime = 6.0
+
+# The fire inside and its smoke: the windows' glow and the light they throw flicker like
+# an open fire with an oil lamp; the smoke thickens once the fire's built up at night and
+# goes where the wind takes it: a lazy plume on a still night, torn flat in a gale.
+func _process(delta: float) -> void:
+	_fire_t += delta
+	if _lit and _window_mat:
+		var f := 0.82 + 0.1 * sin(_fire_t * 7.3) * sin(_fire_t * 2.9 + 1.0) + 0.06 * sin(_fire_t * 17.0) + randf_range(-0.05, 0.05)
+		_flicker = lerpf(_flicker, f, minf(1.0, delta * 14.0))
+		_window_mat.emission_energy_multiplier = WINDOW_GLOW * _flicker
+		_window_mat.emission = WINDOW_LIT.lerp(Color(1.0, 0.55, 0.22), 0.5 - 0.5 * sin(_fire_t * 3.1))
+		_lamp.light_energy = LAMP_ENERGY * _flicker
+	if _smoke_fx == null or not is_instance_valid(_smoke_fx):
+		return
+	var pm := _smoke_fx.process_material as ParticleProcessMaterial
+	var w := Weather.wind_now
+	var strength := w.length()
+	# Drift with the wind (as a steady push), rising less the harder it blows.
+	pm.gravity = Vector3(w.x * 0.45, lerpf(0.45, 0.05, clampf(strength / 5.0, 0.0, 1.0)), w.z * 0.45)
+	pm.direction = (Vector3(0.0, 1.0, 0.0) + w * 0.12).normalized()
+	_smoke_fx.amount_ratio = 1.0 if _lit else 0.4
+	_smoke_fx.speed_scale = 1.0 + clampf(strength / 6.0, 0.0, 0.4)
 
 func _refresh() -> void:
 	if _wall_mat:
