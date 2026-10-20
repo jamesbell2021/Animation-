@@ -323,7 +323,7 @@ func _build_ground() -> void:
 	var mesh := Terrain.build_mesh()
 	var mi := MeshInstance3D.new()
 	mi.mesh = mesh
-	mi.material_override = Look.vertex_mat(0.95)
+	mi.material_override = Look.terrain_mat()
 	ground.add_child(mi)
 	var cs := CollisionShape3D.new()
 	cs.shape = mesh.create_trimesh_shape()

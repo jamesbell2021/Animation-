@@ -20,6 +20,8 @@ const COPPER := Color(0.72, 0.4, 0.24)
 
 var lamp: Lamp
 var _body_mat: StandardMaterial3D
+# The render texture averages a little under white: lifted so the paint reads as painted.
+const HARL_LIFT := 1.12
 var _glass_mat: StandardMaterial3D
 # Fittings added by upgrades, shown from the level in the key on.
 var _fittings := {2: [], 3: []}
@@ -61,14 +63,17 @@ func _cyl(r_bottom: float, r_top: float, h: float, y: float, mat: Material, segs
 
 func _build() -> void:
 	add_to_group("lighthouse")
-	var stone := Look.flat_mat(Color(0.46, 0.45, 0.42))
+	# Painted render over stone, a rubble plinth, a boarded door.
+	var stone := Look.textured("rubble", Color(1.05, 1.05, 1.05), 1.4, 0.9, 1.2)
 	var iron := Look.flat_mat(IRON, 0.6)
-	var band := Look.flat_mat(BAND_COLOR, 0.8)
-	_body_mat = Look.flat_mat(BODY_COLOR, 0.85)
+	var band := Look.textured("harl", BAND_COLOR * HARL_LIFT, 1.2, 0.8, 0.7)
+	_body_mat = Look.textured("harl", BODY_COLOR * HARL_LIFT, 1.2, 0.85, 0.7)
 	# Stone plinth with a dark door facing the camera.
 	_cyl(2.15, 1.95, 0.7, 0.35, stone, 10)
-	Geo.box(self, Vector3(0.75, 1.35, 0.2), Color(0.18, 0.13, 0.09), Vector3(0.0, 1.25, 1.52))
-	Geo.box(self, Vector3(0.95, 0.12, 0.3), Color(0.40, 0.39, 0.37), Vector3(0.0, 1.98, 1.52))
+	var door := Geo.box(self, Vector3(0.75, 1.35, 0.2), Color(0.18, 0.13, 0.09), Vector3(0.0, 1.25, 1.52))
+	door.material_override = Look.textured("planks", Color(0.55, 0.38, 0.27), 0.9)
+	var lintel := Geo.box(self, Vector3(0.95, 0.12, 0.3), Color(0.40, 0.39, 0.37), Vector3(0.0, 1.98, 1.52))
+	lintel.material_override = Look.textured("rubble", Color(1.2, 1.2, 1.2), 0.6)
 	# Tapered tower with two red bands and a couple of small windows.
 	_ring(TOWER_BASE, TOWER_TOP, 0.0, _body_mat)
 	_ring(2.7, 3.8, 0.02, band)
@@ -164,7 +169,7 @@ func set_lantern(k: float) -> void:
 
 func _refresh() -> void:
 	if _body_mat:
-		_body_mat.albedo_color = RUIN_COLOR.lerp(BODY_COLOR, health_ratio())
+		_body_mat.albedo_color = RUIN_COLOR.lerp(BODY_COLOR * HARL_LIFT, health_ratio())
 
 func display_name() -> String:
 	return "lighthouse"

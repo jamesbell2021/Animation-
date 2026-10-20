@@ -292,3 +292,22 @@ Built to plan 2's Phase C, with these departures:
   - Bodies lean forward when they speed up, back when they pull up, and into turns.
   - Heads turn to look: a keeper at the nearest creature within 7 m (or where they aim); a creature at the nearest keeper within 8 m.
 - **Runs that fit the game's speeds:** the keepers' run and sprint were re-solved to their real speeds, 4.5 and 6.5 m/s: longer strides, shorter ground contact, and a proper flight phase. Before, the game played the sprint sped up for an ordinary run.
+
+## Textured ground and buildings (owner's request: "smooth the polys on the ground, add textures to the ground, walls and buildings, a slate roof, normal or bump maps")
+
+- **The ground is smooth now:** one shared vertex per grid point on a finer grid (0.45 m). Normals come from the height function itself, so the meadow rolls instead of showing facets. The cliffs keep their shape but no longer read as flat-shaded polygons.
+- **Ground textures:** grass, dirt, shingle and rock, each with a normal map, all generated and tileable (`art/source/textures/build_textures.py`).
+  - **Blending:** the terrain shader blends them by weights the mesh carries per vertex. Rock goes where it's steep or past the cliff line, shingle on the beaches and the lighthouse yard, dirt on the tracks, the ledge path, the building pads and bare patches.
+  - **Colour:** it still comes from the island's painted vertex colours. Each texture is divided by its mean colour, so it adds detail without changing the palette.
+  - **Rock:** projected from all three sides, so the cliff faces aren't stretched.
+  - **By the sea:** the ground is darker and glossier, as if wet.
+- **The cottage:**
+  - **Slate roof:** courses of slates along the eaves, lips facing down each slope, a little moss, and a slate ridge.
+  - **Walls:** whitewashed roughcast ("harl"). Its tint still darkens as the cottage is damaged.
+  - **Stonework and door:** a rubble footing and chimney, and a boarded door.
+- **Everything else:**
+  - The lighthouse is painted render over a rubble plinth.
+  - The shed is rubble-built with a slate roof.
+  - Timber is boards: fences, the jetty and its piles, the boat, crates, barrels and doors.
+  - Loose rocks and sea stacks get rock detail over their painted colours.
+- **How it works:** these materials project the texture from three sides in each object's own space (StandardMaterial3D triplanar), so the boxes and cylinders the buildings are made of need no UVs, and a tilted roof slab still has its slates running along the eaves. The normal maps give the relief: slates' lips, rubble faces, pebbles, the bedding in the cliffs.

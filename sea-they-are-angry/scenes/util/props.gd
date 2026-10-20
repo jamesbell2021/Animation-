@@ -3,12 +3,12 @@ extends RefCounted
 ## Set dressing for the island: jetty and rowboat, lobster pots, crates, barrels,
 ## a washing line, flowers and gulls. All built from primitives.
 
-static func _box(parent: Node, size: Vector3, color: Color, pos: Vector3, rough: float = 0.9) -> MeshInstance3D:
+static func _box(parent: Node, size: Vector3, color: Color, pos: Vector3, rough: float = 0.9, wooden: bool = false) -> MeshInstance3D:
 	var mi := Geo.box(parent, size, color, pos)
-	mi.material_override = Look.flat_mat(color, rough)
+	mi.material_override = Look.wood(color, 0.7, rough) if wooden else Look.flat_mat(color, rough)
 	return mi
 
-static func _cyl(parent: Node, r: float, h: float, color: Color, pos: Vector3, segs: int = 8, top: float = -1.0) -> MeshInstance3D:
+static func _cyl(parent: Node, r: float, h: float, color: Color, pos: Vector3, segs: int = 8, top: float = -1.0, wooden: bool = false) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
 	var m := CylinderMesh.new()
 	m.bottom_radius = r
@@ -17,7 +17,7 @@ static func _cyl(parent: Node, r: float, h: float, color: Color, pos: Vector3, s
 	m.radial_segments = segs
 	m.rings = 1
 	mi.mesh = m
-	mi.material_override = Look.flat_mat(color)
+	mi.material_override = Look.wood(color, 0.7) if wooden else Look.flat_mat(color)
 	mi.position = pos
 	parent.add_child(mi)
 	return mi
@@ -33,21 +33,21 @@ static func jetty(parent: Node, start: Vector3, angle: float) -> void:
 	var plank := Color(0.48, 0.40, 0.30)
 	for i in 9:
 		var z := 0.3 + float(i) * 0.42
-		var p := _box(root, Vector3(1.3, 0.07, 0.38), plank.darkened(0.05 * float(i % 3)), Vector3(0.0, lerpf(0.05, deck_y, minf(1.0, float(i) / 2.0)), z))
+		var p := _box(root, Vector3(1.3, 0.07, 0.38), plank.darkened(0.05 * float(i % 3)), Vector3(0.0, lerpf(0.05, deck_y, minf(1.0, float(i) / 2.0)), z), 0.9, true)
 		p.rotation.y = 0.03 * float((i * 5) % 3 - 1)
 	for i in 4:
 		var z := 1.1 + float(i) * 0.9
 		for side in [-0.6, 0.6]:
-			_cyl(root, 0.08, 2.2, Color(0.30, 0.24, 0.18), Vector3(side, deck_y - 0.8, z), 6)
+			_cyl(root, 0.08, 2.2, Color(0.30, 0.24, 0.18), Vector3(side, deck_y - 0.8, z), 6, -1.0, true)
 	# Rowboat: a hull from a squashed, open half-box with a bench and oars.
 	var boat := Node3D.new()
 	boat.position = Vector3(1.4, Terrain.SEA_LEVEL - root.position.y + 0.12, 2.6)
 	boat.rotation.y = 0.12
 	root.add_child(boat)
 	var hull := Color(0.20, 0.32, 0.38)
-	_box(boat, Vector3(0.9, 0.12, 2.4), hull.darkened(0.2), Vector3(0.0, 0.0, 0.0))
+	_box(boat, Vector3(0.9, 0.12, 2.4), hull.darkened(0.2), Vector3(0.0, 0.0, 0.0), 0.8, true)
 	for side in [-0.45, 0.45]:
-		var s := _box(boat, Vector3(0.08, 0.38, 2.3), hull, Vector3(side, 0.18, 0.0))
+		var s := _box(boat, Vector3(0.08, 0.38, 2.3), hull, Vector3(side, 0.18, 0.0), 0.8, true)
 		s.rotation.z = side * 0.4
 	_box(boat, Vector3(0.9, 0.35, 0.08), hull, Vector3(0.0, 0.18, 1.15))
 	var bow := _box(boat, Vector3(0.6, 0.35, 0.08), hull, Vector3(0.0, 0.2, -1.2))
@@ -85,22 +85,22 @@ static func lobster_pot(parent: Node, pos: Vector3, yaw: float) -> void:
 	buoy.rotation.x = 0.4
 
 static func crate(parent: Node, pos: Vector3, yaw: float, s: float = 0.55) -> void:
-	var c := _box(parent, Vector3(s, s, s), Color(0.50, 0.40, 0.27), pos + Vector3(0.0, s * 0.5, 0.0))
+	var c := _box(parent, Vector3(s, s, s), Color(0.50, 0.40, 0.27), pos + Vector3(0.0, s * 0.5, 0.0), 0.9, true)
 	c.rotation.y = yaw
 	for k in 2:
 		var slat := _box(c, Vector3(s * 1.02, 0.05, 0.06), Color(0.36, 0.28, 0.19), Vector3(0.0, -s * 0.25 + float(k) * s * 0.5, s * 0.5))
 		slat.rotation.z = 0.0
 
 static func barrel(parent: Node, pos: Vector3, color: Color = Color(0.40, 0.29, 0.18)) -> void:
-	_cyl(parent, 0.3, 0.8, color, pos + Vector3(0.0, 0.4, 0.0), 8)
+	_cyl(parent, 0.3, 0.8, color, pos + Vector3(0.0, 0.4, 0.0), 12, -1.0, true)
 	for y in [0.15, 0.65]:
 		_cyl(parent, 0.31, 0.05, Color(0.16, 0.16, 0.17), pos + Vector3(0.0, y, 0.0), 8)
 
 ## Two poles and a sagging line with washing on it.
 static func washing_line(parent: Node, a: Vector3, b: Vector3) -> void:
 	var wood := Color(0.40, 0.31, 0.21)
-	_cyl(parent, 0.05, 1.9, wood, a + Vector3(0.0, 0.95, 0.0), 5)
-	_cyl(parent, 0.05, 1.9, wood, b + Vector3(0.0, 0.95, 0.0), 5)
+	_cyl(parent, 0.05, 1.9, wood, a + Vector3(0.0, 0.95, 0.0), 5, -1.0, true)
+	_cyl(parent, 0.05, 1.9, wood, b + Vector3(0.0, 0.95, 0.0), 5, -1.0, true)
 	var colors := [Color(0.85, 0.82, 0.74), Color(0.22, 0.28, 0.42), Color(0.55, 0.20, 0.18), Color(0.30, 0.40, 0.25)]
 	var n := 4
 	for i in n:

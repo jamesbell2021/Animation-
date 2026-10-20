@@ -19,8 +19,8 @@ const SHELF_DEPTH := -1.1
 const SEA_FLOOR := -2.4
 const SEA_FLOOR_END := 26.0
 const GRID_HALF := 28.0
-const GRID_STEP := 0.55
-const JITTER := 0.2
+const GRID_STEP := 0.45
+const JITTER := 0.1
 
 # Beaches: compass angles. Each is a shingle slope from the sea floor up a gully
 # to the meadow, narrowing as it climbs.
@@ -284,10 +284,62 @@ static func color_at(x: float, z: float, h: float, steep: float) -> Color:
 		c = SEABED
 	return c
 
-## Faceted ground mesh: a jittered grid, flat-shaded, one painted colour per triangle.
+## What the ground is made of at a point, for the terrain shader's texture layers:
+## x rock, y shingle, z dirt (worn track, bare patches), w wet (by the sea). Grass is
+## whatever is left. Follows the same rules as color_at, so texture and paint agree.
+static func layers_at(x: float, z: float, h: float, steep: float) -> Vector4:
+	_ensure_noise()
+	var r := Vector2(x, z).length()
+	var dirt := 0.0
+	if _detail.get_noise_2d(x * 0.6, z * 0.6 + 90.0) > 0.42:
+		dirt = 0.7
+	if _pad_flatten(x, z) < 0.5:
+		dirt = maxf(dirt, 0.55)
+	var pd := _path_dist(x, z)
+	if pd < 0.8:
+		dirt = maxf(dirt, 1.0 - smoothstep(0.4, 0.8, pd))
+	if on_ledge(x, z):
+		dirt = 1.0
+	var shingle := 0.0
+	if r < YARD_RADIUS + 0.6 and h > CRAG_TOP - 0.2:
+		shingle = 1.0 - smoothstep(YARD_RADIUS - 0.4, YARD_RADIUS + 0.6, r)
+	var beach := beach_weight(x, z)
+	if beach > 0.4 and h < PLATEAU_HEIGHT - 0.25:
+		shingle = maxf(shingle, smoothstep(0.4, 0.8, beach))
+	if h < SEA_LEVEL - 0.5:
+		shingle = 1.0
+	var edge := coast_radius(compass_deg(x, z))
+	var past_edge := smoothstep(edge - 0.4, edge + 0.6, r) * (1.0 - beach)
+	var rock := maxf(smoothstep(0.22, 0.45, steep), past_edge)
+	if on_ledge(x, z):
+		rock *= 0.25
+	if h < SEA_LEVEL - 0.5:
+		rock *= 0.3
+	var wet := clampf((SEA_LEVEL + 0.25 - h) * 2.5, 0.0, 1.0)
+	return Vector4(rock, shingle, dirt, wet)
+
+## The ground's surface normal from the height function itself (smooth everywhere).
+static func normal_at(x: float, z: float) -> Vector3:
+	var e := 0.12
+	var hx := height_at(x + e, z) - height_at(x - e, z)
+	var hz := height_at(x, z + e) - height_at(x, z - e)
+	return Vector3(-hx, 2.0 * e, -hz).normalized()
+
+## The ground mesh: a jittered grid with shared, smooth-shaded vertices. Each vertex
+## carries its painted colour and, for the terrain shader, its texture layer weights
+## (UV: rock, shingle; UV2: dirt, wet).
 static func build_mesh() -> ArrayMesh:
 	var n := int(GRID_HALF * 2.0 / GRID_STEP) + 1
-	var pts: Array[Vector3] = []
+	var verts := PackedVector3Array()
+	var normals := PackedVector3Array()
+	var colors := PackedColorArray()
+	var uv := PackedVector2Array()
+	var uv2 := PackedVector2Array()
+	verts.resize(n * n)
+	normals.resize(n * n)
+	colors.resize(n * n)
+	uv.resize(n * n)
+	uv2.resize(n * n)
 	for j in n:
 		for i in n:
 			var x := -GRID_HALF + float(i) * GRID_STEP
@@ -296,35 +348,36 @@ static func build_mesh() -> ArrayMesh:
 				x += (_hash(i, j, 1) - 0.5) * JITTER * 2.0
 			if j > 0 and j < n - 1:
 				z += (_hash(i, j, 2) - 0.5) * JITTER * 2.0
-			pts.append(Vector3(x, height_at(x, z), z))
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	st.set_smooth_group(-1)
+			var h := height_at(x, z)
+			var nrm := normal_at(x, z)
+			var steep := 1.0 - absf(nrm.y)
+			var k := j * n + i
+			verts[k] = Vector3(x, h, z)
+			normals[k] = nrm
+			colors[k] = color_at(x, z, h, steep)
+			var l := layers_at(x, z, h, steep)
+			uv[k] = Vector2(l.x, l.y)
+			uv2[k] = Vector2(l.z, l.w)
+	var idx := PackedInt32Array()
 	for j in n - 1:
 		for i in n - 1:
-			var a := pts[j * n + i]
-			var b := pts[j * n + i + 1]
-			var c := pts[(j + 1) * n + i]
-			var d := pts[(j + 1) * n + i + 1]
-			if (i + j) % 2 == 0:
-				_tri(st, a, b, d, i, j, 0)
-				_tri(st, a, d, c, i, j, 1)
+			var a := j * n + i
+			var b := a + 1
+			var c := a + n
+			var d := c + 1
+			# Split each quad along the diagonal that best follows the ground.
+			if absf(verts[a].y - verts[d].y) < absf(verts[b].y - verts[c].y):
+				idx.append_array([a, b, d, a, d, c])
 			else:
-				_tri(st, a, b, c, i, j, 0)
-				_tri(st, b, d, c, i, j, 1)
-	st.generate_normals()
-	return st.commit()
-
-static func _tri(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, i: int, j: int, k: int) -> void:
-	var mid := (a + b + c) / 3.0
-	var nrm := (b - a).cross(c - a).normalized()
-	var col := color_at(mid.x, mid.z, mid.y, 1.0 - absf(nrm.y))
-	# Small per-facet value shift gives the hand-painted, faceted read.
-	var shade := 0.92 + _hash(i, j, 7 + k) * 0.16
-	col = Color(col.r * shade, col.g * shade, col.b * shade)
-	st.set_color(col)
-	st.add_vertex(a)
-	st.set_color(col)
-	st.add_vertex(b)
-	st.set_color(col)
-	st.add_vertex(c)
+				idx.append_array([a, b, c, b, d, c])
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = verts
+	arrays[Mesh.ARRAY_NORMAL] = normals
+	arrays[Mesh.ARRAY_COLOR] = colors
+	arrays[Mesh.ARRAY_TEX_UV] = uv
+	arrays[Mesh.ARRAY_TEX_UV2] = uv2
+	arrays[Mesh.ARRAY_INDEX] = idx
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	return mesh

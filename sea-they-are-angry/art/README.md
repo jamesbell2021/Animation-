@@ -51,6 +51,35 @@ How the script works:
 
 To change a clip, edit its pose function in `animate.py` and rebuild the character.
 
+## Surface textures
+
+`source/textures/build_textures.py` (plain Python with numpy and Pillow) generates every tiling surface texture into `textures/`: a colour map and a normal map each, all seamless.
+
+```
+python3 art/source/textures/build_textures.py art/textures
+```
+
+| Texture | What it is | Metres per tile |
+|---|---|---|
+| grass | meadow turf, clumps and blades | 2 |
+| dirt | worn earth with pebbles | 2 |
+| shingle | rounded beach pebbles in sand | 1.5 |
+| rock | cliff rock: bedding, cracks, lichen | 4 |
+| slate | roof slates in courses, lips down the slope | 1 (5 courses) |
+| harl | whitewashed roughcast render | 1.2 |
+| rubble | rubble stonework in lime mortar | 1.3 to 1.5 |
+| planks | weathered boards | 0.6 to 0.9 |
+
+How they're made:
+- Heights come from periodic noise (filtered white noise) and wrapped Voronoi cells.
+- The normal maps are taken from those heights (OpenGL style, as Godot expects).
+- The colour maps are painted from the same cells, so the paint and the relief agree.
+- `textures/terrain.json` records the ground layers' mean colours, which the terrain shader divides by.
+
+How the game uses them:
+- **The ground:** `shaders/terrain.gdshader` blends grass, dirt, shingle and rock by weights stored in the terrain mesh (`Terrain.layers_at`). The colour comes from the painted vertex colours, and the detail and relief from the textures. Rock is projected from three sides so the cliffs don't smear.
+- **Buildings and props:** `Look.textured(kind, tint, tile)` projects a texture from three sides in the object's own space, so boxes and cylinders built in code need no UVs. `Look.wood()` and `Look.stone()` wrap it for a painted colour.
+
 ## Older drop-ins
 
 - `characters/all_four_keepers.glb`: the original four keepers in a lineup, from before the Blender rebuild. Not used by the game.

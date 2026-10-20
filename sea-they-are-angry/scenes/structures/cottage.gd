@@ -9,6 +9,8 @@ const WALL_H := 2.0
 const WALL := Color(0.84, 0.82, 0.76)
 const STONE := Color(0.42, 0.41, 0.38)
 const SLATE := Color(0.20, 0.22, 0.25)
+# The whitewash's tint over the harl texture (already near white).
+const HARL := Color(1.0, 1.0, 0.97)
 const WINDOW_DARK := Color(0.10, 0.12, 0.15)
 const WINDOW_LIT := Color(1.0, 0.72, 0.38)
 const MEAL := {"food": 1}
@@ -29,9 +31,9 @@ func _init() -> void:
 	max_hp = 150
 
 func _build() -> void:
-	_wall_mat = Look.flat_mat(WALL, 0.9)
-	var stone := Look.flat_mat(STONE)
-	var slate := Look.flat_mat(SLATE, 0.6)
+	# Whitewashed harl over rubble walls, a rubble footing and chimney, a slate roof.
+	_wall_mat = Look.textured("harl", HARL, 1.2, 0.95, 0.8)
+	var stone := Look.textured("rubble", Color.WHITE, 1.4, 0.9, 1.2)
 	# Rubble footing, then whitewashed walls.
 	var foot := Geo.box(self, Vector3(WIDTH + 0.2, 0.35, DEPTH + 0.2), STONE, Vector3(0.0, 0.1, 0.0))
 	foot.material_override = stone
@@ -44,6 +46,10 @@ func _build() -> void:
 	var ridge_y := WALL_H + 0.2 + half * tan(pitch)
 	for side in [-1.0, 1.0]:
 		var slab := Geo.box(self, Vector3(WIDTH + 0.4, 0.14, slab_len + 0.05), SLATE, Vector3(0.0, (WALL_H + 0.2 + ridge_y) * 0.5, side * half * 0.5))
+		# Courses of slates along the eaves, each lip facing down the slope: the texture
+		# is turned round on the far side.
+		var slate := Look.textured("slate", Color.WHITE, 1.0, 0.55, 1.4)
+		slate.uv1_scale = Vector3(1.0, 1.0, side)
 		slab.material_override = slate
 		slab.rotation.x = side * pitch
 		_slabs.append(slab)
@@ -60,10 +66,15 @@ func _build() -> void:
 	# Chimney on one gable end.
 	var chimney := Geo.box(self, Vector3(0.55, 1.1, 0.55), STONE, Vector3(WIDTH * 0.5 - 0.35, ridge_y + 0.15, 0.0))
 	chimney.material_override = stone
-	Geo.box(self, Vector3(0.62, 0.1, 0.62), Color(0.3, 0.29, 0.27), Vector3(WIDTH * 0.5 - 0.35, ridge_y + 0.72, 0.0))
+	var cope := Geo.box(self, Vector3(0.62, 0.1, 0.62), Color(0.3, 0.29, 0.27), Vector3(WIDTH * 0.5 - 0.35, ridge_y + 0.72, 0.0))
+	cope.material_override = Look.textured("rubble", Color(0.7, 0.7, 0.7), 0.8)
+	# A ridge of slate along the top, where the two pitches meet.
+	var ridge := Geo.box(self, Vector3(WIDTH + 0.42, 0.12, 0.26), SLATE, Vector3(0.0, ridge_y + 0.03, 0.0))
+	ridge.material_override = Look.textured("slate", Color(0.8, 0.8, 0.85), 0.5, 0.55)
 	_chimney_top = Vector3(WIDTH * 0.5 - 0.35, ridge_y + 0.85, 0.0)
 	# Door and windows on the side facing the lighthouse (local -Z).
-	Geo.box(self, Vector3(0.8, 1.45, 0.08), Color(0.22, 0.16, 0.11), Vector3(-0.3, 0.95, -DEPTH * 0.5 - 0.03))
+	var door := Geo.box(self, Vector3(0.8, 1.45, 0.08), Color(0.22, 0.16, 0.11), Vector3(-0.3, 0.95, -DEPTH * 0.5 - 0.03))
+	door.material_override = Look.textured("planks", Color(0.75, 0.5, 0.35), 0.9)
 	_window_mat = Look.glow_mat(WINDOW_DARK, 0.0)
 	for wx in [-1.45, 0.95]:
 		var w := Geo.box(self, Vector3(0.6, 0.55, 0.08), WINDOW_DARK, Vector3(wx, 1.45, -DEPTH * 0.5 - 0.03))
@@ -92,7 +103,7 @@ func _set_windows(lit: bool) -> void:
 
 func _refresh() -> void:
 	if _wall_mat:
-		_wall_mat.albedo_color = Color(0.32, 0.30, 0.28).lerp(WALL, health_ratio())
+		_wall_mat.albedo_color = Color(0.38, 0.35, 0.32).lerp(HARL, health_ratio())
 	# The roof sags and slips as the cottage is battered.
 	var hurt := 1.0 - health_ratio()
 	for i in _slabs.size():

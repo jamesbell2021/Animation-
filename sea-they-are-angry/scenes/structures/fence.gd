@@ -72,8 +72,8 @@ func _plank(a: Vector3, b: Vector3, thick: float, mat: Material) -> MeshInstance
 	return mi
 
 func _build() -> void:
-	_mat = Geo.mat(WOOD)
-	_post_mats = [Look.flat_mat(Color(0.42, 0.32, 0.21), 0.95), Look.flat_mat(Color(0.52, 0.47, 0.39), 0.95), Look.flat_mat(Color(0.33, 0.25, 0.17), 0.95)]
+	_mat = Look.wood(WOOD, 0.6)
+	_post_mats = [Look.wood(Color(0.42, 0.32, 0.21), 0.6), Look.wood(Color(0.52, 0.47, 0.39), 0.6), Look.wood(Color(0.33, 0.25, 0.17), 0.6)]
 	var rope := Look.flat_mat(Color(0.55, 0.47, 0.30), 1.0)
 	var posts := int(floor(length / 0.9)) + 1
 	var step := length / float(posts - 1)
@@ -146,7 +146,7 @@ func _refresh() -> void:
 	if _mat == null:
 		return
 	var r := health_ratio()
-	_mat.albedo_color = ROT.lerp(_wood, r)
+	_mat.albedo_color = ROT.lerp(_wood, r) * 2.4
 	var standing := hp > 0
 	for m in _meshes:
 		m.visible = standing

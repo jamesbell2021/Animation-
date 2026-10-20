@@ -16,13 +16,15 @@ func _init() -> void:
 	max_hp = 120
 
 func _build() -> void:
-	_wall_mat = Look.flat_mat(STONE)
+	# A rubble-built store with a slate roof and a boarded door.
+	_wall_mat = Look.stone(STONE)
 	var walls := Geo.box(self, Vector3(WIDTH, WALL_H, DEPTH), Color.WHITE, Vector3(0.0, WALL_H * 0.5, 0.0))
 	walls.material_override = _wall_mat
 	_roof = Geo.box(self, Vector3(2.7, 0.12, 2.4), Color.WHITE, Vector3(0.0, 1.75, 0.0))
-	_roof.material_override = Look.flat_mat(Color(0.20, 0.22, 0.25), 0.6)
+	_roof.material_override = Look.textured("slate", Color.WHITE, 1.0, 0.55, 1.4)
 	_roof.rotation.x = deg_to_rad(-12.0)
 	_door = Geo.box(self, Vector3(0.75, 1.25, 0.08), Color(0.30, 0.22, 0.14), Vector3(0.2, 0.62, -1.03))
+	_door.material_override = Look.wood(Color(0.30, 0.22, 0.14))
 	var barrel := Geo.cyl(self, 0.28, 0.8, Color.WHITE, Vector3(-0.85, 0.4, -1.35))
 	barrel.material_override = Look.flat_mat(Color(0.18, 0.2, 0.22), 0.5)
 	Geo.box_shape(self, Vector3(WIDTH, WALL_H, DEPTH), Vector3(0.0, WALL_H * 0.5, 0.0))
@@ -31,7 +33,7 @@ func _refresh() -> void:
 	if _wall_mat == null:
 		return
 	var hurt := 1.0 - health_ratio()
-	_wall_mat.albedo_color = Color(0.26, 0.25, 0.24).lerp(STONE, health_ratio())
+	_wall_mat.albedo_color = (Color(0.26, 0.25, 0.24).lerp(STONE, health_ratio())) * 2.6
 	_roof.rotation = Vector3(deg_to_rad(-12.0) - hurt * 0.2, 0.0, hurt * 0.25)
 	_roof.position.y = 1.75 - hurt * 0.3
 	# The door hangs off one hinge, then off both.

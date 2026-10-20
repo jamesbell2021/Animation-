@@ -137,3 +137,11 @@ The Blender material in `art/source/stylized_character_material.py` is a hard tw
 > A concept art character reference sheet featuring a full-body turnaround (front, side, back views) of a rugged [Profession/Role, e.g., Mountain Ranger / Lighthouse Keeper] in a stylized low-poly video game aesthetic. Faceted geometric clothing folds, hand-painted painterly textures, chunky boots, and heavy outerwear. Detailed close-ups of equipment props like [Prop 1] and [Prop 2]. Cinematic dramatic lighting, concept art style for an Unreal Engine adventure game, blue-grey atmospheric background with scale grid.
 
 Use the same template for the creatures (Bloated Dead, Wall-Crawling Squid, Armoured Crab, Giant Constrictor Eel) so they sit in the same world as the keepers.
+
+| Textured and smooth-shaded: the island by day |
+|---|
+| ![island](screenshots/textures_island.png) |
+
+| Close up: the cottage, its slate roof and rubble chimney, a cliff, the shingle, the lighthouse plinth, the shed |
+|---|
+| ![close](screenshots/textures_close.png) |

@@ -242,6 +242,13 @@ func _setup() -> void:
 			var mb := spawn(Bloated, Terrain.beach_point(0, 0.42, 0.5))
 			hold(mb)
 			_actors["b"] = mb
+			# A Crab with a grudge against the keeper: it comes up the shingle and slams them.
+			var cr := spawn(Crab, Terrain.beach_point(0, 0.5, -2.6))
+			hold(cr)
+			cr._grudge = player
+			cr._grudge_t = 30.0
+			cr.target = player
+			_actors["c"] = cr
 		"dusk":
 			scene(PH_DAY, 0.3, false)
 			place(Vector3(-2.6, 0.0, 3.4))
@@ -393,7 +400,7 @@ func _direct(t: float) -> void:
 				camera(p + Vector3(5.5, 7.0, 7.5), p + Vector3(0.0, 0.6, 0.0), 45.0)
 		"moves":
 			if at(0.0, t, "c"):
-				caption("Blows land", "A swing staggers them back a step; a heavy blow shows, then floors you.")
+				caption("Blows land", "A swing staggers them back a step. A Crab's slam shows, then floors you.")
 			var mb: Enemy = _actors["b"]
 			var bp: Vector3 = mb.global_position if is_instance_valid(mb) else Terrain.beach_point(0, 0.45)
 			if t < 1.9:
@@ -405,10 +412,12 @@ func _direct(t: float) -> void:
 				aim_at(bp)
 				player._attack_cd = 0.0
 				tap("attack")
-			elif at(4.4, t, "staggered"):
-				player.take_damage(15, bp)
-			elif at(6.0, t, "floored"):
-				player.take_damage(30, bp)
+			elif t > 3.4 and t < 9.4:
+				# Standing his ground, facing the Crab as it comes on.
+				walk_to(player.global_position)
+				var cr: Node3D = _actors["c"]
+				if is_instance_valid(cr) and not player.is_prone():
+					aim_at(cr.global_position)
 			elif t > 9.4 and t < 11.8:
 				# A slow walk back up the beach: a gentle push on the stick.
 				var up := Terrain.beach_point(0, 0.9) - player.global_position

@@ -17,6 +17,74 @@ static func vertex_mat(roughness: float = 0.92) -> StandardMaterial3D:
 	m.roughness = roughness
 	return m
 
+const TEX := "res://art/textures/%s_%s.png"
+
+## A surface texture from art/textures (art/source/textures/build_textures.py), with its
+## normal map, projected from three sides in the object's own space, so boxes and
+## cylinders built in code need no UVs. `tile` is metres per repeat; `tint` multiplies
+## the colour (white leaves it as painted). Each call makes its own material, so a
+## building can tint its own (damage, lit and so on).
+static func textured(kind: String, tint: Color = Color.WHITE, tile: float = 1.0, roughness: float = 0.9, bump: float = 1.0) -> StandardMaterial3D:
+	var m := StandardMaterial3D.new()
+	m.albedo_color = tint
+	m.roughness = roughness
+	var a := TEX % [kind, "albedo"]
+	var n := TEX % [kind, "normal"]
+	if ResourceLoader.exists(a):
+		m.albedo_texture = load(a)
+	if ResourceLoader.exists(n):
+		m.normal_enabled = true
+		m.normal_texture = load(n)
+		m.normal_scale = bump
+	m.uv1_triplanar = true
+	m.uv1_triplanar_sharpness = 4.0
+	m.uv1_scale = Vector3.ONE / maxf(tile, 0.01)
+	m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
+	return m
+
+## Weathered timber in a painted colour (the planks texture averages about 0.4).
+static func wood(color: Color, tile: float = 0.9, roughness: float = 0.92) -> StandardMaterial3D:
+	return textured("planks", color * 2.4, tile, roughness, 1.0)
+
+## Rough stonework in a painted colour (the rubble texture averages about 0.38).
+static func stone(color: Color, tile: float = 1.3, roughness: float = 0.9) -> StandardMaterial3D:
+	return textured("rubble", color * 2.6, tile, roughness, 1.2)
+
+static var _terrain_mat: ShaderMaterial
+
+## The ground's material: shaders/terrain.gdshader with the four ground textures.
+static func terrain_mat() -> Material:
+	if _terrain_mat != null:
+		return _terrain_mat
+	var sh := load("res://shaders/terrain.gdshader") as Shader
+	if sh == null or not ResourceLoader.exists(TEX % ["grass", "albedo"]):
+		return vertex_mat(0.95)
+	var m := ShaderMaterial.new()
+	m.shader = sh
+	var means := {}
+	if FileAccess.file_exists("res://art/textures/terrain.json"):
+		var d = JSON.parse_string(FileAccess.get_file_as_string("res://art/textures/terrain.json"))
+		if d is Dictionary:
+			means = d
+	for k in ["grass", "dirt", "shingle", "rock"]:
+		m.set_shader_parameter(k + "_albedo", load(TEX % [k, "albedo"]))
+		m.set_shader_parameter(k + "_normal", load(TEX % [k, "normal"]))
+		if means.has(k):
+			# The means are of the sRGB pixels; the shader samples in linear.
+			var c: Array = means[k]
+			m.set_shader_parameter(k + "_mean", Vector3(pow(c[0], 2.2), pow(c[1], 2.2), pow(c[2], 2.2)))
+	_terrain_mat = m
+	return m
+
+## Faceted rocks, textured: rock detail and relief over their painted vertex colours.
+static func rock_mat() -> StandardMaterial3D:
+	var m := textured("rock", Color.WHITE, 1.6, 0.9, 1.2)
+	m.vertex_color_use_as_albedo = true
+	m.vertex_color_is_srgb = true
+	# The texture's colour averages about 0.3: lift it back to the painted colour.
+	m.albedo_color = Color(2.5, 2.5, 2.5)
+	return m
+
 static func flat_mat(color: Color, roughness: float = 0.9) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
 	m.albedo_color = color
@@ -116,10 +184,17 @@ static func rock_mesh(seed: int, size: Vector3, base: Color = STONE, moss: float
 	st.generate_normals()
 	return st.commit()
 
+static var _rock_m: StandardMaterial3D
+
+static func _rock_shared() -> StandardMaterial3D:
+	if _rock_m == null:
+		_rock_m = rock_mat()
+	return _rock_m
+
 static func rock(parent: Node, seed: int, size: Vector3, pos: Vector3, base: Color = STONE, moss: float = 0.6) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
 	mi.mesh = rock_mesh(seed, size, base, moss)
-	mi.material_override = vertex_mat()
+	mi.material_override = _rock_shared()
 	mi.position = pos
 	mi.rotation.y = float(seed % 360) * 0.0174533
 	parent.add_child(mi)
