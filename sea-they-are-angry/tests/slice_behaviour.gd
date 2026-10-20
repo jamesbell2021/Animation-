@@ -248,8 +248,8 @@ func _run() -> void:
 	var f_speed: float = Geo.flat_dist(p0, s2.global_position) / 1.0
 	print("   focused on the east beach: hp ", hp0, " -> ", s2.hp, " in 1 s, speed ", snappedf(f_speed, 0.01))
 	check(s2.hp <= hp0 - 9 and s2.hp >= hp0 - 11, "focused beam burns ~10 hp per second down on the beaches")
-	# Still wading up the beach (half speed), but the focused beam doesn't slow it further.
-	check(f_speed > s2.speed * Enemy.WADE_MULT * 0.85, "focused beam burns without slowing (%.2f m/s, wading)" % f_speed)
+	# Seared, it stops dead and writhes where it stands.
+	check(f_speed < 0.1 and s2.burning > 0.0, "the focused beam holds it still while it burns (%.2f m/s)" % f_speed)
 	check(s2._burn_k > 0.9, "burning Bloated glows orange")
 	s2.queue_free()
 	lamp.toggle_mode()

@@ -323,3 +323,13 @@ Built to plan 2's Phase C, with these departures:
 - **Smoke that follows the wind:** `Weather.wind_now` is the wind over the island (a breeze, up to a gale in a storm, plus gusts), the same wind the rain slants in. The chimney smoke takes its push from it every frame. On a still night it climbs a few metres in a soft, drifting plume. As the wind rises it rises less and leans further, and in a storm it's torn off flat and carried away downwind. It's thin by day and thicker once the fire's built up at night.
 - **Soft smoke:** smoke is drawn with soft, ragged, camera-facing puffs now (`FX.smoke`), not shaded spheres, so it reads as a plume, not a string of beads. A badly damaged building's smoke uses them too.
 - **The Eel's coils were see-through:** the body tube's triangles were wound the wrong way for Godot (counter-clockwise from outside), so the outside was culled and only the inside of the far half drew: the lighthouse showed through each coil. Rewound, with both faces of the back fin drawn.
+
+## Burning in the beam (owner's request: "really satisfying sizzling and popping and a reaction ... they should stop moving and react ... then a nice hiss and pop")
+
+- **They stop and writhe:** while the focused beam burns a Bloated or a Squid it can't take a step (the beam holds it still; the wide beam still only slows). It plays a burn clip: the Bloated throws its arms up over its face, wrenches its head away from the light, buckles at the knees and shudders and twists; the Squid rears up off the ground with every arm thrashing and curling. When the beam moves off, it carries on.
+- **It sounds like frying:** each frame the beam burns it (`Enemy.burn_tick`):
+  - a sizzle: a bright frying hiss dense with tiny spits, overlapped into one long sound;
+  - a fat crackle every 0.07–0.3 s, many spitting a few glowing embers;
+  - its cry: the Bloated's groan, the Squid's shriek, the Eel's hiss.
+  Steam boils off it in soft puffs.
+- **A hiss and a pop to finish:** burnt to death, a Bloated vents a long rising hiss of steam as it swells, then bursts with a wet pop (a crack, a bubble falling in pitch, a thump and a splatter) in a billow of steam and embers. A Squid hisses and pops the same way. All of it is synthesised in `Audio` (`sizzle`, `crackle`, `burn_hiss`, `pop`).

@@ -14,6 +14,10 @@
    "loop": false,
    "length": 1.2
   },
+  "burn": {
+   "loop": true,
+   "length": 0.9
+  },
   "strike": {
    "loop": false,
    "length": 1.1

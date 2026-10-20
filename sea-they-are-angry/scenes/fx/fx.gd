@@ -185,8 +185,26 @@ static func spray(parent: Node, at: Vector3, dir: Vector3, color: Color) -> void
 ## A puff of steam and embers from a creature being burned by the focused beam.
 static func steam(parent: Node, at: Vector3) -> void:
 	_meshes()
-	emitter(parent, at, _puff_mesh, Color(0.85, 0.82, 0.78, 0.4), 3, 1.4, Vector3.UP, 20.0, 0.8, 1.5, -0.4, 0.3, 0.6, true, true)
+	_soft_burst(parent, at, Color(0.88, 0.85, 0.8, 0.55), 4, 1.4, 20.0, 0.8, 1.5, 0.4, 0.7, 1.2)
 	emitter(parent, at, _drop_mesh, Color(1.0, 0.6, 0.2, 1.0), 4, 0.8, Vector3.UP, 40.0, 1.0, 2.5, -0.5, 0.4, 0.8, true, false, 3.0)
+
+## A few glowing embers spat out of something burning.
+static func embers(parent: Node, at: Vector3) -> void:
+	_meshes()
+	emitter(parent, at, _drop_mesh, Color(1.0, 0.55, 0.15, 1.0), 6, 0.7, Vector3.UP, 60.0, 1.5, 3.5, 6.0, 0.25, 0.5, true, false, 5.0)
+
+## The cloud of steam as a burnt creature dies: a big soft billow and a spray of embers.
+static func steam_burst(parent: Node, at: Vector3) -> void:
+	_meshes()
+	_soft_burst(parent, at, Color(0.9, 0.88, 0.84, 0.75), 16, 2.2, 60.0, 1.0, 3.0, 0.6, 1.4, 2.6)
+	emitter(parent, at, _drop_mesh, Color(1.0, 0.6, 0.2, 1.0), 24, 1.0, Vector3.UP, 80.0, 2.0, 5.0, 6.0, 0.3, 0.7, true, false, 5.0)
+
+static func _soft_burst(parent: Node, at: Vector3, color: Color, amount: int, lifetime: float, spread: float,
+		vmin: float, vmax: float, lift: float, smin: float, smax: float) -> void:
+	var p := emitter(parent, at, soft_puff(), color, amount, lifetime, Vector3.UP, spread, vmin, vmax, -lift, smin, smax, true, true)
+	if p:
+		p.material_override = null
+		p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 ## Splinters off a fence or building being battered.
 static func splinters(parent: Node, at: Vector3) -> void:

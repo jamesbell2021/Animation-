@@ -28,7 +28,6 @@ var _burn_k := 0.0
 var _burn_acc := 0.0
 var _burst_done := false
 var _steam_t := 0.0
-var _sizzle_t := 0.0
 
 func _init() -> void:
 	max_hp = 60
@@ -126,14 +125,14 @@ func in_light(mode: int, delta: float) -> void:
 			take_damage(dmg, Vector3.ZERO, null)
 			# The burn has its own glow; skip the white hit flash it would trigger every tick.
 			_hit_t = 0.0
+		if is_bursting():
+			return
+		# Held where it stands, writhing, frying and crackling, groaning.
+		burn_tick(delta, "groan", 0.0)
 		_steam_t -= delta
 		if _steam_t <= 0.0:
-			_steam_t = 0.18
-			FX.steam(get_parent(), global_position + Vector3(randf_range(-0.3, 0.3), 1.6, randf_range(-0.3, 0.3)))
-		_sizzle_t -= delta
-		if _sizzle_t <= 0.0:
-			_sizzle_t = 0.55
-			Audio.sfx("sizzle", global_position, -8.0, 0.2)
+			_steam_t = 0.14
+			FX.steam(get_parent(), global_position + Vector3(randf_range(-0.3, 0.3), 1.5, randf_range(-0.3, 0.3)))
 
 func _physics_process(delta: float) -> void:
 	super._physics_process(delta)
@@ -196,6 +195,9 @@ func on_dawn() -> void:
 func _enter_Bloat() -> void:
 	velocity = Vector3.ZERO
 	Audio.sfx("groan", global_position, -2.0, 0.05)
+	if last_hit == "beam":
+		# Cooked: the steam goes out of it with a long hiss before it pops.
+		Audio.sfx("burn_hiss", global_position + Vector3(0.0, 1.2, 0.0), 3.0, 0.05)
 	_knock = Vector3.ZERO
 	if rig != null:
 		# Swelling to burst: up off the ground at once, wherever it was lying.
@@ -238,5 +240,8 @@ func _enter_Burst() -> void:
 			p.take_damage(BURST_PLAYER_DMG, c)
 	FX.burst(get_parent(), c + Vector3(0.0, 0.9, 0.0))
 	Audio.sfx("burst", c, 0.0)
+	if last_hit == "beam":
+		Audio.sfx("pop", c + Vector3(0.0, 1.0, 0.0), 5.0, 0.08)
+		FX.steam_burst(get_parent(), c + Vector3(0.0, 1.0, 0.0))
 	Events.enemy_killed.emit(self)
 	queue_free()

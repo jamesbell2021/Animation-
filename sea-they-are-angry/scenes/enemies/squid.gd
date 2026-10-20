@@ -35,6 +35,7 @@ var _climb_t := 0.0
 var _burn_acc := 0.0
 var _lit_t := 0.0
 var _burn_t := 0.0
+var _steam_t := 0.0
 var _squeal_t := 0.0
 var _back_dir := Vector3.ZERO
 var _struck := false
@@ -278,10 +279,12 @@ func in_light(mode: int, delta: float) -> void:
 			_burn_acc -= float(dmg)
 			last_hit = "beam"
 			take_damage(dmg, Vector3.ZERO, null)
-		_squeal_t -= delta
-		if _squeal_t <= 0.0:
-			_squeal_t = 0.6
-			Audio.sfx("squid_squeal", global_position, -4.0, 0.15)
+		# Seared where it stands: it writhes, fries and crackles, and shrieks.
+		burn_tick(delta, "squid_squeal", -2.0, global_position + Vector3(0.0, 0.5, 0.0))
+		_steam_t -= delta
+		if _steam_t <= 0.0:
+			_steam_t = 0.16
+			FX.steam(get_parent(), global_position + Vector3(randf_range(-0.3, 0.3), 0.6, randf_range(-0.3, 0.3)))
 
 func _physics_process(delta: float) -> void:
 	super._physics_process(delta)
@@ -315,6 +318,11 @@ func on_dawn() -> void:
 	super.on_dawn()
 
 func _die() -> void:
+	if last_hit == "beam":
+		# Burnt up: a hiss of steam and a wet pop.
+		Audio.sfx("burn_hiss", global_position + Vector3(0.0, 0.5, 0.0), 2.0, 0.05)
+		Audio.sfx("pop", global_position + Vector3(0.0, 0.5, 0.0), 4.0, 0.1)
+		FX.steam_burst(get_parent(), global_position + Vector3(0.0, 0.5, 0.0))
 	FX.burst(get_parent(), global_position + Vector3(0.0, 0.4, 0.0))
 	Audio.sfx("splash", global_position, -2.0, 0.2)
 	super._die()

@@ -350,6 +350,10 @@ func _physics_process(delta: float) -> void:
 	state_t += delta
 	if is_wading():
 		speed_mult *= WADE_MULT
+	if burning > 0.0:
+		# Held in the focused beam: it can't take a step, only writhe.
+		burning = maxf(0.0, burning - delta)
+		speed_mult = 0.0
 	var tick := "_tick_" + String(state)
 	if has_method(tick):
 		call(tick, delta)
@@ -373,6 +377,49 @@ func _physics_process(delta: float) -> void:
 	# Reset after use: the lamp re-applies these every physics frame through in_light().
 	speed_mult = 1.0
 	lit_this_frame = false
+
+# ---- burning in the focused beam ----
+
+const BURN_HOLD := 0.15
+const NO_WRITHE := [&"Emerge", &"Bloat", &"Burst", &"Ragdoll", &"GetUp"]
+## Seconds left held burning (renewed every frame the focused beam burns it).
+var burning := 0.0
+var _sizzle_t := 0.0
+var _crackle_t := 0.0
+var _cry_t := 0.0
+
+## Called each frame the focused beam burns it: it stops where it stands and writhes,
+## and it sizzles, crackles, spits embers and cries out. `at` is where on it the
+## burning is (its middle by default).
+func burn_tick(delta: float, cry: String = "", cry_db: float = -2.0, at: Vector3 = Vector3.INF) -> void:
+	burning = BURN_HOLD
+	var p := global_position + Vector3(0.0, 1.0, 0.0) if at == Vector3.INF else at
+	_sizzle_t -= delta
+	if _sizzle_t <= 0.0:
+		_sizzle_t = randf_range(0.5, 0.75)
+		Audio.sfx("sizzle", p, 0.0, 0.15)
+	_crackle_t -= delta
+	if _crackle_t <= 0.0:
+		_crackle_t = randf_range(0.07, 0.3)
+		var j := Vector3(randf_range(-0.3, 0.3), randf_range(-0.3, 0.4), randf_range(-0.3, 0.3))
+		Audio.sfx("crackle", p + j, randf_range(-6.0, 1.0), 0.35)
+		if randf() < 0.45:
+			FX.embers(get_parent(), p + j)
+	if cry != "":
+		_cry_t -= delta
+		if _cry_t <= 0.0:
+			_cry_t = randf_range(0.9, 1.5)
+			Audio.sfx(cry, p, cry_db, 0.2)
+
+# Writhing in the beam (its burn clip) while it burns; back to what it was doing after.
+func _burn_pose() -> void:
+	if not rig.has_clip("burn") or rig.is_ragdoll():
+		return
+	if burning > 0.0 and not (state in NO_WRITHE):
+		if rig.current_activity() != "burn":
+			rig.activity("burn")
+	elif rig.current_activity() == "burn":
+		rig.activity("")
 
 ## Still coming up out of the sea: on a beach, below the meadow.
 func is_wading() -> bool:

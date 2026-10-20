@@ -7,7 +7,7 @@ extends Node
 ## Audio.loop("wind", true, -12)  start or stop an ambient loop
 
 const RATE := 16000
-const CACHE_DIR := "user://audio_cache_v3"
+const CACHE_DIR := "user://audio_cache_v5"
 const POOL_3D := 14
 const POOL_2D := 6
 
@@ -28,6 +28,9 @@ const SOUNDS := {
 	"splash": ["_s_splash", false],
 	"groan": ["_s_groan", false],
 	"sizzle": ["_s_sizzle", false],
+	"crackle": ["_s_crackle", false],
+	"burn_hiss": ["_s_burn_hiss", false],
+	"pop": ["_s_pop", false],
 	"gather": ["_s_gather", false],
 	"repair": ["_s_repair", false],
 	"refuel": ["_s_refuel", false],
@@ -344,12 +347,69 @@ func _s_groan() -> PackedFloat32Array:
 	var breath := _lowpass(_noise(n, 16), 500.0)
 	return _gain(_mix(b, breath, 0.25), 0.8)
 
+# Flesh frying in the beam: a bright hiss full of tiny spits, swelling and fading so
+# overlapping copies blend into one long sizzle.
 func _s_sizzle() -> PackedFloat32Array:
-	var b := _highpass(_noise(_n(0.5), 17), 2500.0)
-	for i in b.size():
-		var t := float(i) / float(b.size())
-		b[i] *= sin(t * PI) * (0.5 + 0.5 * absf(sin(t * 61.0)))
-	return _gain(b, 0.6)
+	var n := _n(1.0)
+	var b := _highpass(_lowpass(_noise(n, 17), 7000.0), 2200.0)
+	var r := RandomNumberGenerator.new()
+	r.seed = 171
+	var spits := PackedFloat32Array()
+	spits.resize(n)
+	# Dense little spits: tiny decaying clicks, ~90 a second, at random strengths.
+	for k in 90:
+		var at := r.randi_range(0, n - 200)
+		var amp := r.randf_range(0.3, 1.0)
+		for j in 120:
+			spits[at + j] += r.randf_range(-1.0, 1.0) * amp * exp(-float(j) / 18.0)
+	_highpass(spits, 1800.0)
+	for i in n:
+		var t := float(i) / float(n)
+		var flutter := 0.55 + 0.45 * absf(sin(t * 43.0) * sin(t * 17.0 + 1.0))
+		b[i] = (b[i] * 0.55 * flutter + spits[i] * 0.8) * sin(t * PI)
+	return _gain(b, 1.5)
+
+# A fat crackle: something bursting in the heat. A hard click, a spit of noise and a
+# small thump under it.
+func _s_crackle() -> PackedFloat32Array:
+	var n := _n(0.16)
+	var click := _env(_highpass(_noise(n, 31), 1500.0), 0.0005, 70.0)
+	var body := _env(_lowpass(_noise(n, 32), 2500.0), 0.001, 40.0)
+	var thump := _env(_tone(n, 180.0, 70.0), 0.001, 45.0)
+	_mix(click, body, 0.7)
+	_mix(click, thump, 0.6)
+	return _gain(click, 1.4)
+
+# Steam venting as it dies: a long hiss that climbs in pitch and fades.
+func _s_burn_hiss() -> PackedFloat32Array:
+	var n := _n(1.5)
+	var src := _noise(n, 33)
+	var b := PackedFloat32Array()
+	b.resize(n)
+	var lp := 0.0
+	var hp := 0.0
+	for i in n:
+		var t := float(i) / float(n)
+		var cut := lerpf(1200.0, 7000.0, t * t * (3.0 - 2.0 * t))
+		var a := 1.0 - exp(-TAU * cut / RATE)
+		lp += a * (src[i] - lp)
+		hp += 0.08 * (lp - hp)
+		var e := minf(1.0, t / 0.04) * (1.0 - smoothstep(0.55, 1.0, t))
+		b[i] = (lp - hp) * e * (0.8 + 0.2 * sin(t * 140.0))
+	return _gain(b, 0.85)
+
+# The wet pop when it bursts: a sharp crack, a bubble dropping in pitch, a low thump
+# and a splatter after.
+func _s_pop() -> PackedFloat32Array:
+	var n := _n(0.6)
+	var crack := _env(_highpass(_noise(n, 34), 900.0), 0.0005, 55.0)
+	var bubble := _env(_tone(n, 700.0, 140.0), 0.002, 14.0)
+	var thump := _env(_tone(n, 95.0, 40.0), 0.002, 10.0)
+	var splat := _env(_lowpass(_noise(n, 35), 1800.0), 0.03, 7.0)
+	_mix(crack, bubble, 0.9)
+	_mix(crack, thump, 1.1)
+	_mix(crack, splat, 0.6, _n(0.03))
+	return _gain(crack, 1.3)
 
 func _s_gather() -> PackedFloat32Array:
 	var a := _env(_tone(_n(0.45), 660.0, 660.0), 0.005, 9.0)

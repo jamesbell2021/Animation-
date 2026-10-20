@@ -440,6 +440,7 @@ func in_light(mode: int, delta: float) -> void:
 	if mode != Lamp.Mode.FOCUSED or state != &"Coil":
 		return
 	_burn_t = 0.15
+	burn_tick(delta, "eel_hiss", -4.0, _head.global_position)
 	_burn_acc += BEAM_DPS * Lamp.dps_mult * delta
 	var dmg := floori(_burn_acc)
 	if dmg > 0:

@@ -1024,6 +1024,24 @@ def creature_strike(b, reach=1.0, slow=1.0):
     return pose
 
 
+def burn_writhe(b):
+    """Caught in the focused beam: it stops dead and writhes, arms thrown up over its
+    face, head wrenched away from the light, knees buckling, the body shuddering and
+    twisting from side to side. 0.9 s loop."""
+    def pose(t):
+        w = math.sin(2 * math.pi * t)
+        shake = math.sin(2 * math.pi * t * 6.0)
+        b.hips((0.012 * shake, 0.04, -0.07 - 0.015 * math.sin(4 * math.pi * t)), pitch=12.0, roll=4.0 * w, yaw=12.0 * w)
+        over = b.stand_feet(0.07, 14.0)
+        b.trunk(spine=(12.0 + 3.0 * shake, -5.0 * w, 14.0 * w), chest=(10.0, -4.0 * w, 16.0 * w + 3.0 * shake), neck=(20.0, 0.0, 0.0))
+        for s, sx in SIDES:
+            hi = 0.5 + 0.5 * math.sin(2 * math.pi * t + (0.0 if s == "L" else math.pi))
+            b.arm_swing(s, 70.0 + 18.0 * hi + 3.0 * shake, 22.0, 100.0 + 25.0 * hi, twist=20.0)
+        b.look(25.0, 10.0 * w, -40.0 * w, amount=0.8)
+        return over
+    return pose
+
+
 def smotherer_idle(b):
     def pose(t):
         w = math.sin(2 * math.pi * t)
@@ -1282,8 +1300,20 @@ def squid_clips(sk):
             lift(i, "c", -40.0 * k)
         return -1.0
 
+    def burn(t):
+        """Seared by the beam: reared up off the ground, every arm thrashing and curling."""
+        w = math.sin(2 * math.pi * t)
+        sk.place_root(sk.h0["mantle"] + Vector((0.0, 0.05, 0.1 + 0.02 * w)), body_q(-22.0 + 4.0 * w, 6.0 * math.sin(4 * math.pi * t), 0.0))
+        for i in arms:
+            ph = 2 * math.pi * (t * 2.0 + i * 0.17)
+            lift(i, "a", 25.0 + 15.0 * math.sin(ph))
+            sweep(i, "a", 15.0 * math.sin(ph * 1.3))
+            lift(i, "b", -20.0 - 20.0 * math.sin(ph + 1.0))
+            lift(i, "c", -35.0 - 25.0 * math.sin(ph + 2.0))
+        return -1.0
+
     return [("idle", 2.0, idle, True), ("walk", 1.2, crawl, True), ("lunge", 0.6, lunge, False),
-            ("stagger_back", 0.6, recoil, False)], {}
+            ("stagger_back", 0.6, recoil, False), ("burn", 0.6, burn, True)], {}
 
 
 # ---------------------------------------------------------------- the build
@@ -1333,6 +1363,7 @@ def humanoid_set(sk, kind):
         add("idle", 3.2, bloated_idle(b), True)
         add("walk", 1.0, bloated_cycle(b, walk), True, CYCLE_FRAMES, period=walk.period, speed=walk.speed)
         add("bloat", 1.2, bloated_swell(b), False)
+        add("burn", 0.9, burn_writhe(b), True)
         add("strike", 1.1, creature_strike(b, 0.9, 1.2), False)
         add("hit", 0.45, hit_react(b), False)
         add("stagger_back", 0.9, stagger(b, True, 0.35, 0.9, heavy=1.0), False, travel=0.35, slide=STAGGER_SLIDE)
