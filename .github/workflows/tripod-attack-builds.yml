@@ -1,4 +1,4 @@
-# Builds Tripod Attack! for Android, Windows and Linux whenever the game changes, and
+# Builds Tripod Attack! for Android, Windows, Linux and the web whenever the game changes, and
 # (optionally) pushes the builds to itch.io.
 #
 # Download builds from the run's "Artifacts" section (Actions tab -> latest run).
@@ -60,7 +60,8 @@ jobs:
             "templates/android_debug.apk" "templates/android_release.apk" \
             "templates/android_source.zip" "templates/version.txt" \
             "templates/windows_release_x86_64.exe" "templates/windows_debug_x86_64.exe" \
-            "templates/linux_release.x86_64" "templates/linux_debug.x86_64" -d "$templates"
+            "templates/linux_release.x86_64" "templates/linux_debug.x86_64" \
+            "templates/web_nothreads_release.zip" "templates/web_nothreads_debug.zip" -d "$templates"
           rm "Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
 
       # rcedit (through wine) stamps the game's icon and version into the Windows .exe.
@@ -119,20 +120,24 @@ jobs:
       - name: Export all platforms
         working-directory: tripod-attack
         run: |
-          mkdir -p build/windows build/linux
+          mkdir -p build/windows build/linux build/web
           ../godot --headless --import --path . || true
           ../godot --headless --path . --export-$ANDROID_MODE "Android" build/tripod-attack.apk
           ../godot --headless --path . --export-release "Windows Desktop" build/windows/TripodAttack.exe
           ../godot --headless --path . --export-release "Linux" build/linux/TripodAttack.x86_64
+          ../godot --headless --path . --export-release "Web" build/web/index.html
           test -s build/tripod-attack.apk
           test -s build/windows/TripodAttack.exe
           test -s build/linux/TripodAttack.x86_64
+          test -s build/web/index.html && test -s build/web/index.wasm && test -s build/web/index.pck
           # rcedit only warns when it fails, which leaves Godot's icon on the exe: fail loudly instead.
           python3 -c "import sys; d = open(sys.argv[1], 'rb').read(); sys.exit(0 if 'Tripod Attack'.encode('utf-16-le') in d else 'The Windows exe has no Tripod Attack icon or version info: rcedit did not run')" build/windows/TripodAttack.exe
           cp README.md build/windows/README.md
           cp README.md build/linux/README.md
           (cd build/windows && zip -q -r ../tripod-attack-windows.zip .)
           (cd build/linux && zip -q -r ../tripod-attack-linux.zip .)
+          # itch.io wants index.html at the root of the zip for a browser game.
+          (cd build/web && zip -q -r ../tripod-attack-web.zip .)
           ls -la build
 
       - name: Run the headless smoke test on the Linux build
@@ -151,6 +156,10 @@ jobs:
         with:
           name: tripod-attack-linux
           path: tripod-attack/build/tripod-attack-linux.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tripod-attack-web
+          path: tripod-attack/build/tripod-attack-web.zip
 
   # Uploads the builds to itch.io. Each platform goes to its own channel, which itch.io shows
   # as separate downloads. Runs only when asked: a tag like ta-v1.0.0, or "Run workflow" with
@@ -194,6 +203,7 @@ jobs:
           version=$(grep -o 'version/name="[^"]*"' src/tripod-attack/export_presets.cfg | head -1 | cut -d'"' -f2)
           ./butler push dist/tripod-attack-windows/tripod-attack-windows.zip "$ITCH_PROJECT:windows" --userversion "${version:-dev}"
           ./butler push dist/tripod-attack-linux/tripod-attack-linux.zip "$ITCH_PROJECT:linux" --userversion "${version:-dev}"
+          ./butler push dist/tripod-attack-web/tripod-attack-web.zip "$ITCH_PROJECT:html5" --userversion "${version:-dev}"
           if [ "$RELEASE_SIGNED" = "true" ]; then
             ./butler push dist/tripod-attack-apk/tripod-attack.apk "$ITCH_PROJECT:android" --userversion "${version:-dev}"
           else

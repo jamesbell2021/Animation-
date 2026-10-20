@@ -44,7 +44,13 @@ func _ready() -> void:
 	rect.material = crt
 	layer.add_child(rect)
 	enter_title()
-	for arg in OS.get_cmdline_user_args():
+	var args := OS.get_cmdline_user_args()
+	if OS.has_feature("web"):
+		# The browser build has no command line: "?smoke-test" on the page URL runs the test.
+		var query = JavaScriptBridge.eval("window.location.search", true)
+		if query is String and query.contains("smoke-test"):
+			args.append("--smoke-test")
+	for arg in args:
 		if arg == "--reel":
 			add_child(load("res://scripts/demo_reel.gd").new())
 		if arg == "--smoke-test":

@@ -1,8 +1,9 @@
 extends Node
 ## Every sound is synthesised here, in the manner of an early-80s arcade board: square, saw and
 ## noise voices through swept filters, a cabinet echo and a soft clip. The effects and the three
-## music loops are rendered into AudioStreamWAVs on a background thread when the game starts, so
-## the project ships no audio files.
+## music loops are rendered into AudioStreamWAVs when the game starts, so the project ships no
+## audio files. On desktop and Android that happens on a background thread; the browser build is
+## single-threaded, so there it renders one effect or one bar of music at a time between frames.
 
 const RATE := 22050
 const TAU_R := TAU / RATE
@@ -14,6 +15,9 @@ var is_ready := false
 var muted := false
 
 var _thread: Thread
+var _jobs: Array = []            # browser build: work still to render, a slice per frame
+var _out := {}
+var _song_state := {}            # song name -> its buffer while it is rendered bar by bar
 var _players: Array[AudioStreamPlayer] = []
 var _music_player: AudioStreamPlayer
 var _pending_music := ""
@@ -29,22 +33,39 @@ func _ready() -> void:
 	_music_player = AudioStreamPlayer.new()
 	_music_player.volume_db = -7.0
 	add_child(_music_player)
-	_thread = Thread.new()
-	_thread.start(render_all)
+	if OS.has_feature("web"):
+		_out = {"sounds": {}, "music": {}, "raw": {}}
+		_jobs = _job_list()
+	else:
+		_thread = Thread.new()
+		_thread.start(render_all)
 
 
 func _process(_dt: float) -> void:
-	if not is_ready and _thread and not _thread.is_alive():
+	if is_ready:
+		return
+	if not _jobs.is_empty():
+		# About 12 ms of rendering a frame keeps the title screen moving while it works.
+		var t0 := Time.get_ticks_usec()
+		while not _jobs.is_empty() and Time.get_ticks_usec() - t0 < 12000:
+			_run_job(_jobs.pop_front(), _out)
+		if _jobs.is_empty():
+			_finish(_out)
+	elif _thread and not _thread.is_alive():
 		var result: Dictionary = _thread.wait_to_finish()
 		_thread = null
-		sounds = result.sounds
-		music = result.music
-		raw = result.raw
-		is_ready = true
-		if _pending_music != "":
-			var m := _pending_music
-			_pending_music = ""
-			play_music(m)
+		_finish(result)
+
+
+func _finish(result: Dictionary) -> void:
+	sounds = result.sounds
+	music = result.music
+	raw = result.raw
+	is_ready = true
+	if _pending_music != "":
+		var m := _pending_music
+		_pending_music = ""
+		play_music(m)
 
 
 func _exit_tree() -> void:
@@ -101,27 +122,56 @@ func toggle_mute() -> bool:
 
 # --- rendering ----------------------------------------------------------------------------------
 
-## Renders everything. Runs on the worker thread; also callable synchronously by the tools.
-func render_all() -> Dictionary:
-	var out := {"sounds": {}, "music": {}, "raw": {}}
-	var recipes := {
+func _recipes() -> Dictionary:
+	return {
 		"blip": _blip, "select": _select, "type": _type, "launch": _launch, "explosion": _explosion,
 		"explosion_small": _explosion_small, "leg_hit": _leg_hit, "ricochet": _ricochet, "leg_break": _leg_break,
 		"footstep": _footstep, "siren": _siren, "heat_ray": _heat_ray, "burn": _burn, "scream": _scream,
 		"saved": _saved, "collapse": _collapse, "crunch": _crunch, "spark": _spark, "hurt": _hurt, "stomp": _stomp,
 		"alarm": _alarm, "fanfare": _fanfare, "cleared": _cleared, "victory": _victory, "game_over": _game_over
 	}
-	for name in recipes:
+
+
+## Every unit of rendering work: one job per effect, one per bar of each song.
+func _job_list() -> Array:
+	var jobs: Array = []
+	for name in _recipes():
+		jobs.append(["sfx", name])
+	for song in ["menu", "map", "battle"]:
+		var bars: int = SONGS[song].roots.size()
+		for b in bars:
+			jobs.append(["bar", song, b, bars])
+	return jobs
+
+
+func _run_job(job: Array, out: Dictionary) -> void:
+	if job[0] == "sfx":
+		var name: String = job[1]
 		_buf = PackedFloat32Array()
-		recipes[name].call()
+		_recipes()[name].call()
 		_echo(0.23, 0.25, 0.3)
 		out.raw[name] = _buf
 		out.sounds[name] = _to_wav(_buf, false)
-	for song in ["menu", "map", "battle"]:
-		_buf = PackedFloat32Array()
-		_render_song(song)
-		out.raw["music_" + song] = _buf
-		out.music[song] = _to_wav(_buf, true)
+		return
+	var song: String = job[1]
+	var bar: int = job[2]
+	var bars: int = job[3]
+	_buf = _song_state.get(song, PackedFloat32Array())
+	_render_song_bars(song, bar, bar + 1)
+	if bar < bars - 1:
+		_song_state[song] = _buf
+		return
+	_song_state.erase(song)
+	_trim_song(song)
+	out.raw["music_" + song] = _buf
+	out.music[song] = _to_wav(_buf, true)
+
+
+## Renders everything in one go. Runs on the worker thread; also callable synchronously by the tools.
+func render_all() -> Dictionary:
+	var out := {"sounds": {}, "music": {}, "raw": {}}
+	for job in _job_list():
+		_run_job(job, out)
 	return out
 
 
@@ -509,13 +559,13 @@ static func _note(semi: float, base := 55.0) -> float:
 	return base * pow(2.0, semi / 12.0)
 
 
-func _render_song(name: String) -> void:
+func _render_song_bars(name: String, from_bar: int, to_bar: int) -> void:
 	var song: Dictionary = SONGS[name]
 	var sp: float = 60.0 / song.bpm / 4.0
 	var bars: int = song.roots.size()
 	var total := bars * 16 * sp
 	_ensure(int(total * RATE) + 1)
-	for bar in bars:
+	for bar in range(from_bar, to_bar):
 		var root: int = song.roots[bar]
 		for step in 16:
 			var t := (bar * 16 + step) * sp
@@ -532,5 +582,10 @@ func _render_song(name: String) -> void:
 				_noise(t, 0.12, 0.25, 0.002, 0.05, 0.5, 0.08, "bp", 2500, 800, 0.8)
 			if song.hat[step] == 1:
 				_noise(t, 0.03, 0.09, 0.002, 0.01, 0.5, 0.02, "hp", 9000, 7000)
-	# Trim the tail back to the loop length so the loop is seamless.
+
+
+## Trims the tail back to the loop length so the loop is seamless.
+func _trim_song(name: String) -> void:
+	var song: Dictionary = SONGS[name]
+	var total: float = song.roots.size() * 16 * (60.0 / song.bpm / 4.0)
 	_buf.resize(int(total * RATE))
