@@ -40,7 +40,10 @@ func _ready() -> void:
 	rect.anchor_bottom = 1.0
 	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	crt = ShaderMaterial.new()
-	crt.shader = load("res://shaders/crt.gdshader")
+	# The browser build cannot mipmap the screen texture, so it gets a glow made of direct samples.
+	# ("--web-crt" forces it on the desktop, for comparing the two.)
+	var web_crt := OS.has_feature("web") or OS.get_cmdline_user_args().has("--web-crt")
+	crt.shader = load("res://shaders/crt_web.gdshader" if web_crt else "res://shaders/crt.gdshader")
 	rect.material = crt
 	layer.add_child(rect)
 	enter_title()
