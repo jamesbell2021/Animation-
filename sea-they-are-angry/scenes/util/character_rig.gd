@@ -21,12 +21,22 @@ const GET_UP_TIME := 0.55
 ## How long the limp body takes to blend into the first frames of a get-up clip.
 const RAG_TO_CLIP := 0.3
 const LOCO := ["walk", "run", "sprint"]
+const TURNS := ["turn_l", "turn_r"]
 const UPPER_SHOTS := ["swing", "flare", "hit", "strike", "throw"]
-const FULL_SHOTS := ["getup_back", "getup_front", "lunge", "stagger_back", "stagger_fwd"]
+const FULL_SHOTS := ["getup_back", "getup_front", "lunge", "stagger_back", "stagger_fwd", "slam"]
+const GET_UPS := ["getup_back", "getup_front"]
 # The rig's own space against the model's (the model is turned round to face -Z).
 const TURN := Quaternion(Vector3.UP, PI)
-const NOT_ACTIVITIES := ["idle", "walk", "run", "sprint"]
-const UPPER_BONES := ["spine", "chest", "neck", "head", "upper_arm", "forearm", "hand"]
+const NOT_ACTIVITIES := ["idle", "walk", "run", "sprint", "turn_l", "turn_r"]
+const UPPER_BONES := ["spine", "chest", "neck", "head", "upper_arm", "forearm", "hand", "fingers", "thumb"]
+# Turning on the spot: below this (rad/s) it just stands; by TURN_FULL it steps round.
+const TURN_FROM := 0.5
+const TURN_FULL := 1.6
+# A body without stepping clips (the Crab, the Squid) shuffles round on its walk, as if
+# walking this many metres for every radian it turns.
+const TURN_SCUTTLE := 0.3
+# Blends in and out of actions follow this curve (slow in, slow out), not a straight line.
+static var _ease_curve: Curve
 # Bodies that start against rock get shoved out hard: never let a limb fly.
 const MAX_SPEED := 7.0
 const MAX_SPIN := 14.0
@@ -62,6 +72,11 @@ var _blend := 0.0
 var _move := 0.0
 var _busy := 0.0
 var _busy_want := 0.0
+var _turns := false
+var _turn_side := ""
+var _turn_w := 0.0
+var _turn_rate := 0.0
+var _turn_last := INF
 var _activity := ""
 var _act_speed := 1.0
 var _layers := {}
@@ -156,6 +171,7 @@ func _setup_clips(inst: Node3D, info: Dictionary) -> void:
 	for n in clips:
 		if n not in NOT_ACTIVITIES and n not in UPPER_SHOTS and n not in FULL_SHOTS:
 			_activities.append(n)
+	_turns = clips.has("turn_l") and clips.has("turn_r")
 	tree = AnimationTree.new()
 	tree.name = "Clips"
 	inst.add_child(tree)
@@ -169,9 +185,21 @@ func _anim(n: String) -> AnimationNodeAnimation:
 	a.animation = StringName(n)
 	return a
 
+static func ease_curve() -> Curve:
+	if _ease_curve == null:
+		_ease_curve = Curve.new()
+		_ease_curve.add_point(Vector2.ZERO, 0.0, 0.0)
+		_ease_curve.add_point(Vector2.ONE, 0.0, 0.0)
+	return _ease_curve
+
+static func _smooth(x: float) -> float:
+	x = clampf(x, 0.0, 1.0)
+	return x * x * (3.0 - 2.0 * x)
+
 func _picker(names: Array, xfade: float) -> AnimationNodeTransition:
 	var t := AnimationNodeTransition.new()
 	t.xfade_time = xfade
+	t.xfade_curve = ease_curve()
 	t.allow_transition_to_self = true
 	for n in names:
 		t.add_input(n)
@@ -194,14 +222,28 @@ func _build_tree(lib: AnimationLibrary) -> AnimationNodeBlendTree:
 		bt.add_node(&"loco", bs)
 		bt.add_node(&"loco_ts", AnimationNodeTimeScale.new())
 		bt.connect_node(&"loco_ts", 0, &"loco")
+		var stand := &"idle"
+		if _turns:
+			# Standing still, or stepping round on the spot.
+			bt.add_node(&"turn_pick", _picker(TURNS, 0.2))
+			for n in TURNS:
+				bt.add_node(StringName("t_" + n), _anim(n))
+			bt.connect_node(&"turn_pick", 0, &"t_turn_l")
+			bt.connect_node(&"turn_pick", 1, &"t_turn_r")
+			bt.add_node(&"turn_ts", AnimationNodeTimeScale.new())
+			bt.connect_node(&"turn_ts", 0, &"turn_pick")
+			bt.add_node(&"turning", AnimationNodeBlend2.new())
+			bt.connect_node(&"turning", 0, &"idle")
+			bt.connect_node(&"turning", 1, &"turn_ts")
+			stand = &"turning"
 		var mv := AnimationNodeBlend2.new()
 		mv.sync = true
 		bt.add_node(&"move", mv)
-		bt.connect_node(&"move", 0, &"idle")
+		bt.connect_node(&"move", 0, stand)
 		bt.connect_node(&"move", 1, &"loco_ts")
 		top = &"move"
 	if not _activities.is_empty():
-		var act := _picker(_activities, 0.15)
+		var act := _picker(_activities, 0.25)
 		for i in _activities.size():
 			bt.add_node(StringName("a_" + _activities[i]), _anim(_activities[i]))
 		bt.add_node(&"act", act)
@@ -216,8 +258,10 @@ func _build_tree(lib: AnimationLibrary) -> AnimationNodeBlendTree:
 	var upper := UPPER_SHOTS.filter(func(n): return clips.has(n))
 	if not upper.is_empty():
 		var os := AnimationNodeOneShot.new()
-		os.fadein_time = 0.06
-		os.fadeout_time = 0.18
+		os.fadein_time = 0.08
+		os.fadeout_time = 0.25
+		os.fadein_curve = ease_curve()
+		os.fadeout_curve = ease_curve()
 		os.filter_enabled = true
 		var probe := lib.get_animation(StringName(upper[0]))
 		for i in probe.get_track_count():
@@ -237,7 +281,9 @@ func _build_tree(lib: AnimationLibrary) -> AnimationNodeBlendTree:
 	if not full.is_empty():
 		var os := AnimationNodeOneShot.new()
 		os.fadein_time = 0.0
-		os.fadeout_time = 0.25
+		os.fadeout_time = 0.3
+		os.fadein_curve = ease_curve()
+		os.fadeout_curve = ease_curve()
 		bt.add_node(&"full", os)
 		bt.add_node(&"full_pick", _picker(full, 0.0))
 		for i in full.size():
@@ -258,6 +304,10 @@ func has_clip(n: String) -> bool:
 ## Seconds a clip lasts at normal speed.
 func clip_length(n: String) -> float:
 	return float(clips.get(n, {}).get("length", 0.0))
+
+## When a clip's blow lands (seconds in), from animate.py: half way if it doesn't say.
+func hit_time(n: String) -> float:
+	return float(clips.get(n, {}).get("hit", clip_length(n) * 0.5))
 
 ## How fast the character is moving over the ground (m/s): picks and paces the walk,
 ## run or sprint so the feet keep their grip.
@@ -286,6 +336,11 @@ func shot(n: String) -> void:
 	if tree == null or not clips.has(n):
 		return
 	var which := "upper" if n in UPPER_SHOTS else "full"
+	if which == "full":
+		# A get-up takes over from the ragdoll in its own time; anything else eases in
+		# from what the body was doing.
+		var os := (tree.tree_root as AnimationNodeBlendTree).get_node(&"full") as AnimationNodeOneShot
+		os.fadein_time = 0.0 if n in GET_UPS else 0.12
 	tree.set("parameters/%s_pick/transition_request" % which, n)
 	tree.set("parameters/%s/request" % which, AnimationNodeOneShot.ONE_SHOT_REQUEST_FIRE)
 
@@ -307,7 +362,10 @@ func _model_q(bone: String, euler: Vector3) -> Quaternion:
 
 func _run_clips(delta: float) -> void:
 	var s := global_basis.get_scale().x
+	_track_turn(delta)
 	var v := _speed / maxf(s, 0.01)
+	if not _turns:
+		v = maxf(v, absf(_turn_rate) * TURN_SCUTTLE)
 	var want_blend := 0.0
 	var rate := 1.0
 	var move := 0.0
@@ -333,19 +391,48 @@ func _run_clips(delta: float) -> void:
 			var natural := lerpf(sp[i], sp[i + 1], f)
 			rate = (v / natural) / lerpf(per[i], per[i + 1], f)
 		_blend = move_toward(_blend, want_blend, delta * 3.0)
-		_move = move_toward(_move, move, delta * 5.0)
+		_move = move_toward(_move, move, delta * 4.0)
 		tree.set("parameters/loco/blend_position", _blend)
 		tree.set("parameters/loco_ts/scale", rate)
-		tree.set("parameters/move/blend_amount", _move)
+		tree.set("parameters/move/blend_amount", _smooth(_move))
+		_run_turns(delta)
 	if not _activities.is_empty():
-		_busy = move_toward(_busy, _busy_want, delta * 6.0)
-		tree.set("parameters/busy/blend_amount", _busy)
+		_busy = move_toward(_busy, _busy_want, delta * 4.0)
+		tree.set("parameters/busy/blend_amount", _smooth(_busy))
 		tree.set("parameters/act_ts/scale", _act_speed)
 	tree.advance(delta)
 	for bone in _layers:
 		var i := skeleton.find_bone(bone)
 		skeleton.set_bone_pose_rotation(i, skeleton.get_bone_pose_rotation(i) * _model_q(bone, _layers[bone]))
 	_alive(delta)
+
+# How fast the character is turning (rad/s, + to its left), smoothed.
+func _track_turn(delta: float) -> void:
+	var yaw := global_rotation.y
+	if _turn_last != INF and delta > 0.0 and not _ragdoll:
+		_turn_rate = lerpf(_turn_rate, angle_difference(_turn_last, yaw) / delta, minf(1.0, delta * 10.0))
+	else:
+		_turn_rate = 0.0
+	_turn_last = yaw
+
+# Standing and turning: step round on the spot, at the rate the body turns, so the feet
+# keep their grip instead of skating round.
+func _run_turns(delta: float) -> void:
+	if not _turns:
+		return
+	var r := absf(_turn_rate)
+	var want := clampf((r - TURN_FROM) / (TURN_FULL - TURN_FROM), 0.0, 1.0) * (1.0 - clampf(_move * 2.0, 0.0, 1.0))
+	if _busy_want > 0.0:
+		want = 0.0
+	_turn_w = move_toward(_turn_w, want, delta * (6.0 if want > _turn_w else 3.0))
+	if want > 0.0:
+		var side := "turn_l" if _turn_rate > 0.0 else "turn_r"
+		if side != _turn_side:
+			_turn_side = side
+			tree.set("parameters/turn_pick/transition_request", side)
+		var natural := deg_to_rad(float(clips[side].get("rate", 90.0)))
+		tree.set("parameters/turn_ts/scale", clampf(r / natural, 0.6, 2.5))
+	tree.set("parameters/turning/blend_amount", _smooth(_turn_w))
 
 ## Turn the head toward a point in the world (weight 0 lets it go); the neck takes some.
 func look_at_point(p: Vector3, weight: float = 1.0) -> void:

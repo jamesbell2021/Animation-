@@ -41,11 +41,14 @@ How the script works:
 
 - Distances are in leg lengths, so steps fit each body.
 - Walk, run and sprint are one-second cycles in step; their real period and speed go in the `.anims.json`.
+- Humanoids have finger and thumb bones. Each clip says how tightly each hand closes (`grip=` in `humanoid_set`; the default for keepers is round the boathook and the lantern's bail).
+- `turn_l` and `turn_r` step round on the spot; their `rate` (degrees a second) goes in the `.anims.json`. Blows that land partway through a clip (`strike`, the Squid's `lunge`) write their `hit` time there too, so the game deals the damage when the clip's blow lands.
 - `CharacterRig` plays the clips through an AnimationTree:
-  - `locomote(speed)` picks and paces the walk, run or sprint.
+  - `locomote(speed)` picks and paces the walk, run or sprint. Standing and turning, it steps round at the rate the body turns.
   - `activity(name)` holds a looped or one-time action.
   - `shot(name)` plays a one-off: upper body for swings and flinches, the whole body for get-ups and lunges.
   - `layer(bone, euler)` adds code on top.
+  - Every blend between clips eases in and out (`CharacterRig.ease_curve()`).
   - A ragdoll gets up with `getup_plan()` and `get_up(time, clip)`.
 - The build prints any clip where a limb can't reach its target ("overreaches"). A few centimetres is fine.
 

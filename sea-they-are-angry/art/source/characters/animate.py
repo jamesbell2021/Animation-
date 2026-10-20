@@ -35,6 +35,8 @@ CYCLE_FRAMES = 30
 # A stagger slides the character over this long (the game uses the same figure).
 STAGGER_SLIDE = 0.45
 THROW_RELEASE = 0.32
+# When a Squid's lunge snaps shut on its prey (the game deals the bite then).
+SQUID_HIT = 0.62
 
 
 def rad(d):
@@ -405,6 +407,27 @@ class Body:
     def shoulder(self, s):
         return self.sk.H["upper_arm." + s]
 
+    def grip(self, s, curl, thumb=None):
+        """Close a hand: curl (degrees) bends the fingers in to the palm (- spreads them
+        back), and the thumb comes round to meet them."""
+        sx = 1.0 if s == "L" else -1.0
+        th = curl * 0.35 if thumb is None else thumb
+        self.sk.turn("fingers." + s, 0.0, sx * curl, 0.0)
+        self.sk.turn("thumb." + s, 0.0, sx * th, 0.0)
+
+
+def gripping(b, pose, grip_l, grip_r):
+    """A pose with the hands closed by grip_l and grip_r: degrees, or functions of t."""
+    def at(v, t):
+        return v(t) if callable(v) else v
+
+    def wrapped(t):
+        over = pose(t)
+        b.grip("L", at(grip_l, t))
+        b.grip("R", at(grip_r, t))
+        return over
+    return wrapped
+
 
 # ---------------------------------------------------------------- gaits
 
@@ -493,6 +516,55 @@ class Gait:
 def arm_phase(t):
     """+1 when the left arm is fully forward (the right leg forward, t 0.5)."""
     return -math.cos(2 * math.pi * t)
+
+
+# How far the body turns over one turning cycle (two steps) at the clip's own speed.
+TURN_STEP = 70.0
+
+
+def turn_step(b, left, upper, turn_out=6.0, lift=0.07, sink=0.0):
+    """Turning on the spot: the feet step round under the body instead of sliding. The
+    game turns the character and plays this at the rate that matches (TURN_STEP degrees
+    a cycle), so a planted foot turns back under the body just as fast as the body turns
+    and stays put on the ground while the other steps round. The inside foot goes first;
+    the hips lead the turn and the head looks into it. `upper(t)` poses the arms."""
+    sgn = 1.0 if left else -1.0
+    stance = 0.6
+    turn = TURN_STEP * stance
+    first = "L" if left else "R"
+
+    def foot(s, u):
+        sx = 1.0 if s == "L" else -1.0
+        if u < stance:
+            phi, v = sgn * (turn / 2 - turn * u / stance), 0.0
+        else:
+            v = (u - stance) / (1.0 - stance)
+            phi = sgn * (-turn / 2 + turn * ease(v))
+        up = math.sin(math.pi * v)
+        a0 = b.ankle0[s]
+        moved = Quaternion(Z, rad(phi)) @ Vector((a0.x, a0.y, 0.0))
+        at = Vector((moved.x - a0.x, moved.y - a0.y, lift * b.leg_len * up))
+        a, q = b.foot_pose(s, "flat", 10.0 * up, yaw=phi + sx * turn_out, at=at)
+        return a, q, up
+
+    def pose(t):
+        feet = {}
+        for s, _ in SIDES:
+            u = (t + stance + (0.0 if s == first else 0.5)) % 1.0
+            feet[s] = foot(s, u)
+        # The weight goes over the planted foot while the other is up.
+        x = sum(-(1.0 if s == "L" else -1.0) * 0.022 * feet[s][2] for s, _ in SIDES)
+        z = -0.012 - sink - 0.012 * (feet["L"][2] + feet["R"][2])
+        b.hips((x, 0.0, z), pitch=2.0, roll=-4.0 * x / 0.022, yaw=sgn * 7.0)
+        over = -1.0
+        for s, _ in SIDES:
+            a, q, _up = feet[s]
+            over = max(over, b.leg(s, a, q))
+        b.trunk(spine=(1.0, 0.0, sgn * 4.0), chest=(0.0, 0.0, sgn * 5.0))
+        upper(t)
+        b.look(4.0, 0.0, sgn * 22.0, amount=0.85)
+        return over
+    return pose
 
 
 # ---------------------------------------------------------------- the keepers
@@ -999,19 +1071,28 @@ def bloated_swell(b):
     return pose
 
 
-def creature_strike(b, reach=1.0, slow=1.0):
-    """Both arms up and clubbed down on whatever's in front (a fence, a door): 0.9 s."""
-    scale = b.hips0.z / 0.84
-    T = 0.9 * slow
-    keys = [(0.0, {"lean": 10.0, "up": 0.0}), (0.4 * T, {"lean": -8.0, "up": 1.0}),
-            (0.55 * T, {"lean": 30.0, "up": -0.4}), (0.7 * T, {"lean": 28.0, "up": -0.3}), (T, {"lean": 10.0, "up": 0.0})]
+# When a clubbing strike lands, as a fraction of the clip.
+STRIKE_HIT = 0.7
+
+
+def creature_strike(b, reach=1.0, T=1.0):
+    """Both arms up and clubbed down on whatever's in front (a fence, a door). The
+    wind-up is the warning: the arms go up, it rears back and sinks, holds there
+    trembling, then crashes down at STRIKE_HIT of the clip (the game deals the blow
+    then)."""
+    keys = [(0.0, {"lean": 10.0, "up": 0.0, "coil": 0.0}), (0.4 * T, {"lean": -8.0, "up": 0.9, "coil": 0.6}),
+            (0.6 * T, {"lean": -14.0, "up": 1.05, "coil": 1.0}),
+            (STRIKE_HIT * T, {"lean": 32.0, "up": -0.4, "coil": 0.2}), (0.82 * T, {"lean": 28.0, "up": -0.3, "coil": 0.0}),
+            (T, {"lean": 10.0, "up": 0.0, "coil": 0.0})]
 
     def pose(t):
         k = keyed(keys, t * T)
-        b.hips((0.0, 0.03, -0.05), pitch=k["lean"] * 0.35)
+        coil = max(0.0, k["coil"])
+        shake = math.sin(t * T * 2 * math.pi * 14.0) * coil
+        b.hips((0.0, 0.03 + 0.04 * coil, -0.05 - 0.05 * coil), pitch=k["lean"] * 0.35)
         over = b.stand_feet(0.06, 12.0)
-        b.trunk(spine=(k["lean"] * 0.35, 0.0, 0.0), chest=(k["lean"] * 0.3, 0.0, 0.0), neck=(8.0, 0.0, 0.0))
-        up = k["up"]
+        b.trunk(spine=(k["lean"] * 0.35, 0.0, 0.0), chest=(k["lean"] * 0.3, 1.5 * shake, 0.0), neck=(8.0 + 6.0 * coil, 0.0, 0.0))
+        up = k["up"] + 0.03 * shake
         for s, sx in SIDES:
             sh = b.shoulder(s)
             if up >= 0:
@@ -1196,9 +1277,31 @@ def crab_clips(sk):
             sk.turn(f"claw.{side}", -20.0 * k, 0.0, 0.0)
         return over
 
+    def windup(t):
+        """The tell before a slam (the game's WINDUP_TIME, then held): the shell rears
+        up at the front and settles back on braced legs, the small claw lifting too,
+        shaking harder as it goes. The game cocks the big claw on top."""
+        k = ease(t)
+        shake = math.sin(t * 1.5 * 2 * math.pi * 9.0) * k * k
+        sk.place_root(sk.h0["body"] + Vector((0.0, 0.06 * k, -0.04 * k + 0.008 * shake)), body_q(-10.0 * k, 1.5 * shake, 0.0))
+        over = pose_legs(0.25, 0.0, 0.0)
+        sk.turn("claw_arm.L", -20.0 * k, 0.0, 10.0 * k)
+        sk.turn("claw.L", -15.0 * k, 0.0, 0.0)
+        return over
+
+    def slam(t):
+        """The slam and the recovery: the front of the shell crashes down with the claw,
+        then it heaves itself level again. 1.0 s."""
+        k = keyed([(0.0, {"a": -0.7}), (0.08, {"a": 1.0}), (0.3, {"a": 0.85}), (1.0, {"a": 0.0})], t)["a"]
+        sk.place_root(sk.h0["body"] + Vector((0.0, -0.06 * k, -0.06 * k)), body_q(12.0 * k, 0.0, 0.0))
+        over = pose_legs(0.25, 0.0, 0.0)
+        sk.turn("claw_arm.L", 12.0 * k, 0.0, -6.0 * k)
+        return over
+
     speed = travel / (0.55 * 0.9)
     return [("idle", 2.4, idle, True), ("walk", 0.9, walk, True), ("rummage", 0.8, rummage, True),
-            ("stagger_back", 0.7, recoil, False)], {"walk": {"period": 0.9, "speed": speed}}
+            ("stagger_back", 0.7, recoil, False), ("windup", 1.5, windup, False), ("slam", 1.0, slam, False)], \
+        {"walk": {"period": 0.9, "speed": speed}}
 
 
 def crab_leg(sk, i, s, tip, pole):
@@ -1275,19 +1378,26 @@ def squid_clips(sk):
         return -1.0
 
     def lunge(t):
-        """Arms flung up and forward round the prey, then snapped shut. 0.6 s."""
-        k = ease(min(1.0, t / 0.45))
-        snap = ease(max(0.0, (t - 0.45) / 0.55))
-        sk.place_root(sk.h0["mantle"] + Vector((0.0, -0.05 * k, 0.1 * k * (1.0 - snap))), body_q(-14.0 * k * (1.0 - snap), 0.0, 0.0))
+        """The coil and the strike: the mantle sinks and draws back, the front arms curl
+        back like springs and tremble, then it throws itself forward with the arms flung
+        wide and snaps them shut round the prey at SQUID_HIT. 0.9 s."""
+        tt = t * 0.9
+        k = keyed([(0.0, {"coil": 0.0, "fling": 0.0, "snap": 0.0}), (0.36, {"coil": 1.0}), (0.48, {"coil": 1.0}),
+                   (0.56, {"coil": 0.0, "fling": 1.0}), (SQUID_HIT, {"fling": 0.8, "snap": 1.0}),
+                   (0.9, {"coil": 0.0, "fling": 0.0, "snap": 0.0})], tt)
+        coil, fling, snap = max(0.0, k["coil"]), max(0.0, k["fling"]), max(0.0, k["snap"])
+        shake = math.sin(tt * 2 * math.pi * 16.0) * coil
+        sk.place_root(sk.h0["mantle"] + Vector((0.0, 0.06 * coil - 0.12 * fling, -0.04 * coil + 0.1 * fling * (1.0 - snap))),
+                      body_q(10.0 * coil - 14.0 * fling * (1.0 - snap), 1.5 * shake, 0.0))
         for i in arms:
             if info[i]["front"] > -0.2:
-                lift(i, "a", 50.0 * k - 30.0 * snap)
-                sweep(i, "a", 25.0 * k + 10.0 * snap)
-                lift(i, "b", 10.0 * k - 45.0 * snap)
-                lift(i, "c", -50.0 * snap)
+                lift(i, "a", 18.0 * coil + 50.0 * fling - 30.0 * snap)
+                sweep(i, "a", -12.0 * coil + 25.0 * fling + 10.0 * snap)
+                lift(i, "b", -30.0 * coil + 10.0 * fling - 45.0 * snap + 4.0 * shake)
+                lift(i, "c", -45.0 * coil - 50.0 * snap)
             else:
-                lift(i, "a", -6.0 * k)
-                sweep(i, "a", -10.0 * k)
+                lift(i, "a", -6.0 * (coil + fling))
+                sweep(i, "a", 6.0 * coil - 10.0 * fling)
         return -1.0
 
     def recoil(t):
@@ -1312,7 +1422,7 @@ def squid_clips(sk):
             lift(i, "c", -35.0 - 25.0 * math.sin(ph + 2.0))
         return -1.0
 
-    return [("idle", 2.0, idle, True), ("walk", 1.2, crawl, True), ("lunge", 0.6, lunge, False),
+    return [("idle", 2.0, idle, True), ("walk", 1.2, crawl, True), ("lunge", 0.9, lunge, False),
             ("stagger_back", 0.6, recoil, False), ("burn", 0.6, burn, True)], {}
 
 
@@ -1325,11 +1435,21 @@ def humanoid_set(sk, kind):
     b = Body(sk)
     clips = []   # (name, seconds, pose, loop, frames)
     meta = {"clips": {}}
+    # How the hands close unless a clip says otherwise: a keeper's right hand round the
+    # boathook and the left round the lantern's bail; the drowned's hang half-curled, the
+    # Smotherer's hooked like claws.
+    hands = {"keeper": (75.0, 85.0), "bloated": (35.0, 35.0), "smotherer": (50.0, 50.0)}[kind]
 
-    def add(name, seconds, pose, loop, frames=None, **info):
-        clips.append((name, seconds, pose, loop, frames))
+    def add(name, seconds, pose, loop, frames=None, grip=None, **info):
+        gl, gr = grip if grip is not None else hands
+        clips.append((name, seconds, gripping(b, pose, gl, gr), loop, frames))
         meta["clips"][name] = dict(info, loop=loop, length=seconds if frames is None else frames / FPS)
 
+    def turns(upper, seconds, **kw):
+        for n, left in (("turn_l", True), ("turn_r", False)):
+            add(n, seconds, turn_step(b, left, upper, **kw), True, rate=TURN_STEP / seconds)
+
+    open_hand = (8.0, 8.0)
     if kind == "keeper":
         walk = Gait(b, 0.92, 0.6, 0.68, 0.012, 0.012, 0.12, strike=14.0, toe_off=32.0, sway=0.022, list_=3.0, yaw=6.0, lean=3.0)
         # Keepers move at 4.5 m/s, 6.5 sprinting: long-striding runs with short contact
@@ -1343,17 +1463,24 @@ def humanoid_set(sk, kind):
         add("run", 1.0, keeper_cycle(b, run, run=True, chest_twist=10.0, head_pitch=6.0), True, CYCLE_FRAMES, period=run.period, speed=run.speed)
         add("sprint", 1.0, keeper_cycle(b, sprint, run=True, arms=1.3, chest_twist=12.0, head_pitch=8.0), True, CYCLE_FRAMES,
             period=sprint.period, speed=sprint.speed)
+        turns(lambda t: keeper_carry(b, t, 0.0, 3.0 * math.sin(2 * math.pi * t)), 0.8)
         add("swing", 0.55, keeper_swing(b), False)
-        add("hammer", 0.34, keeper_hammer(b), True)
-        add("pour", 0.9, keeper_pour(b), False)
+        # The left hand lies open on the work to steady it.
+        add("hammer", 0.34, keeper_hammer(b), True, grip=(20.0, 90.0))
+        add("pour", 0.9, keeper_pour(b), False, grip=(15.0, 85.0))
         climb, rise = keeper_climb(b)
-        add("climb", 1.2, climb, True, rise=rise)
-        add("flare", 0.6, keeper_flare(b), False)
+        add("climb", 1.2, climb, True, grip=(90.0, 90.0), rise=rise)
+        add("flare", 0.6, keeper_flare(b), False, grip=(75.0, 95.0))
         add("hit", 0.45, hit_react(b, keeper_hit_arms), False)
         add("stagger_back", 0.8, stagger(b, True, 0.5, carry=keeper_carry), False, travel=0.5, slide=STAGGER_SLIDE)
         add("stagger_fwd", 0.8, stagger(b, False, 0.5, carry=keeper_carry), False, travel=0.5, slide=STAGGER_SLIDE)
-        add("throw", 0.8, keeper_throw(b), False, release=THROW_RELEASE)
-        add("revive", 0.8, kneel_work(b), True)
+        # The hand opens as the boathook leaves it.
+        let_go = THROW_RELEASE / 0.8
+
+        def throw_grip(t):
+            return 85.0 if t < let_go else lerp(85.0, -10.0, ease((t - let_go) / 0.12))
+        add("throw", 0.8, keeper_throw(b), False, grip=(75.0, throw_grip), release=THROW_RELEASE)
+        add("revive", 0.8, kneel_work(b), True, grip=(15.0, 15.0))
         # Keepers are quick about it: being floored shouldn't cost too long.
         gb, hb, tb = getup_back(b, slow=0.82)
         gf, hf, tf = getup_front(b, slow=0.85)
@@ -1362,9 +1489,20 @@ def humanoid_set(sk, kind):
                     width=0.05, drag={"side": "R", "lift": 0.25, "toe": 18.0})
         add("idle", 3.2, bloated_idle(b), True)
         add("walk", 1.0, bloated_cycle(b, walk), True, CYCLE_FRAMES, period=walk.period, speed=walk.speed)
-        add("bloat", 1.2, bloated_swell(b), False)
-        add("burn", 0.9, burn_writhe(b), True)
-        add("strike", 1.1, creature_strike(b, 0.9, 1.2), False)
+
+        def bloated_arms(t):
+            for s, sx in SIDES:
+                b.arm_swing(s, 12.0 + 6.0 * math.sin(2 * math.pi * t + (0.0 if s == "L" else 2.0)), 14.0, 24.0)
+        turns(bloated_arms, 1.3, turn_out=14.0, lift=0.04, sink=0.04)
+
+        def spread(t):
+            return lerp(35.0, -25.0, ease(t))
+        add("bloat", 1.2, bloated_swell(b), False, grip=(spread, spread))
+
+        def clawing(t):
+            return 40.0 + 45.0 * (0.5 + 0.5 * math.sin(2 * math.pi * t * 2.0))
+        add("burn", 0.9, burn_writhe(b), True, grip=(clawing, clawing))
+        add("strike", 1.0, creature_strike(b, 0.9, 1.0), False, grip=(95.0, 95.0), hit=STRIKE_HIT * 1.0)
         add("hit", 0.45, hit_react(b), False)
         add("stagger_back", 0.9, stagger(b, True, 0.35, 0.9, heavy=1.0), False, travel=0.35, slide=STAGGER_SLIDE)
         gb, hb, tb = getup_back(b, slow=1.35, heavy=1.0)
@@ -1373,16 +1511,30 @@ def humanoid_set(sk, kind):
         walk = Gait(b, 1.15, 0.62, 0.7, 0.1, 0.025, 0.14, strike=10.0, toe_off=28.0, sway=0.015, list_=3.0, yaw=7.0, lean=16.0)
         add("idle", 3.0, smotherer_idle(b), True)
         add("walk", 1.0, smotherer_cycle(b, walk), True, CYCLE_FRAMES, period=walk.period, speed=walk.speed)
+
+        def smotherer_arms(t):
+            for s, sx in SIDES:
+                b.arm_swing(s, 26.0 + 6.0 * math.sin(2 * math.pi * t + (0.0 if s == "L" else 2.0)), 10.0, 32.0)
+                b.hand_turn(s, -20.0, 0.0, 0.0)
+        turns(smotherer_arms, 1.0, turn_out=10.0, lift=0.08, sink=0.06)
         climb, rise = smotherer_climb(b)
-        add("climb", 1.0, climb, True, rise=rise)
-        add("smother", 2.5, smotherer_smother(b), True)
-        add("strike", 0.9, creature_strike(b, 1.2, 1.0), False)
+
+        def climb_grip(phase):
+            # Hooked into the stone while the hand holds, spread wide as it reaches.
+            def g(t):
+                u = (t - phase) % 1.0
+                return 75.0 if u < 0.6 else lerp(75.0, -20.0, math.sin(math.pi * (u - 0.6) / 0.4))
+            return g
+        add("climb", 1.0, climb, True, grip=(climb_grip(0.5), climb_grip(0.0)), rise=rise)
+        add("smother", 2.5, smotherer_smother(b), True, grip=(-12.0, -12.0))
+        add("strike", 0.95, creature_strike(b, 1.2, 0.95), False, grip=(65.0, 65.0), hit=STRIKE_HIT * 0.95)
         add("hit", 0.45, hit_react(b), False)
         add("stagger_back", 0.8, stagger(b, True, 0.45), False, travel=0.45, slide=STAGGER_SLIDE)
         gb, hb, tb = getup_back(b, slow=1.1)
         gf, hf, tf = getup_front(b, slow=1.1)
-    add("getup_back", tb, gb, False, hips=rig_space(hb))
-    add("getup_front", tf, gf, False, hips=rig_space(hf))
+    # Hands flat to push up off the ground.
+    add("getup_back", tb, gb, False, grip=open_hand, hips=rig_space(hb))
+    add("getup_front", tf, gf, False, grip=open_hand, hips=rig_space(hf))
     return clips, meta
 
 
@@ -1410,6 +1562,7 @@ def build(name, rig):
         clips = [(n, s, p, l, None) for n, s, p, l in cl]
         meta = {"clips": {n: dict(loop=l, length=s) for n, s, p, l in cl}}
         meta["clips"]["stagger_back"].update(travel=0.35, slide=STAGGER_SLIDE)
+        meta["clips"]["lunge"]["hit"] = SQUID_HIT
         meta["clips"]["walk"]["period"] = 1.2
         meta["clips"]["walk"]["speed"] = 2.2
     else:

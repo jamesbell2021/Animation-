@@ -380,7 +380,10 @@ for _s in ("L", "R"):
     HUMANOID_BONES += [
         ("upper_arm." + _s, "shoulder." + _s, "elbow." + _s, "chest"),
         ("forearm." + _s, "elbow." + _s, "wrist." + _s, "upper_arm." + _s),
-        ("hand." + _s, "wrist." + _s, "fingers." + _s, "forearm." + _s),
+        ("hand." + _s, "wrist." + _s, "hand." + _s, "forearm." + _s),
+        # The fingers in one piece and the thumb, so a hand can close round a grip.
+        ("fingers." + _s, "hand." + _s, "fingers." + _s, "hand." + _s),
+        ("thumb." + _s, "wrist." + _s, "thumb." + _s, "hand." + _s),
         ("thigh." + _s, "hip." + _s, "knee." + _s, "hips"),
         ("shin." + _s, "knee." + _s, "ankle." + _s, "thigh." + _s),
         ("foot." + _s, "ankle." + _s, "toe." + _s, "shin." + _s),

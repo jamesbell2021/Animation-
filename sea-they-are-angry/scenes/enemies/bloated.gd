@@ -34,6 +34,7 @@ func _init() -> void:
 	hp = 60
 	speed = 1.15
 	mass = 2.0
+	turn_rate = 5.0
 	# Heavy on its feet: three quick blows to floor it (it bursts on the third anyway).
 	poise_hits = 3
 	reach = 3.5

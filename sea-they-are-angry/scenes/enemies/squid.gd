@@ -10,7 +10,8 @@ const DASH_SPEED := 4.5
 const DASH_TIME := 1.0
 const PAUSE_TIME := 0.6
 const LUNGE_RANGE := 1.5
-const LUNGE_TELL := 0.35
+# The tell before it strikes: it coils back, arms cocked, and the dots flash.
+const LUNGE_TELL := 0.65
 const LUNGE_DMG := 10
 const BACK_OFF := 3.0
 const INK_EVERY := 8.0
@@ -49,6 +50,7 @@ func _init() -> void:
 	hp = 35
 	speed = 2.2
 	mass = 0.8
+	turn_rate = 10.0
 	reach = LUNGE_RANGE
 
 func _build() -> void:
@@ -200,11 +202,11 @@ func _tick_Lunge(delta: float) -> void:
 		change_state(&"Stalk")
 		return
 	face(target.global_position - global_position)
-	# The tell: the dots flash twice, then it strikes.
+	# The tell: it coils, the dots flash, then it strikes.
 	var flash := int(state_t / (LUNGE_TELL / 4.0)) % 2 == 0
 	_dot_mat.emission_energy_multiplier = 6.0 if flash and state_t < LUNGE_TELL else 2.0
-	# The arms are flung out so they snap shut as the strike lands.
-	if rig != null and rig.has_clips() and not _lunge_shot and state_t >= LUNGE_TELL - rig.clip_length("lunge") * 0.45:
+	# The lunge clip coils first and snaps the arms shut as the strike lands.
+	if rig != null and rig.has_clips() and not _lunge_shot and state_t >= LUNGE_TELL - rig.hit_time("lunge"):
 		_lunge_shot = true
 		rig.shot("lunge")
 	if state_t >= LUNGE_TELL and not _struck:

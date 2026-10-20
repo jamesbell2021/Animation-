@@ -22,6 +22,16 @@
    "loop": true,
    "length": 1.0
   },
+  "turn_l": {
+   "rate": 87.5,
+   "loop": true,
+   "length": 0.8
+  },
+  "turn_r": {
+   "rate": 87.5,
+   "loop": true,
+   "length": 0.8
+  },
   "swing": {
    "loop": false,
    "length": 0.55

@@ -61,6 +61,7 @@ func _init() -> void:
 	hp = BASE_HP
 	speed = 1.2
 	mass = 5.0
+	turn_rate = 4.0
 	reach = SLAM_RANGE - 0.4
 
 func _ready() -> void:
@@ -196,6 +197,13 @@ func _enter_Arrived() -> void:
 func _enter_WindUp() -> void:
 	velocity = Vector3.ZERO
 	Audio.sfx("crab_windup", global_position, -2.0, 0.05)
+	if rig != null and rig.has_clip("windup"):
+		# The whole body rears back and braces, held at the top until it slams.
+		rig.activity("windup", rig.clip_length("windup") / WINDUP_TIME)
+
+func _exit_WindUp() -> void:
+	if rig != null and rig.current_activity() == "windup":
+		rig.activity("")
 
 func _tick_WindUp(delta: float) -> void:
 	velocity = Vector3.ZERO
@@ -212,6 +220,8 @@ func _tick_WindUp(delta: float) -> void:
 func _enter_Slam() -> void:
 	velocity = Vector3.ZERO
 	_set_claw(-0.3, -0.15)
+	if rig != null and rig.has_clip("slam"):
+		rig.shot("slam")
 	_set_claw_hot(0.0)
 	var fwd := Vector3(-sin(rotation.y), 0.0, -cos(rotation.y))
 	var c := global_position

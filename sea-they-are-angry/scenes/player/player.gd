@@ -223,8 +223,13 @@ func _build_lantern() -> void:
 	var lantern := Node3D.new()
 	lantern.name = "Lantern"
 	if rig != null:
-		# Hanging by its bail below the left hand.
-		rig.attach_aligned("hand.L", lantern, Vector3(0.0, -0.2, 0.0))
+		# Hanging by its bail from the left fist, free to swing.
+		var bail := Pendulum.new()
+		bail.name = "Bail"
+		bail.follow = self
+		rig.attach_aligned("hand.L", bail, Vector3(0.0, -0.08, 0.0))
+		bail.hang.add_child(lantern)
+		lantern.position = Vector3(0.0, -0.12, 0.0)
 	else:
 		_pose.add_child(lantern)
 		lantern.position = Vector3(-0.42, 0.75, -0.1)

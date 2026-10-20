@@ -70,6 +70,9 @@ const REACT_TIME := 0.14
 const POISE_TIME := 3.0
 const HIT_STAGGER_TIME := 0.55
 var poise_hits := 2
+## How quickly it comes round to face a new way (see face()): heavy bodies turn slower.
+var turn_rate := 8.0
+var _faced := false
 var _poise := 0
 var _poise_t := 0.0
 var _walk_phase := 0.0
@@ -207,7 +210,7 @@ func hit_reaction(from_dir: Vector3) -> void:
 	if rig != null and rig.has_clip("stagger_back"):
 		# A light one is turned to the blow; a heavy one (the Crab) only flinches.
 		if light and flat != Vector3.ZERO:
-			face(-flat)
+			face(-flat, true)
 		rig.shot("stagger_back")
 	if not light:
 		return
@@ -251,13 +254,13 @@ func _tick_Ragdoll(delta: float) -> void:
 		change_state(&"GetUp")
 		if not plan.is_empty():
 			# Up off its back or its front with a get-up clip, from where it lies.
-			face(plan["facing"])
+			face(plan["facing"], true)
 			var root: Vector3 = plan["root"]
 			global_position.x = root.x
 			global_position.z = root.z
 			rig.get_up(CharacterRig.GET_UP_TIME, plan["clip"])
 			return
-		face(-rig.ragdoll_facing())
+		face(-rig.ragdoll_facing(), true)
 		rig.get_up(0.05 if far else CharacterRig.GET_UP_TIME)
 
 func _tick_GetUp(_delta: float) -> void:
@@ -432,9 +435,17 @@ func _on_phase_changed(p: int) -> void:
 	if p == Cycle.Phase.DAWN and state != &"Retreat":
 		on_dawn()
 
-func face(dir: Vector3) -> void:
-	if Vector2(dir.x, dir.z).length() > 0.001:
-		rotation.y = atan2(-dir.x, -dir.z)
+## Turn toward a direction, at TURN_RATE: a body with clips steps round to it rather than
+## snapping. `snap` turns it at once (getting up where the ragdoll lies, reeling from a blow).
+func face(dir: Vector3, snap: bool = false) -> void:
+	if Vector2(dir.x, dir.z).length() <= 0.001:
+		return
+	var want := atan2(-dir.x, -dir.z)
+	if snap or not _faced or rig == null or not rig.has_clips():
+		rotation.y = want
+	else:
+		rotation.y = lerp_angle(rotation.y, want, 1.0 - exp(-get_physics_process_delta_time() * turn_rate))
+	_faced = true
 
 # ---- shared states ----
 
@@ -601,7 +612,7 @@ func _tick_AttackFence(delta: float) -> void:
 	_attack_t += delta
 	# The blow is swung so it lands as the damage does.
 	if rig != null and rig.has_clip("strike"):
-		var lead := rig.clip_length("strike") * 0.5
+		var lead := rig.hit_time("strike")
 		var at := FENCE_HIT_INTERVAL - lead
 		if before < at and _attack_t >= at:
 			rig.shot("strike")

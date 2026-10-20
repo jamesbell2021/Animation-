@@ -333,3 +333,22 @@ Built to plan 2's Phase C, with these departures:
   - its cry: the Bloated's groan, the Squid's shriek, the Eel's hiss.
   Steam boils off it in soft puffs.
 - **A hiss and a pop to finish:** burnt to death, a Bloated vents a long rising hiss of steam as it swells, then bursts with a wet pop (a crack, a bubble falling in pitch, a thump and a splatter) in a billow of steam and embers. A Squid hisses and pops the same way. All of it is synthesised in `Audio` (`sizzle`, `crackle`, `burn_hiss`, `pop`).
+
+## Animation polish: turning on the spot, easier blends, a swinging lantern, hands that grip, wind-ups (owner's request: "animation could be better")
+
+- **Turning on the spot:** a standing keeper, Bloated or Smotherer that turns now steps round instead of spinning on planted feet. Each has a pair of turning clips (`turn_l`, `turn_r`). In them the feet step round under the body, the inside foot first, the hips leading and the head looking into the turn. `CharacterRig` measures how fast the body turns, blends the clip in above about 30°/s, and plays it at the rate that keeps a planted foot still on the ground. The Crab and the Squid shuffle round on their walk. Creatures used to snap to a new heading in one frame; now they come round at a rate set for each: the Crab slowest, the Squid quickest. A blow that spins one round, and getting up, still turn it at once.
+- **Easier in and out:** every blend between clips follows an ease-in-out curve instead of a straight line:
+  - standing to walking, and into and out of activities (hammering, climbing, burning);
+  - crossfades between activities;
+  - one-off actions coming in over the body and fading back out.
+  Fades are a little longer. Full-body actions (a stagger, a lunge) now ease in from what the body was doing; a get-up still starts at once from where the ragdoll lies.
+- **The lantern on its bail:** it hangs from the keeper's left fist on a pendulum (`Pendulum`). It always hangs plumb. It swings back when the keeper sets off, forward when they stop dead, and out on a turn, and the swings die away. Its light swings with it.
+- **Hands:** the humanoid skeletons have finger and thumb bones now, so hands close round what they hold. In each clip:
+  - a keeper grips the boathook and the lantern's bail; the hand opens as the hook is thrown;
+  - a keeper's hands are flat to push up off the ground, half open steadying the work while hammering, and tight on a ladder's rails;
+  - the drowned's hands hang half-curled; they clench to club a fence and spread as a Bloated swells;
+  - a Smotherer's are hooked like claws, digging into the stone and spreading wide as they reach up the tower.
+- **Wind-ups:**
+  - **Clubbing strike (Bloated and Smotherer):** each strike now has a readable wind-up. The arms go up, the body rears back and sinks, holds there trembling, then crashes down. The game deals the blow when the clip's arms land (the `hit` time written by `animate.py`), not half way through.
+  - **Crab:** rears up at the front, settles back on braced legs and shakes harder through its 1.5 s wind-up, then slams the front of its shell down with the claw and heaves itself level.
+  - **Squid:** coils before it lunges. The mantle sinks back and the front arms curl back like springs and tremble, then it throws itself forward and snaps them shut. Its tell is 0.65 s instead of 0.35, so there's time to see it coming and step back.
