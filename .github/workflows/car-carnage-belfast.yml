@@ -1,0 +1,45 @@
+# Tests Car Carnage: Belfast Edition and packages the web client whenever it changes.
+# The engine test runs the rules headlessly with bots on every arena. The packaged HTML5 build
+# in the run's Artifacts can be dropped onto itch.io (local and hot-seat play work from static
+# files; online play needs `node server.js`).
+name: Car Carnage Belfast
+
+on:
+  push:
+    branches:
+      - "**"
+    paths:
+      - "car-carnage-belfast/**"
+      - ".github/workflows/car-carnage-belfast.yml"
+  workflow_dispatch:
+
+jobs:
+  test-and-package:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: car-carnage-belfast
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Engine test (bots on every arena)
+        run: npm test
+      - name: Package the web client
+        run: |
+          mkdir -p ../dist
+          cp -r web ../dist/car-carnage-belfast-web
+          cp README.md ../dist/car-carnage-belfast-web/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: car-carnage-belfast-web
+          path: dist/car-carnage-belfast-web
+      - name: Package the server bundle
+        run: |
+          mkdir -p ../dist/car-carnage-belfast-server
+          cp -r web server.js ws.js package.json README.md ../dist/car-carnage-belfast-server/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: car-carnage-belfast-server
+          path: dist/car-carnage-belfast-server

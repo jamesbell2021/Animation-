@@ -1,0 +1,15 @@
+{
+  "name": "car-carnage-belfast",
+  "version": "1.0.0",
+  "description": "Car Carnage: Belfast Edition. Eight-player simultaneous-turn car combat in post-nuclear Belfast, adapted from the Car Wars classic rules.",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node tests/engine.test.js",
+    "test:e2e": "node tests/e2e.test.js"
+  },
+  "engines": { "node": ">=18" },
+  "license": "MIT",
+  "private": true
+}
