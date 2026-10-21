@@ -32,7 +32,7 @@ function go(screen) {
   app.screen = screen;
   if (screen === 'title') { startAttract(); audio.setMode('menu'); }
   else if (screen !== 'game') { stopAttract(); audio.setMode(screen === 'lobby' ? 'menu' : 'menu'); }
-  if (screen === 'online') { $('online-name').value = app.name; buildSwatches($('online-colors'), app.color, (c) => { app.color = c; buildSwatches($('online-colors'), c, null); }); refreshOpenRooms(); }
+  if (screen === 'online') { $('online-name').value = app.name; $('server-url').value = localStorage.getItem('ccb-server') || ''; buildSwatches($('online-colors'), app.color, (c) => { app.color = c; buildSwatches($('online-colors'), c, null); }); refreshOpenRooms(); }
   if (screen === 'garage') mountGarage($('garage-ui'), {});
 }
 document.querySelectorAll('[data-go]').forEach((b) => b.addEventListener('click', () => { audio.ui(); const t = b.dataset.go; if (t === 'title' && app.link && app.screen === 'lobby') leaveRoom(); go(t); }));
@@ -71,9 +71,20 @@ function stopAttract() { if (app.attract) { app.attract.close(); app.attract = n
 $('btn-create').addEventListener('click', () => connectOnline('create'));
 $('btn-join').addEventListener('click', () => connectOnline('join'));
 $('join-code').addEventListener('keydown', (e) => { if (e.key === 'Enter') connectOnline('join'); });
+function serverBase() { const u = ($('server-url').value || '').trim().replace(/\/+$/, ''); if (!u) return ''; return /^(https?|wss?):\/\//.test(u) ? u.replace(/^ws/, 'http') : (location.protocol === 'https:' ? 'https://' : 'http://') + u; }
 async function refreshOpenRooms() {
-  try { const r = await fetch('/api/rooms'); const list = await r.json(); const el = $('open-rooms'); el.innerHTML = ''; if (list.length) { el.append('Open games: '); for (const x of list) el.append(h('button', { class: 'small', onclick: () => { $('join-code').value = x.code; connectOnline('join'); } }, `${x.code} (${x.players})`)); } } catch { /* offline file */ }
+  const el = $('open-rooms'); el.innerHTML = '';
+  try {
+    const r = await fetch(serverBase() + '/api/rooms'); if (!r.ok) throw new Error('no server');
+    const list = await r.json();
+    if (list.length) { el.append('Open games: '); for (const x of list) el.append(h('button', { class: 'small', onclick: () => { $('join-code').value = x.code; connectOnline('join'); } }, `${x.code} (${x.players})`)); }
+    app.hasOwnServer = true;
+  } catch {
+    // this page is served as plain files (itch.io, a folder): ask for a server address
+    if (!serverBase()) { $('server-box').open = true; $('online-status').textContent = 'This copy of the game has no server of its own. Enter the address of one below, or play on this device.'; }
+  }
 }
+$('server-url').addEventListener('change', () => { localStorage.setItem('ccb-server', $('server-url').value.trim()); refreshOpenRooms(); });
 async function connectOnline(kind) {
   audio.init();
   const name = $('online-name').value.trim() || 'Driver'; app.name = name; localStorage.setItem('ccb-name', name); if (app.color) localStorage.setItem('ccb-color', app.color);
@@ -82,7 +93,7 @@ async function connectOnline(kind) {
   $('online-status').textContent = 'Connecting...';
   stopAttract();
   const link = new NetLink();
-  try { await link.connect(); } catch (e) { $('online-status').textContent = e.message + ' Is server.js running? For a game on one device use PLAY ON THIS DEVICE.'; startAttract(); return; }
+  try { await link.connect(serverBase()); } catch (e) { $('online-status').textContent = e.message + ' Is server.js running' + (serverBase() ? ' at ' + serverBase() : '') + '? For a game on one device use PLAY ON THIS DEVICE.'; $('server-box').open = true; startAttract(); return; }
   app.link = link; app.mode = 'online'; app.seats = [];
   link.onMessage(onMessage);
   link.send({ t: kind, code, name, color: app.color, vehicle: app.vehicle === 'custom' ? null : app.vehicle, custom: app.custom });
@@ -534,4 +545,4 @@ requestAnimationFrame(frame);
 const roomMatch = /^\/([A-Z0-9]{4})$/i.exec(location.pathname) || /[?&]room=([A-Z0-9]{4})/i.exec(location.search);
 go('title');
 if (roomMatch) { go('online'); $('join-code').value = roomMatch[1].toUpperCase(); $('online-status').textContent = 'Enter your name and press JOIN to join room ' + roomMatch[1].toUpperCase() + '.'; }
-window.ccb = { app, renderer, fx, audio, cinematic };
+window.ccb = { app, renderer, fx, audio, cinematic, net: { NetLink, LocalLink }, getMap };

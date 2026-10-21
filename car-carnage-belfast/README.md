@@ -29,8 +29,16 @@ seats, and starts once everyone is ready. Node 18 or newer, nothing to install.
 **On one device**
 
 Press **PLAY ON THIS DEVICE** for pass-and-play: each human sets their orders behind a hand-over
-screen, bots take the rest of the seats. This also works straight from the files with no server at all
-(open `web/index.html`, or host the `web` folder anywhere static, such as itch.io).
+screen, bots take the rest of the seats. This needs no game server: the `web` folder can be hosted
+anywhere static (itch.io, GitHub Pages, `npx serve web`). Browsers refuse to load the game's modules
+straight from a `file://` path, so it does need some web server, however small.
+
+**itch.io.** `tools/pack.sh` writes `dist/car-carnage-belfast-html5.zip`, the browser game with
+`index.html` at its root, and `dist/car-carnage-belfast-server.zip`, the online server with start
+scripts. The page copy, settings and a launch checklist are in `launch/`, with the cover and arena
+screenshots in `launch/out/` rendered by `node launch/make_art.mjs`. Online play from the itch.io
+page needs an https game server address, entered under **Game server** on the PLAY ONLINE screen
+(the checklist explains the tunnel).
 
 ## How a turn works
 

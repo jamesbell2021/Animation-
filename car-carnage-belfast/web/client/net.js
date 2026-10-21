@@ -4,10 +4,14 @@ import { Room } from '../shared/room.js';
 // Online: talks to server.js over a WebSocket. Messages are JSON objects with a `t` field.
 export class NetLink {
   constructor() { this.ws = null; this.handlers = []; this.open = false; }
-  connect() {
+  // url: a game server address (http://host:8080, https://..., ws://..., wss://...); empty = this page's own server
+  connect(url = '') {
     return new Promise((resolve, reject) => {
-      const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-      const ws = new WebSocket(`${proto}://${location.host}/ws`);
+      let target;
+      if (url) { let u = url.trim().replace(/\/+$/, ''); u = u.replace(/^http/, 'ws'); if (!/^wss?:\/\//.test(u)) u = (location.protocol === 'https:' ? 'wss://' : 'ws://') + u; target = u.replace(/\/ws$/, '') + '/ws'; }
+      else { const proto = location.protocol === 'https:' ? 'wss' : 'ws'; target = `${proto}://${location.host}/ws`; }
+      let ws;
+      try { ws = new WebSocket(target); } catch (e) { reject(new Error('Bad server address: ' + target)); return; }
       let settled = false;
       ws.onopen = () => { this.open = true; settled = true; resolve(); };
       ws.onerror = () => { if (!settled) { settled = true; reject(new Error('Could not reach the game server.')); } };

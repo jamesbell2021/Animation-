@@ -49,6 +49,11 @@
         <button class="big" id="btn-join">JOIN</button>
       </div>
       <div id="open-rooms" class="small muted"></div>
+      <details id="server-box">
+        <summary class="small muted">Game server</summary>
+        <label class="field">Server address <input id="server-url" placeholder="leave empty to use this site's server"></label>
+        <div class="small muted">Online games run on a small server: <code>node server.js</code> from the game's folder, then everyone opens the address it prints (or enter it here). From a site like itch.io the address must be https, so put the server behind a tunnel such as <code>cloudflared tunnel --url http://localhost:8080</code> and paste the https link.</div>
+      </details>
       <div id="online-status" class="small muted">Not connected.</div>
     </div>
     <button data-go="title">BACK</button>

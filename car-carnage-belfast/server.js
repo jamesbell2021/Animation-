@@ -20,7 +20,8 @@ const server = http.createServer((req, res) => {
   const url = new URL(req.url, 'http://x');
   if (url.pathname === '/api/rooms') {
     const list = [...rooms.values()].filter((r) => r.phase === 'lobby' && r.players.size < 8).map((r) => ({ code: r.code, players: r.players.size, map: r.mapId }));
-    res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' });
+    // the game page may live elsewhere (itch.io) and ask this server for its rooms
+    res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store', 'access-control-allow-origin': '*' });
     res.end(JSON.stringify(list));
     return;
   }
