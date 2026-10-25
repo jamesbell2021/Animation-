@@ -455,3 +455,46 @@ This is step 1 of five: the place, the crossing, the camera and the helpers. Nex
   - Up in the lamp room they stay warm, so the light isn't left for the cold. On a tower they're out in the weather.
   - The warden sows and lifts the camp's plots between filling the generator and fetching diesel. The lighthouse helper lifts the cottage's potatoes and digs kelp in, keeping a little back for mending.
 - **The balance bot:** `tools/playtest.gd` feeds and warms its keepers by day, as a player would, so it keeps measuring the nights. In "eco" mode it pays for the meals.
+
+## Research, the internees' notes and the new defences (step 4)
+
+- **The internees' notes:** the camp was a 1940s internment camp, and its internees and guards left papers behind. Two tins of them lie about the camp at the start and another turns up each dawn while fewer than two are lying about (eight spots about the camp, `NOTE_SPOTS`).
+  - **Reading:** picking one up gives a page of notes for the research desk and reads out the next page of the diary on screen for 12 s (`scenes/systems/lore.gd`). The eight pages tell what the camp saw, from the internees' arrival in September 1940 to their release in May 1945. Each one also hints at a project.
+  - **After the diary:** later finds are loose pages of sums.
+  - **Saving:** the count read is saved (`Run.notes_found`), so a continued run carries on the diary where it left off.
+- **The research desk (`scenes/structures/research_desk.gd`):** a desk in front of the mess hut, papers spread on it. E opens the list of projects (`scenes/systems/research.gd`).
+  - **Cost:** each project costs a page of notes and some of the store.
+  - **Timing:** one is worked out at a time and is done by dawn. The dawn report says what was finished.
+  - **Saving:** what's done and what's under way are saved.
+  - **Why the notes gate it:** the desk is a reason to go and look round the camp by day, and research can't all be bought in the first afternoon.
+- **The projects:**
+  - **Clockwork tracking:** a searchlight nobody is on finds the nearest creature in its sector within 24 m, follows it and narrows to the focused beam, so it burns it. Without it an unmanned light only sweeps in the wide beam. Even so, a keeper on the light still matters: tracking takes the nearest creature, not the most dangerous one.
+  - **Silvered reflectors:** the searchlights reach 5 m further and burn 1.6 times harder.
+  - **Generator governor:** the generator burns a third less diesel (×0.67).
+  - **Cold frames:** the camp's outdoor beds come through storms, and the greenhouse gives 5 instead of 3.
+  - **Tinning:** every harvest, at the camp and the cottage, gives a food more.
+  - **Barbed wire, tripwire flares and sandbag walls:** each opens a new defence at the cairns (below).
+  - **Alarm bell:** in the list now and does nothing yet. Step 5 makes it ring when anything comes ashore on the holm.
+- **New defences, set at the cairns like the traps:**
+  - **Barbed wire** (a scrap and a driftwood): anything within 1.4 m crawls at 35% speed and loses 5 health a second. The wire wears only while something is in it and is torn away after 40 s of that. Eels are not caught, as with the other traps.
+  - **Tripwire flare** (a scrap and a bio): the first creature to trip it gets a flare fired into it from the stake, aimed where it's going. The flare does its usual 40 damage and burns red.
+  - **Sandbag wall** (two driftwood and a seaweed): a wall 2.6 m long and 0.9 m high goes up across the path, with 160 health.
+    - **Blocking:** creatures that walk into it stop and batter it, as they do a fence (enemies treat the group `barricades` like fences).
+    - **Wear:** it slumps a course at a time, and can be patched with driftwood (60 a time).
+    - **When it's down:** the cairn is clear for another defence.
+    - **Crabs:** a Crab's slam batters a wall like a building, rather than smashing it at a stroke as it does a trap.
+- **Where walls can go:** only across a beach path, at the main island's three beach cairns and the holm's two beach posts.
+  - **Elsewhere:** the ledge cairns, the gate post and the bridge-end post are on the keepers' own way, and a wall there would shut them out. A cairn knows the way along its path (`path_dir`); one with none takes no wall.
+- **The holm's defence posts:** four cairns of their own, open from the start rather than with the defences upgrade:
+  - **One up each of its two beaches.**
+  - **One on the track outside the gate.**
+  - **One where the bridge comes onto the holm.**
+
+  These are where step 5's raids will come.
+- **Tests:** `tests/slice_research.gd` (39 checks):
+  - **Notes:** the notes and the diary, and the desk and its costs.
+  - **Effects:** what each project does.
+  - **Defences:** the posts, a creature crawling and bleeding in the wire, a tripwire's flare, and a creature stopping to batter a wall.
+  - **Saving.**
+
+  `slice_economy`'s count of the trap slots the defences upgrade opens leaves out the holm's posts.

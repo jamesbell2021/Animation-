@@ -53,6 +53,17 @@ const SCAVENGE_CROWD := [1, 0.46, -0.6, "driftwood", 1]
 # Trap cairns up the middle of each beach, short of the fence (a Bloated burst there
 # can't reach it), then on the ledge and at its foot as defences are upgraded.
 const TRAP_BEACH_T := 0.6
+# The holm's defence posts: up each of its beaches, outside the camp gate, and where the
+# bridge comes onto the holm.
+const HOLM_POST_BEACH_T := 0.86
+# Where the internees' papers turn up, about the camp (from its centre): a tin under a
+# hut's step, in the greenhouse, at a tower's foot, in the long grass by the wire.
+const NOTE_SPOTS := [
+	Vector2(-1.2, -3.1), Vector2(6.0, 4.0), Vector2(-9.4, 6.9), Vector2(1.5, 7.2),
+	Vector2(9.3, -6.8), Vector2(-8.0, -6.6), Vector2(-2.0, 3.6), Vector2(3.4, -1.0),
+]
+# Papers lying about at once, at most: one more turns up each dawn.
+const NOTES_LYING := 2
 const TRAP_LEDGE_S := 0.3
 # An oil drum washes up at dawn after every third night, from the second on.
 const OIL_EVERY := 3
@@ -90,6 +101,8 @@ var _warned_low := false
 var _tally := {}
 const HORN_GUTTER_EVERY := 7.0
 const FIRST_DAY_TIP_TIME := 14.0
+# How long a page of the internees' notes stays up to be read.
+const LORE_TIME := 12.0
 var camera: Camera3D
 ## Frames the keepers' islands and splits the screen when they're apart.
 var director: CameraDirector
@@ -140,6 +153,7 @@ func _ready() -> void:
 	# Bound methods, not lambdas: Events outlives this scene, and only methods disconnect themselves when it's freed.
 	Events.enemy_killed.connect(_on_enemy_killed)
 	Events.structure_destroyed.connect(_on_structure_destroyed)
+	Events.lore.connect(_on_lore)
 	Audio.start_ambience()
 
 	# Tests and CI run headless and start straight away; so does New Run from game over.
@@ -217,6 +231,8 @@ func begin_run(continue_save: bool, n: int) -> void:
 	Upgrades.apply(get_tree())
 	if Players.wanted >= 3:
 		_add_scavenge(SCAVENGE_CROWD)
+	for i in NOTES_LYING:
+		_place_notes()
 	if d.is_empty():
 		hud.report("The first day.", [
 			"Gather driftwood, scrap and bio on the three beaches. The ladders down the crag are on its east side.",
@@ -612,7 +628,57 @@ func _build_trap_slots() -> void:
 		var slot := TrapSlot.new()
 		slot.index = i
 		slot.position = spots[i]
+		if i < Terrain.BEACHES.size():
+			slot.path_dir = _flat_dir(Terrain.beach_point(i, TRAP_BEACH_T + 0.1, 0.0) - spots[i])
 		add_child(slot)
+	# The holm's own posts, open from the start.
+	var e := Terrain.bridge_ends()
+	var gate := Terrain.camp_gate()
+	var holm_posts: Array = [
+		[Terrain.holm_beach_point(0, HOLM_POST_BEACH_T), _flat_dir(Terrain.holm_beach_point(0, HOLM_POST_BEACH_T + 0.1) - Terrain.holm_beach_point(0, HOLM_POST_BEACH_T))],
+		[Terrain.holm_beach_point(1, HOLM_POST_BEACH_T), _flat_dir(Terrain.holm_beach_point(1, HOLM_POST_BEACH_T + 0.1) - Terrain.holm_beach_point(1, HOLM_POST_BEACH_T))],
+		[Vector3(gate.x - 2.2, 0.0, gate.y), Vector3.ZERO],
+		[e[1] + _flat_dir(Vector3(gate.x, 0.0, gate.y) - e[1]) * 2.0, Vector3.ZERO],
+	]
+	for i in holm_posts.size():
+		var slot := TrapSlot.new()
+		slot.index = 10 + i
+		slot.holm = true
+		var at: Vector3 = holm_posts[i][0]
+		slot.position = Vector3(at.x, Terrain.height_at(at.x, at.z), at.z)
+		slot.path_dir = holm_posts[i][1]
+		add_child(slot)
+
+static func _flat_dir(v: Vector3) -> Vector3:
+	return Vector3(v.x, 0.0, v.z).normalized()
+
+# A tin of the internees' papers, at one of the spots about the camp nothing lies at yet.
+func _place_notes() -> void:
+	var lying := []
+	for n in get_tree().get_nodes_in_group("interactable"):
+		if n is ScavengePoint and n.kind == "notes" and not n.is_queued_for_deletion():
+			lying.append(Vector2(n.global_position.x, n.global_position.z))
+	if lying.size() >= NOTES_LYING:
+		return
+	var free := []
+	for o in NOTE_SPOTS:
+		var p: Vector2 = Terrain.CAMP_C + o
+		var taken := false
+		for q in lying:
+			if p.distance_to(q) < 1.0:
+				taken = true
+		if not taken:
+			free.append(p)
+	if free.is_empty():
+		return
+	var at: Vector2 = free[(Run.notes_found * 3 + lying.size()) % free.size()]
+	var sp := ScavengePoint.new("notes", 1)
+	sp.once = true
+	sp.position = Vector3(at.x, Terrain.height_at(at.x, at.y), at.y)
+	add_child(sp)
+
+func _on_lore(text: String) -> void:
+	hud.report("A page of the internees' notes", [text], LORE_TIME)
 
 func _build_campfire() -> void:
 	var fire := Campfire.new()
@@ -693,6 +759,8 @@ func _on_phase_changed(p: int) -> void:
 		_tally = {}
 	if p == Cycle.Phase.DAWN and Run.active:
 		_wash_up_oil()
+		_researched = Research.finish()
+		_place_notes()
 		_dawn_report()
 		var damaged := 0
 		for s in get_tree().get_nodes_in_group("structures"):
@@ -758,6 +826,8 @@ func _dawn_report() -> void:
 		lines.append(tip)
 	if _oil_tonight:
 		lines.append("An oil drum has washed up on the %s beach." % compass(_oil_at))
+	if _researched != "":
+		lines.append("Worked out overnight at the camp: %s." % Research.title(_researched))
 	hud.report("Night %d held." % Run.night, lines)
 
 func _hurt_keeper() -> bool:
@@ -766,6 +836,7 @@ func _hurt_keeper() -> bool:
 			return true
 	return false
 
+var _researched := ""
 var _oil_tonight := false
 var _oil_at := Vector3.ZERO
 

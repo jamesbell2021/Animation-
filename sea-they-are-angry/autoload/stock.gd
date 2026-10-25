@@ -2,7 +2,7 @@ extends Node
 
 signal changed
 
-const KINDS := ["driftwood", "scrap", "seaweed", "bio", "food", "oil", "dirty_fuel", "diesel", "seeds"]
+const KINDS := ["driftwood", "scrap", "seaweed", "bio", "food", "oil", "dirty_fuel", "diesel", "seeds", "notes"]
 
 var _items := {}
 

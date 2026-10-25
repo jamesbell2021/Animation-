@@ -30,6 +30,7 @@ var beds: Array[Node3D] = []
 var plots: Array[CampPlot] = []
 var stove: HutStove
 var mess: MessTable
+var desk: ResearchDesk
 
 var _wood: StandardMaterial3D
 var _post: StandardMaterial3D
@@ -65,6 +66,9 @@ func _ready() -> void:
 	mess = MessTable.new()
 	mess.position = _ground(Vector2(c.x + 4.4, c.y - 2.6))
 	add_child(mess)
+	desk = ResearchDesk.new()
+	desk.position = _ground(Vector2(c.x + 6.4, c.y - 2.6))
+	add_child(desk)
 	for i in 3:
 		_bed(Vector2(c.x - 5.0, c.y + 2.6 + float(i) * 2.0))
 	_greenhouse(Vector2(c.x + 4.6, c.y + 4.9))

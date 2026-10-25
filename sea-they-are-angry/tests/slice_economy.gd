@@ -131,7 +131,8 @@ func _run() -> void:
 	menu.choose(5)
 	var open := 0
 	for s in get_nodes_in_group("trap_slots"):
-		if s.unlocked:
+		# The holm's defence posts are open from the start, upgrade or not.
+		if s.unlocked and not s.holm:
 			open += 1
 	check(Run.upgrades["defences"] == 2 and open == 4, "defences upgraded: 4 trap slots (%d)" % open)
 	var fence_ok := true

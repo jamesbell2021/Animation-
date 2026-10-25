@@ -10,6 +10,11 @@ var camp_crops := [0, 0, 0, 0]
 ## Each keeper's hunger and warmth, 0 to 100 (100 fed and warm), by keeper index.
 var hunger := [100.0, 100.0, 100.0]
 var warmth := [100.0, 100.0, 100.0]
+## Research done (Research.PROJECTS ids), and the one being worked out tonight.
+var research: Array = []
+var researching := ""
+## How many of the internees' pages have been found (which one turns up next).
+var notes_found := 0
 ## Upgrade levels bought at the cottage, 1 to 3 (see Upgrades).
 var upgrades := {"lighthouse": 1, "defences": 1, "garden": 1}
 ## Extra max health each keeper has eaten their way to, by keeper index.
@@ -32,6 +37,9 @@ func start_new() -> void:
 	camp_crops = [0, 0, 0, 0]
 	hunger = [100.0, 100.0, 100.0]
 	warmth = [100.0, 100.0, 100.0]
+	research = []
+	researching = ""
+	notes_found = 0
 	upgrades = {"lighthouse": 1, "defences": 1, "garden": 1}
 	max_hp_bonus = [0, 0, 0]
 	crops = [0, 0, 0, 0, 0]
@@ -52,6 +60,11 @@ func start_loaded(d: Dictionary) -> void:
 		camp_crops[i] = clampi(int(cc[i]), 0, 2)
 	hunger = _three(d.get("hunger", []))
 	warmth = _three(d.get("warmth", []))
+	research = []
+	for r in d.get("research", []):
+		research.append(String(r))
+	researching = String(d.get("researching", ""))
+	notes_found = int(d.get("notes_found", 0))
 	var up: Dictionary = d.get("upgrades", {})
 	upgrades = {"lighthouse": int(up.get("lighthouse", 1)), "defences": int(up.get("defences", 1)), "garden": int(up.get("garden", 1))}
 	var bonus: Array = d.get("max_hp_bonus", [0, 0, 0])

@@ -107,8 +107,12 @@ func interact_prompt() -> String:
 		PLANTED:
 			return "Potatoes in: ready at dawn"
 		RIPE:
-			return "[E] Lift potatoes (+%d food)" % YIELD
+			return "[E] Lift potatoes (+%d food)" % yield_food()
 	return ""
+
+## Research: tinning puts a food more by from every harvest.
+func yield_food() -> int:
+	return YIELD + (1 if Research.has("rations") else 0)
 
 func interact(_player: Node) -> bool:
 	if not _usable():
@@ -127,9 +131,9 @@ func interact(_player: Node) -> bool:
 			return false
 		RIPE:
 			Run.crops[index] = BARE
-			Stock.add("food", YIELD)
+			Stock.add("food", yield_food())
 			Audio.sfx("gather", global_position, -2.0, 0.05)
 			FX.splinters(get_parent(), global_position + Vector3(0.0, 0.4, 0.0))
-			Events.message.emit("+%d food  (eat it at the cottage)" % YIELD)
+			Events.message.emit("+%d food  (eat it at the cottage)" % yield_food())
 	refresh()
 	return true

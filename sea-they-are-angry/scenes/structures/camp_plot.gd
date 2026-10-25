@@ -78,14 +78,22 @@ func refresh() -> void:
 func crop_name() -> String:
 	return "tomatoes and beans" if under_glass else "kale and cabbages"
 
+## Research: cold frames add this much to the greenhouse; tinning a food to every harvest.
+const CLOCHE_BONUS := 2
+
 func yield_food() -> int:
-	return YIELD_GLASS if under_glass else YIELD_BED
+	var n := YIELD_GLASS if under_glass else YIELD_BED
+	if under_glass and Research.has("cloches"):
+		n += CLOCHE_BONUS
+	if Research.has("rations"):
+		n += 1
+	return n
 
 func _on_phase(p: int) -> void:
 	if p != Cycle.Phase.DAWN or state() != PLANTED:
 		return
 	# The night just past: a storm can flatten what's growing outside.
-	if not under_glass and Weather.tonight() == Weather.Kind.STORM and randf() < STORM_LOSS:
+	if not under_glass and not Research.has("cloches") and Weather.tonight() == Weather.Kind.STORM and randf() < STORM_LOSS:
 		_set_state(BARE)
 		Events.message.emit("The storm flattened a bed at the camp.")
 		return

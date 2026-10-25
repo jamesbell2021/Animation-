@@ -546,7 +546,7 @@ func _tick_Approach(delta: float) -> void:
 		var col := hit.get_collider()
 		if col == target or col is CharacterBody3D:
 			continue
-		if col is Fence and not col.is_destroyed():
+		if (col is Fence or (col is Structure and col.is_in_group("barricades"))) and not col.is_destroyed():
 			attack_target = col
 			change_state(&"AttackFence")
 			return

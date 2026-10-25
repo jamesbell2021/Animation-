@@ -10,6 +10,8 @@ const FUEL_MAX := 100.0
 const CAN_UNITS := 35.0
 ## Fuel a second just running; whatever it powers adds its own draw (set_draw).
 const IDLE_DRAW := 0.03
+## Research: a governor makes it burn this much of what it did.
+const GOVERNOR := 0.67
 ## Below this the lights it powers flicker and dim.
 const LOW := 15.0
 const HOUSE := Vector3(2.6, 2.3, 3.2)
@@ -87,6 +89,8 @@ func draw_total() -> float:
 	for k in _draw.keys():
 		if is_instance_valid(k):
 			total += float(_draw[k])
+	if Research.has("governor"):
+		total *= GOVERNOR
 	return total
 
 func _on_phase(_p: int) -> void:

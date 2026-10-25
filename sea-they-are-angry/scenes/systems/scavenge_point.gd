@@ -33,6 +33,8 @@ func _ready() -> void:
 			_build_bio()
 		"diesel":
 			_build_diesel()
+		"notes":
+			_build_notes()
 		"seaweed":
 			_build_seaweed()
 		"oil":
@@ -98,6 +100,17 @@ func _build_oil() -> void:
 	m.metallic = 0.8
 	slick.material_override = m
 
+# A rusted tin box, its lid off, a sheaf of damp pages in it.
+func _build_notes() -> void:
+	var tin := Geo.box(_mesh, Vector3(0.32, 0.12, 0.22), Color.WHITE, Vector3(0.0, 0.06, 0.0))
+	tin.material_override = Look.flat_mat(Look.RUST, 0.7)
+	var paper := Look.flat_mat(Color(0.86, 0.82, 0.7), 0.9)
+	for i in 3:
+		var sheet := Geo.box(_mesh, Vector3(0.2, 0.01, 0.27), Color.WHITE, Vector3(0.05 * float(i), 0.13 + 0.01 * float(i), 0.0))
+		sheet.material_override = paper
+		sheet.rotation.y = 0.35 * float(i - 1)
+	Look.glint(_mesh, Vector3(0.0, 0.3, 0.0), Color(0.95, 0.9, 0.7), 0.3)
+
 # A jerrycan of diesel washed up from somewhere, half on its side in the shingle.
 func _build_diesel() -> void:
 	var can := Node3D.new()
@@ -130,7 +143,7 @@ func _on_phase_changed(p: int) -> void:
 
 func interact_prompt() -> String:
 	if available:
-		return "[E] Gather %s" % kind
+		return "[E] Pick up the papers (notes for the research desk)" if kind == "notes" else "[E] Gather %s" % kind
 	return ""
 
 func interact(_player: Node) -> bool:
@@ -140,6 +153,10 @@ func interact(_player: Node) -> bool:
 	_mesh.visible = false
 	Stock.add(kind, amount)
 	Audio.sfx("gather", global_position, -2.0, 0.05)
+	if kind == "notes":
+		# The next page of the internees' diary, read as it's picked up.
+		Events.lore.emit(Lore.page(Run.notes_found))
+		Run.notes_found += 1
 	Events.message.emit("+%d %s" % [amount, kind.replace("_", " ")] + ("  (mix it into dirty fuel at the cottage)" if kind == "oil" else ""))
 	if once:
 		queue_free()
