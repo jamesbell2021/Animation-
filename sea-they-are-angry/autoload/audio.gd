@@ -66,6 +66,8 @@ const SOUNDS := {
 	"wave_crash": ["_s_wave_crash", false],
 	"flare_shot": ["_s_flare_shot", false],
 	"trap_snap": ["_s_trap_snap", false],
+	"generator": ["_s_generator", true],
+	"searchlight": ["_s_searchlight", false],
 }
 
 func _ready() -> void:
@@ -120,6 +122,10 @@ func sfx(key: String, at: Vector3 = Vector3.INF, volume_db: float = 0.0, pitch_j
 	p3.pitch_scale = pitch
 	p3.global_position = at
 	p3.play()
+
+## A sound's stream, for something that plays it on its own player (a looping engine).
+func stream(key: String) -> AudioStream:
+	return _streams.get(key)
 
 func loop(key: String, on: bool, volume_db: float = -10.0, fade: float = 2.0) -> void:
 	var stream: AudioStream = _streams.get(key)
@@ -588,6 +594,35 @@ func _s_drone() -> PackedFloat32Array:
 		var t := float(i) / RATE
 		a[i] *= 0.35 * (0.7 + 0.3 * sin(t * TAU / 9.0))
 	return _seamless(a, 1.5)
+
+# The camp's diesel generator: a slow single cylinder firing about seven times a second,
+# each a thump with a rattle of tappets, over a low hum.
+func _s_generator() -> PackedFloat32Array:
+	var n := _n(4.0)
+	var out := _gain(_tone(n, 50.0, 50.0, 1), 0.12)
+	var beat := 1.0 / 7.0
+	var t := 0.0
+	var k := 0
+	while t < 4.0 - beat:
+		var at := _n(t)
+		var seg := _n(beat)
+		var thump := _env(_lowpass(_noise(seg, 500 + k), 160.0), 0.002, 22.0)
+		_mix(thump, _env(_tone(seg, 62.0, 44.0), 0.002, 26.0), 0.9)
+		_mix(out, _gain(thump, 0.75 + 0.1 * float(k % 3)), 1.0, at)
+		var tick := _env(_highpass(_noise(_n(0.03), 900 + k), 2500.0), 0.0005, 160.0)
+		_mix(out, _gain(tick, 0.12), 1.0, at + _n(beat * 0.45))
+		t += beat
+		k += 1
+	return _seamless(_gain(out, 1.2), 0.3)
+
+# A searchlight's arc striking: a buzzing clunk as the shutter opens.
+func _s_searchlight() -> PackedFloat32Array:
+	var n := _n(0.5)
+	var clunk := _env(_tone(n, 140.0, 90.0), 0.001, 18.0)
+	var buzz := _env(_tone(n, 100.0, 100.0, 1), 0.01, 6.0)
+	_mix(clunk, _gain(buzz, 0.4))
+	_mix(clunk, _env(_highpass(_noise(n, 77), 1800.0), 0.001, 40.0), 0.3)
+	return clunk
 
 # ---- tools and creatures ----
 

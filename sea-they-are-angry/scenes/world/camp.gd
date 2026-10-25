@@ -4,8 +4,8 @@ extends Node3D
 ## wire on cranked posts, a guard tower with a searchlight at each corner, two Nissen
 ## huts (living quarters, and the mess where the research is done), the generator
 ## house, vegetable beds and a greenhouse, and the gate facing the rope bridge.
-## For now it is the place itself; the towers' lights, the beds and the huts' work come
-## next (docs/DECISIONS.md, "The holm and the camp").
+## The generator powers the searchlights and the huts' lights at night; keepers climb
+## a tower's ladder to take its light (docs/DECISIONS.md, "The camp's power").
 
 const FENCE_H := 2.3
 const POST_EVERY := 2.6
@@ -19,8 +19,10 @@ const WIRE := Color(0.32, 0.3, 0.28)
 const TIN := Color(0.27, 0.31, 0.27)
 const BRICK := Color(0.42, 0.24, 0.18)
 
-## Every searchlight's head, for the next step to aim and light.
-var searchlights: Array[Node3D] = []
+var searchlights: Array[Searchlight] = []
+var generator: Generator
+var _hut_lights: Array[OmniLight3D] = []
+var _hut_windows: Array[StandardMaterial3D] = []
 var towers: Array[Node3D] = []
 var huts: Array[Node3D] = []
 var greenhouse: Node3D
@@ -44,11 +46,13 @@ func _ready() -> void:
 	var corners := [Vector2(c.x - h.x, c.y - h.y), Vector2(c.x + h.x, c.y - h.y), Vector2(c.x + h.x, c.y + h.y), Vector2(c.x - h.x, c.y + h.y)]
 	for i in 4:
 		_fence_side(corners[i], corners[(i + 1) % 4], i == 3)
+	generator = Generator.new()
+	generator.position = _ground(Vector2(c.x + 8.6, c.y + 0.6))
+	add_child(generator)
 	for p in corners:
 		_tower(p)
 	_hut(Vector2(c.x - 4.6, c.y - 5.0), "Quarters")
 	_hut(Vector2(c.x + 4.4, c.y - 5.0), "Mess")
-	_generator_house(Vector2(c.x + 8.6, c.y + 0.6))
 	for i in 3:
 		_bed(Vector2(c.x - 5.0, c.y + 2.6 + float(i) * 2.0))
 	_greenhouse(Vector2(c.x + 4.6, c.y + 4.9))
@@ -168,11 +172,28 @@ func _tower(corner: Vector2) -> void:
 			brace.position = Vector3(sin(yaw) * L, y, cos(yaw) * L)
 	var deck := Geo.box(t, Vector3(L * 2.6, 0.16, L * 2.6), Color.WHITE, Vector3(0.0, TOWER_DECK, 0.0))
 	deck.material_override = _wood
+	# Keepers stand on the platform: a floor, and rails all round but for the ladder's gap.
+	var top := StaticBody3D.new()
+	top.collision_layer = 1
+	top.collision_mask = 0
+	t.add_child(top)
+	Geo.box_shape(top, Vector3(L * 2.6, 0.16, L * 2.6), Vector3(0.0, TOWER_DECK, 0.0))
 	for face in 4:
 		var yaw := float(face) * PI * 0.5
-		var rail := Geo.box(t, Vector3(L * 2.6, 0.9, 0.08), Color.WHITE, Vector3(sin(yaw) * L * 1.27, TOWER_DECK + 0.5, cos(yaw) * L * 1.27))
+		var out := Vector3(sin(yaw), 0.0, cos(yaw)) * L * 1.27
+		if face == 2:
+			# The ladder side: a rail either side of the gap it comes up through.
+			for sx in [-1.0, 1.0]:
+				var seg := Geo.box(t, Vector3(L * 0.85, 0.9, 0.08), Color.WHITE, out + Vector3(sx * L * 0.88, TOWER_DECK + 0.5, 0.0))
+				seg.material_override = _wood
+				var cs := Geo.box_shape(top, Vector3(L * 0.85, 1.2, 0.1), out + Vector3(sx * L * 0.88, TOWER_DECK + 0.6, 0.0))
+				cs.rotation.y = yaw
+			continue
+		var rail := Geo.box(t, Vector3(L * 2.6, 0.9, 0.08), Color.WHITE, out + Vector3(0.0, TOWER_DECK + 0.5, 0.0))
 		rail.material_override = _wood
 		rail.rotation.y = yaw
+		var rcs := Geo.box_shape(top, Vector3(L * 2.6, 1.2, 0.1), out + Vector3(0.0, TOWER_DECK + 0.6, 0.0))
+		rcs.rotation.y = yaw
 	for sx in [-1.0, 1.0]:
 		for sz in [-1.0, 1.0]:
 			var p := Geo.box(t, Vector3(0.1, 1.9, 0.1), Color.WHITE, Vector3(sx * L * 1.2, TOWER_DECK + 0.95, sz * L * 1.2))
@@ -182,28 +203,26 @@ func _tower(corner: Vector2) -> void:
 	(roof.mesh as CylinderMesh).radial_segments = 4
 	roof.rotation.y = PI * 0.25
 	roof.material_override = _tin
-	# The ladder up the inward side.
-	for i in 12:
-		var rung := Geo.box(t, Vector3(0.6, 0.05, 0.05), Color.WHITE, Vector3(0.0, 0.3 + float(i) * 0.33, -L - 0.25))
-		rung.material_override = _post
-	for sx in [-1.0, 1.0]:
-		var rail := Geo.box(t, Vector3(0.07, TOWER_DECK, 0.07), Color.WHITE, Vector3(sx * 0.3, TOWER_DECK * 0.5, -L - 0.25))
-		rail.material_override = _post
-	# The searchlight: a drum on a yoke, its glass dark until the camp has power.
-	var yoke := Node3D.new()
-	yoke.name = "Searchlight"
-	yoke.position = Vector3(0.0, TOWER_DECK + 0.55, 0.0)
-	t.add_child(yoke)
-	var stand := Geo.cyl(t, 0.08, 0.5, Color.WHITE, Vector3(0.0, TOWER_DECK + 0.3, 0.0))
-	stand.material_override = _tin
-	var drum := Geo.cyl(yoke, 0.3, 0.55, Color.WHITE, Vector3(0.0, 0.1, -0.05))
-	drum.rotation.x = PI * 0.5
-	drum.material_override = _tin
-	var glass := Geo.cyl(yoke, 0.26, 0.04, Color.WHITE, Vector3(0.0, 0.1, -0.34))
-	glass.rotation.x = PI * 0.5
-	glass.material_override = Look.glow_mat(Color(0.35, 0.33, 0.28), 0.0)
+	# The ladder up the inward side: a keepers' ladder like the crag's.
+	var ladder := Ladder.new(t.to_global(Vector3(0.0, TOWER_DECK + 0.1, -L + 0.45)), t.to_global(Vector3(0.0, 0.0, -L - 1.0)),
+		t.to_global(Vector3(0.0, TOWER_DECK, -L - 0.2)), t.to_global(Vector3(0.0, 0.0, -L - 0.55)))
+	add_child(ladder)
+	# Its top end sits at the hatch in the rail, a step from where a keeper climbs off,
+	# so arriving at the top the searchlight is the nearer thing to hand.
+	for e in ladder.get_children():
+		if e is LadderEnd and e.to.y < ladder.top.y - 1.0:
+			e.global_position = t.to_global(Vector3(0.0, TOWER_DECK + 0.1, -L * 1.15))
+	KeeperNav.add_ladder(ladder.top, ladder.bottom, Ladder.DOWN_TIME, Ladder.UP_TIME * 1.2)
+	# The searchlight on its yoke at the platform's outer corner, looking out from the wire.
+	var sl := Searchlight.new()
+	sl.name = "Searchlight"
+	sl.generator = generator
+	sl.position = Vector3(0.0, TOWER_DECK + 0.8, L * 0.55)
+	t.add_child(sl)
+	var outward := corner - Terrain.CAMP_C
+	sl.home_yaw = atan2(-outward.x, -outward.y)
 	towers.append(t)
-	searchlights.append(yoke)
+	searchlights.append(sl)
 
 # ---- buildings ----
 
@@ -231,9 +250,20 @@ func _hut(at: Vector2, label: String) -> void:
 		end.material_override = brick
 		var door := Geo.box(hut, Vector3(0.1, 1.9, 0.95), Color.WHITE, Vector3(sx * (HUT_LEN * 0.5 + 0.04), 0.95, 0.0))
 		door.material_override = _wood
+		var win_mat := Look.glow_mat(Color(0.12, 0.13, 0.14), 0.0)
+		_hut_windows.append(win_mat)
 		for sz in [-1.0, 1.0]:
 			var win := Geo.box(hut, Vector3(0.08, 0.6, 0.55), Color.WHITE, Vector3(sx * (HUT_LEN * 0.5 + 0.03), 1.25, sz * 1.15))
-			win.material_override = Look.glow_mat(Color(0.12, 0.13, 0.14), 0.0)
+			win.material_override = win_mat
+		# Electric light inside, thrown out through the end windows.
+		var lamp := OmniLight3D.new()
+		lamp.light_color = Color(1.0, 0.86, 0.6)
+		lamp.omni_range = 5.5
+		lamp.light_energy = 0.0
+		lamp.position = Vector3(sx * (HUT_LEN * 0.5 + 0.6), 1.4, 0.0)
+		lamp.visible = false
+		hut.add_child(lamp)
+		_hut_lights.append(lamp)
 	# A stovepipe through the roof.
 	var pipe := Geo.cyl(hut, 0.09, 1.0, Color(0.15, 0.15, 0.15), Vector3(HUT_LEN * 0.25, HUT_R + 0.3, 0.4))
 	pipe.name = "Stovepipe"
@@ -244,24 +274,20 @@ func _hut(at: Vector2, label: String) -> void:
 	Geo.box_shape(body, Vector3(HUT_LEN, HUT_R * 1.2, HUT_R * 1.9), Vector3(0.0, HUT_R * 0.6, 0.0))
 	huts.append(hut)
 
-func _generator_house(at: Vector2) -> void:
-	var g := Node3D.new()
-	g.name = "Generator"
-	add_child(g)
-	g.position = _ground(at)
-	var walls := Geo.box(g, Vector3(2.6, 2.3, 3.2), Color.WHITE, Vector3(0.0, 1.15, 0.0))
-	walls.material_override = Look.stone(BRICK, 1.0)
-	var roof := Geo.box(g, Vector3(2.9, 0.15, 3.5), Color.WHITE, Vector3(0.0, 2.35, 0.0))
-	roof.material_override = _tin
-	var door := Geo.box(g, Vector3(0.08, 1.8, 1.0), Color.WHITE, Vector3(-1.32, 0.9, 0.0))
-	door.material_override = _wood
-	var stack := Geo.cyl(g, 0.12, 1.2, Color(0.12, 0.12, 0.12), Vector3(0.6, 2.9, -0.8))
-	stack.name = "Exhaust"
-	var body := StaticBody3D.new()
-	body.collision_layer = 4
-	body.collision_mask = 0
-	g.add_child(body)
-	Geo.box_shape(body, Vector3(2.6, 2.3, 3.2), Vector3(0.0, 1.15, 0.0))
+## Each hut's lights draw this much from the generator.
+const HUT_DRAW := 0.015
+
+func _process(_delta: float) -> void:
+	# The huts are lit while the generator runs, flickering as it runs dry.
+	var level := generator.power_level() if generator != null else 0.0
+	for l in _hut_lights:
+		l.visible = level > 0.0
+		l.light_energy = 1.3 * level
+	for m in _hut_windows:
+		m.emission_energy_multiplier = 2.2 * level
+		m.albedo_color = Color(1.0, 0.85, 0.55) if level > 0.0 else Color(0.12, 0.13, 0.14)
+	if generator != null:
+		generator.set_draw(self, HUT_DRAW * float(huts.size()) if level > 0.0 else 0.0)
 
 # A vegetable bed: ridged earth in rows, edged with boards, a few plants coming up.
 func _bed(at: Vector2) -> void:

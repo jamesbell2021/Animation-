@@ -63,12 +63,12 @@ const PADS := [[-7.3, 9.3, 2.6], [7.3, 8.9, 2.2], [0.0, 12.0, 1.7]]
 
 # The holm: its plateau is a rounded box (centre, half size, corner radius), low and
 # flat, with two shingle beaches ([compass angle from its centre, distance to its edge]).
-const HOLM_C := Vector2(47.0, 3.0)
-const HOLM_HALF := Vector2(15.0, 12.5)
+const HOLM_C := Vector2(48.5, 3.0)
+const HOLM_HALF := Vector2(16.5, 13.5)
 const HOLM_ROUND := 5.0
 const HOLM_HEIGHT := 1.4
 const HOLM_CLIFF := 1.6
-const HOLM_BEACHES := [[90.0, 15.0], [180.0, 12.5]]
+const HOLM_BEACHES := [[90.0, 16.5], [180.0, 13.5]]
 ## The camp's fenced compound on the holm (centre, half size): flattened, gravel inside.
 const CAMP_C := Vector2(48.0, 3.0)
 const CAMP_HALF := Vector2(11.0, 8.5)
@@ -76,7 +76,7 @@ const CAMP_HALF := Vector2(11.0, 8.5)
 const BRIDGE_ANGLE := 70.0
 const BRIDGE_HALF := 0.55
 # The ground mesh's extent: the main island's square, and the holm's beside it.
-const HOLM_GRID_X := Vector2(GRID_HALF, 72.0)
+const HOLM_GRID_X := Vector2(GRID_HALF, 77.0)
 
 static var _noise: FastNoiseLite
 static var _detail: FastNoiseLite

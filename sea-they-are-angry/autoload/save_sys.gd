@@ -9,6 +9,7 @@ func save_run() -> void:
 		"anger": Anger.value,
 		"stock": Stock.all(),
 		"fuel": Run.lamp_fuel,
+		"camp_fuel": Run.camp_fuel,
 		"upgrades": Run.upgrades,
 		"max_hp_bonus": Run.max_hp_bonus,
 		"crops": Run.crops,

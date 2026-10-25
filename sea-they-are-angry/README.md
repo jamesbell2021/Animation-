@@ -41,6 +41,7 @@ Choose 1 to 3 keepers on the title screen, then New Run (or Continue).
 | Boathook swing | Left mouse | Ctrl | X or right trigger |
 | Use: gather, repair, refuel, climb a ladder, revive (hold) | E | Shift | A |
 | Work the lamp (walk in at the door) / leave it | R (within 3.8 m of the lighthouse) | / | Y |
+| Take a camp searchlight (up a tower) / let it go | E (R also lets go) | Shift | A |
 | Switch beam: wide slows, focused burns | Q | . | B |
 | Fire a flare (lobbed to the cursor) | Right mouse | ; | Left trigger |
 | Pour dirty fuel (at the lighthouse) | F | ' | Left shoulder |
@@ -56,6 +57,7 @@ Keepers face the way they walk and turn to their aim to swing. Each carries a pa
 
 - The island, after Bad North: a meadow ringed by cliffs, three beaches where the sea comes ashore, and the lighthouse on a crag in the middle. The only way up is a ledge path that winds round the crag. Day/dusk/night/dawn lighting with fog.
 - The holm to the east, over an 18 m rope bridge that sags, bounces under footsteps and swings in the wind (after Carrick-a-Rede): the old camp in grey box, its wire, towers, searchlights, huts, beds and greenhouse. A camera that follows the keepers between the islands, and a split screen when people are apart.
+- The camp's power: a diesel generator runs the four searchlights and the huts' lights from dusk to dawn, burning faster the more it runs; jerrycans of diesel wash up on the holm's beaches. Climb a tower's ladder and take its searchlight (E): aim it, Q for a focused beam that burns. Left alone, the lights sweep the ground outside the wire.
 - Helper keepers (`scenes/player/keeper_ai.gd`) fill the places people don't take, so there are always three. The lighthouse's helper gathers and mends by day and works the lamp at night (or holds the ledge if someone else has it); the camp's warden does its rounds by day and walks the wire at night. Both fight what comes close, revive downed keepers, and walk the keepers' map (`KeeperNav`: the ledge, the ladders, the bridge, the camp). The creatures still scale with the number of people playing.
 - Characters modelled, rigged, textured and animated in Blender by scripts (`art/source/characters/build_characters.py`, `animate.py`): IK-solved walks, runs and sprints with planted feet, tool work, ladder climbs and creature gaits. Hard hits knock keepers and creatures down as ragdolls, and they get back up with real get-up animations from where they fall.
 - Keeper movement, mouse aim, boathook attack. A blow aimed outward on the ledge knocks a creature over the edge. Keepers have their own ladders down the crag.

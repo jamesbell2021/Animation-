@@ -74,6 +74,8 @@ var max_hp := 100
 var camera: Camera3D
 var lamp: Lamp
 var operating := false
+## Up a guard tower, working its searchlight (null when not).
+var manning: Searchlight = null
 
 var _aim := Vector3(0.0, 0.0, -1.0)
 var _attack_cd := 0.0
@@ -372,7 +374,13 @@ func _physics_process(delta: float) -> void:
 	_update_aim()
 	_update_swing(delta)
 	if _just("operate"):
-		_toggle_operate()
+		if manning != null:
+			leave_light()
+		else:
+			_toggle_operate()
+	if manning != null:
+		_on_light()
+		return
 	if _inside:
 		# Up in the lamp room: aim and switch the beam; nothing else reaches in here.
 		if operating and _just("beam_mode") and lamp:
@@ -561,7 +569,7 @@ func _update_aim() -> void:
 	var dir := camera.project_ray_normal(mp)
 	if absf(dir.y) < 0.0001:
 		return
-	if operating:
+	if operating or manning != null:
 		_lamp_point = _ground_hit(from, dir)
 	var t := (global_position.y - from.y) / dir.y
 	if t <= 0.0:
@@ -789,6 +797,38 @@ func _toggle_operate() -> void:
 	else:
 		Events.message.emit("The lamp is lit at dusk.  [R] leave")
 
+## Take a tower's searchlight: the keeper stands at it and aims it.
+func man(light: Searchlight) -> void:
+	if manning != null:
+		leave_light()
+	if operating:
+		_toggle_operate()
+	manning = light
+	light.set_operator(self)
+	velocity = Vector3.ZERO
+	Events.message.emit("On the searchlight.  Aim it, [Q] beam, [E] or [R] leave")
+
+func leave_light() -> void:
+	if manning != null and is_instance_valid(manning) and manning.operator == self:
+		manning.set_operator(null)
+	manning = null
+
+# Working a searchlight: standing still, facing the aim; Q narrows the beam, E or R lets go.
+func _on_light() -> void:
+	if not is_instance_valid(manning) or downed:
+		leave_light()
+		return
+	velocity = Vector3(0.0, 0.0 if is_on_floor() else FALL_SPEED, 0.0)
+	_aim_face_t = 0.2
+	if _just("beam_mode"):
+		manning.toggle_mode()
+	var leaving := _just("interact")
+	move_and_slide()
+	_update_facing(get_physics_process_delta_time())
+	_animate(get_physics_process_delta_time())
+	if leaving:
+		leave_light()
+
 func _stop_operating() -> void:
 	operating = false
 	if lamp and lamp.operator == self:
@@ -969,6 +1009,7 @@ func is_busy() -> bool:
 
 ## Knocked flat for t seconds: can't move or act.
 func knock_prone(t: float) -> void:
+	leave_light()
 	if _inside or downed or hp <= 0:
 		return
 	if rig != null:
@@ -1011,6 +1052,7 @@ func shove(v: Vector3) -> void:
 
 ## Knocked off their feet: a ragdoll for `time` seconds, then they get back up.
 func knock(impulse: Vector3, time: float) -> void:
+	leave_light()
 	if _inside or rig == null or hp <= 0:
 		return
 	if _job_tool != "":
@@ -1036,6 +1078,7 @@ func _play_stagger(push: Vector3) -> void:
 
 ## Rocked by a blow but still standing: reels away from it a step, then has control back.
 func stagger_from(away: Vector3) -> void:
+	leave_light()
 	if not _clips() or _inside or rig.is_ragdoll() or _climb_t >= 0.0:
 		return
 	if _job_tool != "":
@@ -1125,6 +1168,9 @@ func _find_interactable() -> Node:
 			d = n.surface_distance(global_position)
 		else:
 			d = Geo.flat_dist(global_position, n.global_position)
+		# Up a tower, the light comes before the hatch beside it.
+		if n is Searchlight:
+			d -= 0.8
 		if d > best_d:
 			continue
 		if n.interact_prompt() == "":
@@ -1181,6 +1227,7 @@ func _update_tag() -> void:
 	_tag.text = text
 
 func go_down() -> void:
+	leave_light()
 	downed = true
 	revive_progress = 0.0
 	_stop_operating()

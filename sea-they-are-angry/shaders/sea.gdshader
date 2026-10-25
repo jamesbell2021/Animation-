@@ -9,8 +9,8 @@ uniform vec3 shallow_color : source_color = vec3(0.07, 0.20, 0.19);
 uniform vec3 foam_color : source_color = vec3(0.66, 0.71, 0.70);
 uniform float shore_radius = 16.6;
 // The holm's shore: a rounded box (Terrain.HOLM_*), its waterline a little past the clifftop.
-uniform vec2 holm_c = vec2(47.0, 3.0);
-uniform vec2 holm_half = vec2(15.0, 12.5);
+uniform vec2 holm_c = vec2(48.5, 3.0);
+uniform vec2 holm_half = vec2(16.5, 13.5);
 uniform float holm_round = 5.0;
 uniform float holm_shore = 1.1;
 uniform float foam_width = 0.4;

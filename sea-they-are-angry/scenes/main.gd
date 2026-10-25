@@ -40,6 +40,14 @@ const SCAVENGE := [
 	[2, 0.46, 0.0, "seaweed", 2],
 	[0, 0.4, -1.6, "seaweed", 1],
 ]
+# On the holm's beaches: jerrycans of diesel for the camp's generator, and a little more.
+# [holm beach index, t up the beach, lateral offset, kind, amount].
+const HOLM_SCAVENGE := [
+	[0, 0.62, 1.6, "diesel", 1],
+	[1, 0.6, -1.4, "diesel", 1],
+	[0, 0.5, -1.8, "driftwood", 1],
+	[1, 0.52, 1.8, "scrap", 1],
+]
 # A third keeper finds a little more on the south beach.
 const SCAVENGE_CROWD := [1, 0.46, -0.6, "driftwood", 1]
 # Trap cairns up the middle of each beach, short of the fence (a Bloated burst there
@@ -123,6 +131,7 @@ func _ready() -> void:
 	hud = HudScript.new()
 	hud.lighthouse = lighthouse
 	hud.lamp = lighthouse.lamp
+	hud.camp = camp
 	add_child(hud)
 	add_child(PauseScript.new())
 
@@ -532,6 +541,9 @@ func _build_sea() -> void:
 	var mat := ShaderMaterial.new()
 	mat.shader = load("res://shaders/sea.gdshader")
 	sea.material_override = mat
+	mat.set_shader_parameter("holm_c", Terrain.HOLM_C)
+	mat.set_shader_parameter("holm_half", Terrain.HOLM_HALF)
+	mat.set_shader_parameter("holm_round", Terrain.HOLM_ROUND)
 	_sea_mat = mat
 	sea.position = Vector3(24.0, Terrain.SEA_LEVEL, 0.0)
 	sea.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -578,6 +590,10 @@ func _at(a_deg: float, r: float, y: float) -> Vector3:
 func _build_scavenge() -> void:
 	for s in SCAVENGE:
 		_add_scavenge(s)
+	for s in HOLM_SCAVENGE:
+		var sp := ScavengePoint.new(String(s[3]), int(s[4]))
+		sp.position = Terrain.holm_beach_point(int(s[0]), float(s[1]), float(s[2]))
+		add_child(sp)
 
 func _add_scavenge(s: Array) -> void:
 	var sp := ScavengePoint.new(String(s[3]), int(s[4]))

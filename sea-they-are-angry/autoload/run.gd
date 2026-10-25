@@ -3,6 +3,8 @@ extends Node
 var active := false
 var night := 1
 var lamp_fuel := 100.0
+## Diesel in the camp's generator (Generator.fuel), 0 to 100.
+var camp_fuel := 60.0
 ## Upgrade levels bought at the cottage, 1 to 3 (see Upgrades).
 var upgrades := {"lighthouse": 1, "defences": 1, "garden": 1}
 ## Extra max health each keeper has eaten their way to, by keeper index.
@@ -21,6 +23,7 @@ var quick_start := false
 func start_new() -> void:
 	night = 1
 	lamp_fuel = 100.0
+	camp_fuel = 60.0
 	upgrades = {"lighthouse": 1, "defences": 1, "garden": 1}
 	max_hp_bonus = [0, 0, 0]
 	crops = [0, 0, 0, 0, 0]
@@ -34,6 +37,7 @@ func start_new() -> void:
 func start_loaded(d: Dictionary) -> void:
 	night = int(d.get("night", 1))
 	lamp_fuel = float(d.get("fuel", 100.0))
+	camp_fuel = float(d.get("camp_fuel", 60.0))
 	var up: Dictionary = d.get("upgrades", {})
 	upgrades = {"lighthouse": int(up.get("lighthouse", 1)), "defences": int(up.get("defences", 1)), "garden": int(up.get("garden", 1))}
 	var bonus: Array = d.get("max_hp_bonus", [0, 0, 0])

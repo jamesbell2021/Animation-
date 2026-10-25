@@ -56,6 +56,8 @@ static func _ensure() -> void:
 	_door = yard[0]
 	# The ledge's head comes out onto the yard.
 	_link_near(_add_existing(Terrain.ledge_point(1.0)), 2, 4.0, yard)
+	# The holm before the ladders: the camp's towers have ladders too.
+	_build_holm()
 	for l in _ladders:
 		var t := _add(l[0])
 		var b := _add(l[1])
@@ -63,7 +65,6 @@ static func _ensure() -> void:
 		_links[b].append([t, float(l[3])])
 		_link_near(t, 2, 6.0)
 		_link_near(b, 2, 6.0)
-	_build_holm()
 
 # The bridge from the meadow, over the gully, through the gate and round the camp.
 static func _build_holm() -> void:
@@ -84,6 +85,7 @@ static func _build_holm() -> void:
 	var c := Terrain.CAMP_C
 	var outside := _add(_on(g.x - 1.6, g.y))
 	_link(h0, outside)
+	_build_holm_outside(outside)
 	var inside := _add(_on(g.x + 1.6, g.y))
 	_link(outside, inside)
 	var parade := _add(_on(c.x, c.y))
@@ -118,6 +120,43 @@ static func _build_holm() -> void:
 	_link(ne_gap, fid[1])
 	_link(se_lane, fid[2])
 	_link(west, fid[3])
+
+# Round the outside of the wire to the holm's two beaches, where the diesel washes up.
+# The towers stand turned to the diagonal, so their legs reach out along the wire: the
+# path keeps 2.4 m out from it, and cuts each corner on the diagonal.
+static func _build_holm_outside(gate_out: int) -> void:
+	var c := Terrain.CAMP_C
+	var h := Terrain.CAMP_HALF
+	var w := c.x - h.x
+	var e := c.x + h.x
+	var n := c.y - h.y
+	var so := c.y + h.y
+	var west := _add(_holm_spot(w - 2.4, c.y))
+	var sw := _add(_holm_spot(w - 2.0, so + 2.0))
+	var s := _add(_holm_spot(c.x, so + 2.4))
+	var se := _add(_holm_spot(e + 2.0, so + 2.0))
+	var eb := _add(_holm_spot(e + 2.4, c.y))
+	var nw := _add(_holm_spot(w - 2.0, n - 2.0))
+	var nb := _add(_holm_spot(c.x, n - 2.4))
+	var ne := _add(_holm_spot(e + 2.0, n - 2.0))
+	for pair in [[gate_out, west], [west, sw], [sw, s], [s, se], [se, eb], [west, nw], [nw, nb], [nb, ne], [ne, eb]]:
+		_link(pair[0], pair[1])
+	# Down onto each beach.
+	var east := _add(Terrain.holm_beach_point(0, 0.75))
+	_link(eb, east)
+	var north := _add(Terrain.holm_beach_point(1, 0.75))
+	_link(nb, north)
+
+# A waypoint on the holm's plateau: nudged in toward the camp if the ragged edge of the
+# clifftop is too close.
+static func _holm_spot(x: float, z: float) -> Vector3:
+	var p := Vector2(x, z)
+	var to_c := (Terrain.CAMP_C - p).normalized()
+	for i in 12:
+		if Terrain.walkable(p.x, p.y) and Terrain.holm_edge_dist(p.x, p.y) < -0.8:
+			break
+		p += to_c * 0.25
+	return _on(p.x, p.y)
 
 static func _on(x: float, z: float) -> Vector3:
 	return Vector3(x, Terrain.height_at(x, z), z)
@@ -158,6 +197,9 @@ static func _link_near(n: int, count: int, max_d: float, among: Array = []) -> v
 		if i == n or (not among.is_empty() and not among.has(i)):
 			continue
 		if absf(_nodes[i].y - _nodes[n].y) > SAME_LEVEL:
+			continue
+		# Never through the camp's wire.
+		if Terrain.in_camp(_nodes[i].x, _nodes[i].z) != Terrain.in_camp(_nodes[n].x, _nodes[n].z):
 			continue
 		var d := Geo.flat_dist(_nodes[i], _nodes[n])
 		if d <= max_d:

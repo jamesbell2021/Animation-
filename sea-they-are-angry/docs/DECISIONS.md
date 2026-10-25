@@ -406,3 +406,30 @@ This is step 1 of five: the place, the crossing, the camera and the helpers. Nex
   - **Getting stuck:** a keeper that stops getting closer to its next waypoint sidesteps, and as a last resort hops onto the waypoint.
   - **Difficulty:** creatures scale with the number of people (`Players.humans()`), not keepers, so solo plays as before, with help. With helpers about, a person who goes down solo no longer ends the run: a helper comes to revive them. Losing every keeper still ends it.
   - **Tests:** the older tests script every keeper themselves, so they turn helpers off.
+
+## The camp's power: the generator, diesel, the searchlights, climbing the towers (step 2)
+
+- **The generator (`scenes/structures/generator.gd`):** a Structure in the brick house, so creatures can damage it later and keepers mend it with scrap and driftwood.
+  - **Running:** from dusk to dawn while it has diesel, with its own chugging engine sound (synthesised: a slow single cylinder firing about seven times a second) and exhaust smoke. It burns 0.03 fuel a second idling, plus whatever it powers:
+    - each searchlight 0.1 a second wide, 0.2 focused;
+    - the huts' lights 0.015 each.
+
+    All four lights sweeping and the huts lit burn about 0.46 a second, so a full tank (100) lasts about 220 s, roughly one night.
+  - **Low and dry:** below 15% the lights it powers flicker and dim and a warning comes up. Run dry, the whole camp goes dark.
+  - **Saving:** its fuel is saved with the run (`Run.camp_fuel`, 60 to start).
+- **Diesel:** a new resource. A jerrycan washes up on each of the holm's two beaches every dawn (with a little driftwood and scrap). One can fills the generator by 35, worked with the oil can like refuelling the lamp. Two cans a day keep about two lights burning all night, not four. Which lights to keep running, and whether to fetch the diesel or do something else, is the camp's daily trade-off.
+- **The searchlights (`scenes/systems/searchlight.gd`):** an arc lamp in a drum on each tower's platform.
+  - **Unmanned:** it sweeps 120° of the ground outside its corner of the wire, 13 m out, in a wide beam.
+  - **Manned:** a keeper who takes it aims it where they like (the mouse's point on the ground, or along the stick) and switches it to a 6° focused beam with Q.
+  - **Effect:** it uses the lighthouse lamp's 3D cone test and the creatures' own light reactions, so the wide beam slows what it catches and the focused one burns it.
+  - **Feedback:** each light strikes with a buzzing clunk as the generator brings it on. Its glass glows and its beam shows in the fog.
+- **Climbing a tower:** each tower has a keepers' ladder up its inward side (the crag ladders' code). The platform has a floor and rails, with a hatch where the ladder comes up.
+  - **At the top:** the searchlight is the nearer thing to hand, so E takes it. E or R lets go; Q switches the beam.
+  - **Climbing down:** step to the hatch and E climbs down.
+  - **Knocked:** a keeper who is knocked about lets go of the light.
+- **The huts:** their windows light warm yellow and throw light out of each end while the generator runs, flickering with it when it runs low.
+- **The HUD:** shows the camp's generator: its fuel, whether it's running and how many lights, and diesel in store.
+- **The camp warden:**
+  - **By day:** keeps the generator filled. It fetches the diesel from the holm's beaches, walking a new path round the outside of the wire, and works the can at the generator. It also mends the camp, then does its rounds.
+  - **From dusk:** it climbs the tower facing whatever is on the holm or the bridge (or the one over the east beach), takes its light and sweeps. When something comes within range it swings the beam onto it and focuses once it's on target. It moves to a better tower if the danger is elsewhere, and comes down at dawn. If the camp is dark with diesel in store, it gets the generator going first.
+- **The holm grew** to 33 by 27 m so there's a 5 m margin round the wire: the towers stand turned to the diagonal and their legs reach 1.5 m out along it, and the path round the outside needs to clear them. A check walks every link of the keepers' map on the holm against the ground and the buildings (all clear), and no link may cross the wire.

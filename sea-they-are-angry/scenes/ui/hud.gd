@@ -15,6 +15,7 @@ var player: Player
 var players: Array = []
 var lighthouse: Lighthouse
 var lamp: Lamp
+var camp: Camp
 
 var _phase_label: Label
 var _stock_label: Label
@@ -23,6 +24,7 @@ var _lh_label: Label
 var _fuel_bar: ProgressBar
 var _lamp_label: Label
 var _beam_label: Label
+var _camp_label: Label
 var _prompt_label: Label
 var _msg_label: Label
 var _warn_label: Label
@@ -65,6 +67,7 @@ func _ready() -> void:
 	fuel_row.add_child(_fuel_bar)
 	_lamp_label = _label(panel, FONT)
 	_beam_label = _label(panel, FONT)
+	_camp_label = _label(panel, FONT)
 
 	var controls := _label(root, 14)
 	controls.text = CONTROLS
@@ -187,8 +190,23 @@ func _process(delta: float) -> void:
 	if lamp and is_instance_valid(lamp):
 		_fuel_bar.value = lamp.fuel
 		_update_lamp_label()
-		_beam_label.visible = player != null and player.operating
-		_beam_label.text = "Beam: %s   [Q] switch" % ("FOCUSED" if lamp.mode == Lamp.Mode.FOCUSED else "WIDE")
+		var on_light: bool = player != null and player.manning != null
+		_beam_label.visible = player != null and (player.operating or on_light)
+		var focused: bool = (player.manning.mode if on_light else lamp.mode) == Lamp.Mode.FOCUSED
+		_beam_label.text = "%s: %s   [Q] switch" % ["Searchlight" if on_light else "Beam", "FOCUSED" if focused else "WIDE"]
+	if camp and is_instance_valid(camp) and camp.generator != null:
+		var g := camp.generator
+		var lit := 0
+		for sl in camp.searchlights:
+			if sl.is_lit():
+				lit += 1
+		var line := "Camp generator %d%%" % roundi(g.fuel)
+		if g.running:
+			line += " · running, %d light%s" % [lit, "" if lit == 1 else "s"]
+		if Stock.get_amount("diesel") > 0:
+			line += " · Diesel %d" % Stock.get_amount("diesel")
+		_camp_label.text = line
+		_camp_label.add_theme_color_override("font_color", RED if g.fuel < Generator.LOW else PALE)
 	if _msg_t > 0.0:
 		_msg_t = maxf(0.0, _msg_t - delta)
 		_msg_label.modulate.a = clampf(_msg_t / MSG_FADE, 0.0, 1.0)

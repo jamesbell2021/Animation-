@@ -31,6 +31,8 @@ func _ready() -> void:
 			_build_scrap()
 		"bio":
 			_build_bio()
+		"diesel":
+			_build_diesel()
 		"seaweed":
 			_build_seaweed()
 		"oil":
@@ -95,6 +97,22 @@ func _build_oil() -> void:
 	var m := Look.flat_mat(Color(0.04, 0.04, 0.05), 0.05)
 	m.metallic = 0.8
 	slick.material_override = m
+
+# A jerrycan of diesel washed up from somewhere, half on its side in the shingle.
+func _build_diesel() -> void:
+	var can := Node3D.new()
+	_mesh.add_child(can)
+	can.position = Vector3(0.0, 0.2, 0.0)
+	can.rotation = Vector3(0.0, 0.6, 0.35)
+	var body := Geo.box(can, Vector3(0.18, 0.4, 0.3), Color.WHITE)
+	var paint := Look.flat_mat(Color(0.32, 0.36, 0.22), 0.6)
+	paint.metallic = 0.4
+	body.material_override = paint
+	var cap := Geo.cyl(can, 0.035, 0.07, Color(0.2, 0.2, 0.2), Vector3(0.0, 0.23, 0.1))
+	cap.rotation.x = 0.4
+	for sz in [-0.07, 0.0, 0.07]:
+		var handle := Geo.box(can, Vector3(0.03, 0.04, 0.03), Color(0.25, 0.27, 0.18), Vector3(0.0, 0.22, sz - 0.05))
+		handle.material_override = paint
 
 func _build_bio() -> void:
 	Look.rock(_mesh, 44, Vector3(0.7, 0.35, 0.6), Vector3(0.0, 0.05, 0.0), Look.STONE, 0.3)

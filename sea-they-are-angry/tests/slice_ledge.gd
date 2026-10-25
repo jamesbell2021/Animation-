@@ -89,9 +89,10 @@ func _run() -> void:
 	# Ladders: top -> ledge -> meadow and back.
 	var ends := []
 	for n in get_nodes_in_group("interactable"):
-		if n is LadderEnd:
+		# The crag's ladders (the camp's towers on the holm have their own).
+		if n is LadderEnd and not Terrain.on_holm(n.global_position.x, n.global_position.z):
 			ends.append(n)
-	check(ends.size() == 4, "two ladders, four ends")
+	check(ends.size() == 4, "two ladders down the crag, four ends")
 	var top_end: LadderEnd = null
 	for e in ends:
 		if top_end == null or e.global_position.y > top_end.global_position.y:
