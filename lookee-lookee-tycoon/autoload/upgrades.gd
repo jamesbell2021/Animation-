@@ -63,7 +63,7 @@ const DEFS := {
 	},
 	"cousin": {
 		"name": "Cousin in the Policía", "category": "Escape", "max": 3, "cost": 300.0, "growth": 2.6,
-		"desc": "He hears things. He tells you things. Heat builds up slower.",
+		"desc": "Your cousin hears things. Your cousin tells you things. Heat builds up slower.",
 	},
 	"van": {
 		"name": "Rusty Van", "category": "Empire", "max": 2, "cost": 900.0, "growth": 3.0,
@@ -122,7 +122,7 @@ func block_reason(id: String) -> String:
 		if level(rid) < int(req[rid]):
 			return "Needs %s %d" % [DEFS[rid].name, int(req[rid])]
 	if not Economy.can_afford(cost(id)):
-		return "Need %s" % Lines.money(cost(id))
+		return "Not enough cash"
 	return ""
 
 

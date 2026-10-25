@@ -80,7 +80,6 @@ func _build_world() -> void:
 	add_child(camera)
 	camera.tapped.connect(_on_tapped)
 	# Scenery.
-	var b := BeachDB.get_beach(GameManager.current_beach)
 	for x in range(150, int(WORLD_W), 420):
 		var palm := BeachProp.make("palm", Vector2(x + _rng.randf_range(-40, 40), BeachBackdrop.PROM_Y + 18))
 		palm.flip = _rng.randf() < 0.5

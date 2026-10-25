@@ -19,7 +19,7 @@ config/quit_on_go_back=false
 config/auto_accept_quit=false
 boot_splash/bg_color=Color(0.02, 0.02, 0.03, 1)
 boot_splash/show_image=false
-config/icon="res://icon.svg"
+config/icon="res://icons/app_icon.png"
 
 [autoload]
 

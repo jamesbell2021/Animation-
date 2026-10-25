@@ -139,12 +139,12 @@ const BUSTED_TITLES := [
 const ESCAPED := [
 	"You escaped! Very good very nice!",
 	"Gone like the wind! Very good very nice!",
-	"Lost him in the paddling pool! Very good very nice!",
+	"Lost the cop in the paddling pool! Very good very nice!",
 ]
 
 const CAUGHT := [
 	"Caught! Not very good, not very nice!",
-	"He ran faster. Very good for him, very not nice for you.",
+	"The cop ran faster. Very good for them, very not nice for you.",
 ]
 
 const COPS_COMING := [
@@ -196,7 +196,7 @@ const TIPS := [
 	"When the Heat meter turns red, PACK UP or run!",
 	"Tap a tourist to walk over and pitch to them directly.",
 	"Drag to look around the beach. Pinch or scroll to zoom.",
-	"Hire a Lookout. He asks police for directions. Very good very nice!",
+	"Hire a Lookout: they ask the police for directions. Very good very nice!",
 	"Cheeky prices make more money... and fewer friends.",
 	"Families love flamingos. Stag parties love everything.",
 ]

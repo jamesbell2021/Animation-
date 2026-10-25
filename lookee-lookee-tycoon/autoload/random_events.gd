@@ -51,7 +51,7 @@ const EVENTS := {
 	},
 	"rival": {
 		"title": "Rival Vendor!", "duration": 45.0, "weight": 1.4, "good": false,
-		"text": "A rival is stealing your chicken nuggets! SHOUT near him to scare him off!",
+		"text": "A rival is stealing your chicken nuggets! SHOUT near the rival to scare them off!",
 		"mods": {},
 	},
 	"seagull": {

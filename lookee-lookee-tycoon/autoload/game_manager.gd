@@ -37,6 +37,11 @@ const TUTORIAL_ORDER := ["setup", "shout", "sell", "heat", "pack", "shop", "done
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_setup_input()
+	# Merge into Godot's default theme too: Controls under a CanvasLayer (HUD, overlays)
+	# don't inherit the root window's theme.
+	ThemeDB.get_default_theme().merge_with(UITheme.get_theme())
+	ThemeDB.get_default_theme().default_font = UITheme.bold_font()
+	ThemeDB.get_default_theme().default_font_size = UITheme.FONT_SIZE
 	get_tree().root.theme = UITheme.get_theme()
 	get_tree().set_auto_accept_quit(false)
 	get_tree().set_quit_on_go_back(false)

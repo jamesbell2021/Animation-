@@ -33,6 +33,8 @@ const HEAD_R := 25.0
 const SKULL := Vector2(0, -24)  # skull centre, relative to the neck
 const FACE_X := 3.0             # features sit slightly forward for a 3/4 look
 const GOLD := Color("#ffc928")
+## PNG overrides are painted at 4x and drawn at a quarter size, so they stay sharp when zoomed.
+const ART_SCALE := 4.0
 
 ## When true the avatar mirrors CharacterData (the player's vendor and menu previews).
 @export var follow_character_data := false
@@ -89,6 +91,9 @@ var _water: Part
 var _parts: Array[Part] = []
 
 static var _tex_cache := {}
+## Antialiased outlines look best at game sizes; big offline renders (icons) turn this off and
+## use MSAA instead, because the line feather scales with the zoom.
+static var smooth_lines := true
 
 
 func _ready() -> void:
@@ -141,6 +146,12 @@ func set_pose(p: Pose) -> void:
 	_shadow.visible = p != Pose.SWIM and p != Pose.LIE
 	for part in [_leg_b, _leg_f, _arm_b, _arm_f]:
 		part.rotation = 0.0
+	# Apply the static part of the pose now, so culled (off-screen) avatars look right too.
+	if p == Pose.LIE:
+		_rig.rotation = -PI * 0.5
+		_rig.position = Vector2(58.0 * float(appearance.get("scale", 1.0)), -6.0)
+	elif p == Pose.SWIM:
+		_rig.position = Vector2(0, 22.0)
 
 
 ## Talk for a while (mouth flaps). Shout = talk + big arm wave.
@@ -207,6 +218,7 @@ func _build() -> void:
 func _make_part(parent: Node, painter: Callable) -> Part:
 	var p := Part.new()
 	p.painter = painter
+	p.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	parent.add_child(p)
 	_parts.append(p)
 	return p
@@ -376,7 +388,7 @@ func _shape(ci: CanvasItem, pts: PackedVector2Array, fill: Color, line_w := OUTL
 	if line_w > 0.0:
 		var closed := pts.duplicate()
 		closed.append(pts[0])
-		ci.draw_polyline(closed, OUTLINE, line_w, true)
+		ci.draw_polyline(closed, OUTLINE, line_w, smooth_lines)
 
 
 func _circle(ci: CanvasItem, c: Vector2, r: float, fill: Color, line_w := OUTLINE_W) -> void:
@@ -384,7 +396,7 @@ func _circle(ci: CanvasItem, c: Vector2, r: float, fill: Color, line_w := OUTLIN
 
 
 func _line(ci: CanvasItem, pts: PackedVector2Array, color: Color, w: float) -> void:
-	ci.draw_polyline(pts, color, w, true)
+	ci.draw_polyline(pts, color, w, smooth_lines)
 
 
 func _i(key: String) -> int:
@@ -399,16 +411,36 @@ func _uniform() -> bool:
 	return str(appearance.get("uniform", "")) == "police"
 
 
-## Draws res://art/characters/<layer>/<style>.png instead of the procedural part if it exists.
-func _override(ci: CanvasItem, layer: String, style: String, tint: Color, anchor: Vector2) -> bool:
-	var path := "res://art/characters/%s/%s.png" % [layer, style.to_snake_case()]
+static func _override_tex(layer: String, style: String) -> Texture2D:
+	var path := "res://art/characters/%s/%s.png" % [layer, art_key(style)]
 	if not _tex_cache.has(path):
 		_tex_cache[path] = load(path) if ResourceLoader.exists(path) else null
-	var tex: Texture2D = _tex_cache[path]
+	return _tex_cache[path]
+
+
+## File name for a style: "Socks & Sandals" -> "socks_and_sandals", "Buzz Cut" -> "buzz_cut".
+static func art_key(style: String) -> String:
+	return style.to_lower().replace("&", "and").replace("-", " ").strip_edges().replace("  ", " ").replace(" ", "_")
+
+
+## Draws res://art/characters/<layer>/<style>.png instead of the procedural part if it exists.
+## The PNG is centred on the layer's anchor, drawn at 1/ART_SCALE size and multiplied by the
+## tint (paint tintable parts in light greys with dark outlines). See docs/ART_GUIDE.md.
+func _override(ci: CanvasItem, layer: String, style: String, tint: Color, anchor: Vector2) -> bool:
+	var tex := _override_tex(layer, style)
 	if tex == null:
 		return false
-	ci.draw_texture(tex, anchor - tex.get_size() * 0.5, tint)
+	var size := tex.get_size() / ART_SCALE
+	ci.draw_texture_rect(tex, Rect2(anchor - size * 0.5, size), false, tint)
 	return true
+
+
+## Like _override, but first tries a body-type specific file ("hawaiian_large.png").
+func _override_body(ci: CanvasItem, layer: String, style: String, tint: Color, anchor: Vector2) -> bool:
+	var body: String = AppearanceOptions.BODY_TYPES[clampi(_i("body"), 0, 3)]
+	if _override_tex(layer, style + " " + body) != null:
+		return _override(ci, layer, style + " " + body, tint, anchor)
+	return _override(ci, layer, style, tint, anchor)
 
 
 # --- Painters: body ---------------------------------------------------------------------------
@@ -426,6 +458,9 @@ func _paint_leg(ci: CanvasItem) -> void:
 	# Leg (skin).
 	_shape(ci, _capsule(Vector2(0, 2), Vector2(0, LEG_LEN - 3.0), lw * 0.5), _skin)
 	# Bottoms.
+	if _override_body(ci, "bottoms", "police" if _uniform() else AppearanceOptions.BOTTOMS[bottoms], bcol, Vector2(0, LEG_LEN * 0.4)):
+		_paint_shoes(ci, lw)
+		return
 	var cover := 0.55
 	match bottoms:
 		1: cover = 0.68
@@ -442,7 +477,10 @@ func _paint_leg(ci: CanvasItem) -> void:
 			_shape(ci, PackedVector2Array([Vector2(w - 5, 5), Vector2(w + 1, 5), Vector2(w + 1, 11), Vector2(w - 5, 11)]), bcol.darkened(0.15), 1.4)
 		4:  # trackie stripe
 			ci.draw_line(Vector2(w - 1.5, 0), Vector2(w - 1.5, LEG_LEN * cover), Color.WHITE, 2.0)
-	# Feet / shoes.
+	_paint_shoes(ci, lw)
+
+
+func _paint_shoes(ci: CanvasItem, lw: float) -> void:
 	var foot := Vector2(2.0, LEG_LEN - 1.0)
 	var shoes := _i("shoes")
 	var scol := _col("shoes_color", Color("#e53935"))
@@ -488,7 +526,7 @@ func _paint_torso(ci: CanvasItem) -> void:
 	_shape(ci, _torso_points(), _skin)
 	if _belly > 0.0:
 		_shape(ci, _ellipse(Vector2(_belly * 0.5, -11.0), _waist + _belly * 0.4, 12.0 + _belly * 0.6, 20), _skin)
-	if not _override(ci, "shirts", "police" if shirt == 99 else AppearanceOptions.SHIRTS[clampi(shirt, 0, 6)], scol, Vector2(0, t * 0.5)):
+	if not _override_body(ci, "shirts", "police" if shirt == 99 else AppearanceOptions.SHIRTS[clampi(shirt, 0, 6)], scol, Vector2(0, t * 0.5)):
 		match shirt:
 			0:  # vest top
 				var pts := PackedVector2Array([
@@ -683,6 +721,8 @@ func _eye_centers() -> Array[Vector2]:
 func _paint_eyes(ci: CanvasItem) -> void:
 	var iris := _col("eye_color", Color("#3b2314"))
 	var style := _i("eyes")
+	if _override(ci, "eyes", AppearanceOptions.EYES[style], Color.WHITE, SKULL + Vector2(FACE_X, -1.0)):
+		return
 	for e in _eye_centers():
 		var look := Vector2(1.2, 0.0)
 		match style:
@@ -715,6 +755,8 @@ func _paint_eyes(ci: CanvasItem) -> void:
 
 
 func _paint_eyes_closed(ci: CanvasItem) -> void:
+	if _override(ci, "eyes", "closed", _skin, SKULL + Vector2(FACE_X, -1.0)):
+		return
 	for e in _eye_centers():
 		_line(ci, _ellipse(e + Vector2(0, -1.5), 5.0, 3.5, 10, 0.0, PI), OUTLINE, 2.4)
 
@@ -727,6 +769,8 @@ func _paint_brows(ci: CanvasItem) -> void:
 	var col := _brow_color()
 	var y := SKULL.y - 10.0
 	var style := _i("brows")
+	if _override(ci, "brows", AppearanceOptions.BROWS[style], col, Vector2(FACE_X, y)):
+		return
 	for i in 2:
 		var sx := -1.0 if i == 0 else 1.0
 		var cx := sx * 9.0 + FACE_X
@@ -749,6 +793,8 @@ func _paint_brows(ci: CanvasItem) -> void:
 func _paint_nose(ci: CanvasItem) -> void:
 	var p := SKULL + Vector2(FACE_X + 1.5, 6.0)
 	var col := _skin_dark
+	if _override(ci, "nose", AppearanceOptions.NOSES[_i("nose")], _skin, p):
+		return
 	match _i("nose"):
 		1:
 			_shape(ci, _ellipse(p + Vector2(1, 1), 6.0, 5.0, 16), col, 1.8)
@@ -770,6 +816,8 @@ func _mouth_pos() -> Vector2:
 
 func _paint_mouth(ci: CanvasItem) -> void:
 	var m := _mouth_pos()
+	if _override(ci, "mouth", AppearanceOptions.MOUTHS[_i("mouth")], Color.WHITE, m):
+		return
 	match _i("mouth"):
 		1, 4:  # big smile / gold tooth
 			_shape(ci, _ellipse(m + Vector2(0, -2), 8.0, 7.0, 12, 0.0, PI), Color("#7a1f1f"), 2.0)
@@ -790,6 +838,8 @@ func _paint_mouth(ci: CanvasItem) -> void:
 
 func _paint_mouth_open(ci: CanvasItem) -> void:
 	var m := _mouth_pos()
+	if _override(ci, "mouth", "open", Color.WHITE, m):
+		return
 	_shape(ci, _ellipse(m + Vector2(0, 1), 7.5, 8.0, 18), Color("#6d1b1b"), 2.0)
 	ci.draw_colored_polygon(PackedVector2Array([m + Vector2(-6, -5), m + Vector2(6, -5), m + Vector2(5, -2), m + Vector2(-5, -2)]), Color.WHITE)
 	ci.draw_colored_polygon(_ellipse(m + Vector2(0, 5), 4.5, 2.6, 12), Color("#ff8a80"))
@@ -800,6 +850,8 @@ func _paint_mouth_open(ci: CanvasItem) -> void:
 func _paint_beard(ci: CanvasItem) -> void:
 	var col := _hair if _i("hair_style") != 0 or _hair.get_luminance() < 0.8 else _hair.darkened(0.2)
 	var c := SKULL
+	if _i("facial_hair") > 0 and _override(ci, "facial_hair", AppearanceOptions.FACIAL_HAIR[_i("facial_hair")], col, c + Vector2(FACE_X, 8.0)):
+		return
 	match _i("facial_hair"):
 		1:  # stubble
 			var stub := col
@@ -823,6 +875,8 @@ func _paint_beard(ci: CanvasItem) -> void:
 func _paint_stache(ci: CanvasItem) -> void:
 	var col := _hair if _hair.get_luminance() < 0.85 else _hair.darkened(0.15)
 	var m := _mouth_pos() + Vector2(0, -6)
+	if _override_tex("facial_hair", AppearanceOptions.FACIAL_HAIR[_i("facial_hair")]) != null:
+		return  # the PNG (drawn by _paint_beard) includes any moustache
 	match _i("facial_hair"):
 		2, 4, 5:  # moustache (also part of goatee and full beard)
 			var pts := PackedVector2Array([m + Vector2(-9, 2), m + Vector2(-5, -3), m + Vector2(0, -2), m + Vector2(5, -3), m + Vector2(9, 2), m + Vector2(4, 1), m + Vector2(0, 2), m + Vector2(-4, 1)])

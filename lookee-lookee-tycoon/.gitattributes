@@ -4,3 +4,4 @@
 *.ogg -filter -diff -merge binary
 *.wav -filter -diff -merge binary
 *.ttf -filter -diff -merge binary
+*.jpg -filter -diff -merge binary

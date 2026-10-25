@@ -2,8 +2,7 @@ extends Node
 ## Headless smoke test: plays through the whole game loop at high speed and fails loudly if
 ## anything breaks. Run from the project folder:
 ##   godot --headless --path . res://tests/smoke_test.tscn
-## Exit code 0 = passed. It deletes and recreates the save file, so don't run it on a
-## machine where you care about your Lookee Lookee empire.
+## Exit code 0 = passed. Your own save and settings are backed up first and restored after.
 
 var failures: Array[String] = []
 var _t0 := 0
@@ -68,7 +67,26 @@ func open_bust(beach: Node, v: Vendor, cop_node: Police) -> Node:
 	return Overlay.stack.back() if not Overlay.stack.is_empty() else null
 
 
+const BACKUPS := {SaveSystem.SAVE_PATH: "user://smoke_backup_save.json", SaveSystem.SETTINGS_PATH: "user://smoke_backup_settings.cfg"}
+
+
+func _backup() -> void:
+	for path in BACKUPS:
+		if FileAccess.file_exists(path):
+			DirAccess.copy_absolute(path, BACKUPS[path])
+
+
+func _restore() -> void:
+	for path in BACKUPS:
+		if FileAccess.file_exists(BACKUPS[path]):
+			DirAccess.copy_absolute(BACKUPS[path], path)
+			DirAccess.remove_absolute(BACKUPS[path])
+		elif FileAccess.file_exists(path):
+			DirAccess.remove_absolute(path)
+
+
 func _run() -> void:
+	_backup()
 	await frames(2)
 	print("== Data")
 	check(ItemDB.ids().size() >= 15, "item catalogue")
@@ -293,6 +311,7 @@ func _run() -> void:
 	check(get_tree().current_scene.name == "MainMenu", "main menu")
 	SaveSystem.delete_save()
 
+	_restore()
 	print("")
 	print("Smoke test finished in %.1fs" % ((Time.get_ticks_msec() - _t0) / 1000.0))
 	if failures.is_empty():

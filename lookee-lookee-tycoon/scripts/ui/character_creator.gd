@@ -134,7 +134,7 @@ func _build() -> void:
 	row.add_child(say)
 
 	# Right: categories.
-	var right := UITheme.panel(Color(1, 0.97, 0.9, 0.95))
+	var right := UITheme.panel(Color(1, 0.97, 0.9))
 	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	main.add_child(right)
 	var rv := VBoxContainer.new()
