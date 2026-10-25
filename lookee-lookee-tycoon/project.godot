@@ -1,0 +1,64 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
+config_version=5
+
+[application]
+
+config/name="Lookee Lookee Tycoon"
+config/description="Hello chicken nugget! Sell plastic junk to tourists on the Costa, dodge the police and build a beach empire. Very good very nice!"
+config/version="1.0.0"
+run/main_scene="res://scenes/main_menu.tscn"
+config/features=PackedStringArray("4.3", "GL Compatibility")
+config/quit_on_go_back=false
+config/auto_accept_quit=false
+boot_splash/bg_color=Color(0.02, 0.02, 0.03, 1)
+boot_splash/show_image=false
+config/icon="res://icons/app_icon.png"
+
+[autoload]
+
+StudioSplash="*res://studio/splash.gd"
+Quality="*res://autoload/quality.gd"
+CharacterData="*res://autoload/character_data.gd"
+Upgrades="*res://autoload/upgrades.gd"
+Economy="*res://autoload/economy.gd"
+HeatSystem="*res://autoload/heat_system.gd"
+Staff="*res://autoload/staff.gd"
+RandomEvents="*res://autoload/random_events.gd"
+AudioManager="*res://autoload/audio_manager.gd"
+SaveSystem="*res://autoload/save_system.gd"
+GameManager="*res://autoload/game_manager.gd"
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/handheld/orientation=4
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+window/vsync/vsync_mode=1
+
+[input_devices]
+
+pointing/emulate_touch_from_mouse=false
+pointing/emulate_mouse_from_touch=true
+
+[physics]
+
+common/physics_ticks_per_second=30
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+textures/vram_compression/import_etc2_astc=true
+textures/canvas_textures/default_texture_filter=1
+2d/snap/snap_2d_transforms_to_pixel=false
+anti_aliasing/quality/msaa_2d=0
+environment/defaults/default_clear_color=Color(0.53, 0.82, 0.96, 1)

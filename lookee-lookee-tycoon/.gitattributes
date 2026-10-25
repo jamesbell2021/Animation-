@@ -1,0 +1,7 @@
+# This Godot project stays out of Git LFS (used by the repo's Unreal assets) so a plain clone or
+# GitHub ZIP download contains the real icons and any recorded voice lines and runs as-is.
+*.png -filter -diff -merge binary
+*.ogg -filter -diff -merge binary
+*.wav -filter -diff -merge binary
+*.ttf -filter -diff -merge binary
+*.jpg -filter -diff -merge binary

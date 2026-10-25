@@ -1,0 +1,191 @@
+# Tests and builds Lookee Lookee Tycoon (Android, Web, Windows, Linux) whenever the game changes,
+# and (optionally) pushes the builds to itch.io.
+#
+# Download builds from the run's "Artifacts" section (Actions tab -> latest run).
+#
+# Secrets (Settings -> Secrets and variables -> Actions):
+#   LOOKEE_ANDROID_KEYSTORE_BASE64   the release keystore, base64-encoded
+#   LOOKEE_ANDROID_KEYSTORE_USER     its key alias (e.g. lookee)
+#   LOOKEE_ANDROID_KEYSTORE_PASS     its password
+#       With all three set, the APK is a release build signed with that key, so each new build
+#       installs over the previous one. Without them it is a debug build with a throwaway key
+#       (fine for testing, but it must be uninstalled before installing the next build).
+#   BUTLER_API_KEY                   itch.io API key (itch.io -> Settings -> API keys). When set,
+#       the "Push to itch.io" job uploads every build to the itch.io project below.
+name: Lookee Lookee Tycoon builds
+
+on:
+  push:
+    branches:
+      - "**"
+    paths:
+      - "lookee-lookee-tycoon/**"
+      - ".github/workflows/lookee-lookee-tycoon.yml"
+    tags:
+      - "llt-v*"
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Push the builds to itch.io (needs the BUTLER_API_KEY secret)"
+        type: boolean
+        default: false
+
+env:
+  GODOT_VERSION: "4.3"
+  ITCH_PROJECT: gamesdevnisite/lookee-lookee-tycoon
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Download Godot and the export templates
+        run: |
+          base=https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable
+          wget -q "$base/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          unzip -q "Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          mv "Godot_v${GODOT_VERSION}-stable_linux.x86_64" godot
+          wget -q "$base/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
+          templates=~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
+          mkdir -p "$templates"
+          unzip -q -j "Godot_v${GODOT_VERSION}-stable_export_templates.tpz" \
+            "templates/android_debug.apk" "templates/android_release.apk" \
+            "templates/web_nothreads_release.zip" "templates/web_nothreads_debug.zip" \
+            "templates/windows_release_x86_64.exe" "templates/windows_debug_x86_64.exe" \
+            "templates/linux_release.x86_64" "templates/linux_debug.x86_64" \
+            "templates/version.txt" -d "$templates"
+          rm "Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
+
+      - name: Configure signing keys and editor settings
+        env:
+          RELEASE_B64: ${{ secrets.LOOKEE_ANDROID_KEYSTORE_BASE64 }}
+          RELEASE_USER: ${{ secrets.LOOKEE_ANDROID_KEYSTORE_USER }}
+          RELEASE_PASS: ${{ secrets.LOOKEE_ANDROID_KEYSTORE_PASS }}
+        run: |
+          keytool -genkeypair -keystore "$RUNNER_TEMP/debug.keystore" -storepass android \
+            -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 \
+            -dname "CN=Android Debug,O=Android,C=US"
+          if [ -n "$RELEASE_B64" ] && [ -n "$RELEASE_USER" ] && [ -n "$RELEASE_PASS" ]; then
+            echo "$RELEASE_B64" | base64 -d > "$RUNNER_TEMP/release.keystore"
+            echo "GODOT_ANDROID_KEYSTORE_RELEASE_PATH=$RUNNER_TEMP/release.keystore" >> "$GITHUB_ENV"
+            echo "GODOT_ANDROID_KEYSTORE_RELEASE_USER=$RELEASE_USER" >> "$GITHUB_ENV"
+            echo "GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD=$RELEASE_PASS" >> "$GITHUB_ENV"
+            echo "ANDROID_MODE=release" >> "$GITHUB_ENV"
+            echo "Android: release build, signed with the release key"
+          else
+            echo "ANDROID_MODE=debug" >> "$GITHUB_ENV"
+            echo "::warning::No LOOKEE_ANDROID_KEYSTORE_* secrets: building a debug APK with a throwaway key"
+          fi
+          mkdir -p ~/.config/godot
+          cat > ~/.config/godot/editor_settings-${GODOT_VERSION}.tres <<EOF
+          [gd_resource type="EditorSettings" format=3]
+
+          [resource]
+          export/android/android_sdk_path = "$ANDROID_HOME"
+          export/android/java_sdk_path = "$JAVA_HOME"
+          export/android/debug_keystore = "$RUNNER_TEMP/debug.keystore"
+          export/android/debug_keystore_user = "androiddebugkey"
+          export/android/debug_keystore_pass = "android"
+          EOF
+
+      - name: Import and run the smoke test
+        working-directory: lookee-lookee-tycoon
+        run: |
+          ../godot --headless --import --path . || true
+          timeout 300 ../godot --headless --path . res://tests/smoke_test.tscn | tee smoke.log
+          grep -q "SMOKE TEST PASSED" smoke.log
+
+      - name: Export all platforms
+        working-directory: lookee-lookee-tycoon
+        run: |
+          mkdir -p build/android build/web build/windows build/linux
+          ../godot --headless --path . --export-$ANDROID_MODE "Android" build/android/LookeeLookeeTycoon.apk
+          ../godot --headless --path . --export-release "Web" build/web/index.html
+          ../godot --headless --path . --export-release "Windows" build/windows/LookeeLookeeTycoon.exe
+          ../godot --headless --path . --export-release "Linux" build/linux/LookeeLookeeTycoon.x86_64
+          test -s build/android/LookeeLookeeTycoon.apk
+          test -s build/web/index.pck
+          test -s build/windows/LookeeLookeeTycoon.exe
+          test -s build/linux/LookeeLookeeTycoon.x86_64
+          cp tools/itch/HOW_TO_PLAY.txt build/windows/
+          cp tools/itch/HOW_TO_PLAY.txt build/linux/
+          (cd build/web && zip -q -r ../lookee-lookee-tycoon-web.zip .)
+          (cd build/windows && zip -q -r ../lookee-lookee-tycoon-windows.zip .)
+          (cd build/linux && zip -q -r ../lookee-lookee-tycoon-linux.zip .)
+          ls -la build build/android
+
+      - name: Check the Linux build starts
+        working-directory: lookee-lookee-tycoon
+        run: timeout 120 build/linux/LookeeLookeeTycoon.x86_64 --headless --quit-after 120
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lookee-lookee-tycoon-apk
+          path: lookee-lookee-tycoon/build/android/LookeeLookeeTycoon.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lookee-lookee-tycoon-web
+          path: lookee-lookee-tycoon/build/lookee-lookee-tycoon-web.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lookee-lookee-tycoon-windows
+          path: lookee-lookee-tycoon/build/lookee-lookee-tycoon-windows.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lookee-lookee-tycoon-linux
+          path: lookee-lookee-tycoon/build/lookee-lookee-tycoon-linux.zip
+
+  # Uploads the builds to itch.io, one channel per platform ("html5" is played in the browser).
+  # Runs only when asked: a tag like llt-v1.0.0, or "Run workflow" with "Push the builds to
+  # itch.io" ticked. The Android upload is skipped for debug builds.
+  itch:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/llt-v') || (github.event_name == 'workflow_dispatch' && inputs.publish)
+    runs-on: ubuntu-latest
+    env:
+      BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+    steps:
+      - name: Skip without an itch.io key
+        if: env.BUTLER_API_KEY == ''
+        run: echo "BUTLER_API_KEY not set; builds are in this run's artifacts only"
+
+      - uses: actions/download-artifact@v4
+        if: env.BUTLER_API_KEY != ''
+        with:
+          path: dist
+
+      - name: Install butler
+        if: env.BUTLER_API_KEY != ''
+        run: |
+          wget -q -O butler.zip https://broth.itch.zone/butler/linux-amd64/LATEST/archive/default
+          unzip -q butler.zip
+          chmod +x butler
+          ./butler -V
+
+      - uses: actions/checkout@v4
+        if: env.BUTLER_API_KEY != ''
+        with:
+          sparse-checkout: lookee-lookee-tycoon/export_presets.cfg
+          sparse-checkout-cone-mode: false
+          path: src
+
+      - name: Push to itch.io
+        if: env.BUTLER_API_KEY != ''
+        env:
+          RELEASE_SIGNED: ${{ secrets.LOOKEE_ANDROID_KEYSTORE_BASE64 != '' }}
+        run: |
+          version=$(grep -o 'version/name="[^"]*"' src/lookee-lookee-tycoon/export_presets.cfg | head -1 | cut -d'"' -f2)
+          ./butler push dist/lookee-lookee-tycoon-web/lookee-lookee-tycoon-web.zip "$ITCH_PROJECT:html5" --userversion "${version:-dev}"
+          ./butler push dist/lookee-lookee-tycoon-windows/lookee-lookee-tycoon-windows.zip "$ITCH_PROJECT:windows" --userversion "${version:-dev}"
+          ./butler push dist/lookee-lookee-tycoon-linux/lookee-lookee-tycoon-linux.zip "$ITCH_PROJECT:linux" --userversion "${version:-dev}"
+          if [ "$RELEASE_SIGNED" = "true" ]; then
+            ./butler push dist/lookee-lookee-tycoon-apk/LookeeLookeeTycoon.apk "$ITCH_PROJECT:android" --userversion "${version:-dev}"
+          else
+            echo "::warning::Android APK not pushed: it is a debug build (add the LOOKEE_ANDROID_KEYSTORE_* secrets)"
+          fi

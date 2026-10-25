@@ -1,0 +1,12 @@
+LOOKEE LOOKEE TYCOON - Hello chicken nugget!
+
+Tap/click the sand: walk        Tap/click a tourist: pitch to them
+Drag: look around               Pinch / mouse wheel: zoom
+SHOUT (Space): "Hello chicken nugget!" brings tourists
+SET UP / PACK UP (E): open or hide your stall
+SHOP (B): stock, upgrades, staff and new beaches
+Price (M): from Bargain to Daylight Robbery
+Esc / II: pause (Edit My Vendor lives here)
+
+Selling raises the Heat meter. When a cop stares at your stall, PACK UP!
+Very good very nice!
