@@ -145,3 +145,7 @@ Use the same template for the creatures (Bloated Dead, Wall-Crawling Squid, Armo
 | Close up: the cottage, its slate roof and rubble chimney, a cliff, the shingle, the lighthouse plinth, the shed |
 |---|
 | ![close](screenshots/textures_close.png) |
+
+| Split screen: one keeper on the lighthouse island, one in the camp | The rope bridge over the gully | The camp at dusk, its warden on her rounds |
+|---|---|---|
+| ![split](screenshots/holm_split.png) | ![bridge](screenshots/holm_bridge.png) | ![camp](screenshots/holm_camp_dusk.png) |
