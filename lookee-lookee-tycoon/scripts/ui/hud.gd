@@ -61,6 +61,7 @@ func _ready() -> void:
 	beach.vendor.stall.opened.connect(_refresh_stall_button)
 	beach.vendor.stall.closed.connect(_refresh_stall_button)
 	_cash_shown = Economy.cash
+	_cash.text = Lines.money(Economy.cash)
 	_on_cash(Economy.cash, 0.0)
 	_refresh_stock()
 	_refresh_price()
