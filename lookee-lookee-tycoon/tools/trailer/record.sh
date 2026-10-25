@@ -9,6 +9,8 @@ cd "$(dirname "$0")/../.."
 GODOT=${GODOT:-godot}
 TAKES=tools/trailer/takes
 mkdir -p "$TAKES"
+# Keep Godot from importing the takes (they live inside the project folder).
+touch "$TAKES/.gdignore"
 printf '[editor]\n\nmovie_writer/mjpeg_quality=0.95\n' > override.cfg
 trap 'rm -f override.cfg' EXIT
 

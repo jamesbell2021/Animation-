@@ -37,7 +37,7 @@ EDIT = [
     ("events", 1.3, 4.5),
     ("end", 1.25, None),
 ]
-MUSIC_VOLUME = 0.55
+MUSIC_VOLUME = 1.3
 
 
 def ff(*args):
