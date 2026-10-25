@@ -212,6 +212,8 @@ func begin_run(continue_save: bool, n: int) -> void:
 	for p in players:
 		p.max_hp = Player.BASE_HP + int(Run.max_hp_bonus[p.idx])
 		p.hp = p.max_hp
+		p.hunger = float(Run.hunger[p.idx])
+		p.warmth = float(Run.warmth[p.idx])
 	Upgrades.apply(get_tree())
 	if Players.wanted >= 3:
 		_add_scavenge(SCAVENGE_CROWD)
@@ -697,6 +699,10 @@ func _on_phase_changed(p: int) -> void:
 			if s is Structure and s.is_damaged():
 				damaged += 1
 		Run.lamp_fuel = lighthouse.lamp.fuel
+		for k in players:
+			if is_instance_valid(k):
+				Run.hunger[k.idx] = k.hunger
+				Run.warmth[k.idx] = k.warmth
 		Run.advance_night(damaged)
 
 # The keeper's log: what came, what stopped it, what it cost, and one thing to try next.

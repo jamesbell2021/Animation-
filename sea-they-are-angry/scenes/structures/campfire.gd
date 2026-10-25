@@ -14,8 +14,14 @@ var _t := 0.0
 var _lit := false
 var _roar_t := 0.0
 
+## Warmth a second it gives a keeper close by: burning up at night, smouldering by day.
+const HEAT_LIT := 3.0
+const HEAT_LOW := 1.0
+const HEAT_RADIUS := 3.2
+
 func _ready() -> void:
 	add_to_group("interactable")
+	add_to_group("heat")
 	for i in 8:
 		var a := TAU * float(i) / 8.0
 		Look.rock(self, 1400 + i, Vector3(0.3, 0.22, 0.26), Vector3(sin(a) * 0.62, 0.05, cos(a) * 0.62), Look.STONE, 0.1)
@@ -64,6 +70,11 @@ func _process(delta: float) -> void:
 		var n := 0.85 + 0.15 * sin(_t * (9.0 + float(i) * 3.0)) * sin(_t * 5.3 + float(i))
 		_flames[i].scale = Vector3(1.0, n, 1.0) * size
 	_light.light_energy = (1.6 if _lit else 0.5) * (0.85 + 0.15 * sin(_t * 17.0) * sin(_t * 7.1)) + _roar_t
+
+func heat_at(p: Vector3) -> float:
+	if Geo.flat_dist(p, global_position) > HEAT_RADIUS or absf(p.y - global_position.y) > 1.5:
+		return 0.0
+	return HEAT_LIT if _lit else HEAT_LOW
 
 func interact_prompt() -> String:
 	return "[E] Throw on driftwood and warm up (+%d health)" % HEAL

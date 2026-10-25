@@ -27,6 +27,9 @@ var towers: Array[Node3D] = []
 var huts: Array[Node3D] = []
 var greenhouse: Node3D
 var beds: Array[Node3D] = []
+var plots: Array[CampPlot] = []
+var stove: HutStove
+var mess: MessTable
 
 var _wood: StandardMaterial3D
 var _post: StandardMaterial3D
@@ -35,6 +38,7 @@ var _tin: StandardMaterial3D
 
 func _ready() -> void:
 	name = "Camp"
+	add_to_group("camp_root")
 	_wood = Look.wood(Color(0.38, 0.3, 0.22), 0.8)
 	_post = Look.wood(Color(0.3, 0.25, 0.2), 0.6)
 	_wire = Look.flat_mat(WIRE, 0.6)
@@ -53,6 +57,14 @@ func _ready() -> void:
 		_tower(p)
 	_hut(Vector2(c.x - 4.6, c.y - 5.0), "Quarters")
 	_hut(Vector2(c.x + 4.4, c.y - 5.0), "Mess")
+	# The quarters' stove and the mess table, worked from in front of each hut.
+	stove = HutStove.new()
+	stove.position = _ground(Vector2(c.x - 4.6, c.y - 2.6))
+	stove.pipe_top = huts[0].to_global(Vector3(HUT_LEN * 0.25, HUT_R + 0.85, 0.4))
+	add_child(stove)
+	mess = MessTable.new()
+	mess.position = _ground(Vector2(c.x + 4.4, c.y - 2.6))
+	add_child(mess)
 	for i in 3:
 		_bed(Vector2(c.x - 5.0, c.y + 2.6 + float(i) * 2.0))
 	_greenhouse(Vector2(c.x + 4.6, c.y + 4.9))
@@ -304,6 +316,10 @@ func _bed(at: Vector2) -> void:
 	for sz in [-1.0, 1.0]:
 		var board := Geo.box(b, Vector3(7.1, 0.18, 0.06), Color.WHITE, Vector3(0.0, 0.08, sz * 0.78))
 		board.material_override = _wood
+	var plot := CampPlot.new()
+	plot.index = beds.size()
+	b.add_child(plot)
+	plots.append(plot)
 	beds.append(b)
 
 # A glasshouse: a timber frame and glazing bars, panes you can see through, a pitched roof.
@@ -346,3 +362,14 @@ func _greenhouse(at: Vector2) -> void:
 	gh.add_child(body)
 	Geo.box_shape(body, Vector3(W, H + 0.8, D), Vector3(0.0, (H + 0.8) * 0.5, 0.0))
 	greenhouse = gh
+	# Its staging inside, worked from the doorway on the side facing the parade ground.
+	var bench := Geo.box(gh, Vector3(W - 0.8, 0.06, D - 1.0), Color.WHITE, Vector3(0.0, 0.5, 0.0))
+	bench.material_override = _wood
+	var plot := CampPlot.new()
+	plot.index = 3
+	plot.under_glass = true
+	plot.length = W - 1.2
+	plot.position = Vector3(0.0, 0.0, -D * 0.5 - 0.05)
+	plot.plants_offset = Vector3(0.0, 0.3, D * 0.5)
+	gh.add_child(plot)
+	plots.append(plot)

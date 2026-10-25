@@ -1,6 +1,8 @@
 extends SceneTree
 # Run: godot --headless --path sea-they-are-angry --script res://tests/slice_holm.gd
 # The holm and its camp, the rope bridge, the camera's split screen, and the helper keepers.
+# The camp's classes are only reached through the scene, never named here: `--script`
+# compiles what a test names before the autoloads exist, which can leave it unusable.
 
 var fails := 0
 
@@ -79,7 +81,7 @@ func _go() -> void:
 	# ---- the camp's power: the generator, the searchlights, a keeper up a tower ----
 	var Cyc = root.get_node("Cycle")
 	var Stk = root.get_node("Stock")
-	var gen: Generator = main.camp.generator
+	var gen = main.camp.generator
 	check(gen != null and not gen.running, "the generator stands idle by day")
 	Cyc._enter(Cyc.Phase.DUSK)
 	Cyc.running = false
@@ -91,14 +93,14 @@ func _go() -> void:
 			lit += 1
 	check(gen.running and lit == 4, "at dusk it starts and all four searchlights come on (%d)" % lit)
 	check(main.camp._hut_lights.size() == 4 and main.camp._hut_lights[0].visible, "the huts' windows light up")
-	var f0 := gen.fuel
+	var f0: float = gen.fuel
 	for i in 120:
 		await physics_frame
 	check(gen.fuel < f0 - 0.6, "it burns diesel running them (%.2f -> %.2f)" % [f0, gen.fuel])
 	# Up the north-east tower's ladder and onto its light.
-	var sl: Searchlight = main.camp.searchlights[1]
-	var tower := sl.get_parent() as Node3D
-	var ladder_foot := tower.to_global(Vector3(0.0, 0.0, -Camp.TOWER_LEG - 1.0))
+	var sl = main.camp.searchlights[1]
+	var tower: Node3D = sl.get_parent()
+	var ladder_foot := tower.to_global(Vector3(0.0, 0.0, -main.camp.TOWER_LEG - 1.0))
 	p.global_position = ladder_foot + Vector3(0.0, 0.2, 0.0)
 	await physics_frame
 	var lend: Node = null
@@ -110,10 +112,10 @@ func _go() -> void:
 		lend.interact(p)
 	for i in 150:
 		await physics_frame
-	check(p.global_position.y > Camp.TOWER_DECK + Terrain.HOLM_HEIGHT - 0.3, "a keeper climbs up onto the platform (y %.2f)" % p.global_position.y)
+	check(p.global_position.y > main.camp.TOWER_DECK + Terrain.HOLM_HEIGHT - 0.3, "a keeper climbs up onto the platform (y %.2f)" % p.global_position.y)
 	for i in 30:
 		await physics_frame
-	check(p.global_position.y > Camp.TOWER_DECK + Terrain.HOLM_HEIGHT - 0.3, "and the platform holds them")
+	check(p.global_position.y > main.camp.TOWER_DECK + Terrain.HOLM_HEIGHT - 0.3, "and the platform holds them")
 	check(sl.interact_prompt() != "" and p._find_interactable() == sl, "up there, the searchlight is in reach")
 	sl.interact(p)
 	check(p.manning == sl and sl.operator == p, "they take the searchlight")
@@ -153,14 +155,14 @@ func _go() -> void:
 	check(not gen.running and lit == 0 and not main.camp._hut_lights[0].visible, "run dry, the camp goes dark")
 	var diesel_on_beach := 0
 	for n in get_nodes_in_group("interactable"):
-		if n is ScavengePoint and n.kind == "diesel" and Terrain.on_holm(n.global_position.x, n.global_position.z):
+		if n.get("kind") == "diesel" and Terrain.on_holm(n.global_position.x, n.global_position.z):
 			diesel_on_beach += 1
 	check(diesel_on_beach == 2, "diesel washes up on the holm's two beaches")
 	Cyc._enter(Cyc.Phase.DAY)
 
 	# ---- two people: the split screen ----
 	main = await _load(2, false)
-	var d: CameraDirector = main.director
+	var d = main.director
 	var p0 = main.players[0]
 	var p1 = main.players[1]
 	for k in [p0, p1]:
@@ -178,15 +180,15 @@ func _go() -> void:
 	for i in 300:
 		await physics_frame
 	check(d.view_count() == 1 and d.split_amount() == 0.0, "together again in the camp: one view")
-	var holm_cam: Vector3 = CameraDirector.HOLM_FOCUS + CameraDirector.OFFSET
+	var holm_cam: Vector3 = d.HOLM_FOCUS + d.OFFSET
 	check(main.camera.global_position.distance_to(holm_cam) < 1.5, "framing the holm (%s)" % main.camera.global_position)
 
 	# ---- solo with helpers: always three keepers ----
 	main = await _load(1, true)
 	check(main.players.size() == 3, "solo, two helpers make three keepers")
 	check(not main.players[0].ai and main.players[1].ai and main.players[2].ai, "P1 is the person; the others are helpers")
-	var light: KeeperAI = main.players[1].get_node("KeeperAI")
-	var camp: KeeperAI = main.players[2].get_node("KeeperAI")
+	var light = main.players[1].get_node("KeeperAI")
+	var camp = main.players[2].get_node("KeeperAI")
 	check(light.role == "light" and camp.role == "camp", "one keeps the light, one the camp")
 	check(Terrain.in_camp(main.players[2].global_position.x, main.players[2].global_position.z), "the camp's warden starts in the camp")
 	main.player.camera = null

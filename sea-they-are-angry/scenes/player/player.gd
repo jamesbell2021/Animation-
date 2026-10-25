@@ -60,6 +60,18 @@ const STRIDE := 2.4
 const LEG_SWING := 0.65
 const ARM_SWING := 0.5
 const STEP_EVERY := 0.42
+# Hunger and warmth (0 to 100). Hunger drains all the time (faster sprinting); warmth
+# drains outdoors at night, faster in rain and a storm, and comes back by day, by a
+# fire or a lit stove, or up in the lamp room.
+const HUNGER_RATE := 0.18
+const COLD_NIGHT := 0.12
+const WEATHER_COLD := [1.0, 1.6, 2.2]
+const SUN_WARM := 0.25
+const SHELTER_WARM := 0.6
+## Below this a keeper is hungry (slower) or cold (slower, and slow to swing).
+const LOW_NEED := 25.0
+## Starving or freezing: a point of health lost this often.
+const NEED_HURT_EVERY := 2.5
 
 var idx := 0
 ## Played by the computer (a helper keeper), not a person: gets no view of its own.
@@ -67,6 +79,11 @@ var idx := 0
 var ai := false
 var ai_move := Vector2.ZERO
 var ai_held := {}
+## 100 fed, 0 starving; 100 warm, 0 freezing.
+var hunger := 100.0
+var warmth := 100.0
+var _need_hurt_t := 0.0
+var _need_warned := {}
 var downed := false
 var revive_progress := 0.0
 var hp := 100
@@ -314,6 +331,52 @@ func _build_marker() -> void:
 	_ring.visible = multi
 	_tag.visible = multi
 
+# ---- hunger and warmth ----
+
+func _needs(delta: float) -> void:
+	hunger = maxf(0.0, hunger - HUNGER_RATE * (1.5 if _sprint_t > 0.0 else 1.0) * delta)
+	var heat := 0.0
+	for h in get_tree().get_nodes_in_group("heat"):
+		heat = maxf(heat, h.heat_at(global_position))
+	var night := Cycle.phase == Cycle.Phase.DUSK or Cycle.phase == Cycle.Phase.NIGHT
+	if _inside:
+		warmth += SHELTER_WARM * delta
+	elif heat > 0.0:
+		warmth += heat * delta
+	elif night:
+		warmth -= COLD_NIGHT * float(WEATHER_COLD[Weather.tonight()]) * delta
+	else:
+		warmth += SUN_WARM * delta
+	warmth = clampf(warmth, 0.0, 100.0)
+	_warn_need("hungry", hunger, "%s is hungry: eat at the cottage, or in the camp's mess." % keeper_name())
+	_warn_need("cold", warmth, "%s is cold: warm up by a fire or the camp's stove." % keeper_name())
+	if hunger <= 0.0 or warmth <= 0.0:
+		_need_hurt_t += delta
+		if _need_hurt_t >= NEED_HURT_EVERY:
+			_need_hurt_t = 0.0
+			if hp > 1:
+				hp -= 1
+			else:
+				take_damage(1)
+	else:
+		_need_hurt_t = 0.0
+
+func _warn_need(key: String, v: float, text: String) -> void:
+	if v < LOW_NEED and not _need_warned.get(key, false):
+		_need_warned[key] = true
+		if not ai or v <= 0.0:
+			Events.message.emit(text)
+	elif v > LOW_NEED + 15.0:
+		_need_warned[key] = false
+
+## How fast hunger and cold let a keeper move.
+func need_speed() -> float:
+	return (0.85 if hunger < LOW_NEED else 1.0) * (0.9 if warmth < LOW_NEED else 1.0)
+
+## A meal: fed again.
+func eat_meal() -> void:
+	hunger = 100.0
+
 func keeper_name() -> String:
 	return Players.NAMES[idx % Players.NAMES.size()]
 
@@ -338,6 +401,8 @@ func _physics_process(delta: float) -> void:
 	if not Run.active:
 		return
 	_update_tag()
+	if not downed:
+		_needs(delta)
 	_flicker += delta
 	if _lantern_light.visible:
 		_lantern_light.light_energy = 1.5 + 0.12 * sin(_flicker * 11.0) * sin(_flicker * 7.3)
@@ -621,6 +686,7 @@ func _move(delta: float) -> void:
 			_sprint_cd = SPRINT_COOLDOWN
 	else:
 		_sprint_t = maxf(0.0, _sprint_t - delta)
+	spd *= need_speed()
 	velocity.x = dir.x * spd
 	velocity.z = dir.z * spd
 
@@ -647,7 +713,7 @@ func _attack() -> void:
 	if climber != null:
 		_throw_at(climber)
 		return
-	_attack_cd = ATTACK_CD
+	_attack_cd = ATTACK_CD * (1.25 if warmth < LOW_NEED else 1.0)
 	_swing_t = SWING_TIME
 	_aim_face_t = AIM_FACE_TIME
 	facing = aim_yaw()

@@ -173,6 +173,7 @@ func _process(delta: float) -> void:
 		stock += " · Oil %d" % Stock.get_amount("oil")
 	if Stock.get_amount("dirty_fuel") > 0:
 		stock += " · Dirty fuel %d" % Stock.get_amount("dirty_fuel")
+	stock += " · Seeds %d" % Stock.get_amount("seeds")
 	_stock_label.text = stock
 	if player and is_instance_valid(player):
 		var parts: Array[String] = []
@@ -181,7 +182,8 @@ func _process(delta: float) -> void:
 			if not is_instance_valid(p):
 				continue
 			var who: String = ((p.keeper_name() + " ") if p.ai else ("P%d %s " % [p.idx + 1, p.keeper_name()])) if list.size() > 1 else "Keeper "
-			parts.append(who + ("DOWN" if p.downed else "HP %d / %d · Flares %d" % [p.hp, p.max_hp, p.flares()]))
+			var needs := " · Fed %d · Warm %d" % [roundi(p.hunger), roundi(p.warmth)]
+			parts.append(who + ("DOWN" if p.downed else "HP %d / %d · Flares %d" % [p.hp, p.max_hp, p.flares()] + needs))
 		_player_label.text = "   ".join(parts)
 		_prompt_label.text = player.interact_prompt() if Run.active else ""
 	if lighthouse and is_instance_valid(lighthouse):

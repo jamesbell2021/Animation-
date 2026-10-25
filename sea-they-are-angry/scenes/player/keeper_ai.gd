@@ -84,6 +84,9 @@ func _decide() -> void:
 	if e != null:
 		_set_task("fight", e, e.global_position)
 		return
+	# Hungry or cold: see to it before it slows them down.
+	if _see_to_needs():
+		return
 	if not keeper.has_hook:
 		var hook := _my_hook()
 		if hook != null:
@@ -126,6 +129,10 @@ func _day_light() -> void:
 	if lamp != null and lamp.fuel < Lamp.FUEL_MAX - 30.0 and lamp.lighthouse.work_kind() == "can":
 		_set_task("refuel", lamp.lighthouse, KeeperNav.door_point())
 		return
+	var bed := _garden_to_work()
+	if bed != null:
+		_set_task("plot", bed, bed.global_position)
+		return
 	if _keep_gathering():
 		return
 	var sp := _nearest_scavenge(false)
@@ -147,6 +154,10 @@ func _day_camp() -> void:
 	var gen := _generator()
 	if gen != null and gen.work_kind() != "":
 		_set_task("generator", gen, gen.global_position)
+		return
+	var plot := _plot_to_work()
+	if plot != null:
+		_set_task("plot", plot, plot.global_position)
 		return
 	if _keep_gathering():
 		return
@@ -228,6 +239,30 @@ func _act(delta: float) -> void:
 					and Geo.flat_dist(keeper.global_position, sl.global_position) < sl.reach:
 				sl.interact(keeper)
 				_route.clear()
+		"plot":
+			if _task_target != null and is_instance_valid(_task_target) and Geo.flat_dist(keeper.global_position, (_task_target as Node3D).global_position) < 1.9:
+				_task_target.interact(keeper)
+				_task = ""
+				_route.clear()
+		"eat":
+			if _task_target != null and is_instance_valid(_task_target):
+				var near := false
+				if _task_target is Structure:
+					near = (_task_target as Structure).surface_distance(keeper.global_position) <= Player.INTERACT_RANGE
+				else:
+					near = Geo.flat_dist(keeper.global_position, (_task_target as Node3D).global_position) < 1.9
+				if near:
+					if _task_target is Cottage:
+						_task_target.eat(keeper)
+					else:
+						_task_target.interact(keeper)
+					_task = ""
+					_route.clear()
+		"warm":
+			if _task_target is HutStove and not _task_target.is_lit() and Geo.flat_dist(keeper.global_position, (_task_target as Node3D).global_position) < 1.9:
+				_task_target.interact(keeper)
+			if keeper.warmth > 80.0:
+				_task = ""
 		"round", "patrol":
 			if here:
 				_dwell += delta
@@ -372,6 +407,62 @@ func _light_pick(sl: Searchlight) -> Node3D:
 
 func _threat_near(sl: Searchlight) -> bool:
 	return _light_pick(sl) != null
+
+# ---- needs and crops ----
+
+func _see_to_needs() -> bool:
+	if keeper.operating or keeper.manning != null:
+		return false
+	var on_holm := Terrain.on_holm(keeper.global_position.x, keeper.global_position.z)
+	if keeper.hunger < 30.0 and Stock.get_amount("food") > 0:
+		var place := _camp_node("mess") if on_holm or role == "camp" else _cottage()
+		if place != null:
+			_set_task("eat", place, (place as Node3D).global_position)
+			return true
+	var cold := keeper.warmth < 25.0 or (_task == "warm" and keeper.warmth < 80.0)
+	if cold:
+		var heat: Node3D = null
+		if on_holm or role == "camp":
+			var st := _camp_node("stove") as HutStove
+			if st != null and (st.is_lit() or Stock.get_amount("driftwood") > 0):
+				heat = st
+		if heat == null:
+			for h in get_tree().get_nodes_in_group("heat"):
+				if h is Campfire:
+					heat = h
+		if heat != null:
+			_set_task("warm", heat, heat.global_position + Vector3(1.0, 0.0, 1.0))
+			return true
+	return false
+
+func _camp_node(which: String) -> Node:
+	for c in get_tree().get_nodes_in_group("camp_root"):
+		return c.mess if which == "mess" else c.stove
+	return null
+
+func _cottage() -> Node:
+	for s in get_tree().get_nodes_in_group("structures"):
+		if s is Cottage and not s.is_destroyed():
+			return s
+	return null
+
+# A potato bed in the cottage garden to lift, or to dig kelp into (keeping a little kelp
+# back for mending the garden).
+func _garden_to_work() -> Node3D:
+	for n in get_tree().get_nodes_in_group("interactable"):
+		if n is GardenPlot and n.is_open and n.interact_prompt() != "":
+			var st: int = n.state()
+			if st == GardenPlot.RIPE or (st == GardenPlot.BARE and Stock.get_amount("seaweed") > 1):
+				return n
+	return null
+
+# A camp plot to sow (with seed in the store) or lift.
+func _plot_to_work() -> Node3D:
+	for p in get_tree().get_nodes_in_group("camp_plots"):
+		var s: int = p.state()
+		if s == CampPlot.RIPE or (s == CampPlot.BARE and Stock.get_amount("seeds") > 0):
+			return p
+	return null
 
 func _generator() -> Generator:
 	for g in get_tree().get_nodes_in_group("camp"):

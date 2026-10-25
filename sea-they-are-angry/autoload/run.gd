@@ -5,6 +5,11 @@ var night := 1
 var lamp_fuel := 100.0
 ## Diesel in the camp's generator (Generator.fuel), 0 to 100.
 var camp_fuel := 60.0
+## The camp's three outdoor beds and the greenhouse: 0 bare, 1 planted, 2 ready (CampPlot).
+var camp_crops := [0, 0, 0, 0]
+## Each keeper's hunger and warmth, 0 to 100 (100 fed and warm), by keeper index.
+var hunger := [100.0, 100.0, 100.0]
+var warmth := [100.0, 100.0, 100.0]
 ## Upgrade levels bought at the cottage, 1 to 3 (see Upgrades).
 var upgrades := {"lighthouse": 1, "defences": 1, "garden": 1}
 ## Extra max health each keeper has eaten their way to, by keeper index.
@@ -24,6 +29,9 @@ func start_new() -> void:
 	night = 1
 	lamp_fuel = 100.0
 	camp_fuel = 60.0
+	camp_crops = [0, 0, 0, 0]
+	hunger = [100.0, 100.0, 100.0]
+	warmth = [100.0, 100.0, 100.0]
 	upgrades = {"lighthouse": 1, "defences": 1, "garden": 1}
 	max_hp_bonus = [0, 0, 0]
 	crops = [0, 0, 0, 0, 0]
@@ -38,6 +46,12 @@ func start_loaded(d: Dictionary) -> void:
 	night = int(d.get("night", 1))
 	lamp_fuel = float(d.get("fuel", 100.0))
 	camp_fuel = float(d.get("camp_fuel", 60.0))
+	camp_crops = [0, 0, 0, 0]
+	var cc: Array = d.get("camp_crops", [])
+	for i in mini(cc.size(), 4):
+		camp_crops[i] = clampi(int(cc[i]), 0, 2)
+	hunger = _three(d.get("hunger", []))
+	warmth = _three(d.get("warmth", []))
 	var up: Dictionary = d.get("upgrades", {})
 	upgrades = {"lighthouse": int(up.get("lighthouse", 1)), "defences": int(up.get("defences", 1)), "garden": int(up.get("garden", 1))}
 	var bonus: Array = d.get("max_hp_bonus", [0, 0, 0])
@@ -55,6 +69,12 @@ func start_loaded(d: Dictionary) -> void:
 	Anger.set_value(int(d.get("anger", 0)))
 	Stock.set_all(d.get("stock", {}))
 	active = true
+
+static func _three(a: Array) -> Array:
+	var out := [100.0, 100.0, 100.0]
+	for i in mini(a.size(), 3):
+		out[i] = clampf(float(a[i]), 0.0, 100.0)
+	return out
 
 func advance_night(structures_damaged: int) -> void:
 	Anger.on_dawn(structures_damaged)

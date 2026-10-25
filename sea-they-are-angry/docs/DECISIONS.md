@@ -433,3 +433,25 @@ This is step 1 of five: the place, the crossing, the camera and the helpers. Nex
   - **By day:** keeps the generator filled. It fetches the diesel from the holm's beaches, walking a new path round the outside of the wire, and works the can at the generator. It also mends the camp, then does its rounds.
   - **From dusk:** it climbs the tower facing whatever is on the holm or the bridge (or the one over the east beach), takes its light and sweeps. When something comes within range it swings the beam onto it and focuses once it's on target. It moves to a better tower if the danger is elsewhere, and comes down at dawn. If the camp is dark with diesel in store, it gets the generator going first.
 - **The holm grew** to 33 by 27 m so there's a 5 m margin round the wire: the towers stand turned to the diagonal and their legs reach 1.5 m out along it, and the path round the outside needs to clear them. A check walks every link of the keepers' map on the holm against the ground and the buildings (all clear), and no link may cross the wire.
+
+## Hunger, warmth and the camp's crops (step 3)
+
+- **Hunger and warmth:** every keeper, people's and helpers alike, has both, from 100 (fed, warm) down to 0. Both show beside each keeper's health on the HUD and are saved with the run.
+  - **Hunger** drains 0.18 a second (half as fast again sprinting), about two days and nights from full to empty.
+  - **Warmth** drains outdoors at night: 0.12 a second on a clear night, 1.6 times that in squalls, 2.2 times in a storm. It comes back by day (0.25 a second), quickly by a fire (3 a second by a lit campfire or stove, 2 by the cottage door), and slowly up in the lamp room.
+  - **Below 25** a keeper is hungry (15% slower) or cold (10% slower, and swings take a quarter longer). A warning comes up for a person's keeper.
+  - **At 0** they starve or freeze, losing a point of health every 2.5 s. That can down them; the needs never kill outright.
+- **Eating:** a cottage meal now feeds as well as healing and building strength. It's on the menu whenever a keeper is hungry, even at full health. The camp's mess hut has a trestle table where a meal from the store feeds a keeper and heals 30, without the cottage's strength gain, so the lighthouse stays worth coming back to.
+- **The quarters' stove:** a driftwood lights it for about four minutes, smoke coming out of the hut's stovepipe, and anyone standing by the hut warms through. It is the camp's way in from the cold, as the cottage's fire and the campfire are the main island's.
+- **The camp's crops (`scenes/structures/camp_plot.gd`):** four plots, each saved with the run (`Run.camp_crops`). Each sown plot comes up overnight and is ready at dawn.
+  - **Outdoor beds (three):** kale and cabbages, 2 food and a seed back. A storm night flattens a planted bed half the time.
+  - **The greenhouse's staging:** tomatoes and beans, 3 food and a seed back, safe from the weather. It is worked from its doorway, the side facing the parade ground.
+  - **Seed:** a new resource. Three packets are left in the huts at the start; every harvest gives one back.
+
+  With the cottage's potato beds, a tended homestead and camp grow well over what three keepers eat. The pressure is finding the time to tend both islands and stay fed and warm through a long or stormy night, not a shortage.
+- **Helpers look after themselves:**
+  - When hungry they go and eat, in the mess on the holm or at the cottage on the main island.
+  - When cold they go and warm up, the warden at the stove (lighting it if need be), the lighthouse helper at the campfire. They stay until warm through.
+  - Up in the lamp room they stay warm, so the light isn't left for the cold. On a tower they're out in the weather.
+  - The warden sows and lifts the camp's plots between filling the generator and fetching diesel. The lighthouse helper lifts the cottage's potatoes and digs kelp in, keeping a little back for mending.
+- **The balance bot:** `tools/playtest.gd` feeds and warms its keepers by day, as a player would, so it keeps measuring the nights. In "eco" mode it pays for the meals.

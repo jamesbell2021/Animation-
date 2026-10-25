@@ -37,6 +37,7 @@ func _init() -> void:
 	max_hp = 150
 
 func _build() -> void:
+	add_to_group("heat")
 	# Whitewashed harl over rubble walls, a rubble footing and chimney, a slate roof.
 	_wall_mat = Look.textured("harl", HARL, 1.2, 0.95, 0.8)
 	var stone := Look.textured("rubble", Color.WHITE, 1.4, 0.9, 1.2)
@@ -167,6 +168,15 @@ func _refresh() -> void:
 func smoke_point() -> Vector3:
 	return Vector3(-0.6, _ridge_y, 0.2)
 
+## By the cottage door the fire inside warms a keeper (while the cottage stands).
+const HEAT := 2.0
+const HEAT_RADIUS := 4.5
+
+func heat_at(p: Vector3) -> float:
+	if is_destroyed() or Geo.flat_dist(p, global_position) > HEAT_RADIUS or absf(p.y - global_position.y) > 1.5:
+		return 0.0
+	return HEAT
+
 func display_name() -> String:
 	return "cottage"
 
@@ -204,10 +214,10 @@ func menu_rows(p: Player) -> Array:
 	var cap: int = Upgrades.pick("garden", Upgrades.MAXHP_CAP)
 	var bonus: int = Run.max_hp_bonus[p.idx]
 	var gain := mini(MEAL_MAX_HP, cap - bonus)
-	var meal := "Eat a meal (1 food): full health"
+	var meal := "Eat a meal (1 food): fed, and full health"
 	if gain > 0:
 		meal += ", +%d max health" % gain
-	rows.append({"text": meal, "enabled": Stock.can_afford(MEAL) and (p.hp < p.max_hp or gain > 0), "do": eat.bind(p)})
+	rows.append({"text": meal, "enabled": Stock.can_afford(MEAL) and (p.hp < p.max_hp or gain > 0 or p.hunger < 90.0), "do": eat.bind(p)})
 	rows.append({"text": "Load a flare (%s)   %d / %d" % [Stock.cost_str(FLARE_COST), p.flares(), Player.FLARES_MAX],
 		"enabled": p.flares() < Player.FLARES_MAX and Stock.can_afford(FLARE_COST), "do": load_flare.bind(p)})
 	rows.append({"text": "Mix dirty fuel (1 oil, 1 driftwood: %d cans)" % MIX_YIELD, "enabled": Stock.can_afford(MIX_COST), "do": mix_fuel})
@@ -227,6 +237,7 @@ func eat(p: Player) -> void:
 	Run.max_hp_bonus[p.idx] = mini(cap, int(Run.max_hp_bonus[p.idx]) + MEAL_MAX_HP)
 	p.max_hp = Player.BASE_HP + int(Run.max_hp_bonus[p.idx])
 	p.hp = p.max_hp
+	p.eat_meal()
 	Audio.sfx("gather", global_position, 0.0, 0.0)
 	Events.message.emit("A hot meal: %s is at full strength  (%d)" % [p.keeper_name(), p.max_hp])
 

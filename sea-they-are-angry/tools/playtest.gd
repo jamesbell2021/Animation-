@@ -297,6 +297,11 @@ func _day_repairs(main) -> void:
 			s.repair(s.repair_amount())
 	while main.lighthouse.lamp.fuel <= Lamp.FUEL_MAX - Lighthouse.REFUEL_UNITS and stock.spend({"bio": 1}):
 		main.lighthouse.lamp.refuel_clean(Lighthouse.REFUEL_UNITS)
+	# Fed and warmed through by day, as a player would be (the eco bot pays for its meals).
+	for k in main.players:
+		if mode != "eco":
+			k.hunger = 100.0
+		k.warmth = 100.0
 	if mode == "eco":
 		_day_economy(main)
 	print("   day: stock ", stock.all(), "  lighthouse ", main.lighthouse.hp, "  fuel ", roundi(main.lighthouse.lamp.fuel))
@@ -317,7 +322,7 @@ func _day_economy(main) -> void:
 		if plot.state() == GardenPlot.RIPE:
 			plot.interact(main.player)
 	for k in main.players:
-		if k.hp < k.max_hp * 0.8 and stock.get_amount("food") > 0:
+		if (k.hp < k.max_hp * 0.8 or k.hunger < 50.0) and stock.get_amount("food") > 0:
 			cottage.eat(k)
 	for plot in garden.plots:
 		if plot.is_open and plot.state() == GardenPlot.BARE and stock.get_amount("seaweed") > 1:
