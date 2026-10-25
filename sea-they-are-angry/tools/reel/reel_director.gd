@@ -44,6 +44,8 @@ func _initialize() -> void:
 		if FileAccess.file_exists(p):
 			_saved[p] = FileAccess.get_file_as_bytes(p)
 			DirAccess.remove_absolute(ProjectSettings.globalize_path(p))
+	# Every keeper here is scripted: no helpers.
+	root.get_node("Players").helpers = false
 	change_scene_to_file("res://scenes/main.tscn")
 
 func _finalize() -> void:

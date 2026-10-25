@@ -77,7 +77,7 @@ func night_table(n: int) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	for row in rows:
 		out.append({"t": float(row[0]), "kind": String(row[1]), "count": int(row[2]) + extra, "opp": row.size() > 3, "point": -1})
-	if eel_night(n, Players.count(), Anger.value):
+	if eel_night(n, Players.humans(), Anger.value):
 		out.append({"t": EEL_AT, "kind": "E", "count": 1, "opp": false, "point": -1})
 	return out
 
@@ -117,7 +117,7 @@ func _queue_group(entry: Dictionary) -> void:
 		_spawn_eel(points[idx])
 		return
 	# Co-op: more keepers, more creatures (x1.5 per extra keeper, rounded up).
-	var count := ceili(float(entry["count"]) * (1.0 + 0.5 * float(Players.count() - 1)))
+	var count := ceili(float(entry["count"]) * (1.0 + 0.5 * float(Players.humans() - 1)))
 	if eel_active():
 		count = maxi(1, roundi(count * EEL_RATE))
 	var raid := false

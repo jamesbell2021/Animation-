@@ -68,8 +68,8 @@ func _init() -> void:
 	speed = 0.0
 
 func _ready() -> void:
-	max_hp = roundi(BEAM_HP * (1.0 + 0.2 * float(Players.count() - 1)))
-	_coil_len = COIL_TIME_SOLO if Players.count() <= 1 else COIL_TIME
+	max_hp = roundi(BEAM_HP * (1.0 + 0.2 * float(Players.humans() - 1)))
+	_coil_len = COIL_TIME_SOLO if Players.humans() <= 1 else COIL_TIME
 	super._ready()
 	collision_layer = 0
 	collision_mask = 0

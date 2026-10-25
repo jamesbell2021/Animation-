@@ -34,6 +34,8 @@ func _run() -> void:
 	if FileAccess.file_exists("user://run.json"):
 		DirAccess.remove_absolute(rj)
 	root.size = Vector2i(1600, 900)
+	# Every keeper here is scripted: no helpers.
+	root.get_node("Players").helpers = false
 	change_scene_to_file("res://scenes/main.tscn")
 	# Scene swaps happen at frame end; wait until the keeper actually exists.
 	for i in 600:

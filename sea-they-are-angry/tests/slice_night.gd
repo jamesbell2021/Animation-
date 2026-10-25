@@ -11,6 +11,8 @@ func _go() -> void:
 	var f := FileAccess.open("user://run.json", FileAccess.WRITE)
 	f.store_string(JSON.stringify({"night": 3, "anger": 4, "stock": {"driftwood": 9, "scrap": 2, "seaweed": 0, "bio": 5}, "fuel": 61.5}))
 	f = null
+	# Every keeper here is scripted: no helpers.
+	root.get_node("Players").helpers = false
 	change_scene_to_file("res://scenes/main.tscn")
 	# Scene swaps happen at frame end; wait until the keeper actually exists.
 	for i in 600:

@@ -177,7 +177,7 @@ func _process(delta: float) -> void:
 		for p in list:
 			if not is_instance_valid(p):
 				continue
-			var who := ("P%d %s " % [p.idx + 1, p.keeper_name()]) if list.size() > 1 else "Keeper "
+			var who: String = ((p.keeper_name() + " ") if p.ai else ("P%d %s " % [p.idx + 1, p.keeper_name()])) if list.size() > 1 else "Keeper "
 			parts.append(who + ("DOWN" if p.downed else "HP %d / %d · Flares %d" % [p.hp, p.max_hp, p.flares()]))
 		_player_label.text = "   ".join(parts)
 		_prompt_label.text = player.interact_prompt() if Run.active else ""

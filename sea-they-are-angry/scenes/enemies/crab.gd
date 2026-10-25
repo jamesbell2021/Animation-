@@ -66,7 +66,7 @@ func _init() -> void:
 
 func _ready() -> void:
 	# More keepers, tougher shell.
-	max_hp = roundi(BASE_HP * (1.0 + 0.2 * float(Players.count() - 1)))
+	max_hp = roundi(BASE_HP * (1.0 + 0.2 * float(Players.humans() - 1)))
 	super._ready()
 
 func _build() -> void:

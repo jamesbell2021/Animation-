@@ -352,3 +352,57 @@ Built to plan 2's Phase C, with these departures:
   - **Clubbing strike (Bloated and Smotherer):** each strike now has a readable wind-up. The arms go up, the body rears back and sinks, holds there trembling, then crashes down. The game deals the blow when the clip's arms land (the `hit` time written by `animate.py`), not half way through.
   - **Crab:** rears up at the front, settles back on braced legs and shakes harder through its 1.5 s wind-up, then slams the front of its shell down with the claw and heaves itself level.
   - **Squid:** coils before it lunges. The mantle sinks back and the front arms curl back like springs and tremble, then it throws itself forward and snaps them shut. Its tell is 0.65 s instead of 0.35, so there's time to see it coming and step back.
+
+## The holm, the rope bridge, the split screen and the helpers (owner's request: "more than just enemy attacks ... maintaining your base and survivalism")
+
+The owner asked for more depth: jobs on the island, research, crops and more interesting defences, and a second island beside the lighthouse with an old WW2 internment camp on it. The camp is fully fenced, with a guard tower at each corner and lights and spots that can be angled to burn the enemy. In the middle are living quarters, vegetable fields and a greenhouse. They decided:
+- Keepers cross on a rope bridge like Carrick-a-Rede's, and it moves when you walk on it.
+- There are always three keepers, with helpers run by the computer if fewer people play.
+- Losing the lighthouse ends the run; losing the camp makes the game much harder.
+- The screen splits when players go apart, Baldur's Gate style.
+
+This is step 1 of five: the place, the crossing, the camera and the helpers. Next come the camp's searchlights and power, food, warmth and fuel, research and new defences, and creatures that go for the camp.
+
+- **The holm:** a second island 18 m east of the main one (`Terrain.HOLM_*`). It is low (1.4 m) and flat, a rounded box about 30 by 25 m, with ragged low cliffs and two shingle beaches (east and north) for landings later.
+  - **Terrain:** one height function still drives everything. `height_at` is the higher of the main island and the holm, both falling to the same sea floor.
+  - **Ground mesh:** the holm's mesh is a second grid beside the first. Its border vertices aren't jittered, so the two meet exactly.
+  - **Sea:** the shader's shallows and shore foam follow the holm's shoreline as well as the main island's ring.
+- **The camp (grey box, `scenes/world/camp.gd`):** a 22 by 17 m compound on the flattened middle of the holm, as an abandoned 1940s camp would stand in the late 1980s:
+  - barbed wire on posts with cranked tops, and a gate on the west side facing the bridge;
+  - a timber guard tower at each corner, with a braced platform, a hipped tin roof, a ladder and a searchlight on a yoke (dark for now);
+  - two corrugated-iron Nissen huts with brick ends: the quarters, and the mess, where research will be done;
+  - a brick generator house, three vegetable beds and a glasshouse.
+
+  Keepers can't pass the wire, the huts or the towers' legs.
+- **The rope bridge (`scenes/structures/rope_bridge.gd`):** 18 m from clifftop to clifftop, sagging 0.6 m in the middle. Its parts:
+  - slats on two deck ropes;
+  - a handrope each side, on cords;
+  - posts at each end.
+
+  It moves:
+  - every footfall kicks its bounce (two up-and-down modes) and, unevenly, its sway, so a keeper crossing sets it swinging;
+  - a keeper's weight sinks it where they stand;
+  - the wind across the gully leans on it;
+  - the deck tips as it swings.
+
+  Its collision is one surface, rebuilt every physics step from where the deck is: the walking surface from a ramp on one clifftop to a ramp on the other, and the rope sides as walls. One surface has no seams for a keeper's flat-bottomed cylinder to catch on (it caught on a row of separate boxes). Keepers on it are carried sideways as it swings. The bridge's ends sit just back from where each clifftop actually falls away, found by walking out along the line between the islands.
+- **The camera (`scenes/world/camera_director.gd`):** each island has its own framing, the main island's exactly as before (tested).
+  - **Following:** a keeper is framed by the island they're on; crossing the bridge, the view pans from one framing to the other.
+  - **Splitting:** when the people playing have views more than 9 m apart, the screen splits. It is a Voronoi split, so up to three ways. The line is square to the way from one group to the other, and each side shows its own island, pulled back a little. As they separate the views slide apart from one shared view, so the split opens without a jump. Together again (under 4 m), they close back into one.
+  - **Rendering:** the first view is the main camera, so P1's mouse aims through it as before. The others render into SubViewports sharing the world, laid over it by `shaders/split_screen.gdshader` with a thin dark seam. While the screen is whole nothing extra is drawn. Split, the extra views cost a full scene render each.
+  - **Helpers:** helper keepers don't get a view.
+- **Helper keepers (`scenes/player/keeper_ai.gd`):** with fewer than three people, the rest are run by the computer, so there are always three keepers. P1, P2 and P3 are people; helpers come after them.
+  - **Labels:** helpers are named without a player number, on their tags and in the HUD.
+  - **Lighthouse helper:**
+    - By day it mends whatever on the main island is broken and can be paid for, refuels the lamp when it's below 70% and gathers from the beaches.
+    - At dusk it climbs up and works the lamp if nobody else is on it, aiming like a person would: a new target about once a second, a few degrees off, focusing only once on target.
+    - If someone else has the lamp it holds the ledge. It comes out of the lamp room when something is on the tower.
+  - **Camp warden:** the last helper starts in the camp. By day it does the rounds of the beds, the greenhouse, the huts and the generator. At night it walks the wire from tower to tower; it gets real work in steps 2 and 3.
+  - **Both:**
+    - fight anything that comes within 7 m on their own level, backing out of a swelling Bloated's blast;
+    - revive a downed keeper (holding Use beside them);
+    - fetch their thrown boathook.
+  - **Steering:** they move the keeper through the same movement code as a person (`Player.ai_move`, `ai_held`), not by teleporting. They walk `KeeperNav`: the creatures' graph plus the yard round the tower, its door, the two ladders (climbed as a player climbs them), the bridge and the camp.
+  - **Getting stuck:** a keeper that stops getting closer to its next waypoint sidesteps, and as a last resort hops onto the waypoint.
+  - **Difficulty:** creatures scale with the number of people (`Players.humans()`), not keepers, so solo plays as before, with help. With helpers about, a person who goes down solo no longer ends the run: a helper comes to revive them. Losing every keeper still ends it.
+  - **Tests:** the older tests script every keeper themselves, so they turn helpers off.

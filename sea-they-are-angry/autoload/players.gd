@@ -13,6 +13,9 @@ const COLORS := [Color(1.0, 0.72, 0.25), Color(0.35, 0.85, 1.0), Color(1.0, 0.4,
 const ACTIONS := ["move_left", "move_right", "move_up", "move_down", "aim_left", "aim_right", "aim_up", "aim_down", "attack", "interact", "operate", "beam_mode", "sprint", "flare", "use_dirty"]
 
 var wanted := 1
+## Fill the empty places with helper keepers run by the computer, so there are always
+## MAX keepers on the rock. Tests that script every keeper turn this off.
+var helpers := true
 var devices: Array[int] = [KEYBOARD_MOUSE]
 var nodes: Array[Node] = []
 
@@ -29,6 +32,14 @@ func _ready() -> void:
 
 func count() -> int:
 	return maxi(1, nodes.size())
+
+## How many keepers people are playing (at least 1): what the creatures scale with.
+func humans() -> int:
+	var n := 0
+	for p in nodes:
+		if is_instance_valid(p) and not p.ai:
+			n += 1
+	return maxi(1, n)
 
 func alive_count() -> int:
 	var n := 0

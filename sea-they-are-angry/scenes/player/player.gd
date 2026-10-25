@@ -62,6 +62,11 @@ const ARM_SWING := 0.5
 const STEP_EVERY := 0.42
 
 var idx := 0
+## Played by the computer (a helper keeper), not a person: gets no view of its own.
+## Its KeeperAI steers it through ai_move and ai_held instead of the input actions.
+var ai := false
+var ai_move := Vector2.ZERO
+var ai_held := {}
 var downed := false
 var revive_progress := 0.0
 var hp := 100
@@ -313,6 +318,14 @@ func keeper_name() -> String:
 func _act(a: String) -> String:
 	return Players.action(idx, a)
 
+# An action pressed this frame, or held: from the keeper's own controls, or for a
+# helper keeper, from its KeeperAI (which calls the one-off actions directly).
+func _just(a: String) -> bool:
+	return not ai and Input.is_action_just_pressed(_act(a))
+
+func _held(a: String) -> bool:
+	return bool(ai_held.get(a, false)) if ai else Input.is_action_pressed(_act(a))
+
 func aim_yaw() -> float:
 	return atan2(-_aim.x, -_aim.z)
 
@@ -358,25 +371,25 @@ func _physics_process(delta: float) -> void:
 	_aim_face_t = maxf(0.0, _aim_face_t - delta)
 	_update_aim()
 	_update_swing(delta)
-	if Input.is_action_just_pressed(_act("operate")):
+	if _just("operate"):
 		_toggle_operate()
 	if _inside:
 		# Up in the lamp room: aim and switch the beam; nothing else reaches in here.
-		if operating and Input.is_action_just_pressed(_act("beam_mode")) and lamp:
+		if operating and _just("beam_mode") and lamp:
 			lamp.toggle_mode()
 		return
 	if operating:
 		velocity.x = 0.0
 		velocity.z = 0.0
-		if Input.is_action_just_pressed(_act("beam_mode")) and lamp:
+		if _just("beam_mode") and lamp:
 			lamp.toggle_mode()
 	else:
 		_move(delta)
-		if Input.is_action_just_pressed(_act("attack")) and _attack_cd <= 0.0:
+		if _just("attack") and _attack_cd <= 0.0:
 			_attack()
-		if Input.is_action_just_pressed(_act("flare")):
+		if _just("flare"):
 			_fire_flare()
-		if Input.is_action_just_pressed(_act("use_dirty")):
+		if _just("use_dirty"):
 			_pour_dirty()
 	velocity.y = 0.0 if is_on_floor() else FALL_SPEED
 	velocity.x += _push.x
@@ -388,7 +401,7 @@ func _physics_process(delta: float) -> void:
 	_update_facing(delta)
 	_animate(delta)
 	var mate := _downed_mate()
-	_reviving = mate != null and Input.is_action_pressed(_act("interact"))
+	_reviving = mate != null and _held("interact")
 	if _reviving:
 		var to: Vector3 = mate.global_position - global_position
 		if Vector2(to.x, to.z).length() > 0.05:
@@ -399,7 +412,7 @@ func _physics_process(delta: float) -> void:
 			mate.revive(REVIVE_HP)
 		return
 	_target = _find_interactable()
-	if Input.is_action_just_pressed(_act("interact")) and _target != null:
+	if _just("interact") and _target != null:
 		var tool: String = _target.work_kind() if _target.has_method("work_kind") else ""
 		if tool != "":
 			_start_job(tool, _target)
@@ -522,6 +535,12 @@ func _pose_rig(swing: float, arm: float) -> void:
 	rig.shift("hips", Vector3(0.0, absf(sin(_walk_phase)) * 0.05 * _move_amount + sin(_breath * 2.0) * 0.006, 0.0))
 
 func _update_aim() -> void:
+	if ai:
+		# A helper looks where it walks unless its brain has turned it to a target.
+		var v := Vector2(velocity.x, velocity.z)
+		if v.length() > 0.3 and _aim_face_t <= 0.0:
+			_aim = Vector3(v.x, 0.0, v.y).normalized()
+		return
 	if idx > 0 or Players.devices.size() > idx and Players.devices[idx] != Players.KEYBOARD_MOUSE:
 		# Gamepad: right stick aims; otherwise aim where the keeper is walking.
 		if InputMap.has_action(_act("aim_left")):
@@ -581,12 +600,12 @@ static func _ground_hit(from: Vector3, dir: Vector3) -> Vector3:
 	return from + dir * t_end
 
 func _move(delta: float) -> void:
-	var input := Input.get_vector(_act("move_left"), _act("move_right"), _act("move_up"), _act("move_down"))
+	var input := ai_move.limit_length(1.0) if ai else Input.get_vector(_act("move_left"), _act("move_right"), _act("move_up"), _act("move_down"))
 	var dir := Vector3(input.x, 0.0, input.y)
 	var spd := SPEED
 	if _sprint_cd > 0.0:
 		_sprint_cd = maxf(0.0, _sprint_cd - delta)
-	if Input.is_action_pressed(_act("sprint")) and dir != Vector3.ZERO and _sprint_cd <= 0.0:
+	if _held("sprint") and dir != Vector3.ZERO and _sprint_cd <= 0.0:
 		spd = SPRINT
 		_sprint_t += delta
 		if _sprint_t >= SPRINT_MAX:
@@ -1152,10 +1171,10 @@ func _downed_mate() -> Node:
 func _update_tag() -> void:
 	if _tag == null or not _tag.visible:
 		return
-	var text := "P%d %s" % [idx + 1, keeper_name()]
+	var text := keeper_name() if ai else "P%d %s" % [idx + 1, keeper_name()]
 	if downed:
 		text += "\nDOWN  %d%%" % roundi(revive_progress * 100.0)
-	elif idx > 0:
+	elif idx > 0 and not ai:
 		var prompt := interact_prompt()
 		if prompt != "":
 			text += "\n" + prompt

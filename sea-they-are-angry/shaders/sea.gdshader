@@ -8,6 +8,11 @@ uniform vec3 deep_color : source_color = vec3(0.03, 0.09, 0.11);
 uniform vec3 shallow_color : source_color = vec3(0.07, 0.20, 0.19);
 uniform vec3 foam_color : source_color = vec3(0.66, 0.71, 0.70);
 uniform float shore_radius = 16.6;
+// The holm's shore: a rounded box (Terrain.HOLM_*), its waterline a little past the clifftop.
+uniform vec2 holm_c = vec2(47.0, 3.0);
+uniform vec2 holm_half = vec2(15.0, 12.5);
+uniform float holm_round = 5.0;
+uniform float holm_shore = 1.1;
 uniform float foam_width = 0.4;
 uniform float swell = 0.09;
 // 0 by day, 1 at night: faint bioluminescent specks in the swell.
@@ -27,11 +32,18 @@ float noise(vec2 p) {
 	return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x), u.y);
 }
 
+// How far out from the nearest shore (the main island's ring, or the holm's): negative ashore.
+float shore_dist(vec2 p) {
+	float main_d = length(p) - shore_radius;
+	vec2 q = abs(p - holm_c) - (holm_half - vec2(holm_round));
+	float holm_d = length(max(q, vec2(0.0))) + min(max(q.x, q.y), 0.0) - holm_round - holm_shore;
+	return min(main_d, holm_d);
+}
+
 void vertex() {
 	vec3 w = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
-	float r = length(w.xz);
 	// Swells calm down as they reach the beach.
-	float calm = smoothstep(16.0, 22.0, r) * 0.7 + 0.3;
+	float calm = smoothstep(-0.6, 5.4, shore_dist(w.xz)) * 0.7 + 0.3;
 	float sp = 1.0 + storm * 0.9;
 	float h = sin(w.x * 0.35 + TIME * 0.9 * sp) * 0.6 + sin(w.z * 0.47 - TIME * 1.1 * sp) * 0.4 + sin((w.x + w.z) * 1.1 + TIME * 1.7 * sp) * 0.2;
 	// Storm rollers: long swells marching in from the north-west.
@@ -41,13 +53,13 @@ void vertex() {
 }
 
 void fragment() {
-	float r = length(world_pos.xz);
-	float depth = smoothstep(shore_radius, shore_radius + 9.0, r);
+	float sd = shore_dist(world_pos.xz);
+	float depth = smoothstep(0.0, 9.0, sd);
 	vec3 col = mix(shallow_color, deep_color, depth) * (1.0 - storm * 0.35);
 	// Foam: a band at the shoreline that breathes in and out, broken up by noise.
 	// The storm drives it wider and further up and down the rocks.
-	float edge = shore_radius + sin(TIME * (0.7 + storm * 1.6) + atan(world_pos.z, world_pos.x) * 3.0) * (0.25 + storm * 0.9);
-	float band = 1.0 - smoothstep(0.0, foam_width * (1.0 + storm * 3.0), abs(r - edge));
+	float edge = sin(TIME * (0.7 + storm * 1.6) + (world_pos.x + world_pos.z) * 0.35) * (0.25 + storm * 0.9);
+	float band = 1.0 - smoothstep(0.0, foam_width * (1.0 + storm * 3.0), abs(sd - edge));
 	float speck = noise(world_pos.xz * 2.2 + vec2(TIME * 0.3, -TIME * 0.2));
 	float foam = band * smoothstep(0.35, 0.75, speck + band * 0.35);
 	// Sparse whitecaps out at sea.
