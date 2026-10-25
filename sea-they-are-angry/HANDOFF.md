@@ -30,9 +30,10 @@ godot --headless --path sea-they-are-angry --script res://tests/slice_coop.gd
 godot --headless --path sea-they-are-angry --script res://tests/slice_ledge.gd
 godot --headless --path sea-they-are-angry --script res://tests/slice_creatures.gd
 godot --headless --path sea-they-are-angry --script res://tests/slice_economy.gd
+godot --headless --path sea-they-are-angry --script res://tests/slice_holm.gd
 ```
 
-On Windows use `Godot_v4.3-stable_win64_console.exe` in place of `godot`. All seven tests ended in PASS on Godot 4.3 stable. Run them one at a time: they share `user://run.json`. For balance, `tools/playtest.gd` plays several nights with a bot and prints a line per night (see README). `slice_behaviour.gd` covers every item of the slice's verify list, from W moving up-screen to New Run restarting at night 1.
+On Windows use `Godot_v4.3-stable_win64_console.exe` in place of `godot`. All eight tests ended in PASS on Godot 4.3 stable. The older seven turn the helper keepers off (`Players.helpers = false`) because they script every keeper themselves; `slice_holm.gd` covers the holm, the bridge, the split screen and the helpers. Run them one at a time: they share `user://run.json`. For balance, `tools/playtest.gd` plays several nights with a bot and prints a line per night (see README). `slice_behaviour.gd` covers every item of the slice's verify list, from W moving up-screen to New Run restarting at night 1.
 
 Two kinds of console noise are expected and harmless:
 
@@ -53,7 +54,7 @@ Two kinds of console noise are expected and harmless:
 - **The focused beam now burns the Bloated** at 10 hp per second instead of slowing it, by the owner's decision after playtesting. The appendix still lists only "light slow ×0.6" for the Bloated, so add the burn to `Balance` alongside it. See DECISIONS.
 - **The appendix changes slice numbers.** Plan 2 says "solo still plays exactly as before", but its appendix sets Day 120 s, Dusk 30 s, Night min(150 + 10(n−1), 240) and Dawn 60 s. The slice uses 60, 15, min(120 + 10(n−1), 210) and 30. The appendix is the newer design, so move to it when building `Balance` and record that in DECISIONS.
 - **`autoload/cycle.gd` and the other autoloads were written verbatim from plan 1.** Moving their numbers into `Balance` is expected; keep their signals and method names.
-- **Camera.** FOV 45 from (0, 41, 27), looking at (0, 3, 1), frames the whole coast and every landing (tested). Phase D3 says the island must fit with every player on screen, so keep this.
+- **Camera.** FOV 45 from (0, 41, 27), looking at (0, 3, 1), still frames the whole main island and every landing (tested). Phase D3's "every player on screen" is replaced by the owner's split screen: `CameraDirector` frames each island the same way, follows the keepers between them, and splits the screen when the people playing are on different islands. See DECISIONS "The holm, the rope bridge, the split screen and the helpers".
 - **Fences** are five sections across the chokepoints (beach heads and the ledge), each leaving a 0.9 m gap that a keeper fits through and a Bloated does not. Phase B's Squid climbs fences, and Phase B's Eel surge breaks any fence on its line. Neither needs the gaps changed.
 - **Balance numbers changed with the new island:** lamp burn 0.35 / 1.0 per second, refuel 40 per bio, fence mend 50 per driftwood, Bloated 1.15 m/s, and earlier night tables in `spawner.gd`. Move them into `Balance` with the rest.
 - **Structures have `surface_distance(point)`.** Use it for anything measured to a structure: interact range, burst splash, the Crab's slam arc, trap placement checks.

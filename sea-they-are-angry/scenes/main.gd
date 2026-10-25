@@ -21,6 +21,7 @@ const CAMERA_TARGET := Vector3(0.0, 3.0, 1.0)
 const CAMERA_FOV := 45.0
 const LIGHT_TWEEN := 2.0
 const GRASS_TUFTS := 9500
+const HOLM_GRASS_TUFTS := 5000
 const JETTY_LATERAL := 4.2
 # Keepers' ladders down the east-south-east face, from the top to the ledge and the ledge
 # to the meadow: above the upper ledge fence, so they land on the defended side of it,
@@ -68,6 +69,8 @@ var _lighting := [
 ]
 
 var lighthouse: Lighthouse
+var camp: Camp
+var bridge: RopeBridge
 var player: Player
 var players: Array[Player] = []
 var title: CanvasLayer
@@ -80,6 +83,8 @@ var _tally := {}
 const HORN_GUTTER_EVERY := 7.0
 const FIRST_DAY_TIP_TIME := 14.0
 var camera: Camera3D
+## Frames the keepers' islands and splits the screen when they're apart.
+var director: CameraDirector
 var spawner: Node
 var hud: CanvasLayer
 var _env: Environment
@@ -91,6 +96,7 @@ var _enemies: Node3D
 var _tween: Tween
 
 func _ready() -> void:
+	KeeperNav.reset()
 	_build_environment()
 	_build_ground()
 	_build_sea()
@@ -98,6 +104,7 @@ func _ready() -> void:
 	lighthouse.position = Vector3(0.0, Terrain.height_at(0.0, 0.0), 0.0)
 	add_child(lighthouse)
 	_build_homestead()
+	_build_holm()
 	_build_fences()
 	_build_ladders()
 	_build_scavenge()
@@ -160,17 +167,30 @@ func begin_run(continue_save: bool, n: int) -> void:
 	lighthouse.lamp.showcase = false
 	lighthouse.lamp._set_state(Lamp.State.OFF)
 	Players.configure(n)
-	for i in Players.wanted:
+	var total := Players.MAX if Players.helpers else Players.wanted
+	for i in total:
 		var p := Player.new()
 		p.idx = i
+		p.ai = i >= Players.wanted
 		var at: Vector3 = SPAWNS[i % SPAWNS.size()]
+		# The last helper keeps the camp, and starts there; any other keeps the light.
+		var role := "camp" if i == total - 1 else "light"
+		if p.ai and role == "camp":
+			at = Vector3(Terrain.CAMP_C.x, 0.0, Terrain.CAMP_C.y)
 		p.position = at + Vector3(0.0, Terrain.height_at_v(at) + 0.2, 0.0)
 		p.camera = camera
 		p.lamp = lighthouse.lamp
 		Players.nodes.append(p)
 		players.append(p)
 		add_child(p)
+		if p.ai:
+			p.add_child(KeeperAI.new(p, role))
 	player = players[0]
+	if director == null:
+		director = CameraDirector.new()
+		director.main_camera = camera
+		add_child(director)
+	director.players = players
 	hud.player = player
 	hud.players = players
 	hud.visible = true
@@ -328,6 +348,16 @@ func _build_ground() -> void:
 	var cs := CollisionShape3D.new()
 	cs.shape = mesh.create_trimesh_shape()
 	ground.add_child(cs)
+	# The holm's ground, a second mesh beside the first.
+	var holm_mesh := Terrain.build_holm_mesh()
+	var hmi := MeshInstance3D.new()
+	hmi.name = "HolmGround"
+	hmi.mesh = holm_mesh
+	hmi.material_override = Look.terrain_mat()
+	ground.add_child(hmi)
+	var hcs := CollisionShape3D.new()
+	hcs.shape = holm_mesh.create_trimesh_shape()
+	ground.add_child(hcs)
 	_build_rocks()
 	_build_grass()
 	Props.flowers(self, 240)
@@ -408,6 +438,15 @@ func _build_grass() -> void:
 		p.y = Terrain.height_at_v(p)
 		var b := Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * rng.randf_range(0.7, 1.35))
 		xforms.append(Transform3D(b, p))
+	# The holm's grazing, round the outside of the wire.
+	for i in HOLM_GRASS_TUFTS:
+		var p := Vector3(Terrain.HOLM_C.x + rng.randf_range(-1.0, 1.0) * Terrain.HOLM_HALF.x, 0.0,
+			Terrain.HOLM_C.y + rng.randf_range(-1.0, 1.0) * Terrain.HOLM_HALF.y)
+		if not Terrain.is_grassy(p.x, p.z):
+			continue
+		p.y = Terrain.height_at_v(p)
+		var b := Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * rng.randf_range(0.6, 1.2))
+		xforms.append(Transform3D(b, p))
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
 	mm.mesh = Look.grass_tuft_mesh()
@@ -440,6 +479,42 @@ func _build_homestead() -> void:
 	add_child(garden)
 	_build_shed(_on_pad(Terrain.PADS[2][0], Terrain.PADS[2][1]))
 
+# The holm: the camp on it, the rope bridge across to it, rocks along its shore.
+func _build_holm() -> void:
+	camp = Camp.new()
+	add_child(camp)
+	var ends := Terrain.bridge_ends()
+	bridge = RopeBridge.new(ends[0], ends[1])
+	add_child(bridge)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 312
+	var placed := 0
+	for i in 200:
+		if placed >= 46:
+			break
+		var a := rng.randf() * TAU
+		var dir := Vector2(sin(a), cos(a))
+		# March out from the middle to just past the clifftop.
+		var p := Terrain.HOLM_C
+		for k in 120:
+			p = Terrain.HOLM_C + dir * float(k) * 0.25
+			if Terrain.holm_edge_dist(p.x, p.y) > rng.randf_range(0.6, 2.4):
+				break
+		if Terrain.holm_beach_weight(p.x, p.y) > 0.05 or Terrain.bridge_coords(p.x, p.y).y < 2.5 and Terrain.bridge_coords(p.x, p.y).x < 1.1:
+			continue
+		var s := rng.randf_range(0.6, 1.5)
+		var at := Vector3(p.x, Terrain.height_at(p.x, p.y) - s * 0.25, p.y)
+		Look.rock(self, 1300 + i * 7, Vector3(s * 1.4, s * 1.1, s * 1.2), at, Color(0.34, 0.33, 0.31), 0.45)
+		placed += 1
+	# Rocks in the gully under the bridge, the sea breaking over them.
+	var e0: Vector3 = ends[0]
+	var e1: Vector3 = ends[1]
+	for i in 5:
+		var u := 0.2 + float(i) * 0.15
+		var q := e0.lerp(e1, u) + Vector3(rng.randf_range(-3.0, 3.0), 0.0, rng.randf_range(-3.0, 3.0))
+		q.y = Terrain.SEA_LEVEL - 0.7
+		Look.rock(self, 1700 + i * 13, Vector3(1.8, 1.6, 1.5) * rng.randf_range(0.7, 1.2), q, Color(0.27, 0.27, 0.27), 0.4)
+
 func _build_shed(at: Vector3) -> void:
 	var shed := Shed.new()
 	shed.position = at
@@ -449,15 +524,16 @@ func _build_shed(at: Vector3) -> void:
 func _build_sea() -> void:
 	var sea := MeshInstance3D.new()
 	var plane := PlaneMesh.new()
-	plane.size = Vector2(150.0, 150.0)
-	plane.subdivide_width = 160
-	plane.subdivide_depth = 160
+	# Wide enough for both islands, with open sea all round.
+	plane.size = Vector2(230.0, 170.0)
+	plane.subdivide_width = 240
+	plane.subdivide_depth = 180
 	sea.mesh = plane
 	var mat := ShaderMaterial.new()
 	mat.shader = load("res://shaders/sea.gdshader")
 	sea.material_override = mat
 	_sea_mat = mat
-	sea.position = Vector3(0.0, Terrain.SEA_LEVEL, 0.0)
+	sea.position = Vector3(24.0, Terrain.SEA_LEVEL, 0.0)
 	sea.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(sea)
 
@@ -490,9 +566,11 @@ func _build_ladders() -> void:
 	var upper := Ladder.new(Terrain.at_angle(a, inner - blend - 0.5), Terrain.at_angle(a, inner + 0.4),
 		_at(a, inner - blend, Terrain.CRAG_TOP + 0.05), _at(a, inner + 0.1, ledge))
 	add_child(upper)
+	KeeperNav.add_ladder(upper.top, upper.bottom, Ladder.DOWN_TIME, Ladder.UP_TIME)
 	var lower := Ladder.new(Terrain.at_angle(a, outer - 0.4), Terrain.at_angle(a, outer + blend + 0.6),
 		_at(a, outer - 0.05, ledge + 0.05), _at(a, outer + blend + 0.1, Terrain.PLATEAU_HEIGHT))
 	add_child(lower)
+	KeeperNav.add_ladder(lower.top, lower.bottom, Ladder.DOWN_TIME, Ladder.UP_TIME)
 
 func _at(a_deg: float, r: float, y: float) -> Vector3:
 	return Vector3(sin(deg_to_rad(a_deg)) * r, y, cos(deg_to_rad(a_deg)) * r)

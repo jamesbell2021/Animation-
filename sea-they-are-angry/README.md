@@ -2,6 +2,8 @@
 
 A lighthouse keeper on a tiny North Sea rock, late 1980s. By day you gather driftwood, scrap, kelp and bioluminescent matter from the shoreline, mend the fences, plant the garden, set traps and refuel the lamp. At dusk the fog and the storm roll in. At night things walk up out of the water toward the light. The lamp's beam slows them; your boathook does the rest. If the lamp goes dark, the run is over. There is no winning, only how many nights you last.
 
+Across a rope bridge from the lighthouse lies the holm, a low flat island with an old wartime camp on it: fenced with barbed wire, a guard tower and searchlight at each corner, Nissen huts, vegetable beds and a greenhouse. There are always three keepers: any that people don't play are helpers run by the computer, one keeping the light and one the camp. Losing the lighthouse ends the run; losing the camp makes everything harder (that side of it is the next step).
+
 The island, buildings and effects are built in code. The characters are rigged models built by a Blender script. Sound is synthesised at start-up.
 
 ## How to run
@@ -46,11 +48,15 @@ Choose 1 to 3 keepers on the title screen, then New Run (or Continue).
 | Skip the rest of the day or dawn | Enter | | |
 | Pause | Esc | | Start |
 
+The camera frames whichever island you're on and follows you across the bridge. When the people playing are on different islands, the screen splits (Baldur's Gate style) along a line square to the way between them, and joins up again when they come back together. Helper keepers get no view of their own.
+
 Keepers face the way they walk and turn to their aim to swing. Each carries a paraffin lantern that lights at dusk. A keeper who falls goes down; a teammate holds Use beside them for 3 seconds to revive them, and everyone gets up at dawn. The run ends when the lamp goes dark or every keeper is down. Only one keeper can work the lamp at a time.
 
 ## What is in the slice
 
-- The island, after Bad North: a meadow ringed by cliffs, three beaches where the sea comes ashore, and the lighthouse on a crag in the middle. The only way up is a ledge path that winds round the crag. Fixed camera, day/dusk/night/dawn lighting with fog.
+- The island, after Bad North: a meadow ringed by cliffs, three beaches where the sea comes ashore, and the lighthouse on a crag in the middle. The only way up is a ledge path that winds round the crag. Day/dusk/night/dawn lighting with fog.
+- The holm to the east, over an 18 m rope bridge that sags, bounces under footsteps and swings in the wind (after Carrick-a-Rede): the old camp in grey box, its wire, towers, searchlights, huts, beds and greenhouse. A camera that follows the keepers between the islands, and a split screen when people are apart.
+- Helper keepers (`scenes/player/keeper_ai.gd`) fill the places people don't take, so there are always three. The lighthouse's helper gathers and mends by day and works the lamp at night (or holds the ledge if someone else has it); the camp's warden does its rounds by day and walks the wire at night. Both fight what comes close, revive downed keepers, and walk the keepers' map (`KeeperNav`: the ledge, the ladders, the bridge, the camp). The creatures still scale with the number of people playing.
 - Characters modelled, rigged, textured and animated in Blender by scripts (`art/source/characters/build_characters.py`, `animate.py`): IK-solved walks, runs and sprints with planted feet, tool work, ladder climbs and creature gaits. Hard hits knock keepers and creatures down as ragdolls, and they get back up with real get-up animations from where they fall.
 - Keeper movement, mouse aim, boathook attack. A blow aimed outward on the ledge knocks a creature over the edge. Keepers have their own ladders down the crag.
 - The lamp: fuel, wide and focused beams (the focused one reaches the beaches), auto-sweep when nobody operates it, Burning to Guttering to Dark.

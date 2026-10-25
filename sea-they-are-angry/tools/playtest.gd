@@ -33,6 +33,8 @@ func _go() -> void:
 		DirAccess.remove_absolute(ProjectSettings.globalize_path("user://run.json"))
 	var players = root.get_node("Players")
 	players.wanted = keepers
+	# Every keeper here is scripted: no helpers.
+	root.get_node("Players").helpers = false
 	change_scene_to_file("res://scenes/main.tscn")
 	for i in 600:
 		if current_scene != null and current_scene.get("player") != null:
