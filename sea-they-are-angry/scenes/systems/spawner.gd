@@ -90,6 +90,10 @@ func night_table(n: int) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	for row in rows:
 		out.append({"t": float(row[0]), "kind": String(row[1]), "count": int(row[2]) + extra, "opp": row.size() > 3, "point": -1})
+	# The last night before the relief boat: the sea throws everything it has.
+	if not Run.endless and n == Rescue.night():
+		for e in out:
+			e["count"] = maxi(int(e["count"]) + 1, roundi(float(e["count"]) * Rescue.LAST_NIGHT_SURGE))
 	# Every so many of the groups that can, to the holm (counted in order through the night).
 	var every := HOLM_EVERY_LATE if n >= HOLM_LATE_FROM else HOLM_EVERY
 	var k := 0

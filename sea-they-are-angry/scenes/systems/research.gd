@@ -23,6 +23,8 @@ const PROJECTS := {
 		"blurb": "every harvest, at the camp and the cottage, gives a food more"},
 	"bell": {"name": "Alarm bell", "cost": {"scrap": 1, "notes": 1},
 		"blurb": "the camp's bell rings when anything comes ashore on the holm, and says where"},
+	"wireless": {"name": "The camp's wireless", "cost": {"scrap": 3, "bio": 1, "notes": 1},
+		"blurb": "mend the guards' old set and raise the mainland: the relief boat comes two nights sooner"},
 }
 
 static func has(id: String) -> bool:

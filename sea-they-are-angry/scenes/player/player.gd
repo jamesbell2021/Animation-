@@ -161,6 +161,8 @@ var puppet := false
 var net_prompt := ""
 ## LAN: the name of the person playing this keeper (shown over it).
 var net_name := ""
+## Gone aboard the relief boat (the end of the chapter).
+var boarded := false
 var _net: Array = []
 var _net_shot := -1
 # Reeling from a blow: slid back over the stagger clip's slide, no control meanwhile.
@@ -1289,13 +1291,16 @@ func _find_interactable() -> Node:
 		if absf(n.global_position.y - global_position.y) > REACH_HEIGHT:
 			continue
 		var d := 0.0
-		if n is Structure:
+		if n is Structure or n.has_method("surface_distance"):
 			d = n.surface_distance(global_position)
 		else:
 			d = Geo.flat_dist(global_position, n.global_position)
-		# Up a tower, the light comes before the hatch beside it.
+		# Up a tower, the light comes before the hatch beside it; at the boat's plank,
+		# going aboard comes before anything on the beach.
 		if n is Searchlight:
 			d -= 0.8
+		elif n is ReliefBoat:
+			d -= 1.5
 		if d > best_d:
 			continue
 		if n.interact_prompt() == "":
@@ -1412,6 +1417,22 @@ func take_damage(amount: int, from: Vector3 = Vector3.INF) -> void:
 		go_down()
 		if Players.all_down():
 			Run.end_run("Every keeper is down.")
+
+## Aboard the relief boat: out of the game, stowed with her.
+func board(boat: Node3D) -> void:
+	if boarded:
+		return
+	boarded = true
+	leave_light()
+	_stop_operating()
+	arsenal.cease()
+	if downed:
+		revive(DAWN_HP)
+	visible = false
+	collision_layer = 0
+	collision_mask = 0
+	global_position = boat.global_position + Vector3(0.0, 1.2, 0.0)
+	set_physics_process(false)
 
 # ---- LAN ----
 

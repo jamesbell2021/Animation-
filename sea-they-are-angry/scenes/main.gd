@@ -296,7 +296,9 @@ func _process(delta: float) -> void:
 		_title_t += delta * TITLE_ORBIT_SPEED
 		var a := _title_t * TAU + 0.6
 		_title_cam.look_at_from_position(Vector3(sin(a) * 38.0, 15.0, cos(a) * 38.0), Vector3(-3.0, 6.0, 0.0), Vector3.UP)
-	if Run.active and not Net.is_client() and Input.is_action_just_pressed("skip"):
+	_rescue_step(delta)
+	_cine_step(delta)
+	if Run.active and not _rescue and not Net.is_client() and Input.is_action_just_pressed("skip"):
 		Cycle.skip()
 	_alarms(delta)
 
@@ -306,7 +308,121 @@ static func compass(p: Vector3) -> String:
 	var a := fposmod(atan2(p.x, -p.z), TAU)
 	return names[int(round(a / (TAU / 8.0))) % 8]
 
+# ---- the relief boat: the end of Chapter One (Rescue) ----
+
+const BOAT_BEACH := 0
+## The boat waits this long for everyone; then any helper still ashore is taken off.
+const BOAT_WAIT := 150.0
+var boat: ReliefBoat
+var _rescue := false
+var _boat_wait := 0.0
+var _total_kills := 0
+var _cine: Camera3D
+
+func _begin_rescue() -> void:
+	_rescue = true
+	# The dawn holds while the boat comes in: no more days, no more nights.
+	Cycle.running = false
+	var b := ReliefBoat.berth(BOAT_BEACH)
+	_boat_in(b[0], b[1])
+	Net.relay_rescue("arrive", [b[0], b[1]])
+	hud.report("The relief boat!", [
+		"The %s is coming in to the %s beach." % [ReliefBoat.NAME.capitalize(), compass(Terrain.beach_point(BOAT_BEACH, 0.5))],
+		"Everyone down to the shingle and aboard: [E] at her plank.",
+	], 16.0)
+
+func _boat_in(shore: Vector3, mooring: Vector3) -> void:
+	boat = ReliefBoat.new()
+	boat.add_to_group("relief_boat")
+	add_child(boat)
+	boat.arrive(shore, mooring)
+
+func _rescue_step(delta: float) -> void:
+	if boat == null or not boat.waiting or Net.is_client():
+		return
+	_boat_wait += delta
+	var all := true
+	for p in players:
+		if is_instance_valid(p) and not p.boarded:
+			if _boat_wait > BOAT_WAIT and p.ai:
+				boat.take_aboard(p)
+			else:
+				all = false
+	if all:
+		_sail()
+
+func _sail() -> void:
+	boat.depart()
+	boat.departed.connect(_chapter_end)
+	Net.relay_rescue("depart", [])
+	_follow_boat()
+
+# The camera lets go of the keepers and watches the boat away.
+func _follow_boat() -> void:
+	director.process_mode = Node.PROCESS_MODE_DISABLED
+	director._overlay.visible = false
+	_cine = Camera3D.new()
+	_cine.fov = 46.0
+	add_child(_cine)
+	_cine.global_position = boat.global_position + Vector3(-14.0, 9.0, -6.0)
+	_cine.current = true
+
+func _cine_step(delta: float) -> void:
+	if _cine == null or boat == null:
+		return
+	var want := boat.global_position + Vector3(-12.0, 7.0, -10.0)
+	_cine.global_position = _cine.global_position.lerp(want, 1.0 - exp(-delta * 0.6))
+	_cine.look_at(boat.global_position + Vector3(0.0, 1.5, 0.0), Vector3.UP)
+
+func _chapter_end() -> void:
+	if not Net.is_client():
+		Net.relay_rescue("end", [])
+	SaveSys.finish_chapter(1)
+	var card := preload("res://scenes/ui/chapter_end.gd").new()
+	card.nights = Rescue.night()
+	card.kills = _total_kills
+	card.sea = Difficulty.name()
+	card.host_decides = Net.is_client()
+	card.back_to_title.connect(_after_chapter.bind(false))
+	card.stay_on.connect(_after_chapter.bind(true))
+	add_child(card)
+	Run.active = false
+
+func _after_chapter(stay: bool) -> void:
+	if stay:
+		# The same run, kept on: no boat will come again.
+		var d := SaveSys.load_run()
+		d["endless"] = true
+		var f := FileAccess.open(SaveSys.RUN_PATH, FileAccess.WRITE)
+		if f:
+			f.store_string(JSON.stringify(d))
+		if Net.is_host() and Net.started:
+			Net.restart(true)
+			return
+		Run.quick_start = true
+		Run.active = false
+		get_tree().reload_current_scene()
+		return
+	SaveSys.clear_run()
+	Run.active = false
+	Net.leave()
+	get_tree().reload_current_scene()
+
+## A LAN client: the host's boat, mirrored here.
+func net_rescue(kind: String, args: Array) -> void:
+	match kind:
+		"arrive":
+			_rescue = true
+			_boat_in(args[0], args[1])
+		"depart":
+			if boat != null:
+				boat.depart()
+				_follow_boat()
+		"end":
+			_chapter_end()
+
 func _on_enemy_killed(e: Node) -> void:
+	_total_kills += 1
 	var how = e.get("last_hit")
 	_count(String(how) if how else "hook")
 
@@ -895,6 +1011,8 @@ func _on_phase_changed(p: int) -> void:
 		_warned_low = false
 	if p == Cycle.Phase.DUSK:
 		_tally = {}
+		if Run.active and Rescue.is_last_night() and not Net.is_client():
+			hud.warn("The last night. The relief boat comes at dawn: hold the light!")
 	if p == Cycle.Phase.DAWN and Run.active and not Net.is_client():
 		_wash_up_oil()
 		_wash_up_shells()
@@ -910,7 +1028,10 @@ func _on_phase_changed(p: int) -> void:
 			if is_instance_valid(k):
 				Run.hunger[k.idx] = k.hunger
 				Run.warmth[k.idx] = k.warmth
+		var held := Run.night
 		Run.advance_night(damaged)
+		if not Run.endless and held >= Rescue.night():
+			_begin_rescue()
 
 # The keeper's log: what came, what stopped it, what it cost, and one thing to try next.
 func _dawn_report() -> void:
@@ -979,6 +1100,13 @@ func _dawn_report() -> void:
 		lines.append("A tin of shotgun cartridges has washed up on the %s beach." % compass(_shells_at))
 	if _researched != "":
 		lines.append("Worked out overnight at the camp: %s." % Research.title(_researched))
+	# The relief boat: how long to hold out (Run.night is still the night just held).
+	if not Run.endless:
+		var left := Rescue.night() - Run.night
+		if left == 1:
+			lines.append("One more night: the relief boat comes the dawn after.")
+		elif left > 1:
+			lines.append("The relief boat is due in %d nights." % left)
 	hud.report("Night %d held." % Run.night, lines)
 
 # The camp's state for the dawn report: what's wrecked or hurt, or "" if it's all sound.

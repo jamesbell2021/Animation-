@@ -61,7 +61,10 @@ func _ready() -> void:
 	var best := SaveSys.load_best()
 	if best > 0:
 		_label(box, "Best: night %d" % best, 18, GOLD)
-	var hint := _label(root, "WASD move · mouse aim · LMB swing · E use · R lamp · Q beam · Esc pause", 15, Color(0.8, 0.84, 0.9, 0.8))
+	if SaveSys.chapter_done(1):
+		var seas: int = int(SaveSys.load_profile().get("chapters", {}).get("1", 0))
+		_label(box, "Chapter One: the light held (%s). Chapter Two, The Harbour, is coming." % Difficulty.NAMES[clampi(seas, 0, 2)].to_lower(), 18, GOLD)
+	var hint := _label(root, "WASD move · mouse aim · LMB attack · Tab weapon · E use · R lamp · Q beam · Esc pause · Hold the light until the relief boat comes", 15, Color(0.8, 0.84, 0.9, 0.8))
 	hint.anchor_top = 1.0
 	hint.anchor_bottom = 1.0
 	hint.offset_left = 90.0

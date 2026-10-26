@@ -74,6 +74,11 @@ func _physics_process(delta: float) -> void:
 # ---- choosing what to do ----
 
 func _decide() -> void:
+	# The relief boat is in: down to the beach and aboard.
+	var boat := get_tree().get_first_node_in_group("relief_boat")
+	if boat != null and boat.waiting:
+		_set_task("board", boat, boat.shore)
+		return
 	# A keeper down: go and get them up.
 	var mate := _downed_keeper()
 	if mate != null:
@@ -203,6 +208,10 @@ func _act(delta: float) -> void:
 					_route.clear()
 		"fight":
 			_fight()
+		"board":
+			if _task_target != null and is_instance_valid(_task_target) and Geo.flat_dist(keeper.global_position, _task_target.shore) <= ReliefBoat.BOARD_RANGE:
+				_task_target.take_aboard(keeper)
+				_route.clear()
 		"repair":
 			if _task_target != null and is_instance_valid(_task_target) and _task_target is Structure:
 				var s: Structure = _task_target

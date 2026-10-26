@@ -79,7 +79,7 @@ func _go() -> void:
 	var any_on := false
 	for r in rows:
 		any_on = any_on or r["enabled"]
-	check(rows.size() == 9 and not any_on, "nine projects, none affordable with an empty store")
+	check(rows.size() == 10 and not any_on, "ten projects, none affordable with an empty store")
 	Stk.set_all({"scrap": 6, "notes": 2})
 	rows = desk.menu_rows()
 	check(rows[0]["enabled"] and rows[0]["text"].begins_with("Clockwork tracking"), "tracking can be started: " + rows[0]["text"].substr(0, 50))

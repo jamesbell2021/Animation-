@@ -2,6 +2,8 @@ extends Node
 
 var active := false
 var night := 1
+## Kept on past the relief boat (Rescue): no boat comes, the nights go on.
+var endless := false
 ## How hard the sea is (Difficulty.Level): kept with the run. A new run takes the one
 ## chosen on the title screen (`next_difficulty`).
 var difficulty := 1
@@ -44,6 +46,7 @@ var quick_start := false
 
 func start_new() -> void:
 	night = 1
+	endless = false
 	difficulty = next_difficulty
 	lamp_fuel = 100.0
 	camp_fuel = 60.0
@@ -72,6 +75,7 @@ func start_new() -> void:
 func start_loaded(d: Dictionary) -> void:
 	night = int(d.get("night", 1))
 	difficulty = clampi(int(d.get("difficulty", 1)), 0, 2)
+	endless = bool(d.get("endless", false))
 	lamp_fuel = float(d.get("fuel", 100.0))
 	camp_fuel = float(d.get("camp_fuel", 60.0))
 	camp_crops = [0, 0, 0, 0]

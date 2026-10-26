@@ -675,6 +675,11 @@ func relay_shot(kind: String, args: Array) -> void:
 	if playing() and is_host():
 		_event.rpc("shot", [kind, args])
 
+## Host: the relief boat's coming, going, and the chapter's end, on the clients too.
+func relay_rescue(kind: String, args: Array) -> void:
+	if playing() and is_host():
+		_event.rpc("rescue", [kind, args])
+
 ## Host: a creature has died where it stands (it falls as a corpse on the clients).
 func relay_corpse(id: int, impulse: Vector3) -> void:
 	if playing() and is_host():
@@ -706,6 +711,8 @@ func _event(kind: String, args: Array) -> void:
 			_show_shot(String(args[0]), args[1])
 		"restart":
 			_restart_here()
+		"rescue":
+			_main.net_rescue(String(args[0]), args[1])
 
 func _show_shot(kind: String, a: Array) -> void:
 	match kind:
@@ -783,18 +790,18 @@ func _unhook() -> void:
 # ---- after the run ----
 
 ## Host: a new run for everyone (from the game-over screen).
-func restart() -> void:
+func restart(cont: bool = false) -> void:
 	if not is_host():
 		return
 	_event.rpc("restart", [])
-	_restart_here()
+	_restart_here(cont)
 
-func _restart_here() -> void:
+func _restart_here(cont: bool = false) -> void:
 	_main = null
 	_reloading = true
 	_unhook()
 	if is_host():
-		_pending_begin = {"humans": lobby.size(), "difficulty": Run.difficulty, "cont": false, "names": _names()}
+		_pending_begin = {"humans": lobby.size(), "difficulty": Run.difficulty, "cont": cont, "names": _names()}
 		get_tree().reload_current_scene()
 		_begin.rpc.call_deferred(_pending_begin)
 	else:
