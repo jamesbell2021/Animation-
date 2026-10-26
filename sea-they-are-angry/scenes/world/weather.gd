@@ -40,6 +40,7 @@ static var wind_now := Vector3(0.7, 0.0, 0.18)
 static var storm_now := 0.0
 const WIND_DIR := Vector3(0.96, 0.0, 0.26)
 var vignette: ShaderMaterial
+var _wind_t := 0.0
 var _target := 0.0
 var _rain: GPUParticles3D
 var _rain_pm: ParticleProcessMaterial
@@ -214,7 +215,12 @@ func _process(delta: float) -> void:
 	storm = move_toward(storm, _target, delta / RAMP)
 	storm_now = storm
 	_gust = maxf(0.0, _gust - delta * 0.6)
-	wind_now = WIND_DIR * (0.7 + storm * 5.0 + _gust * 3.5)
+	# The wind never quite settles: it freshens and eases over half a minute or so, and
+	# veers and backs a few tens of degrees either side of its quarter over minutes.
+	_wind_t += delta
+	var veer := sin(_wind_t * 0.031) * 0.38 + sin(_wind_t * 0.0127 + 1.3) * 0.22
+	var breathe := 1.0 + 0.35 * sin(_wind_t * 0.23) * (0.6 + 0.4 * sin(_wind_t * 0.071 + 0.5))
+	wind_now = WIND_DIR.rotated(Vector3.UP, veer) * ((0.7 + storm * 5.0) * breathe + _gust * 3.5)
 	_apply_storm()
 	if storm < 0.05:
 		return

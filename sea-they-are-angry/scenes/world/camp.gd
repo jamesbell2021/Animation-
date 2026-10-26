@@ -547,7 +547,8 @@ func _process(delta: float) -> void:
 ## buildings still standing.
 func targets() -> Array[Structure]:
 	var out: Array[Structure] = _keeps()
-	if turbine != null and not turbine.is_destroyed():
+	# With the camp fallen there's nothing left worth the raid: they go back to the light.
+	if turbine != null and not turbine.is_destroyed() and not out.is_empty():
 		out.append(turbine)
 	return out
 

@@ -731,7 +731,12 @@ This is step 1 of five: the place, the crossing, the camera and the helpers. Nex
 ## The wind turbine and the lights round the camp (owner's request: "a 1980s style wind generator on the other island with the huts; lights strung around the compound; if the wind turbine gets attacked they go out")
 
 - **The machine** (`scenes/structures/wind_turbine.gd`): an early-1980s Danish-style turbine, put up on the holm long after the camp's war.
-  - **What it looks like:** three blades upwind of a 9 m galvanised lattice tower, with a cream glass-fibre nacelle that turns to face the wind. The rotor speeds up with the wind, from a slow turn in a breeze to fast in a gale.
+  - **What it looks like:** three blades upwind of a 9 m galvanised lattice tower, with a cream glass-fibre nacelle.
+  - **It answers the wind** (owner's request: "make sure it's animated and turns when it's windy"):
+    - **Speed:** the rotor creeps in a calm, turns steadily in the day's breeze (about 7 turns a minute) and races in a gale (about 60).
+    - **Gusts:** it spins up faster than it runs down, so it surges with each one.
+    - **Facing:** the nacelle swings round on its yaw drive to face the wind as it veers.
+  - **The wind:** it now freshens and eases over half a minute or so, and veers and backs up to about 35° either side of its quarter over a few minutes (`Weather.wind_now`). The flag, the chimney smoke and the rope bridge follow it too.
   - **Where it stands:** on the north-west knoll outside the wire, clear of the keepers' path round the outside, and in sight of the north beach where creatures come ashore. Inside the wire there wasn't room among the huts, beds and walkways, and outside is where such a machine would stand. Its cable runs on two poles to the north fence.
 - **The lights:** strings of warm bulbs sagging from post to post round the inside of the wire, about 56 bulbs, with a real light at every fifth. They're on from dusk to dawn while the turbine stands; there are batteries in the cabinet, so it doesn't matter how hard the wind blows.
 - **"If it gets attacked they go out":**
@@ -740,6 +745,6 @@ This is step 1 of five: the place, the crossing, the camera and the helpers. Nex
   - **Wrecked**, they're out. The rotor runs down and stops, one blade gone and another hanging, and the keepers are warned.
   - **Mending:** keepers mend it at the cabinet with scrap (2 a time), and the lights come back with it.
 - **Why the lights matter:** creatures inside the lit wire move 15% slower (they hate the light, as everywhere in the game). That's one more reason to keep the turbine standing.
-- **For raiders it's a target** like the generator and the buildings (`Camp.targets()`). Losing it doesn't count toward the camp falling, though: it only lights the wire (`Camp.fallen()` checks the generator and buildings).
+- **For raiders it's a target** like the generator and the buildings (`Camp.targets()`). Losing it doesn't count toward the camp falling, though: it only lights the wire (`Camp.fallen()` checks the generator and buildings). Once the camp has fallen, it isn't worth a raid on its own, and raids go back to the light.
 - **On the LAN:** its health is the host's like any building's. Each machine works out the lights and the rotor from that, so a blow blinks the lights everywhere.
 - **Tests:** `slice_turbine.gd`.

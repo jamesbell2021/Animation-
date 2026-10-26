@@ -48,7 +48,29 @@ func _go() -> void:
 	await _wait(30)
 	check(t.spin > 0.5 and not t.rotor.global_basis.is_equal_approx(a0), "its rotor turns in the wind (%.1f rad/s)" % t.spin)
 	var fwd: Vector3 = -t.nacelle.global_basis.z
-	check(fwd.dot(-Weather.WIND_DIR) > 0.9, "and faces into the wind")
+	var w: Vector3 = Weather.wind_now.normalized()
+	check(fwd.dot(-w) > 0.9, "and faces into the wind")
+	# The wind: a day's breeze, then a gale. The rotor follows.
+	var weather = main.atmosphere.weather
+	weather.storm = 0.0
+	weather._target = 0.0
+	await _wait(240)
+	var calm: float = t.spin
+	weather.storm = 1.0
+	weather._target = 1.0
+	await _wait(300)
+	var gale: float = t.spin
+	check(calm > 0.2 and calm < 2.5 and gale > calm * 2.5, "it turns slowly in a breeze (%.1f rad/s) and races in a gale (%.1f)" % [calm, gale])
+	weather.storm = 0.1
+	weather._target = 0.1
+	# The wind veers: the head follows it round.
+	var before: float = t.nacelle.rotation.y
+	weather._wind_t += 100.0
+	await _wait(5)
+	print("   the wind swung from %.2f to %.2f" % [before, atan2(Weather.wind_now.x, Weather.wind_now.z)])
+	await _wait(600)
+	var into: float = atan2(Weather.wind_now.x, Weather.wind_now.z)
+	check(absf(angle_difference(t.nacelle.rotation.y, into)) < 0.15 and absf(angle_difference(before, t.nacelle.rotation.y)) > 0.2, "the wind veers and its head turns to follow (now %.2f, the wind %.2f)" % [t.nacelle.rotation.y, into])
 	check(camp.targets().has(t), "creatures raiding the holm make for it")
 
 	# The lights.

@@ -19,9 +19,17 @@ const TOP := 0.28
 const SECTIONS := 5
 const HUB_H := TOWER_H + 0.55
 const BLADE := 3.6
-## How fast the rotor turns (rad/s): slowly in a breeze, fast in a gale.
-const SPIN_MIN := 1.4
-const SPIN_MAX := 5.5
+## How fast the rotor turns (rad/s) with the wind (m/s): barely creeping in a calm,
+## turning steadily in the day's breeze, racing in a gale.
+const SPIN_CREEP := 0.2
+const SPIN_MAX := 6.5
+const WIND_FROM := 0.5
+const WIND_FULL := 5.0
+## The rotor's inertia: it picks up in a gust faster than it runs down.
+const SPIN_UP := 1.5
+const SPIN_DOWN := 0.5
+## The yaw drive turns the head round to follow the wind this fast (rad/s).
+const YAW_RATE := 0.25
 const STEEL := Color(0.62, 0.64, 0.64)
 const CREAM := Color(0.90, 0.88, 0.80)
 const BLADE_WHITE := Color(0.95, 0.95, 0.93)
@@ -55,7 +63,7 @@ func _ready() -> void:
 	_sound.play()
 	# Face the wind, and already turning, from the start.
 	nacelle.rotation.y = _into_wind()
-	spin = SPIN_MIN
+	spin = spin_for(Weather.wind_now.length())
 
 func display_name() -> String:
 	return "the wind turbine"
@@ -95,16 +103,22 @@ static func _into_wind() -> float:
 		w = Weather.WIND_DIR
 	return atan2(w.x, w.z)
 
+## The rotor's speed for a wind of `w` m/s.
+static func spin_for(w: float) -> float:
+	return SPIN_CREEP + clampf((w - WIND_FROM) / (WIND_FULL - WIND_FROM), 0.0, 1.0) * (SPIN_MAX - SPIN_CREEP)
+
 func _process(delta: float) -> void:
 	if rotor == null:
 		return
-	nacelle.rotation.y = lerp_angle(nacelle.rotation.y, _into_wind(), minf(1.0, delta * 0.4))
+	# The yaw drive: steadily round to face the wind as it veers and backs.
+	if not is_destroyed():
+		nacelle.rotation.y = rotate_toward(nacelle.rotation.y, _into_wind(), YAW_RATE * delta)
 	var want := 0.0
 	if not is_destroyed():
-		want = lerpf(SPIN_MIN, SPIN_MAX, clampf(Weather.wind_now.length() / 6.0, 0.0, 1.0))
+		want = spin_for(Weather.wind_now.length())
 		if health_ratio() < 0.5:
 			want *= 0.7
-	spin = move_toward(spin, want, delta * (0.6 if want > spin else 1.2))
+	spin = move_toward(spin, want, delta * (SPIN_UP if want > spin else SPIN_DOWN))
 	rotor.rotate_object_local(Vector3.FORWARD, spin * delta)
 	# A damaged rotor runs out of true.
 	_wobble += delta * spin
