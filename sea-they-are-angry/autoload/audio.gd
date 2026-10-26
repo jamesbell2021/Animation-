@@ -78,6 +78,7 @@ const SOUNDS := {
 	"gull_laugh": ["_s_gull_laugh", false],
 	"gull_alarm": ["_s_gull_alarm", false],
 	"oar": ["_s_oar", false],
+	"turbine": ["_s_turbine", true],
 }
 
 func _ready() -> void:
@@ -950,4 +951,17 @@ func _s_oar() -> PackedFloat32Array:
 	var knock := _env(_tone(_n(0.12), 210.0, 160.0, 1), 0.001, 40.0)
 	_mix(water, knock, 0.35)
 	return _gain(water, 1.1)
+
+# The wind turbine: each blade swishing past the tower (three to a turn), over the
+# gearbox's whine. Looped; its pitch follows the rotor's speed.
+func _s_turbine() -> PackedFloat32Array:
+	var n := _n(2.4)
+	var out := PackedFloat32Array()
+	out.resize(n)
+	for k in 6:
+		var swish := _env(_lowpass(_highpass(_noise(_n(0.5), 900 + k), 300.0), 1400.0), 0.18, 7.0)
+		_mix(out, swish, 0.32, _n(0.4 * float(k)))
+	var hum := _tone(n, 96.0, 96.0, 1)
+	_mix(out, hum, 0.05)
+	return _seamless(out, 0.2)
 

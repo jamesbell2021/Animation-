@@ -442,6 +442,8 @@ func _on_structure_destroyed(s: Node) -> void:
 		_count("camp_lost")
 		if s.id == "wire":
 			hud.warn("The camp's wire is down!")
+		elif s.id == "turbine":
+			hud.warn("The wind turbine is wrecked: the lights round the camp are out!")
 		else:
 			var nm: String = s.display_name()
 			hud.warn("%s is wrecked!" % (nm.left(1).to_upper() + nm.substr(1)))

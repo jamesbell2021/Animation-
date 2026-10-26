@@ -23,6 +23,14 @@ const BRICK := Color(0.42, 0.24, 0.18)
 
 var searchlights: Array[Searchlight] = []
 var generator: Generator
+## The wind turbine on the knoll outside the wire, and the strings of lights it runs.
+var turbine: WindTurbine
+var lights_level := 0.0
+var _bulbs: MultiMeshInstance3D
+var _bulb_mat: StandardMaterial3D
+var _string_lights: Array[OmniLight3D] = []
+var _blink_t := 0.0
+var _flick_t := 0.0
 var _hut_lights: Array[OmniLight3D] = []
 var _hut_windows: Array[StandardMaterial3D] = []
 var towers: Array[Node3D] = []
@@ -91,6 +99,11 @@ func _ready() -> void:
 	_greenhouse(Vector2(c.x + 4.6, c.y + 4.9))
 	_gate()
 	_dress()
+	turbine = WindTurbine.new()
+	turbine.position = _ground(TURBINE_AT)
+	add_child(turbine)
+	turbine.struck.connect(_on_turbine_struck)
+	_string_lights_round(corners)
 	# What's in a building works only while it stands.
 	stove.building = buildings["quarters"]
 	mess.building = buildings["mess"]
@@ -508,6 +521,7 @@ const GREENHOUSE_HP := 150
 
 func _process(delta: float) -> void:
 	_process_flag(delta)
+	_process_lights(delta)
 	# The huts are lit while the generator runs, flickering as it runs dry; a wrecked
 	# hut stays dark.
 	var level := generator.power_level() if generator != null else 0.0
@@ -529,8 +543,15 @@ func _process(delta: float) -> void:
 	if generator != null:
 		generator.set_draw(self, HUT_DRAW * float(lit) if level > 0.0 else 0.0)
 
-## What creatures make for on the holm: the generator and the buildings still standing.
+## What creatures make for on the holm: the generator, the wind turbine and the
+## buildings still standing.
 func targets() -> Array[Structure]:
+	var out: Array[Structure] = _keeps()
+	if turbine != null and not turbine.is_destroyed():
+		out.append(turbine)
+	return out
+
+func _keeps() -> Array[Structure]:
 	var out: Array[Structure] = []
 	if generator != null and not generator.is_destroyed():
 		out.append(generator)
@@ -539,9 +560,10 @@ func targets() -> Array[Structure]:
 			out.append(b)
 	return out
 
-## The camp has fallen: its generator and every building wrecked.
+## The camp has fallen: its generator and every building wrecked (the turbine only
+## lights the wire, so it doesn't count).
 func fallen() -> bool:
-	return targets().is_empty()
+	return _keeps().is_empty()
 
 ## The runs of wire torn down.
 func wire_down() -> int:
@@ -627,3 +649,149 @@ func _greenhouse(at: Vector2) -> void:
 	plot.plants_offset = Vector3(0.0, 0.3, D * 0.5)
 	gh.add_child(plot)
 	plots.append(plot)
+
+# ---- the wind turbine's lights ----
+
+## On the knoll north-west of the wire, clear of the keepers' way round it.
+const TURBINE_AT := Vector2(41.0, -10.2)
+const BULB_EVERY := 1.3
+const BULB_HANG := 2.15
+## One real light to this many bulbs (the rest just glow).
+const LIGHT_EVERY := 5
+const BULB_WARM := Color(1.0, 0.78, 0.45)
+## Creatures inside the lit wire go this much slower: they hate the light.
+const LIT_SLOW := 0.85
+const BLINK := 0.35
+
+# Strings of bulbs round the inside of the wire, sagging from post to post, and the
+# power line on poles from the turbine's cabinet to the north fence.
+func _string_lights_round(corners: Array) -> void:
+	var cable := Look.flat_mat(Color(0.08, 0.08, 0.08), 0.7)
+	var bulbs: Array[Vector3] = []
+	for i in 4:
+		var a: Vector2 = corners[i]
+		var b: Vector2 = corners[(i + 1) % 4]
+		var dir := (b - a).normalized()
+		var inward := (Terrain.CAMP_C - (a + b) * 0.5).normalized() * 0.18
+		var from := a + dir * 1.5 + inward
+		var to := b - dir * 1.5 + inward
+		var segs := maxi(1, int(ceil(from.distance_to(to) / POST_EVERY)))
+		for k in segs:
+			var p0 := from.lerp(to, float(k) / float(segs))
+			var p1 := from.lerp(to, float(k + 1) / float(segs))
+			var prev := _ground(p0) + Vector3(0.0, BULB_HANG, 0.0)
+			var steps := 4
+			for j in range(1, steps + 1):
+				var t := float(j) / float(steps)
+				var q := p0.lerp(p1, t)
+				var cur := Vector3(q.x, lerpf(_ground(p0).y, _ground(p1).y, t) + BULB_HANG - sin(t * PI) * 0.2, q.y)
+				_wire_seg(prev, cur, cable, 0.02)
+				prev = cur
+			for t in [0.25, 0.75]:
+				var q := p0.lerp(p1, t)
+				bulbs.append(Vector3(q.x, lerpf(_ground(p0).y, _ground(p1).y, t) + BULB_HANG - sin(t * PI) * 0.2 - 0.08, q.y))
+	# The bulbs: one multimesh, one glowing material to switch.
+	_bulb_mat = StandardMaterial3D.new()
+	_bulb_mat.albedo_color = Color(0.3, 0.28, 0.24)
+	_bulb_mat.emission_enabled = true
+	_bulb_mat.emission = BULB_WARM
+	_bulb_mat.emission_energy_multiplier = 0.0
+	_bulb_mat.roughness = 0.3
+	var sphere := SphereMesh.new()
+	sphere.radius = 0.08
+	sphere.height = 0.18
+	sphere.radial_segments = 8
+	sphere.rings = 4
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.mesh = sphere
+	mm.instance_count = bulbs.size()
+	for i in bulbs.size():
+		mm.set_instance_transform(i, Transform3D(Basis(), bulbs[i]))
+	_bulbs = MultiMeshInstance3D.new()
+	_bulbs.multimesh = mm
+	_bulbs.material_override = _bulb_mat
+	_bulbs.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(_bulbs)
+	for i in range(0, bulbs.size(), LIGHT_EVERY):
+		var l := OmniLight3D.new()
+		l.position = bulbs[i] - Vector3(0.0, 0.1, 0.0)
+		l.light_color = BULB_WARM
+		l.omni_range = 7.5
+		l.light_energy = 0.0
+		l.shadow_enabled = false
+		l.visible = false
+		add_child(l)
+		_string_lights.append(l)
+	# The power line: from the cabinet, on two poles, to the north fence.
+	var start := turbine.cable_point()
+	var end := _ground(Vector2(TURBINE_AT.x + 0.5, Terrain.CAMP_C.y - Terrain.CAMP_HALF.y)) + Vector3(0.0, BULB_HANG + 0.1, 0.0)
+	var poles: Array[Vector3] = []
+	for t in [0.4, 0.75]:
+		var g := start.lerp(end, t)
+		var foot := _ground(Vector2(g.x + 0.8, g.z))
+		var pole := Geo.box(self, Vector3(0.14, 3.4, 0.14), Color.WHITE, foot + Vector3(0.0, 1.7, 0.0))
+		pole.material_override = _post
+		var arm := Geo.box(self, Vector3(0.7, 0.08, 0.08), Color.WHITE, foot + Vector3(0.0, 3.2, 0.0))
+		arm.material_override = _post
+		poles.append(foot + Vector3(0.0, 3.25, 0.0))
+	var pts: Array[Vector3] = [start]
+	pts.append_array(poles)
+	pts.append(end)
+	for i in pts.size() - 1:
+		var prev: Vector3 = pts[i]
+		for j in range(1, 5):
+			var t := float(j) / 4.0
+			var cur: Vector3 = pts[i].lerp(pts[i + 1], t) - Vector3(0.0, sin(t * PI) * 0.3, 0.0)
+			_wire_seg(prev, cur, cable, 0.025)
+			prev = cur
+
+func _wire_seg(a: Vector3, b: Vector3, mat: Material, thick: float) -> void:
+	var d := b - a
+	if d.length() < 0.01:
+		return
+	var m := Geo.box(self, Vector3(thick, thick, d.length()), Color.WHITE, (a + b) * 0.5)
+	m.material_override = mat
+	m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	m.look_at_from_position(m.position, b, Vector3.UP)
+
+func _on_turbine_struck() -> void:
+	_blink_t = BLINK
+	if lights_level > 0.1 and turbine != null:
+		Audio.ambient_sfx("crackle", turbine.global_position + Vector3(0.0, 1.0, 0.0), -10.0, 0.2)
+
+## Whether the lights round the wire should be on: from dusk to dawn, with the turbine standing.
+func lights_wanted() -> bool:
+	return (Cycle.phase == Cycle.Phase.DUSK or Cycle.phase == Cycle.Phase.NIGHT) and turbine != null and turbine.generating()
+
+func _process_lights(delta: float) -> void:
+	if _bulb_mat == null:
+		return
+	_blink_t = maxf(0.0, _blink_t - delta)
+	var want := 1.0 if lights_wanted() else 0.0
+	if want > 0.0:
+		if _blink_t > 0.0:
+			# Struck: the whole string blinks out for a moment.
+			want = 0.0
+		elif turbine.health_ratio() < 0.5:
+			# Badly damaged: the power stutters, the bulbs dip and flicker.
+			_flick_t -= delta
+			if _flick_t <= 0.0:
+				_flick_t = randf_range(0.05, 0.9)
+			if _flick_t < 0.12:
+				want = randf_range(0.1, 0.5)
+	lights_level = want if want < lights_level or _blink_t > 0.0 else move_toward(lights_level, want, delta * 3.0)
+	_bulb_mat.emission_energy_multiplier = 4.5 * lights_level
+	_bulb_mat.albedo_color = Color(0.3, 0.28, 0.24).lerp(Color(1.0, 0.9, 0.7), lights_level)
+	for l in _string_lights:
+		l.visible = lights_level > 0.02
+		l.light_energy = 1.5 * lights_level
+
+func _physics_process(_delta: float) -> void:
+	# The lit wire: creatures inside it slow down (they hate the light).
+	if lights_level < 0.5:
+		return
+	for e in get_tree().get_nodes_in_group("enemies"):
+		if e is Enemy and Terrain.in_camp(e.global_position.x, e.global_position.z):
+			e.speed_mult *= LIT_SLOW
+
