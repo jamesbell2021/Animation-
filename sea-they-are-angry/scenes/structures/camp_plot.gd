@@ -130,6 +130,7 @@ func interact(_player: Node) -> bool:
 				Events.message.emit("Need seeds: you get them back from what you lift")
 				return false
 			_set_state(PLANTED)
+			Events.did.emit("sow", _player)
 			Audio.sfx("step", global_position, 2.0, 0.2)
 			Events.message.emit("Sown: ready at dawn")
 			return true

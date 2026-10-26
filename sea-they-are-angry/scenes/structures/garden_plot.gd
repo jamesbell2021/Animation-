@@ -123,6 +123,7 @@ func interact(_player: Node) -> bool:
 				Events.message.emit("Need " + Stock.cost_str(PLANT_COST) + " to dig into the bed")
 				return false
 			Run.crops[index] = PLANTED
+			Events.did.emit("sow", _player)
 			Audio.sfx("step", global_position, 2.0, 0.2)
 			Audio.sfx("gather", global_position, -6.0, 0.1)
 			Events.message.emit("Potatoes planted: ready at dawn")

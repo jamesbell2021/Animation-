@@ -280,14 +280,17 @@ func begin_run(continue_save: bool, n: int) -> void:
 		_place_notes()
 	if d.is_empty():
 		hud.report("The first day.", [
-			"Gather driftwood, scrap and bio on the three beaches. The ladders down the crag are on its east side.",
-			"Mend fences with driftwood (E). At dusk the lamp lights: stand by the door and work it (R).",
-			"They come ashore on the beaches and climb the ledge. Q focuses the beam to burn them,",
-			"and on the ledge a blow aimed outward knocks them over the edge.",
+			"Keep the light burning until the relief boat comes for you: %d nights." % Rescue.night(),
+			"The jobs on the right show you round: the beaches, the camp over the bridge, the shed.",
+			"At dusk they come ashore and climb the ledge. Work the lamp (R at the door); Q focuses",
+			"the beam to burn them, and on the ledge a blow aimed outward knocks them over the edge.",
 		], FIRST_DAY_TIP_TIME)
 	_apply_lighting(Cycle.Phase.DAY, 0.0)
 	atmosphere.apply(Cycle.Phase.DAY, 0.0)
 	Cycle.start(Cycle.Phase.DAY)
+	jobs = Jobs.new()
+	jobs.players = players
+	add_child(jobs)
 	if Net.online():
 		Net.game_started(self)
 
@@ -314,6 +317,7 @@ const BOAT_BEACH := 0
 ## The boat waits this long for everyone; then any helper still ashore is taken off.
 const BOAT_WAIT := 150.0
 var boat: ReliefBoat
+var jobs: Jobs
 var _rescue := false
 var _boat_wait := 0.0
 var _total_kills := 0

@@ -173,6 +173,7 @@ func interact(_player: Node) -> bool:
 	available = false
 	_mesh.visible = false
 	Stock.add(kind, amount)
+	Events.did.emit("gather", _player)
 	Audio.sfx("gather", global_position, -2.0, 0.05)
 	if kind == "notes":
 		# The next page of the internees' diary, read as it's picked up.

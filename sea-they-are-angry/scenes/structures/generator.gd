@@ -182,6 +182,7 @@ func interact(player: Node) -> bool:
 	if _can_fill() and Stock.spend({"diesel": 1}):
 		fuel = minf(FUEL_MAX, fuel + CAN_UNITS)
 		Run.camp_fuel = fuel
+		Events.did.emit("generator", player)
 		Audio.sfx("refuel", global_position, -2.0)
 		Events.message.emit("Generator filled  (%d%%)" % roundi(fuel))
 		_update_running()

@@ -395,6 +395,7 @@ func need_speed() -> float:
 ## A meal: fed again.
 func eat_meal() -> void:
 	hunger = 100.0
+	Events.did.emit("eat", self)
 
 func keeper_name() -> String:
 	return Players.NAMES[idx % Players.NAMES.size()]
@@ -914,6 +915,8 @@ func _toggle_operate() -> void:
 	operating = true
 	lamp.set_operator(self)
 	_go_in()
+	if lamp.is_lit():
+		Events.did.emit("lamp", self)
 	if lamp.is_lit():
 		Events.message.emit("On the lamp.  Mouse aims, [Q] beam, [R] leave")
 	else:

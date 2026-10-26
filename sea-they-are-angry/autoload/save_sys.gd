@@ -17,6 +17,7 @@ func snapshot() -> Dictionary:
 		"night": Run.night,
 		"difficulty": Run.difficulty,
 		"endless": Run.endless,
+		"jobs": Run.jobs,
 		"anger": Anger.value,
 		"stock": Stock.all(),
 		"fuel": Run.lamp_fuel,

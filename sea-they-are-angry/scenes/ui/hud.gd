@@ -25,6 +25,8 @@ var _fuel_bar: ProgressBar
 var _lamp_label: Label
 var _beam_label: Label
 var _camp_label: Label
+var _jobs_box: VBoxContainer
+var _job_labels: Array[Label] = []
 var _prompt_label: Label
 var _msg_label: Label
 var _warn_label: Label
@@ -69,6 +71,25 @@ func _ready() -> void:
 	_lamp_label = _label(panel, FONT)
 	_beam_label = _label(panel, FONT)
 	_camp_label = _label(panel, FONT)
+
+	# The first days' jobs, down the right-hand side (Jobs).
+	_jobs_box = VBoxContainer.new()
+	_jobs_box.anchor_left = 1.0
+	_jobs_box.anchor_right = 1.0
+	_jobs_box.offset_left = -440.0
+	_jobs_box.offset_right = -20.0
+	_jobs_box.offset_top = 110.0
+	_jobs_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_jobs_box.add_theme_constant_override("separation", 3)
+	root.add_child(_jobs_box)
+	var jt := _label(_jobs_box, FONT + 2)
+	jt.text = "Jobs for the first days"
+	jt.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	jt.add_theme_color_override("font_color", Color(1.0, 0.78, 0.42))
+	for j in Jobs.LIST:
+		var l := _label(_jobs_box, FONT - 1)
+		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		_job_labels.append(l)
 
 	var controls := _label(root, 14)
 	controls.text = CONTROLS
@@ -238,6 +259,12 @@ func _process(delta: float) -> void:
 				hurt = true
 		_camp_label.text = line
 		_camp_label.add_theme_color_override("font_color", RED if g.fuel < Generator.LOW or hurt else PALE)
+	_jobs_box.visible = Jobs.showing()
+	if _jobs_box.visible:
+		for i in Jobs.LIST.size():
+			var did := Jobs.done(Jobs.LIST[i][0])
+			_job_labels[i].text = ("✓ " if did else "○ ") + String(Jobs.LIST[i][1])
+			_job_labels[i].add_theme_color_override("font_color", Color(0.55, 0.62, 0.55) if did else PALE)
 	if _msg_t > 0.0:
 		_msg_t = maxf(0.0, _msg_t - delta)
 		_msg_label.modulate.a = clampf(_msg_t / MSG_FADE, 0.0, 1.0)

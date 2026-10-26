@@ -132,6 +132,7 @@ func interact(_player: Node) -> bool:
 	if Stock.spend(repair_cost()):
 		repair(repair_amount())
 		Events.message.emit("Repaired %s  (%d/%d)" % [display_name(), hp, max_hp])
+		Events.did.emit("repair", _player)
 		return true
 	Events.message.emit("Need " + Stock.cost_str(repair_cost()))
 	return false
