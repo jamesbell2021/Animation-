@@ -147,9 +147,8 @@ func _at_bar(g: Guest, drunk := 3.0) -> void:
 
 func _on_lounger(g: Guest) -> void:
 	g.lounger = world.claim_lounger(g)
-	g.position = HotelLayout.lounger(g.lounger) + Vector2(-50, -12)
 	g.state = Guest.S.LOUNGE
-	g.avatar.set_pose(VendorAvatar.Pose.LIE)
+	g.lie_on_lounger()
 	g._think = 999.0
 
 
@@ -336,7 +335,7 @@ func _shot_lounger() -> void:
 		g.position = Vector2(HotelLayout.POOL_X0 - 260.0 - k * 40.0, HotelLayout.GROUND_Y)
 		g.state = Guest.S.ROOM
 		g._think = 999.0
-	_frame(Vector2(HotelLayout.lounger(1).x + 80.0, 640), 1.25)
+	_frame(Vector2(HotelLayout.lounger(4).x, 640), 1.0)
 	await wait(WARMUP)
 	_clear_toasts()
 	mums_b[0].say("That's MY lounger!", "bad", 1.4)
@@ -430,3 +429,19 @@ func _shot_upgrade() -> void:
 	AudioManager.play_sfx("cheer")
 	world.manager.say("THREE STARS!", "shout", 2.0)
 	await wait(1.6)
+
+
+## Not in the trailer: every lounger taken, one guest strolling past, for checking the deck art.
+func _shot_deck_check() -> void:
+	await _setup_hotel({"rooms": 8, "hour": 13.0, "upgrades": {"pool": 2, "loungers": 3, "floors": 1, "fence": 1, "signs": 1}, "staff": ["lifeguard"]})
+	var people: Array = []
+	for r in 8:
+		people += _group(["mums", "lads", "hens", "family"][r % 4], r, 2)
+	for k in Upgrades.lounger_count():
+		_on_lounger(people[k])
+	var walker: Guest = people[people.size() - 1]
+	walker.position = Vector2(1250, HotelLayout.GROUND_Y)
+	walker.state = Guest.S.OUT
+	walker.go_to(Vector2(2700, HotelLayout.GROUND_Y))
+	_frame(Vector2(1500, 700), 1.3)
+	await wait(WARMUP + 2.5)

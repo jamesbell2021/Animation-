@@ -270,8 +270,7 @@ func go_pool() -> void:
 func _arrive_pool() -> void:
 	if lounger >= 0:
 		state = S.LOUNGE
-		position = HotelLayout.lounger(lounger) + Vector2(-50, -12)
-		avatar.set_pose(VendorAvatar.Pose.LIE)
+		lie_on_lounger()
 		_think = _rng.randf_range(12.0, 30.0)
 		world.guest_at_pool(self, false)
 	else:
@@ -290,7 +289,15 @@ func _go_sleep() -> void:
 	_think = _rng.randf_range(4.0, 10.0)
 
 
+## Stretch out on our lounger. Front-deck loungers draw over passers-by, back-row ones behind.
+func lie_on_lounger() -> void:
+	position = HotelLayout.lounger_lie_spot(lounger)
+	avatar.set_pose(VendorAvatar.Pose.LIE)
+	z_index = 7 if HotelLayout.lounger_in_front(lounger) else -5
+
+
 func _leave_spots() -> void:
+	z_index = 0
 	if lounger >= 0:
 		world.release_lounger(lounger)
 		lounger = -1
