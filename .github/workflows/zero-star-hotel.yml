@@ -1,4 +1,4 @@
-# Tests and builds Zero Star Hotel (Android, Web, Windows, Linux) whenever the game changes,
+# Tests and builds Zero Star Hotel (Android and Web) whenever the game changes,
 # and (optionally) pushes the builds to itch.io.
 #
 # Download builds from the run's "Artifacts" section (Actions tab -> latest run).
@@ -57,8 +57,6 @@ jobs:
           unzip -q -j "Godot_v${GODOT_VERSION}-stable_export_templates.tpz" \
             "templates/android_debug.apk" "templates/android_release.apk" \
             "templates/web_nothreads_release.zip" "templates/web_nothreads_debug.zip" \
-            "templates/windows_release_x86_64.exe" "templates/windows_debug_x86_64.exe" \
-            "templates/linux_release.x86_64" "templates/linux_debug.x86_64" \
             "templates/version.txt" -d "$templates"
           rm "Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
 
@@ -101,26 +99,16 @@ jobs:
           timeout 900 ../godot --headless --path . res://tests/smoke_test.tscn | tee smoke.log
           grep -q "SMOKE TEST PASSED" smoke.log
 
-      - name: Export all platforms
+      - name: Export Android and Web
         working-directory: zero-star-hotel
         run: |
-          mkdir -p build/android build/web build/windows build/linux
+          mkdir -p build/android build/web
           ../godot --headless --path . --export-$ANDROID_MODE "Android" build/android/ZeroStarHotel.apk
           ../godot --headless --path . --export-release "Web" build/web/index.html
-          ../godot --headless --path . --export-release "Windows" build/windows/ZeroStarHotel.exe
-          ../godot --headless --path . --export-release "Linux" build/linux/ZeroStarHotel.x86_64
           test -s build/android/ZeroStarHotel.apk
           test -s build/web/index.pck
-          test -s build/windows/ZeroStarHotel.exe
-          test -s build/linux/ZeroStarHotel.x86_64
           (cd build/web && zip -q -r ../zero-star-hotel-web.zip .)
-          (cd build/windows && zip -q -r ../zero-star-hotel-windows.zip .)
-          (cd build/linux && zip -q -r ../zero-star-hotel-linux.zip .)
           ls -la build build/android
-
-      - name: Check the Linux build starts
-        working-directory: zero-star-hotel
-        run: timeout 120 build/linux/ZeroStarHotel.x86_64 --headless --quit-after 120
 
       - uses: actions/upload-artifact@v4
         with:
@@ -130,14 +118,6 @@ jobs:
         with:
           name: zero-star-hotel-web
           path: zero-star-hotel/build/zero-star-hotel-web.zip
-      - uses: actions/upload-artifact@v4
-        with:
-          name: zero-star-hotel-windows
-          path: zero-star-hotel/build/zero-star-hotel-windows.zip
-      - uses: actions/upload-artifact@v4
-        with:
-          name: zero-star-hotel-linux
-          path: zero-star-hotel/build/zero-star-hotel-linux.zip
 
   # Uploads the builds to itch.io, one channel per platform ("html5" is played in the browser).
   # Runs only when asked: a tag like zsh-v1.0.0, or "Run workflow" with "Push the builds to
@@ -180,8 +160,6 @@ jobs:
         run: |
           version=$(grep -o 'version/name="[^"]*"' src/zero-star-hotel/export_presets.cfg | head -1 | cut -d'"' -f2)
           ./butler push dist/zero-star-hotel-web/zero-star-hotel-web.zip "$ITCH_PROJECT:html5" --userversion "${version:-dev}"
-          ./butler push dist/zero-star-hotel-windows/zero-star-hotel-windows.zip "$ITCH_PROJECT:windows" --userversion "${version:-dev}"
-          ./butler push dist/zero-star-hotel-linux/zero-star-hotel-linux.zip "$ITCH_PROJECT:linux" --userversion "${version:-dev}"
           if [ "$RELEASE_SIGNED" = "true" ]; then
             ./butler push dist/zero-star-hotel-apk/ZeroStarHotel.apk "$ITCH_PROJECT:android" --userversion "${version:-dev}"
           else

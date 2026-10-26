@@ -72,11 +72,30 @@ static func stool(i: int) -> Vector2:
 	return Vector2(BAR_X0 + 60.0 + (i % 7) * 66.0, GROUND_Y)
 
 
+## Sunloungers are full person-length (LOUNGER_LEN). Three sit on the decks in front of the
+## walkway (nearer the camera, so people walk behind them); the rest line the back of the pool
+## (further away, so people walk in front). Index order is the order they get bought.
+const LOUNGER_LEN := 150.0
+const LOUNGER_FRONT_Y := GROUND_Y + 30.0
+const LOUNGER_BACK_Y := GROUND_Y - 26.0
+const LOUNGER_SLOTS := [
+	[1365.0, 1], [2330.0, 1], [2495.0, 1],
+	[1660.0, -1], [1820.0, -1], [1980.0, -1], [2140.0, -1], [2300.0, -1], [1450.0, -1], [2460.0, -1],
+]
+
+
 static func lounger(i: int) -> Vector2:
-	# Left deck holds 4, the right deck the rest.
-	if i < 4:
-		return Vector2(1330.0 + i * 52.0, GROUND_Y)
-	return Vector2(2280.0 + (i - 4) * 46.0, GROUND_Y)
+	var slot: Array = LOUNGER_SLOTS[clampi(i, 0, LOUNGER_SLOTS.size() - 1)]
+	return Vector2(float(slot[0]), LOUNGER_FRONT_Y if int(slot[1]) > 0 else LOUNGER_BACK_Y)
+
+
+static func lounger_in_front(i: int) -> bool:
+	return int(LOUNGER_SLOTS[clampi(i, 0, LOUNGER_SLOTS.size() - 1)][1]) > 0
+
+
+## Where a sunbather's node goes so their body lies along the lounger (head at the backrest).
+static func lounger_lie_spot(i: int) -> Vector2:
+	return lounger(i) + Vector2(17.0, -32.0)
 
 
 static func swim_spot(rng: RandomNumberGenerator) -> Vector2:

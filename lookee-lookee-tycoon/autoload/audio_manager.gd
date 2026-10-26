@@ -56,7 +56,7 @@ func _ready() -> void:
 
 
 func _make_player(bus: String) -> AudioStreamPlayer:
-	var p := AudioStreamPlayer.new()
+	var p := WebAudioFix.setup(AudioStreamPlayer.new())
 	p.bus = bus
 	add_child(p)
 	return p

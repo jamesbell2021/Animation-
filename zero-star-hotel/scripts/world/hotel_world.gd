@@ -102,7 +102,7 @@ func _build() -> void:
 	manager = Helper.new()
 	actors.add_child(manager)
 	manager.setup(self, "manager", {}, {}, Vector2(HotelLayout.DESK_X + 90.0, HotelLayout.GROUND_Y))
-	_rave_player = AudioStreamPlayer.new()
+	_rave_player = WebAudioFix.setup(AudioStreamPlayer.new())
 	_rave_player.bus = "SFX"
 	_rave_player.volume_db = -14.0
 	add_child(_rave_player)
@@ -388,8 +388,10 @@ func _maybe_thief() -> void:
 func _start_lounger_war(a: Guest, b: Guest) -> void:
 	# The challenger storms out of the pool and squares up, towel in hand.
 	var spot := HotelLayout.lounger(b.lounger) if b.lounger >= 0 else b.position
-	a.position = spot + Vector2(34, 0)
-	b.position = spot + Vector2(-20, 0)
+	a.position = spot + Vector2(110, 0)
+	b.position = spot + Vector2(40, 0)
+	for g: Guest in [a, b]:
+		g.z_index = 8 if HotelLayout.lounger_in_front(maxi(b.lounger, 0)) else 0
 	a.face(b.position)
 	b.face(a.position)
 	_start_incident("lounger", spot, [a, b])

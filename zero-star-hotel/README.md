@@ -77,12 +77,15 @@ godot --headless --path . res://tests/smoke_test.tscn -- 14 30
 godot --path . res://tools/screenshots.tscn -- /tmp/shots
 # Regenerate the app icons and store cover from the character rig.
 godot --path . res://tools/make_icons.tscn
+# Film the trailer in-engine, then cut it (needs ffmpeg; xvfb-run on a server).
+GODOT=godot tools/trailer/record.sh && python3 tools/trailer/assemble.py
 ```
 
 ## Exporting
 
-`export_presets.cfg` has Android, Web, Windows and Linux presets. The GitHub Actions workflow
-`.github/workflows/zero-star-hotel.yml` runs the smoke test and builds all four on every push
+Zero Star Hotel ships for **Android** and the **web browser** only; `export_presets.cfg` has
+those two presets. The GitHub Actions workflow
+`.github/workflows/zero-star-hotel.yml` runs the smoke test and builds both on every push
 that touches this folder; download them from the run's **Artifacts**. Without the
 `HOTEL_ANDROID_KEYSTORE_*` secrets the APK is a debug build (uninstall the old one before
 installing a new one).

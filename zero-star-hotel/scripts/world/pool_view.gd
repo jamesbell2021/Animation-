@@ -32,6 +32,9 @@ func water_color() -> Color:
 func _draw() -> void:
 	if front_layer:
 		_draw_water_front()
+		for i in Upgrades.lounger_count():
+			if HotelLayout.lounger_in_front(i):
+				_lounger(i)
 		return
 	var x0 := HotelLayout.POOL_X0
 	var x1 := HotelLayout.POOL_X1
@@ -49,20 +52,12 @@ func _draw() -> void:
 		draw_string(_font, Vector2(x0 + 400, y - 8), "SWIM AT OWN RISK", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color("#c62828"))
 	if Upgrades.level("pool") >= 2:
 		_draw_slide()
-	# Sunloungers.
+	# Back-row sunloungers (front-deck ones are drawn by the front layer, over passers-by).
 	for i in Upgrades.lounger_count():
-		var p := HotelLayout.lounger(i)
-		var stripe: Color = [Color("#1e88e5"), Color("#e53935"), Color("#43a047"), Color("#fdd835")][i % 4]
-		var bed := PackedVector2Array([p + Vector2(-24, -18), p + Vector2(10, -18), p + Vector2(22, -44), p + Vector2(28, -42), p + Vector2(16, -12), p + Vector2(-24, -12)])
-		draw_colored_polygon(bed, Color("#fafafa"))
-		draw_line(p + Vector2(-22, -15), p + Vector2(10, -15), stripe, 4.0)
-		draw_line(p + Vector2(13, -18), p + Vector2(23, -40), stripe, 4.0)
-		bed.append(bed[0])
-		draw_polyline(bed, INK, 2.0)
-		draw_line(p + Vector2(-20, -12), p + Vector2(-20, 0), INK, 3.0)
-		draw_line(p + Vector2(14, -12), p + Vector2(14, 0), INK, 3.0)
+		if not HotelLayout.lounger_in_front(i):
+			_lounger(i)
 	# Palms on the terrace.
-	for x in [1310.0, 2560.0]:
+	for x in [1276.0, 2585.0]:
 		_palm(Vector2(x, y))
 	# Fence and signs.
 	if Upgrades.level("fence") > 0:
@@ -83,6 +78,29 @@ func _draw() -> void:
 		draw_line(c + Vector2(16, 0), c + Vector2(8, -90), INK, 5.0)
 		draw_rect(Rect2(c + Vector2(-20, -96), Vector2(40, 8)), Color("#e53935"))
 		ItemArt.draw_item(self, "lifebuoy", c + Vector2(0, -40), 26.0)
+
+
+## A full-length sunlounger: white frame, striped cushion, backrest raised at the head (left).
+func _lounger(i: int) -> void:
+	var p := HotelLayout.lounger(i)
+	var half := HotelLayout.LOUNGER_LEN * 0.5
+	var stripe: Color = [Color("#1e88e5"), Color("#e53935"), Color("#43a047"), Color("#fdd835")][i % 4]
+	var frame := Color("#fafafa")
+	# Legs.
+	for x: float in [-half + 14.0, -half + 50.0, half - 40.0, half - 10.0]:
+		draw_line(p + Vector2(x, -10), p + Vector2(x, 0), INK, 3.0)
+	# Backrest, tilted up behind the head.
+	var back := PackedVector2Array([p + Vector2(-half, -14), p + Vector2(-half + 34, -14), p + Vector2(-half + 10, -46), p + Vector2(-half - 2, -42)])
+	draw_colored_polygon(back, frame)
+	back.append(back[0])
+	draw_polyline(back, INK, 2.0)
+	draw_line(p + Vector2(-half + 4, -40), p + Vector2(-half + 24, -16), stripe, 5.0)
+	# Bed and cushion.
+	var bed := Rect2(p + Vector2(-half + 20, -18), Vector2(HotelLayout.LOUNGER_LEN - 20, 8))
+	draw_rect(bed, frame)
+	draw_rect(bed, INK, false, 2.0)
+	for k in 6:
+		draw_rect(Rect2(bed.position + Vector2(6 + k * 21, 2), Vector2(10, 4)), stripe)
 
 
 func _draw_slide() -> void:
