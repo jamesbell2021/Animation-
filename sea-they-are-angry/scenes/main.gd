@@ -156,8 +156,14 @@ func _ready() -> void:
 	Events.lore.connect(_on_lore)
 	Audio.start_ambience()
 
+	# A LAN game starts when the host says (Net.start_game), even headless.
+	if Net.online():
+		if Net.started:
+			Net.scene_ready(self)
+		else:
+			_show_title()
 	# Tests and CI run headless and start straight away; so does New Run from game over.
-	if DisplayServer.get_name() == "headless" or Run.quick_start:
+	elif DisplayServer.get_name() == "headless" or Run.quick_start:
 		Run.quick_start = false
 		begin_run(true, Players.wanted)
 	else:
@@ -178,6 +184,34 @@ func _show_title() -> void:
 	title.start_requested.connect(begin_run)
 	add_child(title)
 
+## A LAN game, begun on every machine together (Net.start_game): `humans` keepers, one
+## per machine in the lobby's order, and helpers make up the rest. The host's run is the
+## one that counts; a client's catches up from the host's state.
+func begin_lan(cfg: Dictionary) -> void:
+	begin_run(bool(cfg.get("cont", false)) and Net.is_host(), int(cfg.get("humans", 1)))
+	var names: Array = cfg.get("names", [])
+	for i in mini(names.size(), players.size()):
+		players[i].net_name = String(names[i])
+
+## LAN: a client has gone; its keeper is the computer's now (the light's or the camp's,
+## whichever has nobody).
+func keeper_left(slot: int) -> void:
+	if slot < 0 or slot >= players.size():
+		return
+	var p: Player = players[slot]
+	if not is_instance_valid(p) or p.ai:
+		return
+	p.remote = false
+	p.ai = true
+	p.in_menu = false
+	var camp_kept := false
+	for k in players:
+		if is_instance_valid(k) and k != p and k.ai and k.get_node_or_null("KeeperAI") != null and k.get_node("KeeperAI").role == "camp":
+			camp_kept = true
+	var brain := KeeperAI.new(p, "light" if camp_kept else "camp")
+	brain.name = "KeeperAI"
+	p.add_child(brain)
+
 ## Start (or continue) a run with n keepers.
 func begin_run(continue_save: bool, n: int) -> void:
 	if title != null:
@@ -189,12 +223,20 @@ func begin_run(continue_save: bool, n: int) -> void:
 	camera.current = true
 	lighthouse.lamp.showcase = false
 	lighthouse.lamp._set_state(Lamp.State.OFF)
-	Players.configure(n)
+	if Net.online():
+		# One keeper on each machine, on its own screen: no split screen to set up.
+		Players.wanted = clampi(n, 1, Players.MAX)
+		Players.devices = [Players.KEYBOARD_MOUSE]
+		Players.nodes.clear()
+	else:
+		Players.configure(n)
 	var total := Players.MAX if Players.helpers else Players.wanted
 	for i in total:
 		var p := Player.new()
 		p.idx = i
 		p.ai = i >= Players.wanted
+		p.remote = Net.is_host() and i > 0 and not p.ai
+		p.puppet = Net.is_client()
 		var at: Vector3 = SPAWNS[i % SPAWNS.size()]
 		# The last helper keeps the camp, and starts there; any other keeps the light.
 		var role := "camp" if i == total - 1 else "light"
@@ -206,18 +248,21 @@ func begin_run(continue_save: bool, n: int) -> void:
 		Players.nodes.append(p)
 		players.append(p)
 		add_child(p)
-		if p.ai:
-			p.add_child(KeeperAI.new(p, role))
-	player = players[0]
+		if p.ai and not p.puppet:
+			var brain := KeeperAI.new(p, role)
+			brain.name = "KeeperAI"
+			p.add_child(brain)
+	player = players[clampi(Net.my_slot, 0, players.size() - 1)] if Net.is_client() else players[0]
 	if director == null:
 		director = CameraDirector.new()
 		director.main_camera = camera
 		add_child(director)
-	director.players = players
+	# On LAN each machine's screen follows its own keeper only.
+	director.players = [player] if Net.online() else players
 	hud.player = player
 	hud.players = players
 	hud.visible = true
-	var d := SaveSys.load_run() if continue_save else {}
+	var d := SaveSys.load_run() if continue_save and not Net.is_client() else {}
 	if not d.is_empty():
 		Run.start_loaded(d)
 	else:
@@ -243,13 +288,15 @@ func begin_run(continue_save: bool, n: int) -> void:
 	_apply_lighting(Cycle.Phase.DAY, 0.0)
 	atmosphere.apply(Cycle.Phase.DAY, 0.0)
 	Cycle.start(Cycle.Phase.DAY)
+	if Net.online():
+		Net.game_started(self)
 
 func _process(delta: float) -> void:
 	if _title_cam != null:
 		_title_t += delta * TITLE_ORBIT_SPEED
 		var a := _title_t * TAU + 0.6
 		_title_cam.look_at_from_position(Vector3(sin(a) * 38.0, 15.0, cos(a) * 38.0), Vector3(-3.0, 6.0, 0.0), Vector3.UP)
-	if Run.active and Input.is_action_just_pressed("skip"):
+	if Run.active and not Net.is_client() and Input.is_action_just_pressed("skip"):
 		Cycle.skip()
 	_alarms(delta)
 
@@ -324,7 +371,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 # Foghorn alarms: a guttering lamp blasts every few seconds; a failing lighthouse warns once a night.
 func _alarms(delta: float) -> void:
-	if not Run.active:
+	if not Run.active or Net.is_client():
 		return
 	var lamp := lighthouse.lamp
 	if lamp.state == Lamp.State.GUTTERING:
@@ -786,7 +833,7 @@ func _on_phase_changed(p: int) -> void:
 		_warned_low = false
 	if p == Cycle.Phase.DUSK:
 		_tally = {}
-	if p == Cycle.Phase.DAWN and Run.active:
+	if p == Cycle.Phase.DAWN and Run.active and not Net.is_client():
 		_wash_up_oil()
 		_wash_up_shells()
 		_researched = Research.finish() if camp.desk.usable() else ""

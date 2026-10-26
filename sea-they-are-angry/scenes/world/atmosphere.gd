@@ -228,12 +228,12 @@ func _process(delta: float) -> void:
 	_bell_t -= delta
 	if _bell_t <= 0.0:
 		_bell_t = randf_range(7.0, 14.0)
-		Audio.sfx("bell", _buoy.global_position, -6.0, 0.03)
+		Audio.ambient_sfx("bell", _buoy.global_position, -6.0, 0.03)
 	_creep_t -= delta
 	if _creep_t <= 0.0:
 		_creep_t = randf_range(9.0, 20.0)
 		var a := randf() * TAU
 		var at := Vector3(sin(a) * 22.0, 1.0, cos(a) * 22.0)
 		var key: String = ["creak", "whisper", "groan", "whisper"][randi() % 4]
-		Audio.sfx(key, at, -10.0, 0.25)
+		Audio.ambient_sfx(key, at, -10.0, 0.25)
 

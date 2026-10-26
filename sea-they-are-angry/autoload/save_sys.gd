@@ -4,7 +4,16 @@ const RUN_PATH := "user://run.json"
 const PROFILE_PATH := "user://profile.json"
 
 func save_run() -> void:
-	var d := {
+	# A LAN client's run is the host's: only the host saves it.
+	if Net.is_client():
+		return
+	var f := FileAccess.open(RUN_PATH, FileAccess.WRITE)
+	if f:
+		f.store_string(JSON.stringify(snapshot()))
+
+## The run as the save keeps it (and as the LAN host sends it to the clients).
+func snapshot() -> Dictionary:
+	return {
 		"night": Run.night,
 		"difficulty": Run.difficulty,
 		"anger": Anger.value,
@@ -27,9 +36,6 @@ func save_run() -> void:
 		"barrels": Run.barrels,
 		"weather_seed": Run.weather_seed,
 	}
-	var f := FileAccess.open(RUN_PATH, FileAccess.WRITE)
-	if f:
-		f.store_string(JSON.stringify(d))
 
 func load_run() -> Dictionary:
 	if not FileAccess.file_exists(RUN_PATH):

@@ -157,8 +157,37 @@ func _on_lighthouse_destroyed() -> void:
 	if state == State.BURNING:
 		_set_state(State.GUTTERING)
 
+## LAN, on a client: where the host has the lamp pointing.
+var _net_yaw := 0.0
+
+func net_apply(a: Array) -> void:
+	_net_yaw = float(a[0])
+	if int(a[1]) != state:
+		# As _set_state, but the host decides when the lamp has gone dark for good.
+		state = int(a[1])
+		_update_visibility()
+		state_changed.emit(state)
+		Events.lamp_state_changed.emit(state)
+	if int(a[2]) != mode:
+		mode = int(a[2])
+		_apply_mode()
+	fuel = float(a[3])
+	if int(a[4]) != _smothered:
+		var was := is_smothered()
+		_smothered = int(a[4])
+		if was != is_smothered():
+			_apply_mode()
+			smothered_changed.emit(is_smothered())
+
 func _physics_process(delta: float) -> void:
 	if not is_lit():
+		return
+	if Net.is_client() and Net.playing():
+		# A client's lamp turns as the host's does; its beam still lights what it falls on.
+		yaw = lerp_angle(yaw, _net_yaw, 1.0 - exp(-delta * Net.FOLLOW))
+		_pivot.rotation.y = yaw
+		_sweep(delta)
+		_flicker(delta)
 		return
 	if showcase:
 		_aim(delta)

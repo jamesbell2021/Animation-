@@ -611,3 +611,40 @@ This is step 1 of five: the place, the crossing, the camera and the helpers. Nex
   The weapons themselves still have to be made or taken at the shed, so the workbench still matters. Traps and the lamp's fuel are not ammunition and cost as usual.
 - **Group sizes are rounded to nearest** (at least 1), not up, so the calm sea's ×0.7 actually removes a creature from small groups. This changes nothing on the normal sea: the co-op ×1.5 only ever leaves halves, which round up either way (`Spawner.group_size`).
 - **The tests run on the normal sea.** `slice_arms.gd` checks the three seas' group sizes, the free ammunition, the damage, the hard sea's smaller shed and the save.
+
+## LAN play (owner's request: "local network play so on LAN you don't need split screen")
+
+- **One keeper to each machine, each on a screen of its own.** Up to three machines; the computer's helpers make up three keepers as ever. Title screen → Play on the LAN → Host a game, or Join a game (hosts on the LAN show up by themselves; or type the host's address). The host sees who's in the lobby and starts a new run or continues its save. The host's sea (difficulty) is the game's. Nobody can join a game under way.
+- **The host runs the game (`autoload/net.gd`).** Godot's ENet, port 24686 (UDP), with a broadcast on 24687 each second while a lobby is open, so clients can find it. A client:
+  - **sends** its keeper's controls 60 times a second: movement, aim, the mouse's point on the ground, and the buttons held. Presses are counted, not flagged, so a lost packet loses no press;
+  - **gets snapshots** 30 times a second (unreliable, ordered): every keeper, every creature, the lamp, the searchlights, and the day's clock;
+  - **gets the state** 4 times a second (reliable): the run as the save keeps it, so the store, research, crops, flares and what's carried; plus the buildings' health, the trap cairns, what's washed up, the generator and the stove;
+  - **gets events** as they happen:
+    - sounds and effects (unreliable, batched once a frame);
+    - messages, warnings and reports;
+    - flares, arrows and petrol bombs in flight;
+    - creatures dying (as a corpse there too);
+    - the end of the run and a new run.
+- **Puppets.** On a client every keeper and creature is a puppet: it eases toward the host's position (it snaps when more than 4 to 5 m out), turns as the host has it, and plays the host's one-off clips and ragdolls (`CharacterRig.shot_seq`).
+  - **Puppets can't be hurt and don't act.** The client's spawner, creatures' minds, traps, generator, alarms, saves and dawn are all off.
+  - **Some look is still worked out on the client:** its lamp and searchlights light what they fall on, so creatures flinch and smoke there too, but the damage is the host's.
+  - **Sound and effects:** the host's sounds and effects are sent over and played there, and the client's own copies are held back so nothing plays twice. The sea, the weather and the interface make their own on each machine.
+- **Menus across machines.** A client's keeper at the cottage, the shed, a cairn or the research desk opens a menu run on the host and shown on the client. A pick goes back to the host, and the rows come back refreshed.
+  - **Shared menus:** a menu open on another machine doesn't stop the host using a menu of its own.
+  - **The keeper stands still** while it's open, as on one screen.
+- **Leaving:**
+  - **A client leaves:** its keeper carries on, run by the computer: the camp's warden if nobody keeps the camp, otherwise a lighthouse helper.
+  - **The host leaves:** everyone else is put back on the title screen, which says why.
+  - **Game over:** only the host can start the next run, and everyone's game reloads into it together.
+- **On the LAN:**
+  - **Pause:** it shows the menu but stops nothing, since the night goes on for everyone else.
+  - **Skipping the day:** only the host can.
+- **Not sent, yet:** the ink a Squid squirts, and the boathook thrown at a Smotherer, aren't shown in flight on clients (their effects are).
+- **Tests:** `tests/run_lan.sh` runs a host and a client as two Godot processes on this machine (`GODOT=... tests/run_lan.sh`). They step along together:
+  - **Joining:** the lobby, and the keeper slots.
+  - **Moving:** the client's keeper walking on both machines.
+  - **What the client sees:** the host's creature, the battered fence, the store, dusk and the lamp, the message, and effects and sounds arriving.
+  - **The shed's menu:** opened on the client, run on the host; the shotgun taken.
+  - **Firing:** the client's shot hitting the host's Bloated.
+  - **The run's end:** on both machines.
+  - **Afterwards:** a New Run for everyone, and the client leaving with its keeper handed to the computer.

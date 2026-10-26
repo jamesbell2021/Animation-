@@ -56,6 +56,12 @@ func _unhandled_input(ev: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 func toggle() -> void:
+	# On the LAN the night goes on for everyone else: the menu shows, nothing stops.
+	if Net.started:
+		_panel.visible = not _panel.visible
+		if _panel.visible:
+			_resume.grab_focus()
+		return
 	var paused := not get_tree().paused
 	get_tree().paused = paused
 	_panel.visible = paused
@@ -64,6 +70,7 @@ func toggle() -> void:
 
 func _quit_to_title() -> void:
 	get_tree().paused = false
+	Net.leave()
 	Run.active = false
 	Cycle.stop()
 	get_tree().reload_current_scene()

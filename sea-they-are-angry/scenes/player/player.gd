@@ -152,6 +152,17 @@ var has_hook := true
 var arsenal: Arsenal
 ## What a blow from this keeper is, for the dawn tally ("hook", "arrow", "shot", ...).
 var hit_kind := "hook"
+## LAN, on the host: this keeper's person plays on another machine; its controls come
+## over the network (Net.input_for).
+var remote := false
+## LAN, on a client: every keeper is a puppet, going where the host says (net_apply).
+var puppet := false
+## A puppet's prompt, as the host has it.
+var net_prompt := ""
+## LAN: the name of the person playing this keeper (shown over it).
+var net_name := ""
+var _net: Array = []
+var _net_shot := -1
 # Reeling from a blow: slid back over the stagger clip's slide, no control meanwhile.
 var _stagger_t := 0.0
 var _stagger_len := 0.45
@@ -392,9 +403,13 @@ func _act(a: String) -> String:
 # An action pressed this frame, or held: from the keeper's own controls, or for a
 # helper keeper, from its KeeperAI (which calls the one-off actions directly).
 func _just(a: String) -> bool:
+	if remote:
+		return Net.just(idx, a)
 	return not ai and Input.is_action_just_pressed(_act(a))
 
 func _held(a: String) -> bool:
+	if remote:
+		return Net.held(idx, a)
 	return bool(ai_held.get(a, false)) if ai else Input.is_action_pressed(_act(a))
 
 func aim_yaw() -> float:
@@ -404,8 +419,13 @@ func aim_dir() -> Vector3:
 	return _aim
 
 func _physics_process(delta: float) -> void:
+	if puppet:
+		_puppet_step(delta)
+		return
 	if not Run.active:
 		return
+	if remote:
+		Net.input_frame(idx)
 	_update_tag()
 	if not downed:
 		_needs(delta)
@@ -617,6 +637,13 @@ func _pose_rig(swing: float, arm: float) -> void:
 	rig.shift("hips", Vector3(0.0, absf(sin(_walk_phase)) * 0.05 * _move_amount + sin(_breath * 2.0) * 0.006, 0.0))
 
 func _update_aim() -> void:
+	if remote:
+		var inp := Net.input_for(idx)
+		var a: Vector3 = inp.get("aim", _aim)
+		if a.length() > 0.1:
+			_aim = Vector3(a.x, 0.0, a.z).normalized()
+		_lamp_point = inp.get("point", Vector3.INF) if operating or manning != null else Vector3.INF
+		return
 	if ai:
 		# A helper looks where it walks unless its brain has turned it to a target.
 		var v := Vector2(velocity.x, velocity.z)
@@ -682,7 +709,13 @@ static func _ground_hit(from: Vector3, dir: Vector3) -> Vector3:
 	return from + dir * t_end
 
 func _move(delta: float) -> void:
-	var input := ai_move.limit_length(1.0) if ai else Input.get_vector(_act("move_left"), _act("move_right"), _act("move_up"), _act("move_down"))
+	var input: Vector2
+	if remote:
+		input = Vector2(Net.input_for(idx).get("move", Vector2.ZERO)).limit_length(1.0)
+	elif ai:
+		input = ai_move.limit_length(1.0)
+	else:
+		input = Input.get_vector(_act("move_left"), _act("move_right"), _act("move_up"), _act("move_down"))
 	var dir := Vector3(input.x, 0.0, input.y)
 	var spd := SPEED
 	if _sprint_cd > 0.0:
@@ -719,9 +752,10 @@ func _switch_weapon() -> void:
 		arsenal.cycle(1)
 	elif _just("weapon_prev"):
 		arsenal.cycle(-1)
-	if idx == 0 and not ai:
+	if (idx == 0 or remote) and not ai:
 		for i in Arsenal.ORDER.size():
-			if InputMap.has_action("weapon_%d" % (i + 1)) and Input.is_action_just_pressed("weapon_%d" % (i + 1)):
+			var a := "weapon_%d" % (i + 1)
+			if (remote and _just(a)) or (not remote and InputMap.has_action(a) and Input.is_action_just_pressed(a)):
 				arsenal.select(Arsenal.ORDER[i])
 
 func _attack() -> void:
@@ -1047,7 +1081,9 @@ func flares() -> int:
 ## Where a flare would land: under the mouse, or ahead along the aim on a pad.
 func flare_point() -> Vector3:
 	var to := Vector3.INF
-	if camera != null and idx == 0 and (Players.devices.size() <= idx or Players.devices[idx] == Players.KEYBOARD_MOUSE):
+	if remote:
+		to = Net.input_for(idx).get("point", Vector3.INF)
+	elif camera != null and idx == 0 and (Players.devices.size() <= idx or Players.devices[idx] == Players.KEYBOARD_MOUSE):
 		var mp := get_viewport().get_mouse_position()
 		to = _ground_hit(camera.project_ray_origin(mp), camera.project_ray_normal(mp))
 	if to == Vector3.INF:
@@ -1269,6 +1305,8 @@ func _find_interactable() -> Node:
 	return best
 
 func interact_prompt() -> String:
+	if puppet:
+		return net_prompt
 	var mate := _downed_mate()
 	if mate != null:
 		return _keys("[E] Hold to revive %s  (%d%%)" % [mate.keeper_name(), roundi(mate.revive_progress * 100.0)])
@@ -1307,9 +1345,11 @@ func _update_tag() -> void:
 	if _tag == null or not _tag.visible:
 		return
 	var text := keeper_name() if ai else "P%d %s" % [idx + 1, keeper_name()]
+	if net_name != "" and not ai:
+		text = "%s (%s)" % [keeper_name(), net_name]
 	if downed:
 		text += "\nDOWN  %d%%" % roundi(revive_progress * 100.0)
-	elif idx > 0 and not ai:
+	elif idx > 0 and not ai and not Net.online():
 		var prompt := interact_prompt()
 		if prompt != "":
 			text += "\n" + prompt
@@ -1347,7 +1387,7 @@ func revive(fraction: float) -> void:
 	Events.message.emit("%s is back on their feet." % keeper_name())
 
 func take_damage(amount: int, from: Vector3 = Vector3.INF) -> void:
-	if hp <= 0 or downed or not Run.active or _inside:
+	if puppet or hp <= 0 or downed or not Run.active or _inside:
 		return
 	amount = maxi(1, roundi(float(amount) * Difficulty.keeper_damage()))
 	hp = maxi(0, hp - amount)
@@ -1372,6 +1412,109 @@ func take_damage(amount: int, from: Vector3 = Vector3.INF) -> void:
 		go_down()
 		if Players.all_down():
 			Run.end_run("Every keeper is down.")
+
+# ---- LAN ----
+
+## The host's word on this keeper, for the clients (see net_apply).
+func net_snap() -> Array:
+	var flags := 0
+	if downed:
+		flags |= 1
+	if _inside:
+		flags |= 2
+	if rig != null and rig.is_ragdoll():
+		flags |= 4
+	if operating:
+		flags |= 8
+	if _climb_t >= 0.0:
+		flags |= 16
+	if _reviving:
+		flags |= 32
+	if visible:
+		flags |= 64
+	if has_hook:
+		flags |= 128
+	var light := -1
+	var camp := get_tree().get_first_node_in_group("camp_root")
+	if manning != null and camp != null:
+		light = camp.searchlights.find(manning)
+	return [global_position, facing, velocity, hp, max_hp, hunger, warmth, flags, revive_progress,
+		_job_tool, _swing_t, arsenal.weapon, arsenal._flaming, arsenal.draw,
+		interact_prompt() if remote else "", rig.shot_seq if rig != null else 0, rig.last_shot if rig != null else "",
+		light, _aim]
+
+## A client: take the host's word on this keeper.
+func net_apply(a: Array) -> void:
+	_net = a
+	hp = int(a[3])
+	max_hp = int(a[4])
+	hunger = float(a[5])
+	warmth = float(a[6])
+	var flags := int(a[7])
+	var was_down := downed
+	downed = flags & 1 != 0
+	revive_progress = float(a[8])
+	_inside = flags & 2 != 0
+	visible = flags & 64 != 0
+	operating = flags & 8 != 0
+	_reviving = flags & 32 != 0
+	var tool := String(a[9])
+	var hook := flags & 128 != 0
+	var weapon := String(a[11])
+	if tool != _job_tool or hook != has_hook or weapon != arsenal.weapon:
+		_job_tool = tool
+		has_hook = hook
+		arsenal.weapon = weapon
+		_hammer.visible = tool == "hammer"
+		_can.visible = tool == "can"
+		arsenal.refresh()
+	_swing_t = float(a[10])
+	arsenal.show_flame(bool(a[12]))
+	arsenal.draw = float(a[13])
+	net_prompt = String(a[14])
+	var camp := get_tree().get_first_node_in_group("camp_root")
+	var light := int(a[17])
+	manning = camp.searchlights[light] if camp != null and light >= 0 and light < camp.searchlights.size() else null
+	if rig != null:
+		var seq := int(a[15])
+		if _net_shot >= 0 and seq != _net_shot and String(a[16]) != "":
+			rig.shot(String(a[16]))
+		_net_shot = seq
+		var rag := flags & 4 != 0
+		if rag and not rig.is_ragdoll():
+			rig.ragdoll(Vector3(0.0, 6.0, 0.0) * RAG_MASS * 0.2, "chest")
+		elif not rag and rig.is_ragdoll() and not rig.is_getting_up():
+			rig.get_up(CharacterRig.GET_UP_TIME)
+	if downed != was_down:
+		collision_layer = 0 if downed else 2
+	# Its own keeper's aim is the client's own (Net._send_input); the others', the host's.
+	if self != get_tree().current_scene.get("player"):
+		_aim = a[18]
+
+# A puppet's frame: catch up with where the host has it, and look the part.
+func _puppet_step(delta: float) -> void:
+	_update_tag()
+	_flicker += delta
+	if _lantern_light.visible:
+		_lantern_light.light_energy = 1.5 + 0.12 * sin(_flicker * 11.0) * sin(_flicker * 7.3)
+	if _net.is_empty():
+		return
+	var ragdolled := rig != null and rig.is_ragdoll()
+	if not ragdolled:
+		var target: Vector3 = _net[0]
+		var k := 1.0 - exp(-delta * Net.FOLLOW)
+		global_position = target if global_position.distance_to(target) > 4.0 else global_position.lerp(target, k)
+		facing = lerp_angle(facing, float(_net[1]), k)
+		rotation.y = facing
+	velocity = _net[2]
+	_swing_t = maxf(0.0, _swing_t - delta)
+	if downed or ragdolled or _inside:
+		return
+	if _clips() and int(_net[7]) & 16 != 0:
+		rig.locomote(0.0)
+		rig.activity("climb")
+		return
+	_animate(delta)
 
 func heal(n: int) -> void:
 	hp = mini(max_hp, hp + n)

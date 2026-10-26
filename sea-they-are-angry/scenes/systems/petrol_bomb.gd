@@ -16,6 +16,7 @@ var to := Vector3.ZERO
 var _t := 0.0
 
 func _ready() -> void:
+	Net.relay_shot("bomb", [from, to])
 	global_position = from
 	var glass := StandardMaterial3D.new()
 	glass.albedo_color = Color(0.3, 0.55, 0.3, 0.7)

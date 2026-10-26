@@ -121,6 +121,9 @@ func _on_phase_changed(p: int) -> void:
 		_omens.clear()
 
 func _on_night_progress(t: float) -> void:
+	# On a LAN client the creatures come from the host.
+	if Net.is_client():
+		return
 	while not _queue.is_empty() and float(_queue[0]["t"]) <= t:
 		var entry: Dictionary = _queue.pop_front()
 		_queue_group(entry)
@@ -201,7 +204,7 @@ func _spawn_eel(at: Vector3) -> void:
 	enemies_root.add_child(e)
 
 func _process(delta: float) -> void:
-	if not Run.active:
+	if not Run.active or Net.is_client():
 		return
 	_churn(delta)
 	if _pending.is_empty():

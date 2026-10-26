@@ -108,7 +108,16 @@ func _night() -> bool:
 	return Cycle.phase == Cycle.Phase.DUSK or Cycle.phase == Cycle.Phase.NIGHT
 
 func _update_running() -> void:
-	var want := Run.active and _night() and fuel > 0.0 and not is_destroyed()
+	if Net.is_client() and Net.playing():
+		return
+	_set_running(Run.active and _night() and fuel > 0.0 and not is_destroyed())
+
+## A LAN client: running and fuel as the host has them.
+func net_apply(f: float, run: bool) -> void:
+	fuel = f
+	_set_running(run)
+
+func _set_running(want: bool) -> void:
 	if want == running:
 		return
 	running = want
@@ -129,6 +138,8 @@ func _update_running() -> void:
 
 func _physics_process(delta: float) -> void:
 	_flick += delta
+	if Net.is_client() and Net.playing():
+		return
 	if not running:
 		if Run.active and _night() and fuel > 0.0 and not is_destroyed():
 			_update_running()

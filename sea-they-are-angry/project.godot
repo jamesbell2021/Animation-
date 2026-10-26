@@ -21,6 +21,7 @@ SaveSys="*res://autoload/save_sys.gd"
 InputSetup="*res://autoload/input_setup.gd"
 Audio="*res://autoload/audio.gd"
 Players="*res://autoload/players.gd"
+Net="*res://autoload/net.gd"
 
 [display]
 

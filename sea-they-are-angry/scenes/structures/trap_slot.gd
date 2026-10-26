@@ -168,7 +168,7 @@ func _on_wall_down() -> void:
 		Events.message.emit("A sandbag wall is down!")
 
 func _physics_process(delta: float) -> void:
-	if not is_armed():
+	if not is_armed() or (Net.is_client() and Net.playing()):
 		return
 	if kind == "sandbags":
 		return
@@ -264,6 +264,23 @@ func _spring(e: Enemy) -> bool:
 		tw.tween_property(_trap, "scale", Vector3(1.25, 0.6, 1.25), 0.06)
 		tw.tween_property(_trap, "scale", Vector3.ONE, 0.2)
 	return true
+
+# ---- LAN ----
+
+func net_snap() -> Array:
+	return [kind, uses, wall.hp if wall != null and is_instance_valid(wall) else -1, _wire_wear]
+
+func net_apply(a: Array) -> void:
+	var k := String(a[0])
+	if k != kind:
+		kind = k
+		if k == "sandbags" and (wall == null or not is_instance_valid(wall) or wall.is_destroyed()):
+			_raise_wall()
+		_refresh()
+	uses = int(a[1])
+	_wire_wear = float(a[3])
+	if int(a[2]) >= 0 and wall != null and is_instance_valid(wall) and wall.hp != int(a[2]):
+		wall.net_set_hp(int(a[2]))
 
 # ---- looks ----
 

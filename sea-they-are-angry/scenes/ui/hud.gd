@@ -32,6 +32,7 @@ var _report_label: Label
 var _report_t := 0.0
 var _over: Control
 var _over_reason: Label
+var _over_btn: Button
 var _over_stats: Label
 var _msg_t := 0.0
 var _warn_t := 0.0
@@ -163,6 +164,7 @@ func _build_game_over(root: Control) -> void:
 	btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	btn.pressed.connect(_on_new_run)
 	box.add_child(btn)
+	_over_btn = btn
 
 func _process(delta: float) -> void:
 	_phase_label.text = "Night %d — %s  (%s)" % [Run.night, Cycle.phase_name(), _mmss(Cycle.time_left)]
@@ -291,10 +293,12 @@ func _show_warning(text: String) -> void:
 
 ## A centred warning, used by the foghorn alarms.
 func warn(text: String) -> void:
+	Net.relay_warn(text)
 	_show_warning(text)
 
 ## The keeper's log for the night just survived: a heading and a few lines under it.
 func report(heading: String, lines: Array, time: float = REPORT_TIME) -> void:
+	Net.relay_report(heading, lines, time)
 	_show_warning(heading)
 	_warn_t = time
 	_report_label.text = "\n".join(lines)
@@ -309,12 +313,18 @@ func _on_phase_changed(p: int) -> void:
 		_show_warning("They are coming.")
 
 func _on_run_ended(reason: String, night: int) -> void:
+	if Net.is_client():
+		_over_btn.text = "The host starts the next run"
+		_over_btn.disabled = true
 	_over_reason.text = reason
 	_over_stats.text = "Reached night %d · Best night %d" % [night, SaveSys.load_best()]
 	_over.visible = true
 	_prompt_label.text = ""
 
 func _on_new_run() -> void:
+	if Net.is_host() and Net.started:
+		Net.restart()
+		return
 	Run.quick_start = true
 	Run.start_new()
 	SaveSys.clear_run()

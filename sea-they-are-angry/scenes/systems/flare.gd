@@ -21,6 +21,7 @@ var _core: MeshInstance3D
 var _smoke: GPUParticles3D
 
 func _ready() -> void:
+	Net.relay_shot("flare", [from, to])
 	global_position = from
 	_core = MeshInstance3D.new()
 	var sm := SphereMesh.new()

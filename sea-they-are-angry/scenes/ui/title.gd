@@ -50,10 +50,14 @@ func _ready() -> void:
 	_sea_btn = _button(box, "", _cycle_sea)
 	_sea_btn.gui_input.connect(_on_sea_input)
 	_sea_note = _label(box, "", 16, Color(0.75, 0.8, 0.85))
+	_button(box, "Play on the LAN", _on_lan)
 	_button(box, "Credits", _on_credits)
 	_button(box, "Quit", _on_quit)
 	_device_label = _label(box, "", 16, Color(0.75, 0.8, 0.85))
 	_device_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	if Net.last_error != "":
+		_label(box, Net.last_error, 18, Color(1.0, 0.55, 0.45))
+		Net.last_error = ""
 	var best := SaveSys.load_best()
 	if best > 0:
 		_label(box, "Best: night %d" % best, 18, GOLD)
@@ -141,6 +145,11 @@ func _on_continue() -> void:
 func _on_new() -> void:
 	SaveSys.clear_run()
 	start_requested.emit(false, _keepers)
+
+func _on_lan() -> void:
+	var lan := preload("res://scenes/ui/lan_lobby.gd").new()
+	add_child(lan)
+	lan.closed.connect(func() -> void: _first.grab_focus())
 
 func _on_credits() -> void:
 	var c := preload("res://studio/credits.gd").open(self, "Sea They Are Angry", [

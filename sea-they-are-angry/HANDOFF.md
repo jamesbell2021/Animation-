@@ -35,6 +35,7 @@ godot --headless --path sea-they-are-angry --script res://tests/slice_survival.g
 godot --headless --path sea-they-are-angry --script res://tests/slice_research.gd
 godot --headless --path sea-they-are-angry --script res://tests/slice_camp_raid.gd
 godot --headless --path sea-they-are-angry --script res://tests/slice_arms.gd
+GODOT=godot sea-they-are-angry/tests/run_lan.sh   # the LAN test: a host and a client, two processes
 ```
 
 On Windows use `Godot_v4.3-stable_win64_console.exe` in place of `godot`. All twelve tests ended in PASS on Godot 4.3 stable. The holm, survival, research and camp-raid tests reach the camp's classes only through the scene, never by name: `--script` compiles whatever a test names before the autoloads exist, and that left a camp script unusable. The older seven turn the helper keepers off (`Players.helpers = false`) because they script every keeper themselves; `slice_holm.gd` covers the holm, the bridge, the split screen and the helpers. Run them one at a time: they share `user://run.json`. For balance, `tools/playtest.gd` plays several nights with a bot and prints a line per night (see README). `slice_behaviour.gd` covers every item of the slice's verify list, from W moving up-screen to New Run restarting at night 1.

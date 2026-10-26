@@ -323,7 +323,7 @@ func _scuttle(delta: float) -> void:
 # ---- damage ----
 
 func take_damage(amount: int, from_dir: Vector3 = Vector3.ZERO, source: Node = null) -> void:
-	if state == &"Emerge" or hp <= 0:
+	if puppet or state == &"Emerge" or hp <= 0:
 		return
 	var mult := 1.0
 	var fwd := Vector3(-sin(rotation.y), 0.0, -cos(rotation.y))
@@ -353,6 +353,8 @@ func _note_hit(p: Player) -> void:
 		_hits[p] = []
 
 func in_light(mode: int, _delta: float) -> void:
+	if puppet:
+		return
 	# The shell shrugs off the beam; but in the eyes mid-wind-up, it reels.
 	if mode == Lamp.Mode.FOCUSED and state == &"WindUp" and _stagger_cd <= 0.0:
 		_stagger_cd = STAGGER_COOLDOWN

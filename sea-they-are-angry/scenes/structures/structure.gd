@@ -47,6 +47,16 @@ func _update_smoke() -> void:
 		_smoke.queue_free()
 		_smoke = null
 
+## A LAN client: health as the host has it (no sounds or splinters: the host sends those).
+func net_set_hp(v: int) -> void:
+	var was := hp
+	hp = clampi(v, 0, max_hp)
+	health_changed.emit(hp, max_hp)
+	_refresh()
+	_update_smoke()
+	if was > 0 and hp == 0:
+		destroyed.emit()
+
 func is_damaged() -> bool:
 	return hp < max_hp
 

@@ -148,6 +148,11 @@ func _build_bio() -> void:
 		var g := Geo.sphere(_mesh, r, Color.WHITE, Vector3(sin(a) * 0.25, 0.28 + 0.05 * float(i % 2), cos(a) * 0.2))
 		g.material_override = glow
 
+## A LAN client: there to gather or not, as the host has it.
+func net_set_available(v: bool) -> void:
+	available = v
+	_mesh.visible = v
+
 func _on_phase_changed(p: int) -> void:
 	if p == Cycle.Phase.DAWN and not once:
 		available = true

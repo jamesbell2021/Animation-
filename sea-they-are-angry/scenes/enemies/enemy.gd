@@ -93,7 +93,16 @@ var _sink_t := 0.0
 var _fall_top := -INF
 var _last_wp := Vector3.INF
 
+## LAN: this creature's id, the same on every machine (given by the host).
+var net_id := 0
+## LAN, on a client: a puppet, going where the host says. It can't be hurt or act.
+var puppet := false
+var _net: Array = []
+var _net_shot := -1
+
 func _ready() -> void:
+	if Net.is_host() and Net.playing() and net_id == 0:
+		net_id = Net.new_enemy_id()
 	add_to_group("enemies")
 	collision_layer = 8
 	# No ground layer: creatures follow Terrain.height_at instead, so the beach slope never snags them.
@@ -282,6 +291,8 @@ func _on_got_up() -> void:
 func _ragdoll_corpse(impulse: Vector3 = Vector3.ZERO) -> bool:
 	if rig == null:
 		return false
+	if net_id > 0 and Net.is_host():
+		Net.relay_corpse(net_id, impulse)
 	remove_from_group("enemies")
 	collision_layer = 0
 	collision_mask = 0
@@ -293,6 +304,59 @@ func _ragdoll_corpse(impulse: Vector3 = Vector3.ZERO) -> bool:
 	tw.tween_interval(CORPSE_TIME)
 	tw.tween_callback(queue_free)
 	return true
+
+# ---- LAN ----
+
+## The host's word on this creature, for the clients (see net_apply).
+func net_snap() -> Array:
+	var flags := 0
+	if rig != null and rig.is_ragdoll():
+		flags |= 1
+	if visible:
+		flags |= 2
+	if burning > 0.0:
+		flags |= 4
+	return [net_id, get_script().resource_path, global_position, rotation.y, velocity, String(state), hp, flags,
+		rig.shot_seq if rig != null else 0, rig.last_shot if rig != null else "", _net_extra()]
+
+## Virtual: anything more a puppet needs to look right (the Eel's body).
+func _net_extra() -> Variant:
+	return null
+
+func net_apply(a: Array) -> void:
+	_net = a
+	state = StringName(String(a[5]))
+	hp = int(a[6])
+	var flags := int(a[7])
+	visible = flags & 2 != 0
+	burning = BURN_HOLD if flags & 4 != 0 else 0.0
+	if rig != null:
+		var seq := int(a[8])
+		if _net_shot >= 0 and seq != _net_shot and String(a[9]) != "":
+			rig.shot(String(a[9]))
+		_net_shot = seq
+		var rag := flags & 1 != 0
+		if rag and not rig.is_ragdoll():
+			rig.ragdoll(Vector3(0.0, 4.0, 0.0) * mass, "chest")
+		elif not rag and rig.is_ragdoll() and not rig.is_getting_up():
+			rig.get_up(CharacterRig.GET_UP_TIME)
+	_net_apply_extra(a[10])
+
+func _net_apply_extra(_extra: Variant) -> void:
+	pass
+
+func _puppet_step(delta: float) -> void:
+	if _net.is_empty():
+		return
+	if rig == null or not rig.is_ragdoll():
+		var target: Vector3 = _net[2]
+		var k := 1.0 - exp(-delta * Net.FOLLOW)
+		global_position = target if global_position.distance_to(target) > 5.0 else global_position.lerp(target, k)
+		rotation.y = lerp_angle(rotation.y, float(_net[3]), k)
+	velocity = _net[4]
+	if rig != null and rig.has_clips() and not rig.is_ragdoll():
+		rig.locomote(Vector2(velocity.x, velocity.z).length())
+		_burn_pose()
 
 # ---- virtuals ----
 
@@ -375,6 +439,9 @@ func change_state(s: StringName) -> void:
 		call(en)
 
 func _physics_process(delta: float) -> void:
+	if puppet:
+		_puppet_step(delta)
+		return
 	state_t += delta
 	_afflictions(delta)
 	if not is_inside_tree() or is_queued_for_deletion():
@@ -765,7 +832,7 @@ func is_vulnerable() -> bool:
 # ---- damage ----
 
 func take_damage(amount: int, from_dir: Vector3 = Vector3.ZERO, source: Node = null) -> void:
-	if state == &"Emerge" or hp <= 0 or not is_vulnerable():
+	if puppet or state == &"Emerge" or hp <= 0 or not is_vulnerable():
 		return
 	if source is Player:
 		last_hit = source.hit_kind

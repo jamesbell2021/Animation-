@@ -349,6 +349,18 @@ func flame_tick(delta: float, aim: Vector3) -> void:
 		if not is_instance_valid(k):
 			_burn_acc.erase(k)
 
+## A puppet's flamer, going or not as the host has it.
+func show_flame(on: bool) -> void:
+	if on == _flaming:
+		return
+	if on:
+		_flaming = true
+		_flame.emitting = true
+		_flame_light.visible = true
+		_flame_sound.play()
+	else:
+		_stop_flame()
+
 func _stop_flame() -> void:
 	if not _flaming:
 		return
@@ -361,7 +373,7 @@ func _stop_flame() -> void:
 		_flame_sound.stop()
 
 func _physics_process(_delta: float) -> void:
-	if not _ticked:
+	if not _ticked and not keeper.puppet:
 		cease()
 	_ticked = false
 	# The stream comes from the wand's nozzle and goes where the keeper aims.
@@ -400,6 +412,9 @@ func _throw_bomb() -> void:
 ## Where a bomb should land: under the mouse; on a pad (no cursor), at the nearest
 ## creature within 25° of the aim and in range, or ahead along the aim.
 func _bomb_point() -> Vector3:
+	if keeper.remote:
+		# A keeper on another machine: its mouse's point, sent over.
+		return keeper.flare_point()
 	if keeper.camera != null and keeper.idx == 0 and (Players.devices.size() <= keeper.idx or Players.devices[keeper.idx] == Players.KEYBOARD_MOUSE):
 		return keeper.flare_point()
 	var best: Node3D = null

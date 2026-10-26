@@ -108,7 +108,19 @@ func _ensure_buses() -> void:
 
 # ---- playback ----
 
+## The sea and the weather's own sounds: every machine makes its own, so they aren't
+## sent over the network.
+func ambient_sfx(key: String, at: Vector3 = Vector3.INF, volume_db: float = 0.0, pitch_jitter: float = 0.08) -> void:
+	_ambient = true
+	sfx(key, at, volume_db, pitch_jitter)
+	_ambient = false
+
+var _ambient := false
+
 func sfx(key: String, at: Vector3 = Vector3.INF, volume_db: float = 0.0, pitch_jitter: float = 0.08) -> void:
+	# On a LAN client, the game's sounds come from the host (Net.sfx_gate).
+	if not _ambient and not Net.sfx_gate(key, at, volume_db, pitch_jitter):
+		return
 	var stream: AudioStream = _streams.get(key)
 	if stream == null:
 		return
@@ -495,6 +507,11 @@ func _s_foghorn_short() -> PackedFloat32Array:
 
 ## Play a horn pattern: e.g. [2.6, 0.0] is one long blast, [1.0, 1.0, 1.0] three short.
 func horn(pattern: Array, volume_db: float = -4.0) -> void:
+	if Net.playing():
+		if Net.is_host():
+			Net.relay_horn(pattern, volume_db)
+		elif not Net.replaying:
+			return
 	var delay := 0.0
 	for length in pattern:
 		var key := "foghorn" if float(length) > 2.0 else "foghorn_short"

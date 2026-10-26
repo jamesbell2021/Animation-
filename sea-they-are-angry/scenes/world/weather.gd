@@ -244,14 +244,16 @@ func _breakers(delta: float) -> void:
 		var p := Terrain.at_angle(a, r)
 		p.y = Terrain.SEA_LEVEL
 		if Terrain.beach_weight(p.x, p.z) > 0.3:
+			FX.ambient = true
 			FX.splash(get_parent(), p, 0.6 + storm * 0.6)
+			FX.ambient = false
 		else:
 			FX.breaker(get_parent(), p, 0.6 + storm * 1.6)
 	_crash_t -= delta
 	if _crash_t <= 0.0 and storm > 0.4:
 		_crash_t = randf_range(1.5, 3.5)
 		var a2 := randf() * TAU
-		Audio.sfx("wave_crash", Vector3(sin(a2) * 17.0, 0.0, cos(a2) * 17.0), -8.0 + storm * 4.0, 0.15)
+		Audio.ambient_sfx("wave_crash", Vector3(sin(a2) * 17.0, 0.0, cos(a2) * 17.0), -8.0 + storm * 4.0, 0.15)
 
 func _gusts(delta: float) -> void:
 	_gust_t -= delta

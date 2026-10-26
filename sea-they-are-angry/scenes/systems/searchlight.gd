@@ -114,8 +114,20 @@ func _set_on(on: bool) -> void:
 	if not on and generator != null:
 		generator.set_draw(self, 0.0)
 
+## LAN, on a client: where the host has this light pointing, and whether it's on.
+var _net_aim := Vector3.INF
+var _net_on := false
+
+func net_apply(a: Array) -> void:
+	_net_aim = a[0]
+	mode = int(a[1])
+	_net_on = bool(a[2])
+
 func _physics_process(delta: float) -> void:
 	_t += delta
+	if Net.is_client() and Net.playing():
+		_net_step(delta)
+		return
 	if operator != null and not is_instance_valid(operator):
 		set_operator(null)
 	var want := Run.active and _night() and generator != null and generator.has_power()
@@ -160,6 +172,29 @@ func _target() -> Vector3:
 		return tracked.global_position + Vector3(0.0, 0.5, 0.0)
 	var yaw := home_yaw + deg_to_rad(SWEEP_DEG * 0.5) * sin(_t * SWEEP_RATE)
 	return _ground(global_position + Vector3(-sin(yaw), 0.0, -cos(yaw)) * AUTO_DIST)
+
+# A client's light: on, off and aimed as the host's.
+func _net_step(delta: float) -> void:
+	if _net_on != _on:
+		_set_on(_net_on)
+	if not _on or _net_aim == Vector3.INF:
+		return
+	if _aim == Vector3.INF:
+		_aim = _net_aim
+	_aim = _aim.lerp(_net_aim, 1.0 - exp(-delta * Net.FOLLOW))
+	if _aim.distance_to(global_position) > 0.5:
+		_head.look_at(_aim, Vector3.UP)
+	var bonus := REFLECT_RANGE if Research.has("reflectors") else 0.0
+	var r := clampf(global_position.distance_to(_aim) + 7.0 + bonus, 10.0, MAX_RANGE + bonus)
+	var a := current_angle()
+	_light.spot_angle = a
+	_light.spot_range = r
+	_cone_mesh.height = r
+	_cone_mesh.bottom_radius = r * tan(deg_to_rad(a))
+	_cone.position = Vector3(0.0, 0.0, -r * 0.5)
+	var level := generator.power_level() if generator != null else 1.0
+	_light.light_energy = ENERGY * level * (1.4 if mode == Lamp.Mode.FOCUSED else 1.0)
+	_cone_mat.set_shader_parameter("intensity", CONE_INTENSITY * level)
 
 # The nearest living creature in its sector and reach, for clockwork tracking.
 func _track() -> Node3D:

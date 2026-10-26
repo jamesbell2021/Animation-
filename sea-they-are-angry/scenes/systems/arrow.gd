@@ -18,6 +18,7 @@ var _fall := 0.0
 var _stuck := -1.0
 
 func _ready() -> void:
+	Net.relay_shot("arrow", [from, dir, speed])
 	global_position = from
 	var shaft := Geo.box(self, Vector3(0.025, 0.025, 0.75), Color.WHITE, Vector3.ZERO)
 	shaft.material_override = Look.flat_mat(Color(0.6, 0.5, 0.34))
