@@ -136,11 +136,15 @@ func pick_target() -> Node3D:
 	for p in get_tree().get_nodes_in_group("player"):
 		if not (p is Player) or p.downed or p.is_inside() or p.hp <= 0:
 			continue
+		if not Enemy.same_island(global_position, p.global_position):
+			continue
 		var d := global_position.distance_to(p.global_position)
 		if d < best_d:
 			best_d = d
 			best = p
-	return best if best != null else lighthouse
+	if best != null:
+		return best
+	return Enemy.nearest_camp(global_position) if camp_raid else lighthouse
 
 # Distance to strike at: the keeper, or the lighthouse's wall.
 func _gap() -> float:

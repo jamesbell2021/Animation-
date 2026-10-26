@@ -16,6 +16,17 @@ the same cells so the light and the paint agree.
     rubble   rubble stonework with lime mortar                      1.5 m
     planks   weathered vertical boards                              1 m (6 boards)
 
+  The camp, 1940s:
+    corrugated  painted corrugated iron, chipped and rust-streaked   1.2 m
+    concrete    board-marked concrete, pitted and stained            1.5 m
+    brick       red brick in stretcher bond                          1 m
+    tarfelt     tarred roofing felt, lapped and crazed               1.5 m
+    rust        corroded steel with old paint                        1 m
+    timber      rough-sawn, silvered softwood                        1 m
+    hessian     sacking, for the sandbags                            0.5 m
+
+    python3 art/source/textures/build_textures.py art/textures camp   (only these)
+
 terrain.json records each ground layer's mean colour: the terrain shader takes its
 colour from the painted vertex colours and its detail from these textures, divided by
 their mean so the overall colour stays what the island was painted.
@@ -272,9 +283,148 @@ def planks():
     return save("planks", col, h, 0.02)
 
 
+# ---------------------------------------------------------------- the camp (1940s)
+
+def corrugated():
+    """Corrugated iron, as the Nissen huts are clad: ridges across u (8 a tile, so about
+    15 cm each at the game's 1.2 m tile), a lapped seam half way, bolts along the laps,
+    olive paint chipped to rust and grey zinc, rust running down from every bolt."""
+    ridges = 8
+    ph = XX * ridges * 2 * np.pi
+    h = np.sin(ph) * 0.5
+    seam_u = np.abs(((XX * 2) % 1.0) - 0.5)            # the sheets' side laps
+    lap = np.clip(1.0 - (0.5 - seam_u) / 0.012, 0, 1)
+    end_v = np.abs(((YY * 2) % 1.0) - 0.5)               # their end laps
+    endlap = np.clip(1.0 - (0.5 - end_v) / 0.01, 0, 1)
+    h = h + endlap * 0.4
+    bolts = np.zeros_like(h)
+    for by in (0.02, 0.48, 0.52, 0.98):
+        for bx in np.arange(0.5 / ridges, 1.0, 2.0 / ridges):
+            d = np.sqrt(((XX - bx + 0.5) % 1.0 - 0.5) ** 2 + ((YY - by + 0.5) % 1.0 - 0.5) ** 2)
+            bolts = np.maximum(bolts, np.clip(1 - d / 0.007, 0, 1))
+    h = h + bolts * 0.5
+    paint = ramp(0.5 + fbm(2.0, 81) * 0.4, (0.0, (0.24, 0.26, 0.18)), (0.5, (0.31, 0.33, 0.23)), (1.0, (0.38, 0.40, 0.29)))
+    # Paint lost on the ridges' crowns and in patches: rust beneath, or the zinc.
+    wear = fbm(1.6, 82) + np.clip(np.sin(ph), 0, 1) * 0.25
+    rust = ramp(0.5 + fbm(1.0, 83) * 0.5, (0.0, (0.28, 0.13, 0.06)), (1.0, (0.50, 0.26, 0.11)))
+    zinc = np.array([0.50, 0.50, 0.48])
+    col = np.where((wear > 0.42)[..., None], rust, paint)
+    col = np.where(((wear > 0.30) & (wear <= 0.42) & (fbm(2.4, 84) > 0.1))[..., None], zinc * 0.9, col)
+    # Rust bleeding down the sheets from the bolts (v grows downwards in the image).
+    streak = stretched(8.0, 1.0, 85, 1.4)
+    bleed = np.clip(streak * 1.6 - 0.2, 0, 1) * (fbm(2.2, 86) > -0.2)
+    col = col * (1 - bleed[..., None] * 0.45) + np.array([0.40, 0.18, 0.08]) * bleed[..., None] * 0.45
+    col = col * (1 - bolts[..., None] * 0.5) + np.array([0.30, 0.16, 0.08]) * bolts[..., None] * 0.5
+    col = col * (1.0 - lap[..., None] * 0.35) * (1.0 - endlap[..., None] * 0.2)
+    return save("corrugated", shade(col, h, 0.45), h, 0.04)
+
+
+def concrete():
+    """Board-marked concrete, as the huts' bases and the camp's paths: the shuttering's
+    boards printed in it, pitting, salt and rain stains, a little moss."""
+    boards = 6
+    s = (YY * boards) % 1.0
+    mark = np.clip(1.0 - np.minimum(s, 1 - s) / 0.015, 0, 1) * 0.6
+    grain = stretched(14.0, 1.0, 91, 1.4)
+    f1, f2, cid, n = voronoi(700, 92)
+    pits = (cell_rand(cid, n, 93) > 0.88) & (f1 < 0.004)
+    h = fbm(1.4, 94) * 0.15 + grain * 0.06 - mark * 0.3 - np.where(pits, 0.4, 0.0)
+    col = ramp(0.55 + fbm(2.6, 95) * 0.35, (0.0, (0.40, 0.39, 0.36)), (0.5, (0.55, 0.54, 0.50)), (1.0, (0.66, 0.65, 0.61)))
+    stain = np.clip(stretched(6.0, 1.0, 96, 1.6) - 0.3, 0, 1)
+    col = col * (1 - stain[..., None] * 0.3)
+    moss = fbm(2.8, 97) > 0.6
+    col = np.where(moss[..., None], col * 0.7 + np.array([0.30, 0.34, 0.16]) * 0.3, col)
+    col = col * (1 - mark[..., None] * 0.25) * (1 - pits[..., None] * 0.3)
+    return save("concrete", shade(col, h, 0.3), h, 0.015)
+
+
+def brick():
+    """Common red brick in stretcher bond with lime mortar, sooted and weathered."""
+    courses, per = 12, 4
+    row = np.floor(YY * courses)
+    t = YY * courses - row
+    u = (XX + (row % 2) * 0.5 / per) % 1.0
+    b = np.floor(u * per)
+    sx = u * per - b
+    mortar = np.clip(1.0 - np.minimum(np.minimum(sx, 1 - sx) * per * 1.6, np.minimum(t, 1 - t)) / 0.08, 0, 1)
+    bid = (row * 11 + b * 7).astype(int) % 991
+    rnd = np.random.default_rng(101).random(991)
+    face = fbm(0.9, 102) * 0.15
+    h = (1 - mortar) * (0.5 + face) - mortar * 0.3 + (rnd[bid] - 0.5) * 0.08
+    bcol = ramp(rnd[bid] * 0.8 + fbm(2.0, 103) * 0.2, (0.0, (0.33, 0.14, 0.10)), (0.5, (0.47, 0.21, 0.14)), (0.85, (0.55, 0.28, 0.18)), (1.0, (0.36, 0.25, 0.20)))
+    lime = np.array([0.58, 0.56, 0.51]) * (0.85 + 0.15 * fbm(0.7, 104)[..., None])
+    col = bcol * (1 - mortar[..., None]) + lime * mortar[..., None]
+    soot = np.clip(fbm(2.6, 105) - 0.15, 0, 1)
+    col = col * (1 - soot[..., None] * 0.5)
+    return save("brick", shade(col, h, 0.3), h, 0.025)
+
+
+def tarfelt():
+    """Tarred roofing felt on the towers' roofs: lapped strips, nailed, crazed and grey
+    where the sun has had it."""
+    laps = 3
+    s = (YY * laps) % 1.0
+    lap = np.clip(1.0 - s / 0.04, 0, 1)
+    craze_f1, craze_f2, cid, n = voronoi(260, 111, aspect=(1.0, 1.0))
+    craze = np.clip(1.0 - (craze_f2 - craze_f1) / 0.004, 0, 1)
+    h = fbm(0.8, 112) * 0.2 + lap * 0.5 - craze * 0.15 + s * 0.1
+    col = ramp(0.5 + fbm(2.2, 113) * 0.5, (0.0, (0.07, 0.07, 0.07)), (0.6, (0.13, 0.13, 0.12)), (1.0, (0.24, 0.24, 0.22)))
+    faded = np.clip(fbm(2.8, 114), 0, 1)
+    col = col * (1 - faded[..., None] * 0.4) + np.array([0.33, 0.33, 0.31]) * faded[..., None] * 0.4
+    col = col * (1 - craze[..., None] * 0.3)
+    return save("tarfelt", shade(col, h, 0.4), h, 0.015)
+
+
+def rust():
+    """Corroded steel: drums, the water tank, the generator's housing. Flaking scale and
+    pits, with a little old paint left."""
+    f1, f2, cid, n = voronoi(180, 121, jitter=1.0)
+    flake = np.clip((f2 - f1) / 0.03, 0, 1)
+    h = fbm(1.8, 122) * 0.3 + flake * 0.25 + fbm(0.6, 123) * 0.1
+    col = ramp(0.5 + fbm(1.6, 124) * 0.45 + flake * 0.1, (0.0, (0.20, 0.09, 0.05)), (0.45, (0.39, 0.18, 0.08)), (0.8, (0.56, 0.31, 0.13)), (1.0, (0.62, 0.42, 0.22)))
+    paint = fbm(2.5, 125) > 0.45
+    col = np.where(paint[..., None], np.array([0.25, 0.28, 0.22]) * (0.8 + 0.2 * flake[..., None]), col)
+    return save("rust", shade(col, h, 0.4), h, 0.03)
+
+
+def timber():
+    """Rough-sawn, silvered softwood: the towers' legs and braces, the fence posts. Grain
+    along u, saw marks, and drying checks."""
+    grain = stretched(14.0, 1.0, 131, 1.6) * 0.7 + stretched(40.0, 1.0, 132, 1.2) * 0.3
+    saw = np.sin(XX * 2 * np.pi * 40 + fbm(2.0, 133) * 3.0) * 0.15
+    checks = np.clip(stretched(30.0, 1.0, 134, 2.2) * 2.0 - 1.4, 0, 1)
+    h = grain * 0.35 + saw * 0.2 - checks * 0.6
+    col = ramp(0.5 + grain * 0.35 + fbm(2.4, 135) * 0.15, (0.0, (0.26, 0.24, 0.21)), (0.5, (0.42, 0.40, 0.36)), (1.0, (0.56, 0.54, 0.49)))
+    col = col * (1 - checks[..., None] * 0.6)
+    lichen = fbm(3.0, 136) > 0.6
+    col = np.where(lichen[..., None], col * 0.5 + np.array([0.55, 0.55, 0.40]) * 0.5, col)
+    return save("timber", shade(col, h, 0.3), h, 0.02)
+
+
+def hessian():
+    """Sackcloth, as the sandbags are: a coarse plain weave, sand-stained and darkened
+    where it's damp."""
+    weave_u = np.sin(XX * 2 * np.pi * 90)
+    weave_v = np.sin(YY * 2 * np.pi * 90)
+    over = np.sign(np.sin(XX * 2 * np.pi * 45) * np.sin(YY * 2 * np.pi * 45))
+    h = (weave_u * (over > 0) + weave_v * (over <= 0)) * 0.25 + fbm(1.2, 141) * 0.2
+    col = ramp(0.5 + fbm(2.0, 142) * 0.4, (0.0, (0.42, 0.36, 0.25)), (0.6, (0.58, 0.51, 0.37)), (1.0, (0.67, 0.60, 0.45)))
+    damp = np.clip(fbm(2.6, 143) * 1.5, 0, 1)
+    col = col * (1 - damp[..., None] * 0.35)
+    return save("hessian", shade(col, h, 0.35), h, 0.01)
+
+
+CAMP = (corrugated, concrete, brick, tarfelt, rust, timber, hessian)
+
 if __name__ == "__main__":
+    if len(sys.argv) > 2 and sys.argv[2] == "camp":
+        # Only the camp's textures (the island's are left as they are).
+        for f in CAMP:
+            f()
+        print("WROTE", os.path.abspath(OUT))
+        sys.exit(0)
     means = {"grass": grass(), "dirt": dirt(), "shingle": shingle(), "rock": rock()}
-    for f in (slate, harl, rubble, planks):
+    for f in (slate, harl, rubble, planks) + CAMP:
         f()
     with open(os.path.join(OUT, "terrain.json"), "w") as fh:
         json.dump(means, fh, indent=1)

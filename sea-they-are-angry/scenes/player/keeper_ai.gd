@@ -8,8 +8,10 @@ extends Node
 ##            what's broken; from dusk it works the lamp if nobody else is on it (burning
 ##            what comes ashore, holding climbers in the wide beam), otherwise it holds
 ##            the ledge with the boathook.
-##   "camp":  the camp's warden on the holm. By day it does the rounds of the beds, the
-##            greenhouse and the huts; by night it walks the wire from tower to tower.
+##   "camp":  the camp's warden on the holm. By day it keeps the generator filled with
+##            the diesel that washes up on the holm's beaches, mends the camp and does
+##            its rounds; from dusk it climbs the tower facing the danger and works its
+##            searchlight, burning whatever comes near the wire.
 ## Either drops what it's doing to fight anything that comes close, to get a downed
 ## keeper back on their feet, or to go and pick up its thrown boathook.
 
@@ -62,12 +64,21 @@ func _physics_process(delta: float) -> void:
 		keeper.ai_move = Vector2.ZERO
 		_work_lamp(delta)
 		return
+	if keeper.manning != null:
+		keeper.ai_move = Vector2.ZERO
+		_work_light(delta)
+		return
 	_act(delta)
 	_steer(delta)
 
 # ---- choosing what to do ----
 
 func _decide() -> void:
+	# The relief boat is in: down to the beach and aboard.
+	var boat := get_tree().get_first_node_in_group("relief_boat")
+	if boat != null and boat.waiting:
+		_set_task("board", boat, boat.shore)
+		return
 	# A keeper down: go and get them up.
 	var mate := _downed_keeper()
 	if mate != null:
@@ -77,6 +88,9 @@ func _decide() -> void:
 	var e := _threat()
 	if e != null:
 		_set_task("fight", e, e.global_position)
+		return
+	# Hungry or cold: see to it before it slows them down.
+	if _see_to_needs():
 		return
 	if not keeper.has_hook:
 		var hook := _my_hook()
@@ -95,6 +109,14 @@ func _decide() -> void:
 		else:
 			_day_camp()
 
+# Still on its way to gather something that's still there: keep at it (the nearest
+# thing can change as it walks, and swapping back and forth gets it nowhere).
+func _keep_gathering() -> bool:
+	if _task == "gather" and _task_target != null and is_instance_valid(_task_target) and _task_target.available:
+		_go((_task_target as Node3D).global_position)
+		return true
+	return false
+
 func _set_task(t: String, target: Node, where: Vector3) -> void:
 	if t != _task or target != _task_target:
 		_dwell = 0.0
@@ -104,15 +126,21 @@ func _set_task(t: String, target: Node, where: Vector3) -> void:
 
 func _day_light() -> void:
 	# Mend what's broken and can be paid for, nearest first; then gather.
-	var fix := _nearest_fixable()
+	var fix := _nearest_fixable(false)
 	if fix != null:
-		_set_task("repair", fix, (fix as Node3D).global_position)
+		_set_task("repair", fix, _work_point(fix))
 		return
 	var lamp := keeper.lamp
 	if lamp != null and lamp.fuel < Lamp.FUEL_MAX - 30.0 and lamp.lighthouse.work_kind() == "can":
 		_set_task("refuel", lamp.lighthouse, KeeperNav.door_point())
 		return
-	var sp := _nearest_scavenge()
+	var bed := _garden_to_work()
+	if bed != null:
+		_set_task("plot", bed, bed.global_position)
+		return
+	if _keep_gathering():
+		return
+	var sp := _nearest_scavenge(false)
 	if sp != null:
 		_set_task("gather", sp, sp.global_position)
 		return
@@ -128,12 +156,41 @@ func _night_light() -> void:
 	_set_task("ledge", null, Terrain.ledge_point(POST_S))
 
 func _day_camp() -> void:
+	var gen := _generator()
+	if gen != null and gen.work_kind() != "":
+		_set_task("generator", gen, gen.global_position)
+		return
+	# Mend the camp after a raid: the wire, the huts, the greenhouse.
+	var fix := _nearest_fixable(true)
+	if fix != null:
+		_set_task("repair", fix, _work_point(fix))
+		return
+	var plot := _plot_to_work()
+	if plot != null:
+		_set_task("plot", plot, plot.global_position)
+		return
+	if _keep_gathering():
+		return
+	var sp := _nearest_scavenge(true)
+	if sp != null:
+		_set_task("gather", sp, sp.global_position)
+		return
 	var spots := KeeperNav.camp_spots()
 	if _task != "round":
 		_round = randi() % spots.size()
 	_set_task("round", null, spots[_round % spots.size()])
 
 func _night_camp() -> void:
+	var gen := _generator()
+	# The camp dark with diesel in the store: get it running first.
+	if gen != null and not gen.running and gen.work_kind() == "can":
+		_set_task("generator", gen, gen.global_position)
+		return
+	var light := _pick_light()
+	if light != null and gen != null and gen.has_power():
+		var ladder_top := _ladder_top(light)
+		_set_task("tower", light, ladder_top)
+		return
 	var feet := KeeperNav.tower_feet()
 	if _task != "patrol":
 		_round = 0
@@ -151,6 +208,10 @@ func _act(delta: float) -> void:
 					_route.clear()
 		"fight":
 			_fight()
+		"board":
+			if _task_target != null and is_instance_valid(_task_target) and Geo.flat_dist(keeper.global_position, _task_target.shore) <= ReliefBoat.BOARD_RANGE:
+				_task_target.take_aboard(keeper)
+				_route.clear()
 		"repair":
 			if _task_target != null and is_instance_valid(_task_target) and _task_target is Structure:
 				var s: Structure = _task_target
@@ -177,6 +238,45 @@ func _act(delta: float) -> void:
 					and (keeper.lamp.operator == null or not is_instance_valid(keeper.lamp.operator)):
 				keeper._toggle_operate()
 				_route.clear()
+		"generator":
+			if _task_target != null and is_instance_valid(_task_target) and _task_target is Structure:
+				var g: Structure = _task_target
+				if g.surface_distance(keeper.global_position) <= Player.INTERACT_RANGE + 0.6:
+					var tool := g.work_kind()
+					if tool != "":
+						keeper._start_job(tool, g)
+					_task = ""
+					_route.clear()
+		"tower":
+			var sl := _task_target as Searchlight
+			if sl != null and sl.operator == null and absf(keeper.global_position.y - sl.global_position.y) < 1.5 \
+					and Geo.flat_dist(keeper.global_position, sl.global_position) < sl.reach:
+				sl.interact(keeper)
+				_route.clear()
+		"plot":
+			if _task_target != null and is_instance_valid(_task_target) and Geo.flat_dist(keeper.global_position, (_task_target as Node3D).global_position) < 1.9:
+				_task_target.interact(keeper)
+				_task = ""
+				_route.clear()
+		"eat":
+			if _task_target != null and is_instance_valid(_task_target):
+				var near := false
+				if _task_target is Structure:
+					near = (_task_target as Structure).surface_distance(keeper.global_position) <= Player.INTERACT_RANGE
+				else:
+					near = Geo.flat_dist(keeper.global_position, (_task_target as Node3D).global_position) < 1.9
+				if near:
+					if _task_target is Cottage:
+						_task_target.eat(keeper)
+					else:
+						_task_target.interact(keeper)
+					_task = ""
+					_route.clear()
+		"warm":
+			if _task_target is HutStove and not _task_target.is_lit() and Geo.flat_dist(keeper.global_position, (_task_target as Node3D).global_position) < 1.9:
+				_task_target.interact(keeper)
+			if keeper.warmth > 80.0:
+				_task = ""
 		"round", "patrol":
 			if here:
 				_dwell += delta
@@ -266,6 +366,158 @@ static func _reachable(lamp: Lamp, at: Vector3) -> bool:
 	var d := Geo.flat_dist(at, lamp.lighthouse.global_position)
 	var dep := rad_to_deg(atan2(lamp.global_position.y - at.y, d))
 	return dep > -Lamp.TILT_DEG - Lamp.FOCUS_ANGLE + 1.0 and dep < -Lamp.TILT_DEG + Lamp.FOCUS_ANGLE - 1.0
+
+# Up a tower: sweep its ground, and when something comes near, swing onto it and burn
+# it in the focused beam. Down again at dawn.
+func _work_light(delta: float) -> void:
+	var sl := keeper.manning
+	var night := Cycle.phase == Cycle.Phase.DUSK or Cycle.phase == Cycle.Phase.NIGHT
+	if not night or not sl.is_lit():
+		keeper.leave_light()
+		_task = ""
+		_think = 0.0
+		return
+	# A better tower for what's coming: go to it.
+	_think -= delta
+	if _think <= 0.0:
+		_think = THINK_EVERY * 3.0
+		var best := _pick_light()
+		if best != null and best != sl and best.operator == null and _threat_near(best) and not _threat_near(sl):
+			keeper.leave_light()
+			_task = ""
+			return
+	_lamp_think -= delta
+	if _lamp_think <= 0.0 or _lamp_target == null or not is_instance_valid(_lamp_target):
+		_lamp_think = REACTION
+		_lamp_error = randf_range(-0.6, 0.6)
+		_lamp_target = _light_pick(sl)
+	if _lamp_target == null:
+		keeper._lamp_point = Vector3.INF
+		var yaw := sl.home_yaw + deg_to_rad(Searchlight.SWEEP_DEG * 0.5) * sin(float(Time.get_ticks_msec()) * 0.00035)
+		keeper._aim = Vector3(-sin(yaw), 0.0, -cos(yaw))
+		if sl.mode == Lamp.Mode.FOCUSED:
+			sl.toggle_mode()
+		return
+	var probes: Array = _lamp_target.light_probe_points()
+	var at: Vector3 = probes[0] if not probes.is_empty() else _lamp_target.global_position
+	keeper._lamp_point = at + Vector3(_lamp_error, 0.0, _lamp_error)
+	var on_target := sl.aim_point() != Vector3.INF and Geo.flat_dist(sl.aim_point(), at) < 1.8
+	var want := Lamp.Mode.FOCUSED if on_target else Lamp.Mode.WIDE
+	if sl.mode != want:
+		sl.toggle_mode()
+
+func _light_pick(sl: Searchlight) -> Node3D:
+	var best: Node3D = null
+	var best_d := Searchlight.MAX_RANGE - 4.0
+	for e in get_tree().get_nodes_in_group("enemies"):
+		var st = e.get("state")
+		if st == &"Retreat" or st == &"Emerge" or st == &"Bloat" or st == &"Burst" or e is Eel:
+			continue
+		var d := Geo.flat_dist(e.global_position, sl.global_position)
+		if d < best_d:
+			best_d = d
+			best = e
+	return best
+
+func _threat_near(sl: Searchlight) -> bool:
+	return _light_pick(sl) != null
+
+# ---- needs and crops ----
+
+func _see_to_needs() -> bool:
+	if keeper.operating or keeper.manning != null:
+		return false
+	var on_holm := Terrain.on_holm(keeper.global_position.x, keeper.global_position.z)
+	if keeper.hunger < 30.0 and Stock.get_amount("food") > 0:
+		var place := _camp_node("mess") if on_holm or role == "camp" else _cottage()
+		if place != null:
+			_set_task("eat", place, (place as Node3D).global_position)
+			return true
+	var cold := keeper.warmth < 25.0 or (_task == "warm" and keeper.warmth < 80.0)
+	if cold:
+		var heat: Node3D = null
+		if on_holm or role == "camp":
+			var st := _camp_node("stove") as HutStove
+			if st != null and (st.is_lit() or Stock.get_amount("driftwood") > 0):
+				heat = st
+		if heat == null:
+			for h in get_tree().get_nodes_in_group("heat"):
+				if h is Campfire:
+					heat = h
+		if heat != null:
+			_set_task("warm", heat, heat.global_position + Vector3(1.0, 0.0, 1.0))
+			return true
+	return false
+
+func _camp_node(which: String) -> Node:
+	for c in get_tree().get_nodes_in_group("camp_root"):
+		return c.mess if which == "mess" else c.stove
+	return null
+
+func _cottage() -> Node:
+	for s in get_tree().get_nodes_in_group("structures"):
+		if s is Cottage and not s.is_destroyed():
+			return s
+	return null
+
+# A potato bed in the cottage garden to lift, or to dig kelp into (keeping a little kelp
+# back for mending the garden).
+func _garden_to_work() -> Node3D:
+	for n in get_tree().get_nodes_in_group("interactable"):
+		if n is GardenPlot and n.is_open and n.interact_prompt() != "":
+			var st: int = n.state()
+			if st == GardenPlot.RIPE or (st == GardenPlot.BARE and Stock.get_amount("seaweed") > 1):
+				return n
+	return null
+
+# A camp plot to sow (with seed in the store) or lift.
+func _plot_to_work() -> Node3D:
+	for p in get_tree().get_nodes_in_group("camp_plots"):
+		var s: int = p.state()
+		if s == CampPlot.RIPE or (s == CampPlot.BARE and Stock.get_amount("seeds") > 0):
+			return p
+	return null
+
+func _generator() -> Generator:
+	for g in get_tree().get_nodes_in_group("camp"):
+		if g is Generator:
+			return g
+	return null
+
+# The searchlight to take: one nobody is on, facing whatever is nearest the camp; or the
+# one looking out over the beaches.
+func _pick_light() -> Searchlight:
+	var lights := get_tree().get_nodes_in_group("searchlights")
+	if lights.is_empty():
+		return null
+	var c := Vector3(Terrain.CAMP_C.x, Terrain.HOLM_HEIGHT, Terrain.CAMP_C.y)
+	var near: Node3D = null
+	var near_d := 40.0
+	for e in get_tree().get_nodes_in_group("enemies"):
+		var p: Vector3 = e.global_position
+		# Only what's on the holm or the bridge is the camp's business.
+		if not Terrain.on_holm(p.x, p.z) and not Terrain.on_bridge(p.x, p.z):
+			continue
+		var d := Geo.flat_dist(p, c)
+		if d < near_d and not (e is Eel):
+			near_d = d
+			near = e
+	var best: Searchlight = null
+	var best_d := INF
+	for sl in lights:
+		if sl.operator != null and sl.operator != keeper:
+			continue
+		var ref: Vector3 = near.global_position if near != null else Terrain.holm_beach_point(0, 0.8)
+		var d := Geo.flat_dist(sl.global_position, ref)
+		if d < best_d:
+			best_d = d
+			best = sl
+	return best
+
+# Where a tower's ladder lets a keeper off on its platform.
+func _ladder_top(sl: Searchlight) -> Vector3:
+	var tower := sl.get_parent() as Node3D
+	return tower.to_global(Vector3(0.0, Camp.TOWER_DECK + 0.1, -Camp.TOWER_LEG + 0.45))
 
 # ---- walking ----
 
@@ -366,13 +618,21 @@ func _climber_up() -> bool:
 			return true
 	return false
 
-func _nearest_fixable() -> Node:
+## Where to stand to mend something: its own work point (the camp's wire, from inside),
+## or the thing itself.
+func _work_point(s: Node) -> Vector3:
+	if s.has_method("work_point"):
+		return s.work_point()
+	return (s as Node3D).global_position
+
+# The nearest thing broken that can be paid for, on the holm (the warden) or the main island.
+func _nearest_fixable(holm: bool) -> Node:
 	var best: Node = null
 	var best_d := INF
 	for s in get_tree().get_nodes_in_group("structures"):
 		if not (s is Structure) or s is Lighthouse:
 			continue
-		if s.work_kind() != "hammer" or Terrain.on_holm(s.global_position.x, s.global_position.z):
+		if s.work_kind() != "hammer" or Terrain.holm_side(s.global_position.x, s.global_position.z) != holm:
 			continue
 		var d := Geo.flat_dist(s.global_position, keeper.global_position)
 		if d < best_d:
@@ -380,11 +640,14 @@ func _nearest_fixable() -> Node:
 			best = s
 	return best
 
-func _nearest_scavenge() -> Node3D:
+# The nearest thing washed up and not yet gathered, on the holm or on the main island.
+func _nearest_scavenge(holm: bool) -> Node3D:
 	var best: Node3D = null
 	var best_d := INF
 	for sp in get_tree().get_nodes_in_group("interactable"):
 		if not (sp is ScavengePoint) or not sp.available:
+			continue
+		if Terrain.on_holm(sp.global_position.x, sp.global_position.z) != holm:
 			continue
 		var d := Geo.flat_dist(sp.global_position, keeper.global_position)
 		if d < best_d:

@@ -85,7 +85,7 @@ static func apply(tree: SceneTree) -> void:
 		elif s is Garden:
 			s.set_plots(pick("garden", PLOTS))
 	for slot in tree.get_nodes_in_group("trap_slots"):
-		slot.set_unlocked(slot.index < pick("defences", TRAP_SLOTS))
+		slot.set_unlocked(slot.holm or slot.index < pick("defences", TRAP_SLOTS))
 
 # Raise (or set) max health, keeping the same fraction of it.
 static func _set_max_hp(s: Structure, new_max: int) -> void:

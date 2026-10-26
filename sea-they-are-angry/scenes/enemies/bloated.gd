@@ -105,6 +105,8 @@ func _build_primitive() -> void:
 var raid := false
 
 func pick_target() -> Node3D:
+	if camp_raid:
+		return Enemy.nearest_camp(global_position)
 	if raid:
 		var home := Enemy.nearest_home(global_position)
 		if home != null:

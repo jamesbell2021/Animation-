@@ -2,7 +2,7 @@ extends Node
 
 signal changed
 
-const KINDS := ["driftwood", "scrap", "seaweed", "bio", "food", "oil", "dirty_fuel"]
+const KINDS := ["driftwood", "scrap", "seaweed", "bio", "food", "oil", "dirty_fuel", "diesel", "seeds", "notes", "arrows", "shells", "bombs", "poison"]
 
 var _items := {}
 
@@ -15,6 +15,11 @@ func reset() -> void:
 		_items[k] = 0
 	_items["driftwood"] = 4
 	_items["bio"] = 1
+	# Seed packets left in the camp's huts: enough to sow the beds once.
+	_items["seeds"] = 3
+	# In the shed: the old keeper's box of shotgun cartridges, and tins of rat poison.
+	_items["shells"] = 10
+	_items["poison"] = 4
 	changed.emit()
 
 func set_all(d: Dictionary) -> void:
@@ -28,6 +33,10 @@ func all() -> Dictionary:
 
 func get_amount(kind: String) -> int:
 	return _items.get(kind, 0)
+
+func set_amount(kind: String, n: int) -> void:
+	_items[kind] = n
+	changed.emit()
 
 func add(kind: String, n: int = 1) -> void:
 	_items[kind] = get_amount(kind) + n

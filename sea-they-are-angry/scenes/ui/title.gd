@@ -8,6 +8,8 @@ const PALE := Color(0.9, 0.92, 0.95)
 
 var _keepers := 1
 var _keepers_btn: Button
+var _sea_btn: Button
+var _sea_note: Label
 var _device_label: Label
 var _first: Button
 
@@ -45,19 +47,30 @@ func _ready() -> void:
 		_first = new_btn
 	_keepers_btn = _button(box, "", _cycle_keepers)
 	_keepers_btn.gui_input.connect(_on_keepers_input)
+	_sea_btn = _button(box, "", _cycle_sea)
+	_sea_btn.gui_input.connect(_on_sea_input)
+	_sea_note = _label(box, "", 16, Color(0.75, 0.8, 0.85))
+	_button(box, "Play on the LAN", _on_lan)
 	_button(box, "Credits", _on_credits)
 	_button(box, "Quit", _on_quit)
 	_device_label = _label(box, "", 16, Color(0.75, 0.8, 0.85))
 	_device_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	if Net.last_error != "":
+		_label(box, Net.last_error, 18, Color(1.0, 0.55, 0.45))
+		Net.last_error = ""
 	var best := SaveSys.load_best()
 	if best > 0:
 		_label(box, "Best: night %d" % best, 18, GOLD)
-	var hint := _label(root, "WASD move · mouse aim · LMB swing · E use · R lamp · Q beam · Esc pause", 15, Color(0.8, 0.84, 0.9, 0.8))
+	if SaveSys.chapter_done(1):
+		var seas: int = int(SaveSys.load_profile().get("chapters", {}).get("1", 0))
+		_label(box, "Chapter One: the light held (%s). Chapter Two, The Harbour, is coming." % Difficulty.NAMES[clampi(seas, 0, 2)].to_lower(), 18, GOLD)
+	var hint := _label(root, "WASD move · mouse aim · LMB attack · Tab weapon · E use · R lamp · Q beam · Esc pause · Hold the light until the relief boat comes", 15, Color(0.8, 0.84, 0.9, 0.8))
 	hint.anchor_top = 1.0
 	hint.anchor_bottom = 1.0
 	hint.offset_left = 90.0
 	hint.offset_top = -50.0
 	_update_keepers()
+	_update_sea()
 	_first.grab_focus.call_deferred()
 
 func _label(parent: Node, text: String, size: int, color: Color) -> Label:
@@ -110,12 +123,36 @@ func _update_keepers() -> void:
 		lines.append("P%d %s — %s" % [i + 1, Players.NAMES[i], Players.device_label(i)])
 	_device_label.text = "\n".join(lines)
 
+# How hard the sea is, for a new run (a continued one keeps its own).
+func _cycle_sea() -> void:
+	Run.next_difficulty = (Run.next_difficulty + 1) % Difficulty.NAMES.size()
+	_update_sea()
+
+func _on_sea_input(ev: InputEvent) -> void:
+	if ev.is_action_pressed("ui_left"):
+		Run.next_difficulty = maxi(0, Run.next_difficulty - 1)
+		_update_sea()
+		_sea_btn.accept_event()
+	elif ev.is_action_pressed("ui_right"):
+		Run.next_difficulty = mini(Difficulty.NAMES.size() - 1, Run.next_difficulty + 1)
+		_update_sea()
+		_sea_btn.accept_event()
+
+func _update_sea() -> void:
+	_sea_btn.text = "◀ %s ▶" % Difficulty.NAMES[Run.next_difficulty]
+	_sea_note.text = Difficulty.BLURBS[Run.next_difficulty].capitalize().left(1) + Difficulty.BLURBS[Run.next_difficulty].substr(1)
+
 func _on_continue() -> void:
 	start_requested.emit(true, _keepers)
 
 func _on_new() -> void:
 	SaveSys.clear_run()
 	start_requested.emit(false, _keepers)
+
+func _on_lan() -> void:
+	var lan := preload("res://scenes/ui/lan_lobby.gd").new()
+	add_child(lan)
+	lan.closed.connect(func() -> void: _first.grab_focus())
 
 func _on_credits() -> void:
 	var c := preload("res://studio/credits.gd").open(self, "Sea They Are Angry", [

@@ -149,3 +149,7 @@ Use the same template for the creatures (Bloated Dead, Wall-Crawling Squid, Armo
 | Split screen: one keeper on the lighthouse island, one in the camp | The rope bridge over the gully | The camp at dusk, its warden on her rounds |
 |---|---|---|
 | ![split](screenshots/holm_split.png) | ![bridge](screenshots/holm_bridge.png) | ![camp](screenshots/holm_camp_dusk.png) |
+
+| The camp at night: searchlights sweeping, the huts lit, the warden up a tower |
+|---|
+| ![camp at night](screenshots/camp_night.png) |

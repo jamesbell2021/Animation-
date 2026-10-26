@@ -13,6 +13,12 @@ func _ready() -> void:
 	_key("use_dirty", KEY_F)
 	_mouse("attack", MOUSE_BUTTON_LEFT)
 	_mouse("flare", MOUSE_BUTTON_RIGHT)
+	# What's in hand: Tab or the wheel to change it, 1 to 5 to pick it.
+	_key("weapon_next", KEY_TAB)
+	_mouse("weapon_next", MOUSE_BUTTON_WHEEL_DOWN)
+	_mouse("weapon_prev", MOUSE_BUTTON_WHEEL_UP)
+	for i in 5:
+		_key("weapon_%d" % (i + 1), KEY_1 + i)
 
 func _key(action: String, key: Key) -> void:
 	if not InputMap.has_action(action):

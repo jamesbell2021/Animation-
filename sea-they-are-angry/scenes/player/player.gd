@@ -60,6 +60,18 @@ const STRIDE := 2.4
 const LEG_SWING := 0.65
 const ARM_SWING := 0.5
 const STEP_EVERY := 0.42
+# Hunger and warmth (0 to 100). Hunger drains all the time (faster sprinting); warmth
+# drains outdoors at night, faster in rain and a storm, and comes back by day, by a
+# fire or a lit stove, or up in the lamp room.
+const HUNGER_RATE := 0.18
+const COLD_NIGHT := 0.12
+const WEATHER_COLD := [1.0, 1.6, 2.2]
+const SUN_WARM := 0.25
+const SHELTER_WARM := 0.6
+## Below this a keeper is hungry (slower) or cold (slower, and slow to swing).
+const LOW_NEED := 25.0
+## Starving or freezing: a point of health lost this often.
+const NEED_HURT_EVERY := 2.5
 
 var idx := 0
 ## Played by the computer (a helper keeper), not a person: gets no view of its own.
@@ -67,6 +79,11 @@ var idx := 0
 var ai := false
 var ai_move := Vector2.ZERO
 var ai_held := {}
+## 100 fed, 0 starving; 100 warm, 0 freezing.
+var hunger := 100.0
+var warmth := 100.0
+var _need_hurt_t := 0.0
+var _need_warned := {}
 var downed := false
 var revive_progress := 0.0
 var hp := 100
@@ -74,6 +91,8 @@ var max_hp := 100
 var camera: Camera3D
 var lamp: Lamp
 var operating := false
+## Up a guard tower, working its searchlight (null when not).
+var manning: Searchlight = null
 
 var _aim := Vector3(0.0, 0.0, -1.0)
 var _attack_cd := 0.0
@@ -129,6 +148,23 @@ var in_menu := false
 var _reviving := false
 ## The boathook is in hand (false while it lies where it was thrown).
 var has_hook := true
+## What else they fight with, from the shed (the longbow, shotgun, flamer, petrol bombs).
+var arsenal: Arsenal
+## What a blow from this keeper is, for the dawn tally ("hook", "arrow", "shot", ...).
+var hit_kind := "hook"
+## LAN, on the host: this keeper's person plays on another machine; its controls come
+## over the network (Net.input_for).
+var remote := false
+## LAN, on a client: every keeper is a puppet, going where the host says (net_apply).
+var puppet := false
+## A puppet's prompt, as the host has it.
+var net_prompt := ""
+## LAN: the name of the person playing this keeper (shown over it).
+var net_name := ""
+## Gone aboard the relief boat (the end of the chapter).
+var boarded := false
+var _net: Array = []
+var _net_shot := -1
 # Reeling from a blow: slid back over the stagger clip's slide, no control meanwhile.
 var _stagger_t := 0.0
 var _stagger_len := 0.45
@@ -168,6 +204,8 @@ func _ready() -> void:
 		Geo.box(_hook_holder, Vector3(0.06, 0.06, 1.6), Color(0.18, 0.15, 0.12), Vector3(0.0, 0.0, -0.6))
 		Geo.box(_hook_holder, Vector3(0.06, 0.25, 0.06), Color(0.3, 0.3, 0.32), Vector3(0.0, -0.1, -1.4))
 	Geo.cyl_shape(self, 0.35, 1.6, Vector3(0.0, 0.8, 0.0))
+	arsenal = Arsenal.new(self)
+	add_child(arsenal)
 
 # Loads a Z-up, vertex-coloured GLB from art/ and stands it upright. Returns null if
 # the file is missing or not imported yet, so the primitive fallback is used.
@@ -312,6 +350,53 @@ func _build_marker() -> void:
 	_ring.visible = multi
 	_tag.visible = multi
 
+# ---- hunger and warmth ----
+
+func _needs(delta: float) -> void:
+	hunger = maxf(0.0, hunger - HUNGER_RATE * (1.5 if _sprint_t > 0.0 else 1.0) * Difficulty.needs() * delta)
+	var heat := 0.0
+	for h in get_tree().get_nodes_in_group("heat"):
+		heat = maxf(heat, h.heat_at(global_position))
+	var night := Cycle.phase == Cycle.Phase.DUSK or Cycle.phase == Cycle.Phase.NIGHT
+	if _inside:
+		warmth += SHELTER_WARM * delta
+	elif heat > 0.0:
+		warmth += heat * delta
+	elif night:
+		warmth -= COLD_NIGHT * float(WEATHER_COLD[Weather.tonight()]) * Difficulty.needs() * delta
+	else:
+		warmth += SUN_WARM * delta
+	warmth = clampf(warmth, 0.0, 100.0)
+	_warn_need("hungry", hunger, "%s is hungry: eat at the cottage, or in the camp's mess." % keeper_name())
+	_warn_need("cold", warmth, "%s is cold: warm up by a fire or the camp's stove." % keeper_name())
+	if hunger <= 0.0 or warmth <= 0.0:
+		_need_hurt_t += delta
+		if _need_hurt_t >= NEED_HURT_EVERY:
+			_need_hurt_t = 0.0
+			if hp > 1:
+				hp -= 1
+			else:
+				take_damage(1)
+	else:
+		_need_hurt_t = 0.0
+
+func _warn_need(key: String, v: float, text: String) -> void:
+	if v < LOW_NEED and not _need_warned.get(key, false):
+		_need_warned[key] = true
+		if not ai or v <= 0.0:
+			Events.message.emit(text)
+	elif v > LOW_NEED + 15.0:
+		_need_warned[key] = false
+
+## How fast hunger and cold let a keeper move.
+func need_speed() -> float:
+	return (0.85 if hunger < LOW_NEED else 1.0) * (0.9 if warmth < LOW_NEED else 1.0)
+
+## A meal: fed again.
+func eat_meal() -> void:
+	hunger = 100.0
+	Events.did.emit("eat", self)
+
 func keeper_name() -> String:
 	return Players.NAMES[idx % Players.NAMES.size()]
 
@@ -321,9 +406,13 @@ func _act(a: String) -> String:
 # An action pressed this frame, or held: from the keeper's own controls, or for a
 # helper keeper, from its KeeperAI (which calls the one-off actions directly).
 func _just(a: String) -> bool:
+	if remote:
+		return Net.just(idx, a)
 	return not ai and Input.is_action_just_pressed(_act(a))
 
 func _held(a: String) -> bool:
+	if remote:
+		return Net.held(idx, a)
 	return bool(ai_held.get(a, false)) if ai else Input.is_action_pressed(_act(a))
 
 func aim_yaw() -> float:
@@ -333,9 +422,16 @@ func aim_dir() -> Vector3:
 	return _aim
 
 func _physics_process(delta: float) -> void:
+	if puppet:
+		_puppet_step(delta)
+		return
 	if not Run.active:
 		return
+	if remote:
+		Net.input_frame(idx)
 	_update_tag()
+	if not downed:
+		_needs(delta)
 	_flicker += delta
 	if _lantern_light.visible:
 		_lantern_light.light_energy = 1.5 + 0.12 * sin(_flicker * 11.0) * sin(_flicker * 7.3)
@@ -372,7 +468,13 @@ func _physics_process(delta: float) -> void:
 	_update_aim()
 	_update_swing(delta)
 	if _just("operate"):
-		_toggle_operate()
+		if manning != null:
+			leave_light()
+		else:
+			_toggle_operate()
+	if manning != null:
+		_on_light()
+		return
 	if _inside:
 		# Up in the lamp room: aim and switch the beam; nothing else reaches in here.
 		if operating and _just("beam_mode") and lamp:
@@ -385,7 +487,10 @@ func _physics_process(delta: float) -> void:
 			lamp.toggle_mode()
 	else:
 		_move(delta)
-		if _just("attack") and _attack_cd <= 0.0:
+		_switch_weapon()
+		if arsenal.in_hand():
+			arsenal.tick(delta, _just("attack"), _held("attack"))
+		elif _just("attack") and _attack_cd <= 0.0:
 			_attack()
 		if _just("flare"):
 			_fire_flare()
@@ -535,6 +640,13 @@ func _pose_rig(swing: float, arm: float) -> void:
 	rig.shift("hips", Vector3(0.0, absf(sin(_walk_phase)) * 0.05 * _move_amount + sin(_breath * 2.0) * 0.006, 0.0))
 
 func _update_aim() -> void:
+	if remote:
+		var inp := Net.input_for(idx)
+		var a: Vector3 = inp.get("aim", _aim)
+		if a.length() > 0.1:
+			_aim = Vector3(a.x, 0.0, a.z).normalized()
+		_lamp_point = inp.get("point", Vector3.INF) if operating or manning != null else Vector3.INF
+		return
 	if ai:
 		# A helper looks where it walks unless its brain has turned it to a target.
 		var v := Vector2(velocity.x, velocity.z)
@@ -561,7 +673,7 @@ func _update_aim() -> void:
 	var dir := camera.project_ray_normal(mp)
 	if absf(dir.y) < 0.0001:
 		return
-	if operating:
+	if operating or manning != null:
 		_lamp_point = _ground_hit(from, dir)
 	var t := (global_position.y - from.y) / dir.y
 	if t <= 0.0:
@@ -600,7 +712,13 @@ static func _ground_hit(from: Vector3, dir: Vector3) -> Vector3:
 	return from + dir * t_end
 
 func _move(delta: float) -> void:
-	var input := ai_move.limit_length(1.0) if ai else Input.get_vector(_act("move_left"), _act("move_right"), _act("move_up"), _act("move_down"))
+	var input: Vector2
+	if remote:
+		input = Vector2(Net.input_for(idx).get("move", Vector2.ZERO)).limit_length(1.0)
+	elif ai:
+		input = ai_move.limit_length(1.0)
+	else:
+		input = Input.get_vector(_act("move_left"), _act("move_right"), _act("move_up"), _act("move_down"))
 	var dir := Vector3(input.x, 0.0, input.y)
 	var spd := SPEED
 	if _sprint_cd > 0.0:
@@ -613,6 +731,7 @@ func _move(delta: float) -> void:
 			_sprint_cd = SPRINT_COOLDOWN
 	else:
 		_sprint_t = maxf(0.0, _sprint_t - delta)
+	spd *= need_speed() * arsenal.move_mult()
 	velocity.x = dir.x * spd
 	velocity.z = dir.z * spd
 
@@ -630,6 +749,18 @@ func _clamp_to_island(before: Vector3) -> void:
 		global_position.x = before.x
 		global_position.z = before.z
 
+# Tab / the mouse wheel / a pad's d-pad change what's in hand; 1 to 5 pick it outright.
+func _switch_weapon() -> void:
+	if _just("weapon_next"):
+		arsenal.cycle(1)
+	elif _just("weapon_prev"):
+		arsenal.cycle(-1)
+	if (idx == 0 or remote) and not ai:
+		for i in Arsenal.ORDER.size():
+			var a := "weapon_%d" % (i + 1)
+			if (remote and _just(a)) or (not remote and InputMap.has_action(a) and Input.is_action_just_pressed(a)):
+				arsenal.select(Arsenal.ORDER[i])
+
 func _attack() -> void:
 	if not has_hook:
 		_attack_cd = 0.5
@@ -639,7 +770,7 @@ func _attack() -> void:
 	if climber != null:
 		_throw_at(climber)
 		return
-	_attack_cd = ATTACK_CD
+	_attack_cd = ATTACK_CD * (1.25 if warmth < LOW_NEED else 1.0)
 	_swing_t = SWING_TIME
 	_aim_face_t = AIM_FACE_TIME
 	facing = aim_yaw()
@@ -718,7 +849,7 @@ func take_back_hook() -> void:
 	if has_hook:
 		return
 	has_hook = true
-	_hook_holder.visible = _job_tool == ""
+	arsenal.refresh()
 	Audio.sfx("gather", global_position, -2.0, 0.1)
 
 func _climber_on_tower() -> bool:
@@ -785,9 +916,43 @@ func _toggle_operate() -> void:
 	lamp.set_operator(self)
 	_go_in()
 	if lamp.is_lit():
+		Events.did.emit("lamp", self)
+	if lamp.is_lit():
 		Events.message.emit("On the lamp.  Mouse aims, [Q] beam, [R] leave")
 	else:
 		Events.message.emit("The lamp is lit at dusk.  [R] leave")
+
+## Take a tower's searchlight: the keeper stands at it and aims it.
+func man(light: Searchlight) -> void:
+	if manning != null:
+		leave_light()
+	if operating:
+		_toggle_operate()
+	manning = light
+	light.set_operator(self)
+	velocity = Vector3.ZERO
+	Events.message.emit("On the searchlight.  Aim it, [Q] beam, [E] or [R] leave")
+
+func leave_light() -> void:
+	if manning != null and is_instance_valid(manning) and manning.operator == self:
+		manning.set_operator(null)
+	manning = null
+
+# Working a searchlight: standing still, facing the aim; Q narrows the beam, E or R lets go.
+func _on_light() -> void:
+	if not is_instance_valid(manning) or downed:
+		leave_light()
+		return
+	velocity = Vector3(0.0, 0.0 if is_on_floor() else FALL_SPEED, 0.0)
+	_aim_face_t = 0.2
+	if _just("beam_mode"):
+		manning.toggle_mode()
+	var leaving := _just("interact")
+	move_and_slide()
+	_update_facing(get_physics_process_delta_time())
+	_animate(get_physics_process_delta_time())
+	if leaving:
+		leave_light()
 
 func _stop_operating() -> void:
 	operating = false
@@ -872,9 +1037,10 @@ func _start_job(tool: String, target: Node, action: String = "interact") -> void
 	_job_strikes = 0
 	_job_len = STRIKE_TIME * STRIKES if tool == "hammer" else POUR_TIME
 	velocity = Vector3.ZERO
-	_hook_holder.visible = false
 	_hammer.visible = tool == "hammer"
 	_can.visible = tool == "can"
+	arsenal.cease()
+	arsenal.refresh()
 	var d: Vector3 = (target as Node3D).global_position - global_position
 	if Vector2(d.x, d.z).length() > 0.05:
 		facing = atan2(-d.x, -d.z)
@@ -905,7 +1071,7 @@ func _end_job(done: bool) -> void:
 	_job_target = null
 	_hammer.visible = false
 	_can.visible = false
-	_hook_holder.visible = has_hook
+	arsenal.refresh()
 	_hook_pivot.rotation.z = 0.0
 	_scripted = false
 	# The work is done: now the stock is spent and the repair or the oil goes in.
@@ -920,7 +1086,9 @@ func flares() -> int:
 ## Where a flare would land: under the mouse, or ahead along the aim on a pad.
 func flare_point() -> Vector3:
 	var to := Vector3.INF
-	if camera != null and idx == 0 and (Players.devices.size() <= idx or Players.devices[idx] == Players.KEYBOARD_MOUSE):
+	if remote:
+		to = Net.input_for(idx).get("point", Vector3.INF)
+	elif camera != null and idx == 0 and (Players.devices.size() <= idx or Players.devices[idx] == Players.KEYBOARD_MOUSE):
 		var mp := get_viewport().get_mouse_position()
 		to = _ground_hit(camera.project_ray_origin(mp), camera.project_ray_normal(mp))
 	if to == Vector3.INF:
@@ -933,11 +1101,13 @@ func flare_point() -> Vector3:
 	return to
 
 func _fire_flare() -> void:
-	if flares() <= 0:
+	var free := Difficulty.free_ammo()
+	if flares() <= 0 and not free:
 		Events.message.emit("No flares left: load them at the cottage (1 scrap each).")
 		return
 	var to := flare_point()
-	Run.flares[idx] = flares() - 1
+	if not free:
+		Run.flares[idx] = flares() - 1
 	var d := to - global_position
 	if Vector2(d.x, d.z).length() > 0.05:
 		_aim = Vector3(d.x, 0.0, d.z).normalized()
@@ -969,6 +1139,7 @@ func is_busy() -> bool:
 
 ## Knocked flat for t seconds: can't move or act.
 func knock_prone(t: float) -> void:
+	leave_light()
 	if _inside or downed or hp <= 0:
 		return
 	if rig != null:
@@ -1011,6 +1182,7 @@ func shove(v: Vector3) -> void:
 
 ## Knocked off their feet: a ragdoll for `time` seconds, then they get back up.
 func knock(impulse: Vector3, time: float) -> void:
+	leave_light()
 	if _inside or rig == null or hp <= 0:
 		return
 	if _job_tool != "":
@@ -1036,6 +1208,7 @@ func _play_stagger(push: Vector3) -> void:
 
 ## Rocked by a blow but still standing: reels away from it a step, then has control back.
 func stagger_from(away: Vector3) -> void:
+	leave_light()
 	if not _clips() or _inside or rig.is_ragdoll() or _climb_t >= 0.0:
 		return
 	if _job_tool != "":
@@ -1121,10 +1294,16 @@ func _find_interactable() -> Node:
 		if absf(n.global_position.y - global_position.y) > REACH_HEIGHT:
 			continue
 		var d := 0.0
-		if n is Structure:
+		if n is Structure or n.has_method("surface_distance"):
 			d = n.surface_distance(global_position)
 		else:
 			d = Geo.flat_dist(global_position, n.global_position)
+		# Up a tower, the light comes before the hatch beside it; at the boat's plank,
+		# going aboard comes before anything on the beach.
+		if n is Searchlight:
+			d -= 0.8
+		elif n is ReliefBoat:
+			d -= 1.5
 		if d > best_d:
 			continue
 		if n.interact_prompt() == "":
@@ -1134,6 +1313,8 @@ func _find_interactable() -> Node:
 	return best
 
 func interact_prompt() -> String:
+	if puppet:
+		return net_prompt
 	var mate := _downed_mate()
 	if mate != null:
 		return _keys("[E] Hold to revive %s  (%d%%)" % [mate.keeper_name(), roundi(mate.revive_progress * 100.0)])
@@ -1172,15 +1353,18 @@ func _update_tag() -> void:
 	if _tag == null or not _tag.visible:
 		return
 	var text := keeper_name() if ai else "P%d %s" % [idx + 1, keeper_name()]
+	if net_name != "" and not ai:
+		text = "%s (%s)" % [keeper_name(), net_name]
 	if downed:
 		text += "\nDOWN  %d%%" % roundi(revive_progress * 100.0)
-	elif idx > 0 and not ai:
+	elif idx > 0 and not ai and not Net.online():
 		var prompt := interact_prompt()
 		if prompt != "":
 			text += "\n" + prompt
 	_tag.text = text
 
 func go_down() -> void:
+	leave_light()
 	downed = true
 	revive_progress = 0.0
 	_stop_operating()
@@ -1211,8 +1395,9 @@ func revive(fraction: float) -> void:
 	Events.message.emit("%s is back on their feet." % keeper_name())
 
 func take_damage(amount: int, from: Vector3 = Vector3.INF) -> void:
-	if hp <= 0 or downed or not Run.active or _inside:
+	if puppet or hp <= 0 or downed or not Run.active or _inside:
 		return
+	amount = maxi(1, roundi(float(amount) * Difficulty.keeper_damage()))
 	hp = maxi(0, hp - amount)
 	var away := global_position - from if from != Vector3.INF else -aim_dir()
 	away.y = 0.0
@@ -1235,6 +1420,125 @@ func take_damage(amount: int, from: Vector3 = Vector3.INF) -> void:
 		go_down()
 		if Players.all_down():
 			Run.end_run("Every keeper is down.")
+
+## Aboard the relief boat: out of the game, stowed with her.
+func board(boat: Node3D) -> void:
+	if boarded:
+		return
+	boarded = true
+	leave_light()
+	_stop_operating()
+	arsenal.cease()
+	if downed:
+		revive(DAWN_HP)
+	visible = false
+	collision_layer = 0
+	collision_mask = 0
+	global_position = boat.global_position + Vector3(0.0, 1.2, 0.0)
+	set_physics_process(false)
+
+# ---- LAN ----
+
+## The host's word on this keeper, for the clients (see net_apply).
+func net_snap() -> Array:
+	var flags := 0
+	if downed:
+		flags |= 1
+	if _inside:
+		flags |= 2
+	if rig != null and rig.is_ragdoll():
+		flags |= 4
+	if operating:
+		flags |= 8
+	if _climb_t >= 0.0:
+		flags |= 16
+	if _reviving:
+		flags |= 32
+	if visible:
+		flags |= 64
+	if has_hook:
+		flags |= 128
+	var light := -1
+	var camp := get_tree().get_first_node_in_group("camp_root")
+	if manning != null and camp != null:
+		light = camp.searchlights.find(manning)
+	return [global_position, facing, velocity, hp, max_hp, hunger, warmth, flags, revive_progress,
+		_job_tool, _swing_t, arsenal.weapon, arsenal._flaming, arsenal.draw,
+		interact_prompt() if remote else "", rig.shot_seq if rig != null else 0, rig.last_shot if rig != null else "",
+		light, _aim]
+
+## A client: take the host's word on this keeper.
+func net_apply(a: Array) -> void:
+	_net = a
+	hp = int(a[3])
+	max_hp = int(a[4])
+	hunger = float(a[5])
+	warmth = float(a[6])
+	var flags := int(a[7])
+	var was_down := downed
+	downed = flags & 1 != 0
+	revive_progress = float(a[8])
+	_inside = flags & 2 != 0
+	visible = flags & 64 != 0
+	operating = flags & 8 != 0
+	_reviving = flags & 32 != 0
+	var tool := String(a[9])
+	var hook := flags & 128 != 0
+	var weapon := String(a[11])
+	if tool != _job_tool or hook != has_hook or weapon != arsenal.weapon:
+		_job_tool = tool
+		has_hook = hook
+		arsenal.weapon = weapon
+		_hammer.visible = tool == "hammer"
+		_can.visible = tool == "can"
+		arsenal.refresh()
+	_swing_t = float(a[10])
+	arsenal.show_flame(bool(a[12]))
+	arsenal.draw = float(a[13])
+	net_prompt = String(a[14])
+	var camp := get_tree().get_first_node_in_group("camp_root")
+	var light := int(a[17])
+	manning = camp.searchlights[light] if camp != null and light >= 0 and light < camp.searchlights.size() else null
+	if rig != null:
+		var seq := int(a[15])
+		if _net_shot >= 0 and seq != _net_shot and String(a[16]) != "":
+			rig.shot(String(a[16]))
+		_net_shot = seq
+		var rag := flags & 4 != 0
+		if rag and not rig.is_ragdoll():
+			rig.ragdoll(Vector3(0.0, 6.0, 0.0) * RAG_MASS * 0.2, "chest")
+		elif not rag and rig.is_ragdoll() and not rig.is_getting_up():
+			rig.get_up(CharacterRig.GET_UP_TIME)
+	if downed != was_down:
+		collision_layer = 0 if downed else 2
+	# Its own keeper's aim is the client's own (Net._send_input); the others', the host's.
+	if self != get_tree().current_scene.get("player"):
+		_aim = a[18]
+
+# A puppet's frame: catch up with where the host has it, and look the part.
+func _puppet_step(delta: float) -> void:
+	_update_tag()
+	_flicker += delta
+	if _lantern_light.visible:
+		_lantern_light.light_energy = 1.5 + 0.12 * sin(_flicker * 11.0) * sin(_flicker * 7.3)
+	if _net.is_empty():
+		return
+	var ragdolled := rig != null and rig.is_ragdoll()
+	if not ragdolled:
+		var target: Vector3 = _net[0]
+		var k := 1.0 - exp(-delta * Net.FOLLOW)
+		global_position = target if global_position.distance_to(target) > 4.0 else global_position.lerp(target, k)
+		facing = lerp_angle(facing, float(_net[1]), k)
+		rotation.y = facing
+	velocity = _net[2]
+	_swing_t = maxf(0.0, _swing_t - delta)
+	if downed or ragdolled or _inside:
+		return
+	if _clips() and int(_net[7]) & 16 != 0:
+		rig.locomote(0.0)
+		rig.activity("climb")
+		return
+	_animate(delta)
 
 func heal(n: int) -> void:
 	hp = mini(max_hp, hp + n)

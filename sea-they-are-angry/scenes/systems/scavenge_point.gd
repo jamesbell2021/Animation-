@@ -31,6 +31,12 @@ func _ready() -> void:
 			_build_scrap()
 		"bio":
 			_build_bio()
+		"diesel":
+			_build_diesel()
+		"notes":
+			_build_notes()
+		"shells":
+			_build_shells()
 		"seaweed":
 			_build_seaweed()
 		"oil":
@@ -96,6 +102,43 @@ func _build_oil() -> void:
 	m.metallic = 0.8
 	slick.material_override = m
 
+# A dented tin of twelve-bore cartridges, a few red cases spilled from it.
+func _build_shells() -> void:
+	var tin := Geo.box(_mesh, Vector3(0.26, 0.1, 0.18), Color.WHITE, Vector3(0.0, 0.05, 0.0))
+	tin.material_override = Look.flat_mat(Color(0.3, 0.35, 0.28), 0.6)
+	for i in 3:
+		var c := Geo.cyl(_mesh, 0.025, 0.08, Color.WHITE, Vector3(0.18 + 0.05 * float(i), 0.03, -0.05 + 0.06 * float(i)))
+		c.rotation.z = PI * 0.5
+		c.material_override = Look.flat_mat(Color(0.75, 0.15, 0.12), 0.5)
+	Look.glint(_mesh, Vector3(0.0, 0.25, 0.0), Color(1.0, 0.85, 0.6), 0.25)
+
+# A rusted tin box, its lid off, a sheaf of damp pages in it.
+func _build_notes() -> void:
+	var tin := Geo.box(_mesh, Vector3(0.32, 0.12, 0.22), Color.WHITE, Vector3(0.0, 0.06, 0.0))
+	tin.material_override = Look.flat_mat(Look.RUST, 0.7)
+	var paper := Look.flat_mat(Color(0.86, 0.82, 0.7), 0.9)
+	for i in 3:
+		var sheet := Geo.box(_mesh, Vector3(0.2, 0.01, 0.27), Color.WHITE, Vector3(0.05 * float(i), 0.13 + 0.01 * float(i), 0.0))
+		sheet.material_override = paper
+		sheet.rotation.y = 0.35 * float(i - 1)
+	Look.glint(_mesh, Vector3(0.0, 0.3, 0.0), Color(0.95, 0.9, 0.7), 0.3)
+
+# A jerrycan of diesel washed up from somewhere, half on its side in the shingle.
+func _build_diesel() -> void:
+	var can := Node3D.new()
+	_mesh.add_child(can)
+	can.position = Vector3(0.0, 0.2, 0.0)
+	can.rotation = Vector3(0.0, 0.6, 0.35)
+	var body := Geo.box(can, Vector3(0.18, 0.4, 0.3), Color.WHITE)
+	var paint := Look.flat_mat(Color(0.32, 0.36, 0.22), 0.6)
+	paint.metallic = 0.4
+	body.material_override = paint
+	var cap := Geo.cyl(can, 0.035, 0.07, Color(0.2, 0.2, 0.2), Vector3(0.0, 0.23, 0.1))
+	cap.rotation.x = 0.4
+	for sz in [-0.07, 0.0, 0.07]:
+		var handle := Geo.box(can, Vector3(0.03, 0.04, 0.03), Color(0.25, 0.27, 0.18), Vector3(0.0, 0.22, sz - 0.05))
+		handle.material_override = paint
+
 func _build_bio() -> void:
 	Look.rock(_mesh, 44, Vector3(0.7, 0.35, 0.6), Vector3(0.0, 0.05, 0.0), Look.STONE, 0.3)
 	var glow := Look.glow_mat(COLORS["bio"], 3.0)
@@ -105,6 +148,11 @@ func _build_bio() -> void:
 		var g := Geo.sphere(_mesh, r, Color.WHITE, Vector3(sin(a) * 0.25, 0.28 + 0.05 * float(i % 2), cos(a) * 0.2))
 		g.material_override = glow
 
+## A LAN client: there to gather or not, as the host has it.
+func net_set_available(v: bool) -> void:
+	available = v
+	_mesh.visible = v
+
 func _on_phase_changed(p: int) -> void:
 	if p == Cycle.Phase.DAWN and not once:
 		available = true
@@ -112,6 +160,10 @@ func _on_phase_changed(p: int) -> void:
 
 func interact_prompt() -> String:
 	if available:
+		if kind == "notes":
+			return "[E] Pick up the papers (notes for the research desk)"
+		if kind == "shells":
+			return "[E] Pick up the tin of cartridges (%d)" % amount
 		return "[E] Gather %s" % kind
 	return ""
 
@@ -121,7 +173,12 @@ func interact(_player: Node) -> bool:
 	available = false
 	_mesh.visible = false
 	Stock.add(kind, amount)
+	Events.did.emit("gather", _player)
 	Audio.sfx("gather", global_position, -2.0, 0.05)
+	if kind == "notes":
+		# The next page of the internees' diary, read as it's picked up.
+		Events.lore.emit(Lore.page(Run.notes_found))
+		Run.notes_found += 1
 	Events.message.emit("+%d %s" % [amount, kind.replace("_", " ")] + ("  (mix it into dirty fuel at the cottage)" if kind == "oil" else ""))
 	if once:
 		queue_free()

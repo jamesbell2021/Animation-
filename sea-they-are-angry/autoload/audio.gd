@@ -66,6 +66,14 @@ const SOUNDS := {
 	"wave_crash": ["_s_wave_crash", false],
 	"flare_shot": ["_s_flare_shot", false],
 	"trap_snap": ["_s_trap_snap", false],
+	"generator": ["_s_generator", true],
+	"searchlight": ["_s_searchlight", false],
+	"camp_bell": ["_s_camp_bell", false],
+	"shotgun": ["_s_shotgun", false],
+	"bow": ["_s_bow", false],
+	"arrow_hit": ["_s_arrow_hit", false],
+	"flamer": ["_s_flamer", true],
+	"glass": ["_s_glass", false],
 }
 
 func _ready() -> void:
@@ -100,7 +108,19 @@ func _ensure_buses() -> void:
 
 # ---- playback ----
 
+## The sea and the weather's own sounds: every machine makes its own, so they aren't
+## sent over the network.
+func ambient_sfx(key: String, at: Vector3 = Vector3.INF, volume_db: float = 0.0, pitch_jitter: float = 0.08) -> void:
+	_ambient = true
+	sfx(key, at, volume_db, pitch_jitter)
+	_ambient = false
+
+var _ambient := false
+
 func sfx(key: String, at: Vector3 = Vector3.INF, volume_db: float = 0.0, pitch_jitter: float = 0.08) -> void:
+	# On a LAN client, the game's sounds come from the host (Net.sfx_gate).
+	if not _ambient and not Net.sfx_gate(key, at, volume_db, pitch_jitter):
+		return
 	var stream: AudioStream = _streams.get(key)
 	if stream == null:
 		return
@@ -120,6 +140,10 @@ func sfx(key: String, at: Vector3 = Vector3.INF, volume_db: float = 0.0, pitch_j
 	p3.pitch_scale = pitch
 	p3.global_position = at
 	p3.play()
+
+## A sound's stream, for something that plays it on its own player (a looping engine).
+func stream(key: String) -> AudioStream:
+	return _streams.get(key)
 
 func loop(key: String, on: bool, volume_db: float = -10.0, fade: float = 2.0) -> void:
 	var stream: AudioStream = _streams.get(key)
@@ -483,6 +507,11 @@ func _s_foghorn_short() -> PackedFloat32Array:
 
 ## Play a horn pattern: e.g. [2.6, 0.0] is one long blast, [1.0, 1.0, 1.0] three short.
 func horn(pattern: Array, volume_db: float = -4.0) -> void:
+	if Net.playing():
+		if Net.is_host():
+			Net.relay_horn(pattern, volume_db)
+		elif not Net.replaying:
+			return
 	var delay := 0.0
 	for length in pattern:
 		var key := "foghorn" if float(length) > 2.0 else "foghorn_short"
@@ -588,6 +617,103 @@ func _s_drone() -> PackedFloat32Array:
 		var t := float(i) / RATE
 		a[i] *= 0.35 * (0.7 + 0.3 * sin(t * TAU / 9.0))
 	return _seamless(a, 1.5)
+
+# The camp's diesel generator: a slow single cylinder firing about seven times a second,
+# each a thump with a rattle of tappets, over a low hum.
+func _s_generator() -> PackedFloat32Array:
+	var n := _n(4.0)
+	var out := _gain(_tone(n, 50.0, 50.0, 1), 0.12)
+	var beat := 1.0 / 7.0
+	var t := 0.0
+	var k := 0
+	while t < 4.0 - beat:
+		var at := _n(t)
+		var seg := _n(beat)
+		var thump := _env(_lowpass(_noise(seg, 500 + k), 160.0), 0.002, 22.0)
+		_mix(thump, _env(_tone(seg, 62.0, 44.0), 0.002, 26.0), 0.9)
+		_mix(out, _gain(thump, 0.75 + 0.1 * float(k % 3)), 1.0, at)
+		var tick := _env(_highpass(_noise(_n(0.03), 900 + k), 2500.0), 0.0005, 160.0)
+		_mix(out, _gain(tick, 0.12), 1.0, at + _n(beat * 0.45))
+		t += beat
+		k += 1
+	return _seamless(_gain(out, 1.2), 0.3)
+
+# ---- the shed's weapons ----
+
+# A twelve-bore going off: a hard crack, a deep boom rolling off over the water.
+func _s_shotgun() -> PackedFloat32Array:
+	var n := _n(1.6)
+	var crack := _env(_highpass(_noise(n, 911), 900.0), 0.0005, 38.0)
+	var boom := _env(_lowpass(_noise(n, 912), 260.0), 0.001, 5.5)
+	_mix(boom, _env(_tone(n, 90.0, 38.0), 0.001, 7.0), 0.9)
+	_mix(boom, crack, 0.9)
+	# The echo off the cliffs.
+	var echo := _env(_lowpass(_noise(_n(1.0), 913), 500.0), 0.02, 6.0)
+	_mix(boom, echo, 0.25, _n(0.42))
+	return _gain(boom, 1.3)
+
+# A longbow loosed: the string's deep thrum and the arrow's hiss away.
+func _s_bow() -> PackedFloat32Array:
+	var n := _n(0.5)
+	var thrum := _env(_tone(n, 120.0, 95.0, 1), 0.001, 16.0)
+	var hiss := _env(_highpass(_noise(n, 920), 2500.0), 0.01, 14.0)
+	_mix(thrum, hiss, 0.35)
+	return _gain(thrum, 1.1)
+
+# An arrow striking home: a wet thock.
+func _s_arrow_hit() -> PackedFloat32Array:
+	var n := _n(0.25)
+	var thock := _env(_tone(n, 260.0, 140.0), 0.0005, 30.0)
+	_mix(thock, _env(_lowpass(_noise(n, 921), 900.0), 0.0005, 35.0), 0.7)
+	return thock
+
+# The flamer roaring: a loop of torn, rushing fire with a low throb under it.
+func _s_flamer() -> PackedFloat32Array:
+	var n := _n(3.0)
+	var roar := _gain(_lowpass(_noise(n, 930), 700.0), 0.9)
+	_mix(roar, _gain(_highpass(_noise(n, 931), 2200.0), 0.12))
+	var throb := _tone(n, 46.0, 46.0, 1)
+	for i in n:
+		roar[i] *= 0.8 + 0.2 * sin(float(i) / RATE * TAU * 7.0) * sin(float(i) / RATE * TAU * 2.3)
+	_mix(roar, throb, 0.15)
+	return _seamless(roar, 0.3)
+
+# A bottle smashing.
+func _s_glass() -> PackedFloat32Array:
+	var n := _n(0.6)
+	var out := _env(_highpass(_noise(n, 940), 3000.0), 0.0005, 12.0)
+	for k in 6:
+		var f := 2600.0 + 900.0 * float(k)
+		_mix(out, _env(_tone(_n(0.3), f, f * 0.97), 0.0005, 25.0 + 4.0 * k), 0.12, _n(0.015 * k))
+	return _gain(out, 0.9)
+
+# The camp's alarm bell on the gate wire, swung hard: four clangs, each a struck iron
+# bell's out-of-tune partials ringing on under the next.
+func _s_camp_bell() -> PackedFloat32Array:
+	var n := _n(2.6)
+	var out := PackedFloat32Array()
+	out.resize(n)
+	var partials := [[1.0, 1.0, 3.0], [2.02, 0.55, 4.5], [2.74, 0.4, 6.0], [3.81, 0.25, 8.0], [5.4, 0.14, 11.0]]
+	for k in 4:
+		var at := _n(0.36 * float(k))
+		var seg := _n(1.4)
+		var hit := _env(_highpass(_noise(_n(0.02), 300 + k), 2000.0), 0.0005, 200.0)
+		var ring := PackedFloat32Array()
+		ring.resize(seg)
+		for pt in partials:
+			_mix(ring, _env(_tone(seg, 640.0 * float(pt[0]), 638.0 * float(pt[0])), 0.001, float(pt[2])), float(pt[1]))
+		_mix(ring, hit, 0.5)
+		_mix(out, _gain(ring, 0.8 if k % 2 == 0 else 0.65), 1.0, at)
+	return _gain(out, 0.55)
+
+# A searchlight's arc striking: a buzzing clunk as the shutter opens.
+func _s_searchlight() -> PackedFloat32Array:
+	var n := _n(0.5)
+	var clunk := _env(_tone(n, 140.0, 90.0), 0.001, 18.0)
+	var buzz := _env(_tone(n, 100.0, 100.0, 1), 0.01, 6.0)
+	_mix(clunk, _gain(buzz, 0.4))
+	_mix(clunk, _env(_highpass(_noise(n, 77), 1800.0), 0.001, 40.0), 0.3)
+	return clunk
 
 # ---- tools and creatures ----
 

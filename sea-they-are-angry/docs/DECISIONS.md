@@ -406,3 +406,245 @@ This is step 1 of five: the place, the crossing, the camera and the helpers. Nex
   - **Getting stuck:** a keeper that stops getting closer to its next waypoint sidesteps, and as a last resort hops onto the waypoint.
   - **Difficulty:** creatures scale with the number of people (`Players.humans()`), not keepers, so solo plays as before, with help. With helpers about, a person who goes down solo no longer ends the run: a helper comes to revive them. Losing every keeper still ends it.
   - **Tests:** the older tests script every keeper themselves, so they turn helpers off.
+
+## The camp's power: the generator, diesel, the searchlights, climbing the towers (step 2)
+
+- **The generator (`scenes/structures/generator.gd`):** a Structure in the brick house, so creatures can damage it later and keepers mend it with scrap and driftwood.
+  - **Running:** from dusk to dawn while it has diesel, with its own chugging engine sound (synthesised: a slow single cylinder firing about seven times a second) and exhaust smoke. It burns 0.03 fuel a second idling, plus whatever it powers:
+    - each searchlight 0.1 a second wide, 0.2 focused;
+    - the huts' lights 0.015 each.
+
+    All four lights sweeping and the huts lit burn about 0.46 a second, so a full tank (100) lasts about 220 s, roughly one night.
+  - **Low and dry:** below 15% the lights it powers flicker and dim and a warning comes up. Run dry, the whole camp goes dark.
+  - **Saving:** its fuel is saved with the run (`Run.camp_fuel`, 60 to start).
+- **Diesel:** a new resource. A jerrycan washes up on each of the holm's two beaches every dawn (with a little driftwood and scrap). One can fills the generator by 35, worked with the oil can like refuelling the lamp. Two cans a day keep about two lights burning all night, not four. Which lights to keep running, and whether to fetch the diesel or do something else, is the camp's daily trade-off.
+- **The searchlights (`scenes/systems/searchlight.gd`):** an arc lamp in a drum on each tower's platform.
+  - **Unmanned:** it sweeps 120° of the ground outside its corner of the wire, 13 m out, in a wide beam.
+  - **Manned:** a keeper who takes it aims it where they like (the mouse's point on the ground, or along the stick) and switches it to a 6° focused beam with Q.
+  - **Effect:** it uses the lighthouse lamp's 3D cone test and the creatures' own light reactions, so the wide beam slows what it catches and the focused one burns it.
+  - **Feedback:** each light strikes with a buzzing clunk as the generator brings it on. Its glass glows and its beam shows in the fog.
+- **Climbing a tower:** each tower has a keepers' ladder up its inward side (the crag ladders' code). The platform has a floor and rails, with a hatch where the ladder comes up.
+  - **At the top:** the searchlight is the nearer thing to hand, so E takes it. E or R lets go; Q switches the beam.
+  - **Climbing down:** step to the hatch and E climbs down.
+  - **Knocked:** a keeper who is knocked about lets go of the light.
+- **The huts:** their windows light warm yellow and throw light out of each end while the generator runs, flickering with it when it runs low.
+- **The HUD:** shows the camp's generator: its fuel, whether it's running and how many lights, and diesel in store.
+- **The camp warden:**
+  - **By day:** keeps the generator filled. It fetches the diesel from the holm's beaches, walking a new path round the outside of the wire, and works the can at the generator. It also mends the camp, then does its rounds.
+  - **From dusk:** it climbs the tower facing whatever is on the holm or the bridge (or the one over the east beach), takes its light and sweeps. When something comes within range it swings the beam onto it and focuses once it's on target. It moves to a better tower if the danger is elsewhere, and comes down at dawn. If the camp is dark with diesel in store, it gets the generator going first.
+- **The holm grew** to 33 by 27 m so there's a 5 m margin round the wire: the towers stand turned to the diagonal and their legs reach 1.5 m out along it, and the path round the outside needs to clear them. A check walks every link of the keepers' map on the holm against the ground and the buildings (all clear), and no link may cross the wire.
+
+## Hunger, warmth and the camp's crops (step 3)
+
+- **Hunger and warmth:** every keeper, people's and helpers alike, has both, from 100 (fed, warm) down to 0. Both show beside each keeper's health on the HUD and are saved with the run.
+  - **Hunger** drains 0.18 a second (half as fast again sprinting), about two days and nights from full to empty.
+  - **Warmth** drains outdoors at night: 0.12 a second on a clear night, 1.6 times that in squalls, 2.2 times in a storm. It comes back by day (0.25 a second), quickly by a fire (3 a second by a lit campfire or stove, 2 by the cottage door), and slowly up in the lamp room.
+  - **Below 25** a keeper is hungry (15% slower) or cold (10% slower, and swings take a quarter longer). A warning comes up for a person's keeper.
+  - **At 0** they starve or freeze, losing a point of health every 2.5 s. That can down them; the needs never kill outright.
+- **Eating:** a cottage meal now feeds as well as healing and building strength. It's on the menu whenever a keeper is hungry, even at full health. The camp's mess hut has a trestle table where a meal from the store feeds a keeper and heals 30, without the cottage's strength gain, so the lighthouse stays worth coming back to.
+- **The quarters' stove:** a driftwood lights it for about four minutes, smoke coming out of the hut's stovepipe, and anyone standing by the hut warms through. It is the camp's way in from the cold, as the cottage's fire and the campfire are the main island's.
+- **The camp's crops (`scenes/structures/camp_plot.gd`):** four plots, each saved with the run (`Run.camp_crops`). Each sown plot comes up overnight and is ready at dawn.
+  - **Outdoor beds (three):** kale and cabbages, 2 food and a seed back. A storm night flattens a planted bed half the time.
+  - **The greenhouse's staging:** tomatoes and beans, 3 food and a seed back, safe from the weather. It is worked from its doorway, the side facing the parade ground.
+  - **Seed:** a new resource. Three packets are left in the huts at the start; every harvest gives one back.
+
+  With the cottage's potato beds, a tended homestead and camp grow well over what three keepers eat. The pressure is finding the time to tend both islands and stay fed and warm through a long or stormy night, not a shortage.
+- **Helpers look after themselves:**
+  - When hungry they go and eat, in the mess on the holm or at the cottage on the main island.
+  - When cold they go and warm up, the warden at the stove (lighting it if need be), the lighthouse helper at the campfire. They stay until warm through.
+  - Up in the lamp room they stay warm, so the light isn't left for the cold. On a tower they're out in the weather.
+  - The warden sows and lifts the camp's plots between filling the generator and fetching diesel. The lighthouse helper lifts the cottage's potatoes and digs kelp in, keeping a little back for mending.
+- **The balance bot:** `tools/playtest.gd` feeds and warms its keepers by day, as a player would, so it keeps measuring the nights. In "eco" mode it pays for the meals.
+
+## Research, the internees' notes and the new defences (step 4)
+
+- **The internees' notes:** the camp was a 1940s internment camp, and its internees and guards left papers behind. Two tins of them lie about the camp at the start and another turns up each dawn while fewer than two are lying about (eight spots about the camp, `NOTE_SPOTS`).
+  - **Reading:** picking one up gives a page of notes for the research desk and reads out the next page of the diary on screen for 12 s (`scenes/systems/lore.gd`). The eight pages tell what the camp saw, from the internees' arrival in September 1940 to their release in May 1945. Each one also hints at a project.
+  - **After the diary:** later finds are loose pages of sums.
+  - **Saving:** the count read is saved (`Run.notes_found`), so a continued run carries on the diary where it left off.
+- **The research desk (`scenes/structures/research_desk.gd`):** a desk in front of the mess hut, papers spread on it. E opens the list of projects (`scenes/systems/research.gd`).
+  - **Cost:** each project costs a page of notes and some of the store.
+  - **Timing:** one is worked out at a time and is done by dawn. The dawn report says what was finished.
+  - **Saving:** what's done and what's under way are saved.
+  - **Why the notes gate it:** the desk is a reason to go and look round the camp by day, and research can't all be bought in the first afternoon.
+- **The projects:**
+  - **Clockwork tracking:** a searchlight nobody is on finds the nearest creature in its sector within 24 m, follows it and narrows to the focused beam, so it burns it. Without it an unmanned light only sweeps in the wide beam. Even so, a keeper on the light still matters: tracking takes the nearest creature, not the most dangerous one.
+  - **Silvered reflectors:** the searchlights reach 5 m further and burn 1.6 times harder.
+  - **Generator governor:** the generator burns a third less diesel (×0.67).
+  - **Cold frames:** the camp's outdoor beds come through storms, and the greenhouse gives 5 instead of 3.
+  - **Tinning:** every harvest, at the camp and the cottage, gives a food more.
+  - **Barbed wire, tripwire flares and sandbag walls:** each opens a new defence at the cairns (below).
+  - **Alarm bell:** in the list now and does nothing yet. Step 5 makes it ring when anything comes ashore on the holm.
+- **New defences, set at the cairns like the traps:**
+  - **Barbed wire** (a scrap and a driftwood): anything within 1.4 m crawls at 35% speed and loses 5 health a second. The wire wears only while something is in it and is torn away after 40 s of that. Eels are not caught, as with the other traps.
+  - **Tripwire flare** (a scrap and a bio): the first creature to trip it gets a flare fired into it from the stake, aimed where it's going. The flare does its usual 40 damage and burns red.
+  - **Sandbag wall** (two driftwood and a seaweed): a wall 2.6 m long and 0.9 m high goes up across the path, with 160 health.
+    - **Blocking:** creatures that walk into it stop and batter it, as they do a fence (enemies treat the group `barricades` like fences).
+    - **Wear:** it slumps a course at a time, and can be patched with driftwood (60 a time).
+    - **When it's down:** the cairn is clear for another defence.
+    - **Crabs:** a Crab's slam batters a wall like a building, rather than smashing it at a stroke as it does a trap.
+- **Where walls can go:** only across a beach path, at the main island's three beach cairns and the holm's two beach posts.
+  - **Elsewhere:** the ledge cairns, the gate post and the bridge-end post are on the keepers' own way, and a wall there would shut them out. A cairn knows the way along its path (`path_dir`); one with none takes no wall.
+- **The holm's defence posts:** four cairns of their own, open from the start rather than with the defences upgrade:
+  - **One up each of its two beaches.**
+  - **One on the track outside the gate.**
+  - **One where the bridge comes onto the holm.**
+
+  These are where step 5's raids will come.
+- **Tests:** `tests/slice_research.gd` (39 checks):
+  - **Notes:** the notes and the diary, and the desk and its costs.
+  - **Effects:** what each project does.
+  - **Defences:** the posts, a creature crawling and bleeding in the wire, a tripwire's flare, and a creature stopping to batter a wall.
+  - **Saving.**
+
+  `slice_economy`'s count of the trap slots the defences upgrade opens leaves out the holm's posts.
+
+## Creatures raid the camp (step 5)
+
+- **Two fronts:** from night 2, every third group of Bloated, Squid or Crabs in the night's table lands on one of the holm's two beaches instead and makes for the camp. From night 5 it's every other group.
+  - **Where they come from:** these groups come out of the table, so the main island sees that many fewer and the night is no bigger. Nights 2 and 3 send one group to the holm, night 4 sends two, and nights 5 to 8 send two or three.
+  - **What never goes:** Smotherers and the Eel stay with the light.
+  - **Co-op:** the same scaling as on the main island.
+  - **Once the camp has fallen:** nothing more is sent; it all comes for the light again. Losing the camp never makes the nights easier.
+- **The holm's own creature map (`Nav._build_holm`):** up each beach and straight at the nearest stretch of wire (kept clear of the corner towers), then inside to the parade ground and a stop before each building and the generator.
+  - **Separate from the main island's:** raiders stay on the holm (`Enemy.camp_raid`). They never try to walk to the light across the sea, and the main island's creatures never wander onto the holm.
+  - **The gate:** it's on the map, but going through the wire is shorter from both beaches, so they tear through it.
+  - **Dawn:** they go back down to the holm's own beaches.
+- **What they make for:** the nearest of the generator, the quarters, the mess hut and the greenhouse still standing (`Camp.targets()`). Crabs and Squid only go after keepers on their own island: a Squid on the holm won't chase a keeper across the water.
+- **The wire (`scenes/structures/camp_wire.gd`):** each of the five runs of wire (three whole sides and the two either side of the gate) is a barricade with 120 health. Creatures that walk into it stop and tear at it, under the searchlights.
+  - **Torn:** the strands part one by one.
+  - **Down:** the gap stands open.
+  - **Mending:** a scrap mends 60.
+- **The buildings (`scenes/structures/camp_building.gd`):**
+  - **Health:** the quarters and the mess have 220 each and the greenhouse 150. The generator keeps its 120 and is now measured to its walls, so creatures can reach it and keepers can mend it from outside.
+  - **Mending:** two driftwood mend 60. Scrap is scarce and the wire wants it.
+  - **Battered:** they lean and smoke.
+  - **Wrecked:** a building sinks to a ruin, and what's in it stops working until it's mended:
+    - **The quarters:** the stove goes out and can't be lit.
+    - **The mess:** no meals, and the research desk can't be used. A project under way waits, and isn't finished at dawn.
+    - **The greenhouse:** its glass goes, what's growing in it is lost at dawn, and nothing can be sown.
+    - **The generator:** no power: no searchlights, no hut lights.
+  - **A wrecked hut stays dark.**
+- **The camp has fallen** when the generator and all three buildings are wrecked. The HUD says so in red, the dawn report says so, and the tip says what to mend.
+  - **The run goes on.** As the owner asked, only the lighthouse's destruction ends it.
+  - **Why it's hard:** losing the camp loses its searchlights, its warmth, the mess and the research, and its crops. All the while, the nights stay the same size.
+- **Alarm bell (research):**
+  - **With it:** when a group lands on the holm, the camp's bell rings (made in code, `_s_camp_bell`: four clangs of an iron bell) and a warning says which beach.
+  - **Without it:** the lighthouse's foghorn doesn't sound for the holm, and the landing is only noticed if a person's keeper is on the holm. Otherwise the first sign is the searchlights swinging, the HUD's camp line going red, or "The camp's wire is down!".
+- **The HUD's camp line:** names anything wrecked, anything under half health, and how many runs of wire are down, in red, so a raid reads from the main island.
+- **The warden mends the camp by day:** wire from just inside it, buildings from in front of them, after seeing to the generator. The lighthouse's helper mends only the main island's.
+- **The balance bot** (`tools/playtest.gd`) now prints the camp's state each dawn.
+  - **Its day:** it fetches the holm's two cans of diesel into the generator and mends the camp with what it has.
+  - **By default** its keepers don't go to the holm, so the camp has only its own searchlights.
+  - **A fourth argument, `helpers`,** brings in the computer's keepers, the camp's warden among them.
+- **Balance, first pass:** with nobody on the holm, the camp at first fell on night 3 to two raids of three Bloated. The bursts by the huts caught both huts at once, and the bot had no scrap to mend them. So the buildings were made tougher (220 / 150) and are mended with driftwood rather than scrap. See the playtest numbers below.
+- **Tests:** `tests/slice_camp_raid.gd`:
+  - **Setup:** the camp's targets and wire, the holm's map (through the wire, back to sea off the holm), and which groups go for the camp.
+  - **A raid:** a Bloated tearing at the wire and then bursting on the generator. A Squid and a Crab on the holm going for the camp, not a keeper over the water.
+  - **Wrecking:** what stops working, and the camp falling without ending the run.
+  - **Mending:** mending by hand, and the warden mending.
+  - **The bell.**
+- **Playtest numbers** (`playtest.gd -- 6 bot 1`, after the change):
+  - **Nobody on the holm:** the camp takes its first raid on night 2 (quarters and mess at 45%, a run of wire down). It loses the generator and the greenhouse on night 3 and falls on night 6.
+  - **With the warden** (`helpers`): the camp comes through nights 2 and 3 untouched. It loses the generator on night 4 and the mess on night 5, but never falls in six nights.
+  - **Why it stays battered:** the bot spends its scrap before the generator's turn, so the wreck waits.
+  - **The light:** neither run lost the lighthouse.
+
+  So the camp needs someone on it, as asked. Left alone it is lost about a week in, and a warden keeps it alive but not whole.
+
+## The shed's weapons (owner's request: "a flamer from a weed burner ... a poison trap from rat poison ... a homemade longbow from driftwood ... petrol bombs from bio fuel ... a double-barrel shotgun with limited ammo")
+
+- **Where they come from:** the garden shed has a workbench now. E opens it, unless the shed is damaged and can be mended, when the hammer comes first, as at the cottage.
+  - **One of each:** the shotgun and the weed burner are single objects. Whoever carries one has it, and anyone else sees "Callum has it". Hung back up, they're in the shed for anyone. Each keeper makes their own longbow.
+  - **Where they're kept:** what each keeper carries is saved (`Run.arms`), along with the flamer's tank and the shotgun's loaded barrels.
+- **What's in hand (`scenes/player/arsenal.gd`):** the boathook, longbow, shotgun, flamer or petrol bombs, changed with Tab, the mouse wheel or 1 to 5 (P1), [ and ] (P2 on the arrow keys), or the d-pad.
+  - **Attack:** works whatever's in hand.
+  - **The boathook:** still thrown at a climber on the tower, but only with the hook in hand.
+  - **The HUD:** says what each person's keeper holds and its ammunition.
+  - **Helpers:** keep to the boathook.
+- **The longbow:** 3 driftwood and a kelp cord, and 5 arrows for a driftwood and a scrap.
+  - **Using it:** hold attack to draw (0.8 s, walking at half speed), let go to loose. An arrow does 12 damage at a quarter draw and 40 at a full one, and flies 26 m almost flat.
+  - **Aiming:** it's aimed at the body of whatever's on the ground under the aim, so it works from the crag top down onto a beach.
+  - **Arrows aren't recovered,** to keep it simple.
+- **The double-barrelled shotgun:** 9 pellets in a 24° cone out to 11 m, 7 damage each and 1.6 times that inside 3.5 m.
+  - **Damage:** each pellet hits the first creature in its line. Two barrels at 3 m kill a Bloated outright.
+  - **Reloading:** after both barrels, the keeper breaks it open and loads two from the store (1.6 s). A loud crack and boom, a muzzle flash, smoke, and a shove back.
+  - **Limited ammunition, as asked:** there is no way to make cartridges.
+    - **The box in the shed:** 10 at the start.
+    - **Wash-ups:** a tin of 3 washes up every third dawn from the third, and the dawn report says where.
+  - **Crabs** still shrug off pellets from the front, like any blow.
+- **The flamer:** rigging the weed burner costs 2 scrap and comes with half a tank. Hold attack for a roaring 5.5 m stream, 17° either side.
+  - **Its effect:** whatever's in it stops and writhes (the beam's burn), takes 34 damage a second, and burns on for 2.5 s after (8 a second).
+  - **Fuel:** a tank lasts about six seconds. When it runs dry, the keeper pours a bio from the store into it (1.5 s), so it competes with the lamp for bio.
+  - **Moving:** the keeper walks at 60% while it's going.
+  - **Visible:** the gas bottle shows on the back of whoever carries it.
+- **Petrol bombs:** 2 for a bio and a kelp rag. They're thrown to the mouse's point, up to 12 m. On a pad, with no cursor, they go to the nearest creature within 25° of the aim, otherwise 10 m ahead.
+  - **The smash:** 20 damage and alight for 4 s within 2.2 m, then a pool of fire 2.3 m across for 7 s. Anything in the pool takes 16 a second and is alight.
+  - **Into the sea:** only steam.
+- **Rat poison:** 4 tins in the shed, and no more. Bait at a trap cairn costs a tin and a kelp, and does no damage on the spot. It does work on the first three creatures that eat it:
+  - **Poisoned:** 14 s of poison, 3.5 a second and 30% slower, about 49 in all.
+  - **Squid** skitter over it.
+- **Fire and poison over time:** both live on the creatures (`Enemy.on_fire`, `Enemy.poisoned`), so any source can use them. The sea puts fire out.
+- **Who gets the kill:** a keeper's blow is now tallied by what it was (`Player.hit_kind`: "shot", "arrow", "flame", "bomb", "poison"), and the dawn report lists each.
+- **The Eel:** takes half damage from these weapons (the boathook does a quarter). The beam is still what brings it down.
+- **Friendly fire:** none. The flamer, fire pools and shot don't hurt keepers, so co-op and the helpers aren't punished for standing near them.
+- **Sounds,** all made in code: the shotgun, the bow's thrum, an arrow striking, the flamer's roaring loop, and glass smashing.
+- **Tests:** `tests/slice_arms.gd` (40 checks): the workbench, switching, each weapon doing what it says, the cartridges running out, the poison, the wash-up and the save.
+
+## Difficulty (owner's request: "difficulty modes; in easy mode there's infinite ammo")
+
+- **Three seas,** chosen on the title screen under the keepers (◀ ▶ or click to change). A new run takes the choice; a continued run keeps its own, saved with it (`Run.difficulty`). The HUD's top line names it when it isn't the normal one.
+
+  | | Calm sea (easy) | Angry sea (normal) | Raging sea (hard) |
+  |---|---|---|---|
+  | Creatures per landing | ×0.7 | as balanced | ×1.35 |
+  | Damage to keepers | ×0.6 | ×1 | ×1.3 |
+  | Hunger and cold | ×0.6 | ×1 | ×1.25 |
+  | Ammunition | never runs out | as it is | 6 cartridges and 2 tins of rat poison to start, not 10 and 4 |
+
+- **Infinite ammunition on a calm sea** covers everything a keeper shoots, throws or burns:
+  - the shotgun's barrels never empty, so it never reloads;
+  - arrows and petrol bombs are never used up, and bombs are in hand even with none made;
+  - the flamer's tank never drops;
+  - flares never run out.
+
+  The weapons themselves still have to be made or taken at the shed, so the workbench still matters. Traps and the lamp's fuel are not ammunition and cost as usual.
+- **Group sizes are rounded to nearest** (at least 1), not up, so the calm sea's ×0.7 actually removes a creature from small groups. This changes nothing on the normal sea: the co-op ×1.5 only ever leaves halves, which round up either way (`Spawner.group_size`).
+- **The tests run on the normal sea.** `slice_arms.gd` checks the three seas' group sizes, the free ammunition, the damage, the hard sea's smaller shed and the save.
+
+## LAN play (owner's request: "local network play so on LAN you don't need split screen")
+
+- **One keeper to each machine, each on a screen of its own.** Up to three machines; the computer's helpers make up three keepers as ever. Title screen → Play on the LAN → Host a game, or Join a game (hosts on the LAN show up by themselves; or type the host's address). The host sees who's in the lobby and starts a new run or continues its save. The host's sea (difficulty) is the game's. Nobody can join a game under way.
+- **The host runs the game (`autoload/net.gd`).** Godot's ENet, port 24686 (UDP), with a broadcast on 24687 each second while a lobby is open, so clients can find it. A client:
+  - **sends** its keeper's controls 60 times a second: movement, aim, the mouse's point on the ground, and the buttons held. Presses are counted, not flagged, so a lost packet loses no press;
+  - **gets snapshots** 30 times a second (unreliable, ordered): every keeper, every creature, the lamp, the searchlights, and the day's clock;
+  - **gets the state** 4 times a second (reliable): the run as the save keeps it, so the store, research, crops, flares and what's carried; plus the buildings' health, the trap cairns, what's washed up, the generator and the stove;
+  - **gets events** as they happen:
+    - sounds and effects (unreliable, batched once a frame);
+    - messages, warnings and reports;
+    - flares, arrows and petrol bombs in flight;
+    - creatures dying (as a corpse there too);
+    - the end of the run and a new run.
+- **Puppets.** On a client every keeper and creature is a puppet: it eases toward the host's position (it snaps when more than 4 to 5 m out), turns as the host has it, and plays the host's one-off clips and ragdolls (`CharacterRig.shot_seq`).
+  - **Puppets can't be hurt and don't act.** The client's spawner, creatures' minds, traps, generator, alarms, saves and dawn are all off.
+  - **Some look is still worked out on the client:** its lamp and searchlights light what they fall on, so creatures flinch and smoke there too, but the damage is the host's.
+  - **Sound and effects:** the host's sounds and effects are sent over and played there, and the client's own copies are held back so nothing plays twice. The sea, the weather and the interface make their own on each machine.
+- **Menus across machines.** A client's keeper at the cottage, the shed, a cairn or the research desk opens a menu run on the host and shown on the client. A pick goes back to the host, and the rows come back refreshed.
+  - **Shared menus:** a menu open on another machine doesn't stop the host using a menu of its own.
+  - **The keeper stands still** while it's open, as on one screen.
+- **Leaving:**
+  - **A client leaves:** its keeper carries on, run by the computer: the camp's warden if nobody keeps the camp, otherwise a lighthouse helper.
+  - **The host leaves:** everyone else is put back on the title screen, which says why.
+  - **Game over:** only the host can start the next run, and everyone's game reloads into it together.
+- **On the LAN:**
+  - **Pause:** it shows the menu but stops nothing, since the night goes on for everyone else.
+  - **Skipping the day:** only the host can.
+- **Not sent, yet:** the ink a Squid squirts, and the boathook thrown at a Smotherer, aren't shown in flight on clients (their effects are).
+- **Tests:** `tests/run_lan.sh` runs a host and a client as two Godot processes on this machine (`GODOT=... tests/run_lan.sh`). They step along together:
+  - **Joining:** the lobby, and the keeper slots.
+  - **Moving:** the client's keeper walking on both machines.
+  - **What the client sees:** the host's creature, the battered fence, the store, dusk and the lamp, the message, and effects and sounds arriving.
+  - **The shed's menu:** opened on the client, run on the host; the shotgun taken.
+  - **Firing:** the client's shot hitting the host's Bloated.
+  - **The run's end:** on both machines.
+  - **Afterwards:** a New Run for everyone, and the client leaving with its keeper handed to the computer.

@@ -1,6 +1,8 @@
 extends SceneTree
 ## Balance playtest: plays nights with a simple keeper bot and prints what happened.
-##   godot --headless --path sea-they-are-angry --script res://tools/playtest.gd -- [nights] [bot|idle] [keepers]
+##   godot --headless --path sea-they-are-angry --script res://tools/playtest.gd -- [nights] [bot|idle] [keepers] [helpers]
+## "helpers" brings in the computer's keepers to make up three (the camp's warden among
+## them); without it every keeper is the bot's and the camp has only its searchlights.
 ## "bot" keeps the lamp manned: it burns whatever is on the beaches with the focused
 ## beam and holds the nearest climber in the wide beam. "idle" leaves the lamp to sweep
 ## by itself. Between nights the bot patches up what it can afford, like a player would.
@@ -9,6 +11,7 @@ extends SceneTree
 var nights := 3
 var mode := "bot"
 var keepers := 1
+var helpers := false
 var stats := {}
 # A human at the lamp: picks a new target about once a second and aims a few degrees off.
 const REACTION := 1.1
@@ -28,13 +31,15 @@ func _go() -> void:
 		mode = a[1]
 	if a.size() > 2:
 		keepers = int(a[2])
+	if a.size() > 3:
+		helpers = a[3] == "helpers"
 	var saved := _backup()
 	if FileAccess.file_exists("user://run.json"):
 		DirAccess.remove_absolute(ProjectSettings.globalize_path("user://run.json"))
 	var players = root.get_node("Players")
 	players.wanted = keepers
-	# Every keeper here is scripted: no helpers.
-	root.get_node("Players").helpers = false
+	# Every keeper here is scripted, unless asked for the helpers.
+	root.get_node("Players").helpers = helpers
 	change_scene_to_file("res://scenes/main.tscn")
 	for i in 600:
 		if current_scene != null and current_scene.get("player") != null:
@@ -140,6 +145,8 @@ func _go() -> void:
 			if s is Structure and Enemy.HOME_IDS.has(s.id):
 				home.append("%s %d/%d" % [s.id, s.hp, s.max_hp])
 		print("   homestead: %s   killed: %s" % [", ".join(home), stats.get("kinds", {})])
+		var camp_now: String = main._camp_report()
+		print("   camp (raided by %d group%s): %s" % [main._tally.get("camp_raid", 0), "" if main._tally.get("camp_raid", 0) == 1 else "s", camp_now if camp_now != "" else "sound"])
 		print("   smothered for %.0f s" % stats.get("smothered_s", 0.0))
 		print("   lamp lit %.0f s, focused %.0f s, of which burning something %.0f s" % [stats.get("lit_s", 0.0), stats.get("focus_s", 0.0), stats.get("burn_s", 0.0)])
 		if not run.active:
@@ -297,6 +304,15 @@ func _day_repairs(main) -> void:
 			s.repair(s.repair_amount())
 	while main.lighthouse.lamp.fuel <= Lamp.FUEL_MAX - Lighthouse.REFUEL_UNITS and stock.spend({"bio": 1}):
 		main.lighthouse.lamp.refuel_clean(Lighthouse.REFUEL_UNITS)
+	# The camp's diesel off the holm's beaches, into the generator.
+	stock.add("diesel", 2)
+	while main.camp.generator.top_up():
+		pass
+	# Fed and warmed through by day, as a player would be (the eco bot pays for its meals).
+	for k in main.players:
+		if mode != "eco":
+			k.hunger = 100.0
+		k.warmth = 100.0
 	if mode == "eco":
 		_day_economy(main)
 	print("   day: stock ", stock.all(), "  lighthouse ", main.lighthouse.hp, "  fuel ", roundi(main.lighthouse.lamp.fuel))
@@ -317,7 +333,7 @@ func _day_economy(main) -> void:
 		if plot.state() == GardenPlot.RIPE:
 			plot.interact(main.player)
 	for k in main.players:
-		if k.hp < k.max_hp * 0.8 and stock.get_amount("food") > 0:
+		if (k.hp < k.max_hp * 0.8 or k.hunger < 50.0) and stock.get_amount("food") > 0:
 			cottage.eat(k)
 	for plot in garden.plots:
 		if plot.is_open and plot.state() == GardenPlot.BARE and stock.get_amount("seaweed") > 1:

@@ -332,9 +332,16 @@ func current_activity() -> String:
 
 ## Play a one-off clip over whatever else is going on: arm actions on the upper body,
 ## get-ups and lunges on the whole body.
+## The last one-off clip played, and how many so far (LAN: the host sends these so the
+## same clip plays on the other machines).
+var shot_seq := 0
+var last_shot := ""
+
 func shot(n: String) -> void:
 	if tree == null or not clips.has(n):
 		return
+	shot_seq += 1
+	last_shot = n
 	var which := "upper" if n in UPPER_SHOTS else "full"
 	if which == "full":
 		# A get-up takes over from the ragdoll in its own time; anything else eases in

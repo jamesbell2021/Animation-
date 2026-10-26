@@ -40,11 +40,30 @@ const SCAVENGE := [
 	[2, 0.46, 0.0, "seaweed", 2],
 	[0, 0.4, -1.6, "seaweed", 1],
 ]
+# On the holm's beaches: jerrycans of diesel for the camp's generator, and a little more.
+# [holm beach index, t up the beach, lateral offset, kind, amount].
+const HOLM_SCAVENGE := [
+	[0, 0.62, 1.6, "diesel", 1],
+	[1, 0.6, -1.4, "diesel", 1],
+	[0, 0.5, -1.8, "driftwood", 1],
+	[1, 0.52, 1.8, "scrap", 1],
+]
 # A third keeper finds a little more on the south beach.
 const SCAVENGE_CROWD := [1, 0.46, -0.6, "driftwood", 1]
 # Trap cairns up the middle of each beach, short of the fence (a Bloated burst there
 # can't reach it), then on the ledge and at its foot as defences are upgraded.
 const TRAP_BEACH_T := 0.6
+# The holm's defence posts: up each of its beaches, outside the camp gate, and where the
+# bridge comes onto the holm.
+const HOLM_POST_BEACH_T := 0.86
+# Where the internees' papers turn up, about the camp (from its centre): a tin under a
+# hut's step, in the greenhouse, at a tower's foot, in the long grass by the wire.
+const NOTE_SPOTS := [
+	Vector2(-1.2, -3.1), Vector2(6.0, 4.0), Vector2(-9.4, 6.9), Vector2(1.5, 7.2),
+	Vector2(9.3, -6.8), Vector2(-8.0, -6.6), Vector2(-2.0, 3.6), Vector2(3.4, -1.0),
+]
+# Papers lying about at once, at most: one more turns up each dawn.
+const NOTES_LYING := 2
 const TRAP_LEDGE_S := 0.3
 # An oil drum washes up at dawn after every third night, from the second on.
 const OIL_EVERY := 3
@@ -82,6 +101,8 @@ var _warned_low := false
 var _tally := {}
 const HORN_GUTTER_EVERY := 7.0
 const FIRST_DAY_TIP_TIME := 14.0
+# How long a page of the internees' notes stays up to be read.
+const LORE_TIME := 12.0
 var camera: Camera3D
 ## Frames the keepers' islands and splits the screen when they're apart.
 var director: CameraDirector
@@ -123,6 +144,7 @@ func _ready() -> void:
 	hud = HudScript.new()
 	hud.lighthouse = lighthouse
 	hud.lamp = lighthouse.lamp
+	hud.camp = camp
 	add_child(hud)
 	add_child(PauseScript.new())
 
@@ -131,10 +153,17 @@ func _ready() -> void:
 	# Bound methods, not lambdas: Events outlives this scene, and only methods disconnect themselves when it's freed.
 	Events.enemy_killed.connect(_on_enemy_killed)
 	Events.structure_destroyed.connect(_on_structure_destroyed)
+	Events.lore.connect(_on_lore)
 	Audio.start_ambience()
 
+	# A LAN game starts when the host says (Net.start_game), even headless.
+	if Net.online():
+		if Net.started:
+			Net.scene_ready(self)
+		else:
+			_show_title()
 	# Tests and CI run headless and start straight away; so does New Run from game over.
-	if DisplayServer.get_name() == "headless" or Run.quick_start:
+	elif DisplayServer.get_name() == "headless" or Run.quick_start:
 		Run.quick_start = false
 		begin_run(true, Players.wanted)
 	else:
@@ -155,6 +184,34 @@ func _show_title() -> void:
 	title.start_requested.connect(begin_run)
 	add_child(title)
 
+## A LAN game, begun on every machine together (Net.start_game): `humans` keepers, one
+## per machine in the lobby's order, and helpers make up the rest. The host's run is the
+## one that counts; a client's catches up from the host's state.
+func begin_lan(cfg: Dictionary) -> void:
+	begin_run(bool(cfg.get("cont", false)) and Net.is_host(), int(cfg.get("humans", 1)))
+	var names: Array = cfg.get("names", [])
+	for i in mini(names.size(), players.size()):
+		players[i].net_name = String(names[i])
+
+## LAN: a client has gone; its keeper is the computer's now (the light's or the camp's,
+## whichever has nobody).
+func keeper_left(slot: int) -> void:
+	if slot < 0 or slot >= players.size():
+		return
+	var p: Player = players[slot]
+	if not is_instance_valid(p) or p.ai:
+		return
+	p.remote = false
+	p.ai = true
+	p.in_menu = false
+	var camp_kept := false
+	for k in players:
+		if is_instance_valid(k) and k != p and k.ai and k.get_node_or_null("KeeperAI") != null and k.get_node("KeeperAI").role == "camp":
+			camp_kept = true
+	var brain := KeeperAI.new(p, "light" if camp_kept else "camp")
+	brain.name = "KeeperAI"
+	p.add_child(brain)
+
 ## Start (or continue) a run with n keepers.
 func begin_run(continue_save: bool, n: int) -> void:
 	if title != null:
@@ -166,12 +223,20 @@ func begin_run(continue_save: bool, n: int) -> void:
 	camera.current = true
 	lighthouse.lamp.showcase = false
 	lighthouse.lamp._set_state(Lamp.State.OFF)
-	Players.configure(n)
+	if Net.online():
+		# One keeper on each machine, on its own screen: no split screen to set up.
+		Players.wanted = clampi(n, 1, Players.MAX)
+		Players.devices = [Players.KEYBOARD_MOUSE]
+		Players.nodes.clear()
+	else:
+		Players.configure(n)
 	var total := Players.MAX if Players.helpers else Players.wanted
 	for i in total:
 		var p := Player.new()
 		p.idx = i
 		p.ai = i >= Players.wanted
+		p.remote = Net.is_host() and i > 0 and not p.ai
+		p.puppet = Net.is_client()
 		var at: Vector3 = SPAWNS[i % SPAWNS.size()]
 		# The last helper keeps the camp, and starts there; any other keeps the light.
 		var role := "camp" if i == total - 1 else "light"
@@ -183,18 +248,21 @@ func begin_run(continue_save: bool, n: int) -> void:
 		Players.nodes.append(p)
 		players.append(p)
 		add_child(p)
-		if p.ai:
-			p.add_child(KeeperAI.new(p, role))
-	player = players[0]
+		if p.ai and not p.puppet:
+			var brain := KeeperAI.new(p, role)
+			brain.name = "KeeperAI"
+			p.add_child(brain)
+	player = players[clampi(Net.my_slot, 0, players.size() - 1)] if Net.is_client() else players[0]
 	if director == null:
 		director = CameraDirector.new()
 		director.main_camera = camera
 		add_child(director)
-	director.players = players
+	# On LAN each machine's screen follows its own keeper only.
+	director.players = [player] if Net.online() else players
 	hud.player = player
 	hud.players = players
 	hud.visible = true
-	var d := SaveSys.load_run() if continue_save else {}
+	var d := SaveSys.load_run() if continue_save and not Net.is_client() else {}
 	if not d.is_empty():
 		Run.start_loaded(d)
 	else:
@@ -203,26 +271,37 @@ func begin_run(continue_save: bool, n: int) -> void:
 	for p in players:
 		p.max_hp = Player.BASE_HP + int(Run.max_hp_bonus[p.idx])
 		p.hp = p.max_hp
+		p.hunger = float(Run.hunger[p.idx])
+		p.warmth = float(Run.warmth[p.idx])
 	Upgrades.apply(get_tree())
 	if Players.wanted >= 3:
 		_add_scavenge(SCAVENGE_CROWD)
+	for i in NOTES_LYING:
+		_place_notes()
 	if d.is_empty():
 		hud.report("The first day.", [
-			"Gather driftwood, scrap and bio on the three beaches. The ladders down the crag are on its east side.",
-			"Mend fences with driftwood (E). At dusk the lamp lights: stand by the door and work it (R).",
-			"They come ashore on the beaches and climb the ledge. Q focuses the beam to burn them,",
-			"and on the ledge a blow aimed outward knocks them over the edge.",
+			"Keep the light burning until the relief boat comes for you: %d nights." % Rescue.night(),
+			"The jobs on the right show you round: the beaches, the camp over the bridge, the shed.",
+			"At dusk they come ashore and climb the ledge. Work the lamp (R at the door); Q focuses",
+			"the beam to burn them, and on the ledge a blow aimed outward knocks them over the edge.",
 		], FIRST_DAY_TIP_TIME)
 	_apply_lighting(Cycle.Phase.DAY, 0.0)
 	atmosphere.apply(Cycle.Phase.DAY, 0.0)
 	Cycle.start(Cycle.Phase.DAY)
+	jobs = Jobs.new()
+	jobs.players = players
+	add_child(jobs)
+	if Net.online():
+		Net.game_started(self)
 
 func _process(delta: float) -> void:
 	if _title_cam != null:
 		_title_t += delta * TITLE_ORBIT_SPEED
 		var a := _title_t * TAU + 0.6
 		_title_cam.look_at_from_position(Vector3(sin(a) * 38.0, 15.0, cos(a) * 38.0), Vector3(-3.0, 6.0, 0.0), Vector3.UP)
-	if Run.active and Input.is_action_just_pressed("skip"):
+	_rescue_step(delta)
+	_cine_step(delta)
+	if Run.active and not _rescue and not Net.is_client() and Input.is_action_just_pressed("skip"):
 		Cycle.skip()
 	_alarms(delta)
 
@@ -232,12 +311,136 @@ static func compass(p: Vector3) -> String:
 	var a := fposmod(atan2(p.x, -p.z), TAU)
 	return names[int(round(a / (TAU / 8.0))) % 8]
 
+# ---- the relief boat: the end of Chapter One (Rescue) ----
+
+const BOAT_BEACH := 0
+## The boat waits this long for everyone; then any helper still ashore is taken off.
+const BOAT_WAIT := 150.0
+var boat: ReliefBoat
+var jobs: Jobs
+var _rescue := false
+var _boat_wait := 0.0
+var _total_kills := 0
+var _cine: Camera3D
+
+func _begin_rescue() -> void:
+	_rescue = true
+	# The dawn holds while the boat comes in: no more days, no more nights.
+	Cycle.running = false
+	var b := ReliefBoat.berth(BOAT_BEACH)
+	_boat_in(b[0], b[1])
+	Net.relay_rescue("arrive", [b[0], b[1]])
+	hud.report("The relief boat!", [
+		"The %s is coming in to the %s beach." % [ReliefBoat.NAME.capitalize(), compass(Terrain.beach_point(BOAT_BEACH, 0.5))],
+		"Everyone down to the shingle and aboard: [E] at her plank.",
+	], 16.0)
+
+func _boat_in(shore: Vector3, mooring: Vector3) -> void:
+	boat = ReliefBoat.new()
+	boat.add_to_group("relief_boat")
+	add_child(boat)
+	boat.arrive(shore, mooring)
+
+func _rescue_step(delta: float) -> void:
+	if boat == null or not boat.waiting or Net.is_client():
+		return
+	_boat_wait += delta
+	var all := true
+	for p in players:
+		if is_instance_valid(p) and not p.boarded:
+			if _boat_wait > BOAT_WAIT and p.ai:
+				boat.take_aboard(p)
+			else:
+				all = false
+	if all:
+		_sail()
+
+func _sail() -> void:
+	boat.depart()
+	boat.departed.connect(_chapter_end)
+	Net.relay_rescue("depart", [])
+	_follow_boat()
+
+# The camera lets go of the keepers and watches the boat away.
+func _follow_boat() -> void:
+	director.process_mode = Node.PROCESS_MODE_DISABLED
+	director._overlay.visible = false
+	_cine = Camera3D.new()
+	_cine.fov = 46.0
+	add_child(_cine)
+	_cine.global_position = boat.global_position + Vector3(-14.0, 9.0, -6.0)
+	_cine.current = true
+
+func _cine_step(delta: float) -> void:
+	if _cine == null or boat == null:
+		return
+	var want := boat.global_position + Vector3(-12.0, 7.0, -10.0)
+	_cine.global_position = _cine.global_position.lerp(want, 1.0 - exp(-delta * 0.6))
+	_cine.look_at(boat.global_position + Vector3(0.0, 1.5, 0.0), Vector3.UP)
+
+func _chapter_end() -> void:
+	if not Net.is_client():
+		Net.relay_rescue("end", [])
+	SaveSys.finish_chapter(1)
+	var card := preload("res://scenes/ui/chapter_end.gd").new()
+	card.nights = Rescue.night()
+	card.kills = _total_kills
+	card.sea = Difficulty.name()
+	card.host_decides = Net.is_client()
+	card.back_to_title.connect(_after_chapter.bind(false))
+	card.stay_on.connect(_after_chapter.bind(true))
+	add_child(card)
+	Run.active = false
+
+func _after_chapter(stay: bool) -> void:
+	if stay:
+		# The same run, kept on: no boat will come again.
+		var d := SaveSys.load_run()
+		d["endless"] = true
+		var f := FileAccess.open(SaveSys.RUN_PATH, FileAccess.WRITE)
+		if f:
+			f.store_string(JSON.stringify(d))
+		if Net.is_host() and Net.started:
+			Net.restart(true)
+			return
+		Run.quick_start = true
+		Run.active = false
+		get_tree().reload_current_scene()
+		return
+	SaveSys.clear_run()
+	Run.active = false
+	Net.leave()
+	get_tree().reload_current_scene()
+
+## A LAN client: the host's boat, mirrored here.
+func net_rescue(kind: String, args: Array) -> void:
+	match kind:
+		"arrive":
+			_rescue = true
+			_boat_in(args[0], args[1])
+		"depart":
+			if boat != null:
+				boat.depart()
+				_follow_boat()
+		"end":
+			_chapter_end()
+
 func _on_enemy_killed(e: Node) -> void:
+	_total_kills += 1
 	var how = e.get("last_hit")
 	_count(String(how) if how else "hook")
 
 func _on_structure_destroyed(s: Node) -> void:
-	if s is Fence:
+	if s is Structure and s.is_in_group("camp"):
+		_count("camp_lost")
+		if s.id == "wire":
+			hud.warn("The camp's wire is down!")
+		else:
+			var nm: String = s.display_name()
+			hud.warn("%s is wrecked!" % (nm.left(1).to_upper() + nm.substr(1)))
+			if camp.fallen():
+				hud.warn("The camp has fallen: no power, no warmth, no food from it till it's mended.")
+	elif s is Fence:
 		_count("fence")
 	elif s is Structure and Enemy.HOME_IDS.has(s.id):
 		_count("home")
@@ -260,6 +463,20 @@ func _on_group_warning(kind: String, points: Array, raid: bool) -> void:
 		text += "  They're making for the cottage!"
 	hud.warn(text)
 
+# Something coming up the holm's beaches for the camp. With the alarm bell (research) the
+# camp's bell rings and says which beach; without it, only a keeper on the holm notices.
+func _on_holm_warning(kind: String, points: Array) -> void:
+	_count("camp_raid")
+	var beach := compass(points[0] - Vector3(Terrain.HOLM_C.x, 0.0, Terrain.HOLM_C.y))
+	if Research.has("bell"):
+		Audio.sfx("camp_bell", camp.generator.global_position, 2.0, 0.0)
+		hud.warn("The camp's bell! Something's coming up the holm's %s beach, for the camp." % beach)
+		return
+	for k in players:
+		if is_instance_valid(k) and not k.ai and Terrain.holm_side(k.global_position.x, k.global_position.z):
+			hud.warn("Out on the holm, something's coming ashore on the %s side." % beach)
+			return
+
 # Four short blasts: the light is smothered.
 func _on_smothered(on: bool) -> void:
 	if on and Run.active:
@@ -274,7 +491,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 # Foghorn alarms: a guttering lamp blasts every few seconds; a failing lighthouse warns once a night.
 func _alarms(delta: float) -> void:
-	if not Run.active:
+	if not Run.active or Net.is_client():
 		return
 	var lamp := lighthouse.lamp
 	if lamp.state == Lamp.State.GUTTERING:
@@ -504,8 +721,9 @@ func _build_holm() -> void:
 			continue
 		var s := rng.randf_range(0.6, 1.5)
 		var at := Vector3(p.x, Terrain.height_at(p.x, p.y) - s * 0.25, p.y)
-		Look.rock(self, 1300 + i * 7, Vector3(s * 1.4, s * 1.1, s * 1.2), at, Color(0.34, 0.33, 0.31), 0.45)
+		Look.rock(self, 1300 + i * 7, Vector3(s * 1.4, s * 1.1, s * 1.2), at, HOLM_ROCK, 0.3)
 		placed += 1
+	_build_holm_rocks(rng)
 	# Rocks in the gully under the bridge, the sea breaking over them.
 	var e0: Vector3 = ends[0]
 	var e1: Vector3 = ends[1]
@@ -514,6 +732,63 @@ func _build_holm() -> void:
 		var q := e0.lerp(e1, u) + Vector3(rng.randf_range(-3.0, 3.0), 0.0, rng.randf_range(-3.0, 3.0))
 		q.y = Terrain.SEA_LEVEL - 0.7
 		Look.rock(self, 1700 + i * 13, Vector3(1.8, 1.6, 1.5) * rng.randf_range(0.7, 1.2), q, Color(0.27, 0.27, 0.27), 0.4)
+
+const HOLM_ROCK := Color(0.40, 0.30, 0.25)
+
+# Skerries off the holm, a sea stack off its north-east point, and boulders on its knolls.
+func _build_holm_rocks(rng: RandomNumberGenerator) -> void:
+	var c := Terrain.HOLM_C
+	var placed := 0
+	for i in 400:
+		if placed >= 9:
+			break
+		var a := rng.randf() * TAU
+		var dir := Vector2(sin(a), cos(a))
+		var want := rng.randf_range(5.0, 12.0)
+		var p := c
+		for k in 160:
+			p = c + dir * float(k) * 0.25
+			if Terrain.holm_edge_dist(p.x, p.y) > want:
+				break
+		if _near_landing(p) or Terrain.height_at(p.x, p.y) > Terrain.SEA_LEVEL - 0.6 or p.x < 34.0:
+			continue
+		for r in rng.randi_range(2, 4):
+			var s := rng.randf_range(1.0, 2.4)
+			var off := Vector3(rng.randf_range(-1.8, 1.8), 0.0, rng.randf_range(-1.8, 1.8))
+			var at := Vector3(p.x, Terrain.SEA_LEVEL - s * 0.45, p.y) + off
+			Look.rock(self, 2100 + i * 11 + r, Vector3(s * 1.5, s, s * 1.3), at, HOLM_ROCK.darkened(0.15), 0.15)
+		placed += 1
+	# The stack: a pillar of the same beds, cut off by the sea.
+	var sa := deg_to_rad(215.0)
+	var sp := c + Vector2(sin(sa), cos(sa)) * 6.0
+	for k in 160:
+		sp = c + Vector2(sin(sa), cos(sa)) * float(k) * 0.25
+		if Terrain.holm_edge_dist(sp.x, sp.y) > 7.0:
+			break
+	for t in 3:
+		var w := 2.4 - float(t) * 0.45
+		Look.rock(self, 2500 + t, Vector3(w, 2.2, w * 0.9), Vector3(sp.x, Terrain.SEA_LEVEL - 0.6 + float(t) * 1.7, sp.y), HOLM_ROCK, 0.12 if t == 2 else 0.0)
+	# Boulders where the rock breaks through the turf.
+	var b := 0
+	for i in 600:
+		if b >= 22:
+			break
+		var p := c + Vector2(rng.randf_range(-20.0, 20.0), rng.randf_range(-18.0, 18.0))
+		if Terrain.holm_outcrop(p.x, p.y) < 0.5 or Terrain.holm_edge_dist(p.x, p.y) > -1.0:
+			continue
+		var s := rng.randf_range(0.35, 0.9)
+		Look.rock(self, 2600 + i, Vector3(s * 1.3, s * 0.8, s), Vector3(p.x, Terrain.height_at(p.x, p.y) - s * 0.2, p.y), HOLM_ROCK, 0.4)
+		b += 1
+
+# Near where creatures land on the holm, or the bridge's gully: kept clear of rocks.
+func _near_landing(p: Vector2) -> bool:
+	for i in Terrain.HOLM_BEACHES.size():
+		for t in [0.0, 0.3]:
+			var q := Terrain.holm_beach_point(i, t)
+			if p.distance_to(Vector2(q.x, q.z)) < 6.0:
+				return true
+	var bc := Terrain.bridge_coords(p.x, p.y)
+	return bc.x > -0.2 and bc.x < 1.2 and absf(bc.y) < 5.0
 
 func _build_shed(at: Vector3) -> void:
 	var shed := Shed.new()
@@ -532,6 +807,13 @@ func _build_sea() -> void:
 	var mat := ShaderMaterial.new()
 	mat.shader = load("res://shaders/sea.gdshader")
 	sea.material_override = mat
+	mat.set_shader_parameter("holm_c", Terrain.HOLM_C)
+	mat.set_shader_parameter("holm_half", Terrain.HOLM_HALF)
+	mat.set_shader_parameter("holm_round", Terrain.HOLM_ROUND)
+	mat.set_shader_parameter("holm_shore_tex", Terrain.holm_shore_texture())
+	var r := Terrain.SHORE_RECT
+	mat.set_shader_parameter("holm_shore_rect", Vector4(r.position.x, r.position.y, r.size.x, r.size.y))
+	mat.set_shader_parameter("use_holm_tex", 1.0)
 	_sea_mat = mat
 	sea.position = Vector3(24.0, Terrain.SEA_LEVEL, 0.0)
 	sea.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -578,6 +860,10 @@ func _at(a_deg: float, r: float, y: float) -> Vector3:
 func _build_scavenge() -> void:
 	for s in SCAVENGE:
 		_add_scavenge(s)
+	for s in HOLM_SCAVENGE:
+		var sp := ScavengePoint.new(String(s[3]), int(s[4]))
+		sp.position = Terrain.holm_beach_point(int(s[0]), float(s[1]), float(s[2]))
+		add_child(sp)
 
 func _add_scavenge(s: Array) -> void:
 	var sp := ScavengePoint.new(String(s[3]), int(s[4]))
@@ -594,7 +880,57 @@ func _build_trap_slots() -> void:
 		var slot := TrapSlot.new()
 		slot.index = i
 		slot.position = spots[i]
+		if i < Terrain.BEACHES.size():
+			slot.path_dir = _flat_dir(Terrain.beach_point(i, TRAP_BEACH_T + 0.1, 0.0) - spots[i])
 		add_child(slot)
+	# The holm's own posts, open from the start.
+	var e := Terrain.bridge_ends()
+	var gate := Terrain.camp_gate()
+	var holm_posts: Array = [
+		[Terrain.holm_beach_point(0, HOLM_POST_BEACH_T), _flat_dir(Terrain.holm_beach_point(0, HOLM_POST_BEACH_T + 0.1) - Terrain.holm_beach_point(0, HOLM_POST_BEACH_T))],
+		[Terrain.holm_beach_point(1, HOLM_POST_BEACH_T), _flat_dir(Terrain.holm_beach_point(1, HOLM_POST_BEACH_T + 0.1) - Terrain.holm_beach_point(1, HOLM_POST_BEACH_T))],
+		[Vector3(gate.x - 2.2, 0.0, gate.y), Vector3.ZERO],
+		[e[1] + _flat_dir(Vector3(gate.x, 0.0, gate.y) - e[1]) * 2.0, Vector3.ZERO],
+	]
+	for i in holm_posts.size():
+		var slot := TrapSlot.new()
+		slot.index = 10 + i
+		slot.holm = true
+		var at: Vector3 = holm_posts[i][0]
+		slot.position = Vector3(at.x, Terrain.height_at(at.x, at.z), at.z)
+		slot.path_dir = holm_posts[i][1]
+		add_child(slot)
+
+static func _flat_dir(v: Vector3) -> Vector3:
+	return Vector3(v.x, 0.0, v.z).normalized()
+
+# A tin of the internees' papers, at one of the spots about the camp nothing lies at yet.
+func _place_notes() -> void:
+	var lying := []
+	for n in get_tree().get_nodes_in_group("interactable"):
+		if n is ScavengePoint and n.kind == "notes" and not n.is_queued_for_deletion():
+			lying.append(Vector2(n.global_position.x, n.global_position.z))
+	if lying.size() >= NOTES_LYING:
+		return
+	var free := []
+	for o in NOTE_SPOTS:
+		var p: Vector2 = Terrain.CAMP_C + o
+		var taken := false
+		for q in lying:
+			if p.distance_to(q) < 1.0:
+				taken = true
+		if not taken:
+			free.append(p)
+	if free.is_empty():
+		return
+	var at: Vector2 = free[(Run.notes_found * 3 + lying.size()) % free.size()]
+	var sp := ScavengePoint.new("notes", 1)
+	sp.once = true
+	sp.position = Vector3(at.x, Terrain.height_at(at.x, at.y), at.y)
+	add_child(sp)
+
+func _on_lore(text: String) -> void:
+	hud.report("A page of the internees' notes", [text], LORE_TIME)
 
 func _build_campfire() -> void:
 	var fire := Campfire.new()
@@ -617,11 +953,17 @@ func _build_spawner() -> void:
 		for side in [-1.0, 1.0]:
 			pts.append(Terrain.beach_point(i, 0.0, side * LANDING_OFFSET))
 	spawner.points = pts
+	var hp: Array[Vector3] = []
+	for i in Terrain.HOLM_BEACHES.size():
+		for side in [-1.0, 1.0]:
+			hp.append(Terrain.holm_beach_point(i, 0.0, side * LANDING_OFFSET * 0.6))
+	spawner.holm_points = hp
 	spawner.enemies_root = _enemies
 	spawner.lighthouse = lighthouse
 	add_child(spawner)
 	spawner.wave_incoming.connect(_on_wave_incoming)
 	spawner.group_warning.connect(_on_group_warning)
+	spawner.holm_warning.connect(_on_holm_warning)
 	lighthouse.lamp.smothered_changed.connect(_on_smothered)
 
 # ---- cycle ----
@@ -673,15 +1015,27 @@ func _on_phase_changed(p: int) -> void:
 		_warned_low = false
 	if p == Cycle.Phase.DUSK:
 		_tally = {}
-	if p == Cycle.Phase.DAWN and Run.active:
+		if Run.active and Rescue.is_last_night() and not Net.is_client():
+			hud.warn("The last night. The relief boat comes at dawn: hold the light!")
+	if p == Cycle.Phase.DAWN and Run.active and not Net.is_client():
 		_wash_up_oil()
+		_wash_up_shells()
+		_researched = Research.finish() if camp.desk.usable() else ""
+		_place_notes()
 		_dawn_report()
 		var damaged := 0
 		for s in get_tree().get_nodes_in_group("structures"):
 			if s is Structure and s.is_damaged():
 				damaged += 1
 		Run.lamp_fuel = lighthouse.lamp.fuel
+		for k in players:
+			if is_instance_valid(k):
+				Run.hunger[k.idx] = k.hunger
+				Run.warmth[k.idx] = k.warmth
+		var held := Run.night
 		Run.advance_night(damaged)
+		if not Run.endless and held >= Rescue.night():
+			_begin_rescue()
 
 # The keeper's log: what came, what stopped it, what it cost, and one thing to try next.
 func _dawn_report() -> void:
@@ -698,6 +1052,9 @@ func _dawn_report() -> void:
 		how.append("%d in traps" % g.call("trap"))
 	if g.call("flare") > 0:
 		how.append("%d to flares" % g.call("flare"))
+	for k in [["shot", "shot"], ["arrow", "to arrows"], ["flame", "burned by the flamer"], ["bomb", "to petrol bombs"], ["poison", "poisoned"]]:
+		if g.call(k[0]) > 0:
+			how.append("%d %s" % [g.call(k[0]), k[1]])
 	var lines: Array[String] = []
 	lines.append("%d came ashore%s" % [g.call("ashore"), (" · " + " · ".join(how)) if not how.is_empty() else ""])
 	var cost: Array[String] = []
@@ -712,6 +1069,9 @@ func _dawn_report() -> void:
 	if not hurt_home.is_empty():
 		cost.append("%s damaged" % " and ".join(hurt_home))
 	cost.append("lighthouse %d/%d" % [lighthouse.hp, lighthouse.max_hp])
+	var camp_line := _camp_report()
+	if camp_line != "":
+		cost.append(camp_line)
 	cost.append("fuel %d%%" % roundi(lighthouse.lamp.fuel))
 	lines.append(" · ".join(cost))
 	var tip := ""
@@ -721,6 +1081,10 @@ func _dawn_report() -> void:
 		tip = "Meet climbers on the ledge: a blow aimed outward knocks them over the edge."
 	elif g.call("smother") > 0:
 		tip = "When something climbs the tower, burn it on the ledge, or throw your boathook up at it from the crag top. Then go and pick the hook up."
+	elif camp.fallen():
+		tip = "The camp has fallen. Mend the generator and the huts (driftwood and scrap) to get its light, warmth and food back."
+	elif camp.wire_down() > 0:
+		tip = "Mend the camp's wire with scrap before dark: whatever comes up the holm's beaches has to tear through it."
 	elif g.call("fence") > 0:
 		tip = "Mend broken fences with driftwood before dark."
 	elif not hurt_home.is_empty():
@@ -736,7 +1100,37 @@ func _dawn_report() -> void:
 		lines.append(tip)
 	if _oil_tonight:
 		lines.append("An oil drum has washed up on the %s beach." % compass(_oil_at))
+	if _shells_tonight:
+		lines.append("A tin of shotgun cartridges has washed up on the %s beach." % compass(_shells_at))
+	if _researched != "":
+		lines.append("Worked out overnight at the camp: %s." % Research.title(_researched))
+	# The relief boat: how long to hold out (Run.night is still the night just held).
+	if not Run.endless:
+		var left := Rescue.night() - Run.night
+		if left == 1:
+			lines.append("One more night: the relief boat comes the dawn after.")
+		elif left > 1:
+			lines.append("The relief boat is due in %d nights." % left)
 	hud.report("Night %d held." % Run.night, lines)
+
+# The camp's state for the dawn report: what's wrecked or hurt, or "" if it's all sound.
+func _camp_report() -> String:
+	if camp.fallen():
+		return "the camp has fallen"
+	var bad: Array[String] = []
+	var wrecked: Array[String] = []
+	for s in [camp.generator] + camp.buildings.values():
+		if s.is_destroyed():
+			wrecked.append(s.display_name())
+		elif s.is_damaged():
+			bad.append("%s %d%%" % [s.display_name(), roundi(s.health_ratio() * 100.0)])
+	var out: Array[String] = []
+	if not wrecked.is_empty():
+		out.append("%s wrecked" % " and ".join(wrecked))
+	out.append_array(bad)
+	if camp.wire_down() > 0:
+		out.append("%d run%s of wire down" % [camp.wire_down(), "" if camp.wire_down() == 1 else "s"])
+	return "camp: " + ", ".join(out) if not out.is_empty() else ""
 
 func _hurt_keeper() -> bool:
 	for p in players:
@@ -744,6 +1138,7 @@ func _hurt_keeper() -> bool:
 			return true
 	return false
 
+var _researched := ""
 var _oil_tonight := false
 var _oil_at := Vector3.ZERO
 
@@ -757,6 +1152,25 @@ func _wash_up_oil() -> void:
 	sp.once = true
 	sp.position = Terrain.beach_point(beach, 0.5, 0.8)
 	_oil_at = sp.position
+	add_child(sp)
+
+# Every third dawn from the third, a tin of a few cartridges from some wreck: the
+# shotgun's only ammunition besides the box in the shed.
+const SHELLS_FIRST := 3
+const SHELLS_EVERY := 3
+const SHELLS_TIN := 3
+var _shells_tonight := false
+var _shells_at := Vector3.ZERO
+
+func _wash_up_shells() -> void:
+	_shells_tonight = Run.night >= SHELLS_FIRST and (Run.night - SHELLS_FIRST) % SHELLS_EVERY == 0
+	if not _shells_tonight:
+		return
+	var beach := (Run.night / SHELLS_EVERY + 1) % Terrain.BEACHES.size()
+	var sp := ScavengePoint.new("shells", SHELLS_TIN)
+	sp.once = true
+	sp.position = Terrain.beach_point(beach, 0.55, -0.9)
+	_shells_at = sp.position
 	add_child(sp)
 
 func _on_run_ended(_reason: String, _night: int) -> void:

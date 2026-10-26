@@ -57,18 +57,42 @@ const MOSS := Color(0.26, 0.33, 0.14)
 const SHINGLE := Color(0.56, 0.51, 0.41)
 const WET := Color(0.20, 0.20, 0.19)
 const SEABED := Color(0.16, 0.20, 0.20)
+# The holm's old red sandstone, its lichens and weed, and the heather on its knolls.
+const SANDSTONE := Color(0.46, 0.33, 0.27)
+const SANDSTONE_DARK := Color(0.30, 0.22, 0.19)
+const LICHEN := Color(0.55, 0.52, 0.32)
+const WRACK := Color(0.15, 0.14, 0.09)
+const HEATHER := Color(0.32, 0.24, 0.24)
 
 # Flat building pads on the meadow: [x, z, radius]. Cottage, garden, shed.
 const PADS := [[-7.3, 9.3, 2.6], [7.3, 8.9, 2.2], [0.0, 12.0, 1.7]]
 
-# The holm: its plateau is a rounded box (centre, half size, corner radius), low and
-# flat, with two shingle beaches ([compass angle from its centre, distance to its edge]).
-const HOLM_C := Vector2(47.0, 3.0)
-const HOLM_HALF := Vector2(15.0, 12.5)
+# The holm: a low island of turf on old red sandstone, the kind that lies off Orkney.
+# Its outline starts from a rounded box (centre, half size, corner radius) and is pushed
+# about into headlands and bays; the camp's ground and the track round its wire are
+# always kept dry. Two shingle beaches lie in coves ([compass angle from its centre,
+# distance to its edge]). Elsewhere low cliffs drop to flat shelves of rock at the
+# waterline, where the surf breaks, and the turf outside the wire swells into knolls with
+# bare rock breaking through.
+const HOLM_C := Vector2(48.5, 3.0)
+const HOLM_HALF := Vector2(16.5, 13.5)
 const HOLM_ROUND := 5.0
 const HOLM_HEIGHT := 1.4
 const HOLM_CLIFF := 1.6
-const HOLM_BEACHES := [[90.0, 15.0], [180.0, 12.5]]
+const HOLM_BEACHES := [[90.0, 16.5], [180.0, 13.5]]
+## The coast never comes nearer the wire than this (the towers' legs and the track round it).
+const HOLM_DRY := 5.0
+## Headlands and bays: how far the coast wanders from the box, broad and fine.
+const HOLM_WANDER := 3.6
+const HOLM_WANDER_FINE := 1.3
+## The coves each beach sits in: how deep, and how wide either side of its middle.
+const HOLM_COVE := 2.4
+const HOLM_COVE_WIDTH := 7.0
+## The knolls outside the wire: how high, and how far out from the wire they start.
+const HOLM_KNOLL := 1.3
+const HOLM_KNOLL_FROM := 3.4
+## The shelf of rock at the waterline below the cliffs: as wide as this, where it is.
+const HOLM_SHELF := 3.0
 ## The camp's fenced compound on the holm (centre, half size): flattened, gravel inside.
 const CAMP_C := Vector2(48.0, 3.0)
 const CAMP_HALF := Vector2(11.0, 8.5)
@@ -76,7 +100,7 @@ const CAMP_HALF := Vector2(11.0, 8.5)
 const BRIDGE_ANGLE := 70.0
 const BRIDGE_HALF := 0.55
 # The ground mesh's extent: the main island's square, and the holm's beside it.
-const HOLM_GRID_X := Vector2(GRID_HALF, 72.0)
+const HOLM_GRID_X := Vector2(GRID_HALF, 77.0)
 
 static var _noise: FastNoiseLite
 static var _detail: FastNoiseLite
@@ -240,7 +264,48 @@ static func holm_edge_dist(x: float, z: float) -> float:
 	var b := HOLM_HALF - Vector2(HOLM_ROUND, HOLM_ROUND)
 	var d := Vector2(absf(q.x), absf(q.y)) - b
 	var sd := Vector2(maxf(d.x, 0.0), maxf(d.y, 0.0)).length() + minf(maxf(d.x, d.y), 0.0) - HOLM_ROUND
-	return sd + _noise.get_noise_2d(x * 0.8 + 300.0, z * 0.8) * 0.9
+	# Headlands and bays, then the coast's raggedness.
+	sd += _noise.get_noise_2d(x * 0.11 + 500.0, z * 0.11 - 70.0) * HOLM_WANDER * 1.8
+	sd += _noise.get_noise_2d(x * 0.33 + 210.0, z * 0.33 + 40.0) * HOLM_WANDER_FINE
+	sd += _noise.get_noise_2d(x * 0.8 + 300.0, z * 0.8) * 0.7
+	# The coves the beaches lie in.
+	for i in HOLM_BEACHES.size():
+		var a := deg_to_rad(float(HOLM_BEACHES[i][0]))
+		var along := q.x * sin(a) + q.y * cos(a)
+		var lateral := q.x * cos(a) - q.y * sin(a)
+		var k := exp(-pow(lateral / HOLM_COVE_WIDTH, 2.0)) * smoothstep(float(HOLM_BEACHES[i][1]) - 9.0, float(HOLM_BEACHES[i][1]) - 3.0, along)
+		sd += HOLM_COVE * k
+	# The camp's ground stays dry: never sea within HOLM_DRY of the wire.
+	return _smin(sd, _camp_out(x, z) - HOLM_DRY, 1.5)
+
+# How far outside the camp's fence line a point is (0 inside it).
+static func _camp_out(x: float, z: float) -> float:
+	var q := Vector2(x, z) - CAMP_C
+	return Vector2(maxf(absf(q.x) - CAMP_HALF.x, 0.0), maxf(absf(q.y) - CAMP_HALF.y, 0.0)).length()
+
+static func _smin(a: float, b: float, k: float) -> float:
+	var h := clampf(0.5 + 0.5 * (b - a) / k, 0.0, 1.0)
+	return lerpf(b, a, h) - k * h * (1.0 - h)
+
+## How much of the turf here is knoll, rising away from the wire (0 near it).
+static func _holm_knoll(x: float, z: float) -> float:
+	var out := _camp_out(x, z)
+	var k := smoothstep(HOLM_KNOLL_FROM, HOLM_KNOLL_FROM + 3.0, out)
+	var n := _noise.get_noise_2d(x * 0.16 + 120.0, z * 0.16 - 330.0)
+	return k * clampf(n * 2.2 + 0.25, 0.0, 1.0)
+
+## Bare rock breaking through the turf: 0 to 1.
+static func holm_outcrop(x: float, z: float) -> float:
+	var out := _camp_out(x, z)
+	if out < HOLM_KNOLL_FROM:
+		return 0.0
+	var n := _detail.get_noise_2d(x * 0.55 + 77.0, z * 0.55 + 13.0)
+	return smoothstep(0.28, 0.42, n) * smoothstep(HOLM_KNOLL_FROM, HOLM_KNOLL_FROM + 2.0, out)
+
+## How wide the shelf of rock at the waterline is here (0 where the cliff drops straight in).
+static func _holm_shelf(x: float, z: float) -> float:
+	var n := _noise.get_noise_2d(x * 0.21 + 640.0, z * 0.21 + 90.0)
+	return clampf(n * 2.4 + 0.35, 0.0, 1.0) * HOLM_SHELF
 
 ## True on the holm (its plateau, cliffs or beaches) rather than the main island.
 static func on_holm(x: float, z: float) -> bool:
@@ -283,18 +348,34 @@ static func holm_beach_point(i: int, t: float, lateral: float = 0.0) -> Vector3:
 static func _holm_height(x: float, z: float) -> float:
 	_ensure_noise()
 	var d := holm_edge_dist(x, z)
-	if d > 14.0:
+	if d > 16.0:
 		return SEA_FLOOR
-	# Rough grazing outside the compound; flat ground inside it.
-	var flat := 1.0
-	var q := Vector2(x, z) - CAMP_C
-	var out := Vector2(maxf(absf(q.x) - CAMP_HALF.x, 0.0), maxf(absf(q.y) - CAMP_HALF.y, 0.0)).length()
-	flat = smoothstep(0.5, 3.0, out)
+	# Rough grazing outside the compound, swelling into knolls with rock showing through;
+	# flat ground inside it.
+	var out := _camp_out(x, z)
+	var flat := smoothstep(0.5, 3.0, out)
 	var top := HOLM_HEIGHT + (_noise.get_noise_2d(x * 0.9, z * 0.9) * 0.22 + _detail.get_noise_2d(x, z) * 0.05) * flat
-	var t := smoothstep(0.0, HOLM_CLIFF, d)
-	var h := lerpf(top, SHELF_DEPTH, t) + _detail.get_noise_2d(x * 1.6, z * 1.6) * 0.4 * t * (1.0 - t) * 4.0
-	if d > HOLM_CLIFF:
-		h = lerpf(SHELF_DEPTH, SEA_FLOOR, smoothstep(HOLM_CLIFF, 10.0, d))
+	top += _holm_knoll(x, z) * HOLM_KNOLL
+	var crag := holm_outcrop(x, z)
+	if crag > 0.0:
+		top += crag * (0.25 + 0.2 * _detail.get_noise_2d(x * 2.4, z * 2.4))
+	# The cliff: steeper where it's higher, in two steps (the sandstone's beds), down to
+	# a shelf of rock at the waterline or straight into the sea.
+	var shelf := _holm_shelf(x, z)
+	var foot := SEA_LEVEL + 0.2 + _detail.get_noise_2d(x * 1.9, z * 1.9) * 0.08 if shelf > 0.4 else SHELF_DEPTH
+	var cliff := HOLM_CLIFF * (0.8 + 0.25 * (top - HOLM_HEIGHT))
+	var t := clampf(d / cliff, 0.0, 1.0)
+	var stepped := lerpf(smoothstep(0.0, 1.0, t), smoothstep(0.0, 0.45, t) * 0.55 + smoothstep(0.55, 1.0, t) * 0.45, 0.6)
+	var h := lerpf(top, foot, stepped) + _detail.get_noise_2d(x * 1.6, z * 1.6) * 0.35 * t * (1.0 - t) * 4.0
+	if d > cliff:
+		var past := d - cliff
+		if past < shelf:
+			# The shelf: flat, wet, broken rock just at the water.
+			# Sloping gently seaward, so its edge is where the sea breaks.
+			h = foot + _detail.get_noise_2d(x * 3.1, z * 3.1) * 0.06 - (past / maxf(shelf, 0.1)) * 0.22
+		else:
+			var from := foot if shelf > 0.4 else SHELF_DEPTH
+			h = lerpf(from, SEA_FLOOR, smoothstep(0.0, 9.0, past - shelf))
 	for i in HOLM_BEACHES.size():
 		var b := _holm_beach(i, x, z)
 		if b.z > 0.0:
@@ -303,6 +384,69 @@ static func _holm_height(x: float, z: float) -> float:
 	return h
 
 # ---- the rope bridge ----
+
+## The holm's shoreline for the sea shader: a texture of signed distance (metres) from the
+## waterline over the holm's patch of sea, negative ashore. Baked from the height
+## function, so the foam, the shallows and the calmer swell follow the real coast.
+const SHORE_RECT := Rect2(24.0, -30.0, 56.0, 62.0)
+const SHORE_STEP := 0.5
+
+static func holm_shore_texture() -> ImageTexture:
+	var w := int(SHORE_RECT.size.x / SHORE_STEP)
+	var hgt := int(SHORE_RECT.size.y / SHORE_STEP)
+	var n := w * hgt
+	var land := PackedByteArray()
+	land.resize(n)
+	for j in hgt:
+		for i in w:
+			var x := SHORE_RECT.position.x + (float(i) + 0.5) * SHORE_STEP
+			var z := SHORE_RECT.position.y + (float(j) + 0.5) * SHORE_STEP
+			land[j * w + i] = 1 if _holm_height(x, z) > SEA_LEVEL + 0.02 else 0
+	var to_land := _chamfer(land, w, hgt, 1)
+	var to_sea := _chamfer(land, w, hgt, 0)
+	var img := Image.create(w, hgt, false, Image.FORMAT_RF)
+	for j in hgt:
+		for i in w:
+			var k := j * w + i
+			var d: float = (to_land[k] - 0.5) * SHORE_STEP if land[k] == 0 else -(to_sea[k] - 0.5) * SHORE_STEP
+			img.set_pixel(i, j, Color(d, 0.0, 0.0))
+	return ImageTexture.create_from_image(img)
+
+# Distance in cells from each cell to the nearest cell whose land flag is `target`
+# (two-pass chamfer, 1 and 1.414).
+static func _chamfer(land: PackedByteArray, w: int, h: int, target: int) -> PackedFloat32Array:
+	var big := 1e6
+	var d := PackedFloat32Array()
+	d.resize(w * h)
+	for k in w * h:
+		d[k] = 0.0 if land[k] == target else big
+	for j in h:
+		for i in w:
+			var k := j * w + i
+			var v := d[k]
+			if i > 0:
+				v = minf(v, d[k - 1] + 1.0)
+			if j > 0:
+				v = minf(v, d[k - w] + 1.0)
+				if i > 0:
+					v = minf(v, d[k - w - 1] + 1.414)
+				if i < w - 1:
+					v = minf(v, d[k - w + 1] + 1.414)
+			d[k] = v
+	for j in range(h - 1, -1, -1):
+		for i in range(w - 1, -1, -1):
+			var k := j * w + i
+			var v := d[k]
+			if i < w - 1:
+				v = minf(v, d[k + 1] + 1.0)
+			if j < h - 1:
+				v = minf(v, d[k + w] + 1.0)
+				if i < w - 1:
+					v = minf(v, d[k + w + 1] + 1.414)
+				if i > 0:
+					v = minf(v, d[k + w - 1] + 1.414)
+			d[k] = v
+	return d
 
 ## The bridge's two ends on the clifftops: [main island end, holm end]. It runs from the
 ## main island's meadow at BRIDGE_ANGLE toward the holm's middle; each end is just back
@@ -374,6 +518,10 @@ static func on_ledge(x: float, z: float) -> bool:
 	return s >= 0.0 and absf(Vector2(x, z).length() - ledge_radius(s)) < LEDGE_HALF - 0.1
 
 ## Where the camp's gate is: the middle of the compound's west side, facing the bridge.
+## Whether a point is nearer the holm than the main island (for which island something is on).
+static func holm_side(x: float, z: float) -> bool:
+	return Vector2(x, z).distance_to(HOLM_C) < Vector2(x, z).length()
+
 static func camp_gate() -> Vector2:
 	return Vector2(CAMP_C.x - CAMP_HALF.x, CAMP_C.y)
 
@@ -387,7 +535,10 @@ static func is_grassy(x: float, z: float) -> bool:
 	if on_holm(x, z):
 		if holm_edge_dist(x, z) > -0.5 or in_camp(x, z, -0.8):
 			return false
-		if absf(height_at(x, z) - HOLM_HEIGHT) > 0.4 or slope_at(x, z) > 0.4 or holm_beach_weight(x, z) > 0.3:
+		var hh := height_at(x, z)
+		if hh < HOLM_HEIGHT - 0.4 or hh > HOLM_HEIGHT + HOLM_KNOLL + 0.4 or slope_at(x, z) > 0.4 or holm_beach_weight(x, z) > 0.3:
+			return false
+		if holm_outcrop(x, z) > 0.4:
 			return false
 		return _holm_path_dist(x, z) > 0.75
 	var r := Vector2(x, z).length()
@@ -485,11 +636,18 @@ static func layers_at(x: float, z: float, h: float, steep: float) -> Vector4:
 static func _holm_color(x: float, z: float, h: float, steep: float) -> Color:
 	var l := _holm_layers(x, z, h, steep)
 	var n := _noise.get_noise_2d(x * 1.7 + 40.0, z * 1.7)
-	var c := GRASS_A.lerp(GRASS_B, clampf(n * 0.9 + 0.6, 0.0, 1.0)).lerp(Color(0.42, 0.42, 0.22), 0.18)
+	# Salt-burnt sea turf: paler and yellower than the main island's meadow, with heather
+	# browning the knolls.
+	var c := GRASS_A.lerp(GRASS_B, clampf(n * 0.9 + 0.6, 0.0, 1.0)).lerp(Color(0.46, 0.45, 0.24), 0.28)
+	c = c.lerp(HEATHER, _holm_knoll(x, z) * clampf(_noise.get_noise_2d(x * 0.7 + 20.0, z * 0.7) * 1.6 + 0.3, 0.0, 0.7))
 	c = c.lerp(DIRT.lerp(GRAVEL, clampf(_detail.get_noise_2d(x * 1.3, z * 1.3) + 0.4, 0.0, 0.7)), l.z)
 	c = c.lerp(SHINGLE, l.y)
-	var rock := ROCK.lerp(ROCK_DARK, clampf(_detail.get_noise_2d(x * 2.0, z * 2.0) + 0.5, 0.0, 1.0))
-	rock = rock.lerp(MOSS, clampf(0.45 - steep, 0.0, 0.45))
+	# Old red sandstone in beds: warm, banded, with yellow and grey lichen up top.
+	var bed := 0.5 + 0.5 * sin(h * 9.0 + _detail.get_noise_2d(x * 0.8, z * 0.8) * 2.0)
+	var rock := SANDSTONE.lerp(SANDSTONE_DARK, clampf(_detail.get_noise_2d(x * 2.0, z * 2.0) + 0.5, 0.0, 1.0) * 0.7 + bed * 0.3)
+	rock = rock.lerp(LICHEN, clampf(0.35 - steep, 0.0, 0.35) * smoothstep(SEA_LEVEL + 0.6, SEA_LEVEL + 1.2, h))
+	# Black wrack and weed on the shelf, where the tide covers it.
+	rock = rock.lerp(WRACK, smoothstep(SEA_LEVEL + 0.45, SEA_LEVEL, h) * 0.8)
 	c = c.lerp(rock, l.x)
 	if h < SEA_LEVEL + 0.1:
 		c = c.lerp(WET, clampf((SEA_LEVEL + 0.1 - h) * 3.0, 0.0, 1.0))
@@ -498,6 +656,10 @@ static func _holm_color(x: float, z: float, h: float, steep: float) -> Color:
 	return c
 
 static func _holm_layers(x: float, z: float, h: float, steep: float) -> Vector4:
+	if h < HOLM_HEIGHT - 0.3 and holm_beach_weight(x, z) < 0.3 and holm_edge_dist(x, z) > 0.0:
+		# Cliff, shelf and sea floor: rock, wet low down.
+		var w := clampf((SEA_LEVEL + 0.45 - h) * 2.0, 0.0, 1.0)
+		return Vector4(1.0 if h > SEA_LEVEL - 0.5 else 0.4, 0.0 if h > SEA_LEVEL - 0.5 else 0.6, 0.0, w)
 	var dirt := 0.0
 	if in_camp(x, z, -0.6):
 		dirt = 0.85
@@ -511,7 +673,7 @@ static func _holm_layers(x: float, z: float, h: float, steep: float) -> Vector4:
 	if h < SEA_LEVEL - 0.5:
 		shingle = 1.0
 	var past_edge := smoothstep(-0.4, 0.6, holm_edge_dist(x, z)) * (1.0 - beach)
-	var rock := maxf(smoothstep(0.22, 0.45, steep), past_edge)
+	var rock := maxf(maxf(smoothstep(0.22, 0.45, steep), past_edge), holm_outcrop(x, z) * 0.95)
 	if h < SEA_LEVEL - 0.5:
 		rock *= 0.3
 	var wet := clampf((SEA_LEVEL + 0.25 - h) * 2.5, 0.0, 1.0)

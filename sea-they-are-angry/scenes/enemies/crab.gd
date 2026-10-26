@@ -128,8 +128,11 @@ func light_probe_points() -> Array:
 	return [global_position + Vector3(0.0, 0.4, 0.0), global_position + Vector3(0.0, 1.0, 0.0)]
 
 func pick_target() -> Node3D:
-	if _grudge != null and is_instance_valid(_grudge) and _grudge_t > 0.0 and not _grudge.downed and not _grudge.is_inside():
+	if _grudge != null and is_instance_valid(_grudge) and _grudge_t > 0.0 and not _grudge.downed and not _grudge.is_inside() \
+			and Enemy.same_island(global_position, _grudge.global_position):
 		return _grudge
+	if camp_raid:
+		return Enemy.nearest_camp(global_position)
 	var home := Enemy.nearest_home(global_position)
 	return home if home != null else lighthouse
 
@@ -320,7 +323,7 @@ func _scuttle(delta: float) -> void:
 # ---- damage ----
 
 func take_damage(amount: int, from_dir: Vector3 = Vector3.ZERO, source: Node = null) -> void:
-	if state == &"Emerge" or hp <= 0:
+	if puppet or state == &"Emerge" or hp <= 0:
 		return
 	var mult := 1.0
 	var fwd := Vector3(-sin(rotation.y), 0.0, -cos(rotation.y))
@@ -350,6 +353,8 @@ func _note_hit(p: Player) -> void:
 		_hits[p] = []
 
 func in_light(mode: int, _delta: float) -> void:
+	if puppet:
+		return
 	# The shell shrugs off the beam; but in the eyes mid-wind-up, it reels.
 	if mode == Lamp.Mode.FOCUSED and state == &"WindUp" and _stagger_cd <= 0.0:
 		_stagger_cd = STAGGER_COOLDOWN

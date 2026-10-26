@@ -20,6 +20,9 @@ const RELEASE_TIME := 2.0
 const BEAM_HP := 90
 const BEAM_DPS := 12.0
 const MELEE_MULT := 0.25
+# Arrows, shot and fire from the shed's weapons bite deeper than the boathook, but the
+# beam is still what brings it down.
+const RANGED_MULT := 0.5
 const CRUSH_DPS := 5.0
 const SURGE_REACH := 1.2
 const PRONE_TIME := 1.5
@@ -436,6 +439,23 @@ func on_dawn() -> void:
 
 # ---- damage ----
 
+func _net_extra() -> Variant:
+	var segs := []
+	for s in _segs:
+		segs.append(s.global_position)
+	return {"origin": origin, "segs": segs, "head": _head.global_transform, "tube": _tube.visible, "churn": not _churn.is_empty() and _churn[0].visible}
+
+func _net_apply_extra(extra: Variant) -> void:
+	if not (extra is Dictionary):
+		return
+	var segs: Array = extra.get("segs", [])
+	for i in mini(segs.size(), _segs.size()):
+		_segs[i].global_position = segs[i]
+	_head.global_transform = extra.get("head", _head.global_transform)
+	_tube.visible = bool(extra.get("tube", false))
+	for c in _churn:
+		c.visible = bool(extra.get("churn", false))
+
 func in_light(mode: int, delta: float) -> void:
 	if mode != Lamp.Mode.FOCUSED or state != &"Coil":
 		return
@@ -449,11 +469,11 @@ func in_light(mode: int, delta: float) -> void:
 		take_damage(dmg, Vector3.ZERO, null)
 
 func take_damage(amount: int, from_dir: Vector3 = Vector3.ZERO, source: Node = null) -> void:
-	if state != &"Coil" or hp <= 0:
+	if puppet or state != &"Coil" or hp <= 0:
 		return
 	if source is Player:
-		amount = maxi(1, roundi(float(amount) * MELEE_MULT))
-		last_hit = "hook"
+		amount = maxi(1, roundi(float(amount) * (MELEE_MULT if source.hit_kind == "hook" else RANGED_MULT)))
+		last_hit = source.hit_kind
 	hp -= amount
 	if source != null:
 		FX.spray(get_parent(), global_position + Vector3(0.0, 1.5, 0.0), from_dir, Color(0.4, 0.5, 0.35))
@@ -475,9 +495,14 @@ func _die() -> void:
 
 func _physics_process(delta: float) -> void:
 	state_t += delta
-	var tick := "_tick_" + String(state)
-	if has_method(tick):
-		call(tick, delta)
+	if puppet:
+		# A client's Eel: its body where the host has it; only the churning water is its own.
+		if state == &"Announce":
+			_tick_Announce(delta)
+	else:
+		var tick := "_tick_" + String(state)
+		if has_method(tick):
+			call(tick, delta)
 	if not is_inside_tree() or is_queued_for_deletion():
 		return
 	_burn_t = maxf(0.0, _burn_t - delta)

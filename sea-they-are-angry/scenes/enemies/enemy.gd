@@ -93,7 +93,16 @@ var _sink_t := 0.0
 var _fall_top := -INF
 var _last_wp := Vector3.INF
 
+## LAN: this creature's id, the same on every machine (given by the host).
+var net_id := 0
+## LAN, on a client: a puppet, going where the host says. It can't be hurt or act.
+var puppet := false
+var _net: Array = []
+var _net_shot := -1
+
 func _ready() -> void:
+	if Net.is_host() and Net.playing() and net_id == 0:
+		net_id = Net.new_enemy_id()
 	add_to_group("enemies")
 	collision_layer = 8
 	# No ground layer: creatures follow Terrain.height_at instead, so the beach slope never snags them.
@@ -282,6 +291,8 @@ func _on_got_up() -> void:
 func _ragdoll_corpse(impulse: Vector3 = Vector3.ZERO) -> bool:
 	if rig == null:
 		return false
+	if net_id > 0 and Net.is_host():
+		Net.relay_corpse(net_id, impulse)
 	remove_from_group("enemies")
 	collision_layer = 0
 	collision_mask = 0
@@ -294,6 +305,59 @@ func _ragdoll_corpse(impulse: Vector3 = Vector3.ZERO) -> bool:
 	tw.tween_callback(queue_free)
 	return true
 
+# ---- LAN ----
+
+## The host's word on this creature, for the clients (see net_apply).
+func net_snap() -> Array:
+	var flags := 0
+	if rig != null and rig.is_ragdoll():
+		flags |= 1
+	if visible:
+		flags |= 2
+	if burning > 0.0:
+		flags |= 4
+	return [net_id, get_script().resource_path, global_position, rotation.y, velocity, String(state), hp, flags,
+		rig.shot_seq if rig != null else 0, rig.last_shot if rig != null else "", _net_extra()]
+
+## Virtual: anything more a puppet needs to look right (the Eel's body).
+func _net_extra() -> Variant:
+	return null
+
+func net_apply(a: Array) -> void:
+	_net = a
+	state = StringName(String(a[5]))
+	hp = int(a[6])
+	var flags := int(a[7])
+	visible = flags & 2 != 0
+	burning = BURN_HOLD if flags & 4 != 0 else 0.0
+	if rig != null:
+		var seq := int(a[8])
+		if _net_shot >= 0 and seq != _net_shot and String(a[9]) != "":
+			rig.shot(String(a[9]))
+		_net_shot = seq
+		var rag := flags & 1 != 0
+		if rag and not rig.is_ragdoll():
+			rig.ragdoll(Vector3(0.0, 4.0, 0.0) * mass, "chest")
+		elif not rag and rig.is_ragdoll() and not rig.is_getting_up():
+			rig.get_up(CharacterRig.GET_UP_TIME)
+	_net_apply_extra(a[10])
+
+func _net_apply_extra(_extra: Variant) -> void:
+	pass
+
+func _puppet_step(delta: float) -> void:
+	if _net.is_empty():
+		return
+	if rig == null or not rig.is_ragdoll():
+		var target: Vector3 = _net[2]
+		var k := 1.0 - exp(-delta * Net.FOLLOW)
+		global_position = target if global_position.distance_to(target) > 5.0 else global_position.lerp(target, k)
+		rotation.y = lerp_angle(rotation.y, float(_net[3]), k)
+	velocity = _net[4]
+	if rig != null and rig.has_clips() and not rig.is_ragdoll():
+		rig.locomote(Vector2(velocity.x, velocity.z).length())
+		_burn_pose()
+
 # ---- virtuals ----
 
 func _build() -> void:
@@ -303,6 +367,8 @@ func in_light(_mode: int, _delta: float) -> void:
 	pass
 
 func pick_target() -> Node3D:
+	if camp_raid:
+		return Enemy.nearest_camp(global_position)
 	return lighthouse
 
 # Points the lamp tests against its cone. Override for odd shapes (the Eel's head).
@@ -313,6 +379,29 @@ func light_probe_points() -> Array:
 	return out
 
 const HOME_IDS := ["cottage", "shed", "garden"]
+
+## Came ashore on the holm, for the camp: it makes for the camp's generator and buildings,
+## never the light (the holm isn't joined to the main island for them).
+var camp_raid := false
+
+## The nearest of the camp's generator and buildings still standing, or null.
+static func nearest_camp(from: Vector3) -> Structure:
+	var tree := Engine.get_main_loop() as SceneTree
+	var camp := tree.get_first_node_in_group("camp_root")
+	if camp == null:
+		return null
+	var best: Structure = null
+	var best_d := INF
+	for s in camp.targets():
+		var d := Geo.flat_dist(from, s.global_position)
+		if d < best_d:
+			best_d = d
+			best = s
+	return best
+
+## Whether two points are on the same island (the holm, or the main island).
+static func same_island(a: Vector3, b: Vector3) -> bool:
+	return Terrain.holm_side(a.x, a.z) == Terrain.holm_side(b.x, b.z)
 
 ## The nearest standing building of the homestead, or null if all are wrecked.
 static func nearest_home(from: Vector3) -> Structure:
@@ -350,7 +439,13 @@ func change_state(s: StringName) -> void:
 		call(en)
 
 func _physics_process(delta: float) -> void:
+	if puppet:
+		_puppet_step(delta)
+		return
 	state_t += delta
+	_afflictions(delta)
+	if not is_inside_tree() or is_queued_for_deletion():
+		return
 	if is_wading():
 		speed_mult *= WADE_MULT
 	if burning > 0.0:
@@ -380,6 +475,59 @@ func _physics_process(delta: float) -> void:
 	# Reset after use: the lamp re-applies these every physics frame through in_light().
 	speed_mult = 1.0
 	lit_this_frame = false
+
+# ---- set alight, and poisoned ----
+
+## Seconds left alight (a flamer's stream, a petrol bomb): it burns on, hurting, after.
+var on_fire := 0.0
+## Seconds left poisoned (rat poison at a trap): it sickens, slows and weakens.
+var poisoned := 0.0
+const FIRE_DPS := 8.0
+const POISON_DPS := 3.5
+const POISON_SLOW := 0.7
+var _dot := 0.0
+var _dot_fx_t := 0.0
+
+func set_alight(t: float) -> void:
+	on_fire = maxf(on_fire, t)
+
+func poison(t: float) -> void:
+	poisoned = maxf(poisoned, t)
+
+func _afflictions(delta: float) -> void:
+	if (on_fire <= 0.0 and poisoned <= 0.0) or hp <= 0:
+		return
+	if state == &"Emerge" or state == &"Retreat" and _in_water:
+		# Into the sea: that puts the fire out.
+		on_fire = 0.0
+	var dps := 0.0
+	var how := ""
+	if on_fire > 0.0:
+		on_fire = maxf(0.0, on_fire - delta)
+		dps += FIRE_DPS
+		how = "flame"
+	if poisoned > 0.0:
+		poisoned = maxf(0.0, poisoned - delta)
+		dps += POISON_DPS
+		speed_mult *= POISON_SLOW
+		if how == "":
+			how = "poison"
+	_dot_fx_t -= delta
+	if _dot_fx_t <= 0.0:
+		_dot_fx_t = 0.25
+		var at := global_position + Vector3(randf_range(-0.3, 0.3), randf_range(0.6, 1.4), randf_range(-0.3, 0.3))
+		if on_fire > 0.0:
+			FX.embers(get_parent(), at)
+			if randf() < 0.4:
+				Audio.sfx("crackle", at, -6.0, 0.3)
+		if poisoned > 0.0 and randf() < 0.6:
+			FX.spray(get_parent(), at, Vector3.DOWN, Color(0.45, 0.8, 0.3))
+	_dot += dps * delta
+	if _dot >= 1.0:
+		var n := int(_dot)
+		_dot -= float(n)
+		last_hit = how
+		take_damage(n, Vector3.ZERO, null)
 
 # ---- burning in the focused beam ----
 
@@ -482,6 +630,9 @@ func _enter_Approach() -> void:
 func replan() -> void:
 	if target != null and is_instance_valid(target):
 		set_route(Nav.route_to(global_position, target.global_position))
+	elif camp_raid:
+		# Nothing left standing in the camp: nowhere to go (the holm isn't joined to the light).
+		set_route([] as Array[Vector3])
 	else:
 		set_route(Nav.route_to_light(global_position))
 
@@ -546,7 +697,7 @@ func _tick_Approach(delta: float) -> void:
 		var col := hit.get_collider()
 		if col == target or col is CharacterBody3D:
 			continue
-		if col is Fence and not col.is_destroyed():
+		if (col is Fence or (col is Structure and col.is_in_group("barricades"))) and not col.is_destroyed():
 			attack_target = col
 			change_state(&"AttackFence")
 			return
@@ -681,10 +832,10 @@ func is_vulnerable() -> bool:
 # ---- damage ----
 
 func take_damage(amount: int, from_dir: Vector3 = Vector3.ZERO, source: Node = null) -> void:
-	if state == &"Emerge" or hp <= 0 or not is_vulnerable():
+	if puppet or state == &"Emerge" or hp <= 0 or not is_vulnerable():
 		return
 	if source is Player:
-		last_hit = "hook"
+		last_hit = source.hit_kind
 	hp -= amount
 	var shoved := false
 	var out := Vector3(global_position.x, 0.0, global_position.z).normalized()

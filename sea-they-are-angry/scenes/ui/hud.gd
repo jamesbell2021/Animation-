@@ -15,6 +15,7 @@ var player: Player
 var players: Array = []
 var lighthouse: Lighthouse
 var lamp: Lamp
+var camp: Camp
 
 var _phase_label: Label
 var _stock_label: Label
@@ -23,6 +24,9 @@ var _lh_label: Label
 var _fuel_bar: ProgressBar
 var _lamp_label: Label
 var _beam_label: Label
+var _camp_label: Label
+var _jobs_box: VBoxContainer
+var _job_labels: Array[Label] = []
 var _prompt_label: Label
 var _msg_label: Label
 var _warn_label: Label
@@ -30,6 +34,7 @@ var _report_label: Label
 var _report_t := 0.0
 var _over: Control
 var _over_reason: Label
+var _over_btn: Button
 var _over_stats: Label
 var _msg_t := 0.0
 var _warn_t := 0.0
@@ -65,6 +70,26 @@ func _ready() -> void:
 	fuel_row.add_child(_fuel_bar)
 	_lamp_label = _label(panel, FONT)
 	_beam_label = _label(panel, FONT)
+	_camp_label = _label(panel, FONT)
+
+	# The first days' jobs, down the right-hand side (Jobs).
+	_jobs_box = VBoxContainer.new()
+	_jobs_box.anchor_left = 1.0
+	_jobs_box.anchor_right = 1.0
+	_jobs_box.offset_left = -440.0
+	_jobs_box.offset_right = -20.0
+	_jobs_box.offset_top = 110.0
+	_jobs_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_jobs_box.add_theme_constant_override("separation", 3)
+	root.add_child(_jobs_box)
+	var jt := _label(_jobs_box, FONT + 2)
+	jt.text = "Jobs for the first days"
+	jt.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	jt.add_theme_color_override("font_color", Color(1.0, 0.78, 0.42))
+	for j in Jobs.LIST:
+		var l := _label(_jobs_box, FONT - 1)
+		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		_job_labels.append(l)
 
 	var controls := _label(root, 14)
 	controls.text = CONTROLS
@@ -160,16 +185,27 @@ func _build_game_over(root: Control) -> void:
 	btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	btn.pressed.connect(_on_new_run)
 	box.add_child(btn)
+	_over_btn = btn
 
 func _process(delta: float) -> void:
 	_phase_label.text = "Night %d — %s  (%s)" % [Run.night, Cycle.phase_name(), _mmss(Cycle.time_left)]
 	if Cycle.phase == Cycle.Phase.DUSK or Cycle.phase == Cycle.Phase.NIGHT:
 		_phase_label.text += "  · " + Weather.tonight_name()
+	if Difficulty.level() != Difficulty.Level.ANGRY:
+		_phase_label.text += "  · " + Difficulty.name()
+	var boat := Rescue.countdown()
+	if boat != "":
+		_phase_label.text += "  · " + boat
 	var stock := "Driftwood %d · Scrap %d · Bio %d · Kelp %d · Food %d" % [Stock.get_amount("driftwood"), Stock.get_amount("scrap"), Stock.get_amount("bio"), Stock.get_amount("seaweed"), Stock.get_amount("food")]
 	if Stock.get_amount("oil") > 0:
 		stock += " · Oil %d" % Stock.get_amount("oil")
 	if Stock.get_amount("dirty_fuel") > 0:
 		stock += " · Dirty fuel %d" % Stock.get_amount("dirty_fuel")
+	stock += " · Seeds %d" % Stock.get_amount("seeds")
+	# What the shed's weapons need, once there's any.
+	for k in [["arrows", "Arrows"], ["shells", "Cartridges"], ["bombs", "Petrol bombs"], ["poison", "Rat poison"]]:
+		if Stock.get_amount(k[0]) > 0:
+			stock += " · %s %d" % [k[1], Stock.get_amount(k[0])]
 	_stock_label.text = stock
 	if player and is_instance_valid(player):
 		var parts: Array[String] = []
@@ -178,7 +214,9 @@ func _process(delta: float) -> void:
 			if not is_instance_valid(p):
 				continue
 			var who: String = ((p.keeper_name() + " ") if p.ai else ("P%d %s " % [p.idx + 1, p.keeper_name()])) if list.size() > 1 else "Keeper "
-			parts.append(who + ("DOWN" if p.downed else "HP %d / %d · Flares %d" % [p.hp, p.max_hp, p.flares()]))
+			var needs := " · Fed %d · Warm %d" % [roundi(p.hunger), roundi(p.warmth)]
+			var held: String = "" if p.ai or p.arsenal == null else " · " + p.arsenal.hud_text()
+			parts.append(who + ("DOWN" if p.downed else "HP %d / %d · Flares %d" % [p.hp, p.max_hp, p.flares()] + needs + held))
 		_player_label.text = "   ".join(parts)
 		_prompt_label.text = player.interact_prompt() if Run.active else ""
 	if lighthouse and is_instance_valid(lighthouse):
@@ -187,8 +225,46 @@ func _process(delta: float) -> void:
 	if lamp and is_instance_valid(lamp):
 		_fuel_bar.value = lamp.fuel
 		_update_lamp_label()
-		_beam_label.visible = player != null and player.operating
-		_beam_label.text = "Beam: %s   [Q] switch" % ("FOCUSED" if lamp.mode == Lamp.Mode.FOCUSED else "WIDE")
+		var on_light: bool = player != null and player.manning != null
+		_beam_label.visible = player != null and (player.operating or on_light)
+		var focused: bool = (player.manning.mode if on_light else lamp.mode) == Lamp.Mode.FOCUSED
+		_beam_label.text = "%s: %s   [Q] switch" % ["Searchlight" if on_light else "Beam", "FOCUSED" if focused else "WIDE"]
+	if camp and is_instance_valid(camp) and camp.generator != null:
+		var g := camp.generator
+		var lit := 0
+		for sl in camp.searchlights:
+			if sl.is_lit():
+				lit += 1
+		var line := "Camp generator %d%%" % roundi(g.fuel)
+		if g.running:
+			line += " · running, %d light%s" % [lit, "" if lit == 1 else "s"]
+		if Stock.get_amount("diesel") > 0:
+			line += " · Diesel %d" % Stock.get_amount("diesel")
+		# What's wrecked or torn down, so a raid on the holm reads from the main island.
+		var hurt := false
+		if camp.fallen():
+			line = "THE CAMP HAS FALLEN · mend the generator and the huts"
+			hurt = true
+		else:
+			var down: Array[String] = []
+			for s in [g] + camp.buildings.values():
+				if s.is_destroyed():
+					down.append(s.display_name().trim_prefix("the ") + " wrecked")
+				elif s.health_ratio() < 0.5:
+					down.append(s.display_name().trim_prefix("the ") + " %d%%" % roundi(s.health_ratio() * 100.0))
+			if camp.wire_down() > 0:
+				down.append("wire down %d" % camp.wire_down())
+			if not down.is_empty():
+				line += " · " + ", ".join(down)
+				hurt = true
+		_camp_label.text = line
+		_camp_label.add_theme_color_override("font_color", RED if g.fuel < Generator.LOW or hurt else PALE)
+	_jobs_box.visible = Jobs.showing()
+	if _jobs_box.visible:
+		for i in Jobs.LIST.size():
+			var did := Jobs.done(Jobs.LIST[i][0])
+			_job_labels[i].text = ("✓ " if did else "○ ") + String(Jobs.LIST[i][1])
+			_job_labels[i].add_theme_color_override("font_color", Color(0.55, 0.62, 0.55) if did else PALE)
 	if _msg_t > 0.0:
 		_msg_t = maxf(0.0, _msg_t - delta)
 		_msg_label.modulate.a = clampf(_msg_t / MSG_FADE, 0.0, 1.0)
@@ -247,10 +323,12 @@ func _show_warning(text: String) -> void:
 
 ## A centred warning, used by the foghorn alarms.
 func warn(text: String) -> void:
+	Net.relay_warn(text)
 	_show_warning(text)
 
 ## The keeper's log for the night just survived: a heading and a few lines under it.
 func report(heading: String, lines: Array, time: float = REPORT_TIME) -> void:
+	Net.relay_report(heading, lines, time)
 	_show_warning(heading)
 	_warn_t = time
 	_report_label.text = "\n".join(lines)
@@ -265,12 +343,18 @@ func _on_phase_changed(p: int) -> void:
 		_show_warning("They are coming.")
 
 func _on_run_ended(reason: String, night: int) -> void:
+	if Net.is_client():
+		_over_btn.text = "The host starts the next run"
+		_over_btn.disabled = true
 	_over_reason.text = reason
 	_over_stats.text = "Reached night %d · Best night %d" % [night, SaveSys.load_best()]
 	_over.visible = true
 	_prompt_label.text = ""
 
 func _on_new_run() -> void:
+	if Net.is_host() and Net.started:
+		Net.restart()
+		return
 	Run.quick_start = true
 	Run.start_new()
 	SaveSys.clear_run()
