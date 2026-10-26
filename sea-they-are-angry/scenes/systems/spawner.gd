@@ -144,8 +144,7 @@ func _queue_group(entry: Dictionary) -> void:
 	if kind == "E":
 		_spawn_eel(points[idx])
 		return
-	# Co-op: more keepers, more creatures (x1.5 per extra keeper, rounded up).
-	var count := ceili(float(entry["count"]) * (1.0 + 0.5 * float(Players.humans() - 1)))
+	var count := group_size(int(entry["count"]))
 	if eel_active():
 		count = maxi(1, roundi(count * EEL_RATE))
 	var raid := false
@@ -168,7 +167,7 @@ func _queue_group(entry: Dictionary) -> void:
 func _queue_holm(entry: Dictionary) -> void:
 	var kind: String = entry.get("kind", "B")
 	var idx := randi() % holm_points.size()
-	var count := ceili(float(entry["count"]) * (1.0 + 0.5 * float(Players.humans() - 1)))
+	var count := group_size(int(entry["count"]))
 	if eel_active():
 		count = maxi(1, roundi(count * EEL_RATE))
 	var landings: Array = [holm_points[idx]]
@@ -177,6 +176,11 @@ func _queue_holm(entry: Dictionary) -> void:
 	_omens.append({"at": landings[0], "left": OMEN_TIME, "tick": 0.0})
 	for i in count:
 		_pending.append({"at": landings[0], "delay": OMEN_TIME + STAGGER * float(i), "kind": kind, "raid": false, "camp": true})
+
+## How many come ashore for a row of the table: more with more people playing (x1.5 per
+## extra keeper, halves rounded up), and fewer or more with the difficulty.
+func group_size(base: int) -> int:
+	return maxi(1, roundi(float(base) * (1.0 + 0.5 * float(Players.humans() - 1)) * Difficulty.creatures()))
 
 ## True while an Eel encounter is under way.
 func eel_active() -> bool:

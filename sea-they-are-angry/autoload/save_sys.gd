@@ -6,6 +6,7 @@ const PROFILE_PATH := "user://profile.json"
 func save_run() -> void:
 	var d := {
 		"night": Run.night,
+		"difficulty": Run.difficulty,
 		"anger": Anger.value,
 		"stock": Stock.all(),
 		"fuel": Run.lamp_fuel,

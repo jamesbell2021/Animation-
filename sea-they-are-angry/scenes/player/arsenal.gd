@@ -76,7 +76,7 @@ func available(w: String) -> bool:
 		"hook":
 			return true
 		"bombs":
-			return Stock.get_amount("bombs") > 0
+			return _ammo("bombs") > 0
 		_:
 			return carries(w)
 
@@ -187,7 +187,7 @@ static func _live(e: Node) -> bool:
 func _bow(delta: float, pressed: bool, held: bool) -> void:
 	if draw < 0.0:
 		if pressed and _cd <= 0.0:
-			if Stock.get_amount("arrows") <= 0:
+			if _ammo("arrows") <= 0:
 				Events.message.emit("No arrows: whittle some at the shed (driftwood and scrap).")
 				_cd = 0.5
 				return
@@ -201,7 +201,7 @@ func _bow(delta: float, pressed: bool, held: bool) -> void:
 	# Let go: loose, if it was drawn far enough to fly.
 	var power := draw
 	draw = -1.0
-	if power < MIN_DRAW or not Stock.spend({"arrows": 1}):
+	if power < MIN_DRAW or not _use("arrows"):
 		return
 	_cd = 0.25
 	var a := Arrow.new()
@@ -224,15 +224,16 @@ func _shotgun(delta: float, pressed: bool) -> void:
 	if _reload_t > 0.0:
 		_reload_t -= delta
 		if _reload_t <= 0.0:
-			var n := mini(2 - Run.barrels, Stock.get_amount("shells"))
-			Stock.spend({"shells": n})
+			var n := mini(2 - Run.barrels, _ammo("shells"))
+			if not Difficulty.free_ammo():
+				Stock.spend({"shells": n})
 			Run.barrels += n
 			Audio.sfx("hammer", keeper.global_position, -8.0, 0.1)
 		return
 	if not pressed or _cd > 0.0:
 		return
 	if Run.barrels <= 0:
-		if Stock.get_amount("shells") > 0:
+		if _ammo("shells") > 0:
 			_reload_t = RELOAD_TIME
 			Audio.sfx("creak", keeper.global_position, -4.0, 0.1)
 		else:
@@ -241,7 +242,8 @@ func _shotgun(delta: float, pressed: bool) -> void:
 			_cd = 0.5
 		return
 	_face()
-	Run.barrels -= 1
+	if not Difficulty.free_ammo():
+		Run.barrels -= 1
 	_cd = BARREL_CD
 	fire_shot(keeper.aim_dir())
 	if Run.barrels == 0 and Stock.get_amount("shells") > 0:
@@ -304,7 +306,7 @@ func _flamer(delta: float, held: bool) -> void:
 		return
 	if Run.flamer_fuel <= 0.0:
 		_stop_flame()
-		if Stock.spend(REFILL_COST):
+		if Difficulty.free_ammo() or Stock.spend(REFILL_COST):
 			_refill_t = REFILL_TIME
 			Events.message.emit("%s pours a bio into the flamer's tank." % keeper.keeper_name())
 		elif _cd <= 0.0:
@@ -318,7 +320,8 @@ func _flamer(delta: float, held: bool) -> void:
 		_flame_light.visible = true
 		_flame_sound.play()
 		Audio.sfx("ignite", keeper.global_position, -2.0, 0.1)
-	Run.flamer_fuel = maxf(0.0, Run.flamer_fuel - FLAME_USE * delta)
+	if not Difficulty.free_ammo():
+		Run.flamer_fuel = maxf(0.0, Run.flamer_fuel - FLAME_USE * delta)
 	_flame_light.light_energy = 3.5 + randf_range(-0.8, 0.8)
 	flame_tick(delta, keeper.aim_dir())
 
@@ -371,7 +374,7 @@ func _physics_process(_delta: float) -> void:
 # ---- petrol bombs ----
 
 func _throw_bomb() -> void:
-	if not Stock.spend({"bombs": 1}):
+	if not _use("bombs"):
 		return
 	_cd = BOMB_CD
 	var to := _bomb_point()
@@ -391,7 +394,7 @@ func _throw_bomb() -> void:
 	Audio.sfx("swing", keeper.global_position, -2.0, 0.1)
 	if keeper._clips() and keeper.rig.has_clip("throw"):
 		keeper.rig.shot("throw")
-	if Stock.get_amount("bombs") <= 0:
+	if _ammo("bombs") <= 0:
 		select("hook")
 
 ## Where a bomb should land: under the mouse; on a pad (no cursor), at the nearest
@@ -424,7 +427,16 @@ func refresh() -> void:
 	keeper._hook_holder.visible = weapon == "hook" and keeper.has_hook and not working
 	_tank.visible = carries("flamer")
 
+## What's in store of this ammunition: on a calm sea, never short.
+func _ammo(kind: String) -> int:
+	return 999 if Difficulty.free_ammo() else Stock.get_amount(kind)
+
+func _use(kind: String) -> bool:
+	return Difficulty.free_ammo() or Stock.spend({kind: 1})
+
 func hud_text() -> String:
+	if Difficulty.free_ammo() and weapon != "hook":
+		return "%s · ∞" % NAMES[weapon]
 	match weapon:
 		"bow":
 			if draw >= 0.0:

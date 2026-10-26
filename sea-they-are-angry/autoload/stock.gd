@@ -34,6 +34,10 @@ func all() -> Dictionary:
 func get_amount(kind: String) -> int:
 	return _items.get(kind, 0)
 
+func set_amount(kind: String, n: int) -> void:
+	_items[kind] = n
+	changed.emit()
+
 func add(kind: String, n: int = 1) -> void:
 	_items[kind] = get_amount(kind) + n
 	changed.emit()

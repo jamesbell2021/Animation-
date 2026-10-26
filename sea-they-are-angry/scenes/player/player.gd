@@ -340,7 +340,7 @@ func _build_marker() -> void:
 # ---- hunger and warmth ----
 
 func _needs(delta: float) -> void:
-	hunger = maxf(0.0, hunger - HUNGER_RATE * (1.5 if _sprint_t > 0.0 else 1.0) * delta)
+	hunger = maxf(0.0, hunger - HUNGER_RATE * (1.5 if _sprint_t > 0.0 else 1.0) * Difficulty.needs() * delta)
 	var heat := 0.0
 	for h in get_tree().get_nodes_in_group("heat"):
 		heat = maxf(heat, h.heat_at(global_position))
@@ -350,7 +350,7 @@ func _needs(delta: float) -> void:
 	elif heat > 0.0:
 		warmth += heat * delta
 	elif night:
-		warmth -= COLD_NIGHT * float(WEATHER_COLD[Weather.tonight()]) * delta
+		warmth -= COLD_NIGHT * float(WEATHER_COLD[Weather.tonight()]) * Difficulty.needs() * delta
 	else:
 		warmth += SUN_WARM * delta
 	warmth = clampf(warmth, 0.0, 100.0)
@@ -1060,11 +1060,13 @@ func flare_point() -> Vector3:
 	return to
 
 func _fire_flare() -> void:
-	if flares() <= 0:
+	var free := Difficulty.free_ammo()
+	if flares() <= 0 and not free:
 		Events.message.emit("No flares left: load them at the cottage (1 scrap each).")
 		return
 	var to := flare_point()
-	Run.flares[idx] = flares() - 1
+	if not free:
+		Run.flares[idx] = flares() - 1
 	var d := to - global_position
 	if Vector2(d.x, d.z).length() > 0.05:
 		_aim = Vector3(d.x, 0.0, d.z).normalized()
@@ -1347,6 +1349,7 @@ func revive(fraction: float) -> void:
 func take_damage(amount: int, from: Vector3 = Vector3.INF) -> void:
 	if hp <= 0 or downed or not Run.active or _inside:
 		return
+	amount = maxi(1, roundi(float(amount) * Difficulty.keeper_damage()))
 	hp = maxi(0, hp - amount)
 	var away := global_position - from if from != Vector3.INF else -aim_dir()
 	away.y = 0.0

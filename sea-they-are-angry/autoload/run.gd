@@ -2,6 +2,10 @@ extends Node
 
 var active := false
 var night := 1
+## How hard the sea is (Difficulty.Level): kept with the run. A new run takes the one
+## chosen on the title screen (`next_difficulty`).
+var difficulty := 1
+var next_difficulty := 1
 var lamp_fuel := 100.0
 ## Diesel in the camp's generator (Generator.fuel), 0 to 100.
 var camp_fuel := 60.0
@@ -40,6 +44,7 @@ var quick_start := false
 
 func start_new() -> void:
 	night = 1
+	difficulty = next_difficulty
 	lamp_fuel = 100.0
 	camp_fuel = 60.0
 	camp_crops = [0, 0, 0, 0]
@@ -60,10 +65,13 @@ func start_new() -> void:
 	weather_for = 0
 	Anger.reset()
 	Stock.reset()
+	Stock.set_amount("shells", Difficulty.SHELLS[Difficulty.level()])
+	Stock.set_amount("poison", Difficulty.POISON[Difficulty.level()])
 	active = true
 
 func start_loaded(d: Dictionary) -> void:
 	night = int(d.get("night", 1))
+	difficulty = clampi(int(d.get("difficulty", 1)), 0, 2)
 	lamp_fuel = float(d.get("fuel", 100.0))
 	camp_fuel = float(d.get("camp_fuel", 60.0))
 	camp_crops = [0, 0, 0, 0]

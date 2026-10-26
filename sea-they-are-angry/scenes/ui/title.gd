@@ -8,6 +8,8 @@ const PALE := Color(0.9, 0.92, 0.95)
 
 var _keepers := 1
 var _keepers_btn: Button
+var _sea_btn: Button
+var _sea_note: Label
 var _device_label: Label
 var _first: Button
 
@@ -45,6 +47,9 @@ func _ready() -> void:
 		_first = new_btn
 	_keepers_btn = _button(box, "", _cycle_keepers)
 	_keepers_btn.gui_input.connect(_on_keepers_input)
+	_sea_btn = _button(box, "", _cycle_sea)
+	_sea_btn.gui_input.connect(_on_sea_input)
+	_sea_note = _label(box, "", 16, Color(0.75, 0.8, 0.85))
 	_button(box, "Credits", _on_credits)
 	_button(box, "Quit", _on_quit)
 	_device_label = _label(box, "", 16, Color(0.75, 0.8, 0.85))
@@ -58,6 +63,7 @@ func _ready() -> void:
 	hint.offset_left = 90.0
 	hint.offset_top = -50.0
 	_update_keepers()
+	_update_sea()
 	_first.grab_focus.call_deferred()
 
 func _label(parent: Node, text: String, size: int, color: Color) -> Label:
@@ -109,6 +115,25 @@ func _update_keepers() -> void:
 	for i in _keepers:
 		lines.append("P%d %s — %s" % [i + 1, Players.NAMES[i], Players.device_label(i)])
 	_device_label.text = "\n".join(lines)
+
+# How hard the sea is, for a new run (a continued one keeps its own).
+func _cycle_sea() -> void:
+	Run.next_difficulty = (Run.next_difficulty + 1) % Difficulty.NAMES.size()
+	_update_sea()
+
+func _on_sea_input(ev: InputEvent) -> void:
+	if ev.is_action_pressed("ui_left"):
+		Run.next_difficulty = maxi(0, Run.next_difficulty - 1)
+		_update_sea()
+		_sea_btn.accept_event()
+	elif ev.is_action_pressed("ui_right"):
+		Run.next_difficulty = mini(Difficulty.NAMES.size() - 1, Run.next_difficulty + 1)
+		_update_sea()
+		_sea_btn.accept_event()
+
+func _update_sea() -> void:
+	_sea_btn.text = "◀ %s ▶" % Difficulty.NAMES[Run.next_difficulty]
+	_sea_note.text = Difficulty.BLURBS[Run.next_difficulty].capitalize().left(1) + Difficulty.BLURBS[Run.next_difficulty].substr(1)
 
 func _on_continue() -> void:
 	start_requested.emit(true, _keepers)

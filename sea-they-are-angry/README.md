@@ -32,7 +32,7 @@ On Windows use the console binary, for example `Godot_v4.3-stable_win64_console.
 
 ## Controls
 
-Choose 1 to 3 keepers on the title screen, then New Run (or Continue).
+Choose 1 to 3 keepers and how hard the sea is on the title screen, then New Run (or Continue). A calm sea is easy: fewer creatures, gentler blows, and ammunition never runs out. A raging sea is hard.
 
 | Action | P1: keyboard + mouse | P2: arrow keys (if no free gamepad) | Gamepad (P2, P3) |
 |---|---|---|---|

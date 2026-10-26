@@ -168,6 +168,8 @@ func _process(delta: float) -> void:
 	_phase_label.text = "Night %d — %s  (%s)" % [Run.night, Cycle.phase_name(), _mmss(Cycle.time_left)]
 	if Cycle.phase == Cycle.Phase.DUSK or Cycle.phase == Cycle.Phase.NIGHT:
 		_phase_label.text += "  · " + Weather.tonight_name()
+	if Difficulty.level() != Difficulty.Level.ANGRY:
+		_phase_label.text += "  · " + Difficulty.name()
 	var stock := "Driftwood %d · Scrap %d · Bio %d · Kelp %d · Food %d" % [Stock.get_amount("driftwood"), Stock.get_amount("scrap"), Stock.get_amount("bio"), Stock.get_amount("seaweed"), Stock.get_amount("food")]
 	if Stock.get_amount("oil") > 0:
 		stock += " · Oil %d" % Stock.get_amount("oil")

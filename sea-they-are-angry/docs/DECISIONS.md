@@ -590,3 +590,24 @@ This is step 1 of five: the place, the crossing, the camera and the helpers. Nex
 - **Friendly fire:** none. The flamer, fire pools and shot don't hurt keepers, so co-op and the helpers aren't punished for standing near them.
 - **Sounds,** all made in code: the shotgun, the bow's thrum, an arrow striking, the flamer's roaring loop, and glass smashing.
 - **Tests:** `tests/slice_arms.gd` (40 checks): the workbench, switching, each weapon doing what it says, the cartridges running out, the poison, the wash-up and the save.
+
+## Difficulty (owner's request: "difficulty modes; in easy mode there's infinite ammo")
+
+- **Three seas,** chosen on the title screen under the keepers (◀ ▶ or click to change). A new run takes the choice; a continued run keeps its own, saved with it (`Run.difficulty`). The HUD's top line names it when it isn't the normal one.
+
+  | | Calm sea (easy) | Angry sea (normal) | Raging sea (hard) |
+  |---|---|---|---|
+  | Creatures per landing | ×0.7 | as balanced | ×1.35 |
+  | Damage to keepers | ×0.6 | ×1 | ×1.3 |
+  | Hunger and cold | ×0.6 | ×1 | ×1.25 |
+  | Ammunition | never runs out | as it is | 6 cartridges and 2 tins of rat poison to start, not 10 and 4 |
+
+- **Infinite ammunition on a calm sea** covers everything a keeper shoots, throws or burns:
+  - the shotgun's barrels never empty, so it never reloads;
+  - arrows and petrol bombs are never used up, and bombs are in hand even with none made;
+  - the flamer's tank never drops;
+  - flares never run out.
+
+  The weapons themselves still have to be made or taken at the shed, so the workbench still matters. Traps and the lamp's fuel are not ammunition and cost as usual.
+- **Group sizes are rounded to nearest** (at least 1), not up, so the calm sea's ×0.7 actually removes a creature from small groups. This changes nothing on the normal sea: the co-op ×1.5 only ever leaves halves, which round up either way (`Spawner.group_size`).
+- **The tests run on the normal sea.** `slice_arms.gd` checks the three seas' group sizes, the free ammunition, the damage, the hard sea's smaller shed and the save.

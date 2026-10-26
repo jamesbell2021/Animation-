@@ -253,6 +253,39 @@ func _go() -> void:
 	arms.take_away("shotgun")
 	check(not arms.carries("shotgun") and Arsenal_holder("shotgun") == -1, "hung back up, it's in the shed for anyone")
 
+	# ---- difficulty ----
+	var sp = main.spawner
+	var counts := []
+	for lv in 3:
+		Run.difficulty = lv
+		counts.append(sp.group_size(4))
+	check(counts[0] < counts[1] and counts[2] > counts[1], "fewer creatures on a calm sea, more on a raging one %s" % str(counts))
+	Run.difficulty = 0
+	Stk.set_all({})
+	arms.give("shotgun")
+	Run.barrels = 2
+	arms._cd = 0.0
+	arms._reload_t = 0.0
+	arms.tick(0.016, true, true)
+	check(Run.barrels == 2 and arms.available("bombs") and arms._ammo("arrows") > 0, "calm sea: the barrels never empty, bombs and arrows never run out")
+	var fl0: int = p.flares()
+	p._fire_flare()
+	check(p.flares() == fl0, "nor flares")
+	p.hp = 100
+	p.take_damage(20)
+	check(p.hp == 88, "and blows land softer (20 -> %d)" % (100 - p.hp))
+	Run.difficulty = 2
+	p.hp = 100
+	p.take_damage(20)
+	check(p.hp == 74, "a raging sea: harder (20 -> %d)" % (100 - p.hp))
+	Run.next_difficulty = 2
+	Run.start_new()
+	check(Run.difficulty == 2 and Stk.get_amount("shells") == 6 and Stk.get_amount("poison") == 2, "and fewer cartridges and less poison in the shed")
+	root.get_node("SaveSys").save_run()
+	check(int(root.get_node("SaveSys").load_run()["difficulty"]) == 2, "the difficulty is kept with the run")
+	Run.next_difficulty = 1
+	Run.difficulty = 1
+
 	pl.helpers = true
 	print("\n%s" % ("ALL PASS" if fails == 0 else "%d FAILED" % fails))
 	quit(1 if fails > 0 else 0)
