@@ -316,6 +316,8 @@ func net_snap() -> Array:
 		flags |= 2
 	if burning > 0.0:
 		flags |= 4
+	if on_fire > 0.0:
+		flags |= 8
 	return [net_id, get_script().resource_path, global_position, rotation.y, velocity, String(state), hp, flags,
 		rig.shot_seq if rig != null else 0, rig.last_shot if rig != null else "", _net_extra()]
 
@@ -330,6 +332,7 @@ func net_apply(a: Array) -> void:
 	var flags := int(a[7])
 	visible = flags & 2 != 0
 	burning = BURN_HOLD if flags & 4 != 0 else 0.0
+	_show_fire(1.0 if flags & 8 != 0 else 0.0)
 	if rig != null:
 		var seq := int(a[8])
 		if _net_shot >= 0 and seq != _net_shot and String(a[9]) != "":
@@ -487,6 +490,8 @@ const POISON_DPS := 3.5
 const POISON_SLOW := 0.7
 var _dot := 0.0
 var _dot_fx_t := 0.0
+## Pixel fire on it while it burns (PixelFire): a few flames together.
+var _fire_fx: Array[MeshInstance3D] = []
 
 func set_alight(t: float) -> void:
 	on_fire = maxf(on_fire, t)
@@ -494,7 +499,30 @@ func set_alight(t: float) -> void:
 func poison(t: float) -> void:
 	poisoned = maxf(poisoned, t)
 
+## Show it burning (or not): pixel flames licking up it, dying down as the fire does.
+func _show_fire(left: float) -> void:
+	if left <= 0.0:
+		for f in _fire_fx:
+			f.visible = false
+		return
+	if _fire_fx.is_empty():
+		var size := fire_size()
+		var sd := float(get_instance_id() % 997) * 0.13
+		# A big one up the middle, and two smaller licking up its sides.
+		_fire_fx.append(PixelFire.sprite(self, Vector3(0.0, size.y * 0.5, 0.0), size, sd))
+		for side: float in [-1.0, 1.0]:
+			var small := size * Vector2(0.7, 0.72)
+			_fire_fx.append(PixelFire.sprite(self, Vector3(side * size.x * 0.28, small.y * 0.42, side * 0.12), small, sd + side * 3.1))
+	for f in _fire_fx:
+		f.visible = true
+		f.set_instance_shader_parameter("fade", clampf(left / 0.8, 0.6, 1.0))
+
+## Virtual: how big its flames are when it burns (wide, tall).
+func fire_size() -> Vector2:
+	return Vector2(1.5, 2.1)
+
 func _afflictions(delta: float) -> void:
+	_show_fire(on_fire if hp > 0 else 0.0)
 	if (on_fire <= 0.0 and poisoned <= 0.0) or hp <= 0:
 		return
 	if state == &"Emerge" or state == &"Retreat" and _in_water:

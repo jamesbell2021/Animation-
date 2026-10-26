@@ -748,3 +748,17 @@ This is step 1 of five: the place, the crossing, the camera and the helpers. Nex
 - **For raiders it's a target** like the generator and the buildings (`Camp.targets()`). Losing it doesn't count toward the camp falling, though: it only lights the wire (`Camp.fallen()` checks the generator and buildings). Once the camp has fallen, it isn't worth a raid on its own, and raids go back to the light.
 - **On the LAN:** its health is the host's like any building's. Each machine works out the lights and the rotor from that, so a blow blinks the lights everywhere.
 - **Tests:** `slice_turbine.gd`.
+
+## Pixel fire (owner's request: "use that sort of fire for the flame thrower: a real pixelated roaring flame")
+
+- **The owner's reference:** the fire in their game Rig Down, which wasn't available to this session. It's rebuilt from the description, in the old demoscene / Doom-fire way (`shaders/pixel_fire.gdshader`, `scenes/fx/pixel_fire.gd`).
+- **How it looks:**
+  - **Pixels:** the flame is worked out on a coarse pixel grid, about 12 by 30 blocks along the jet, with whole rows jittering sideways a frame at a time.
+  - **Palette:** stepped hard from white heat through yellow, orange and red to ember red, then nothing. The edges are cut out, not faded.
+  - **Movement:** its shape is torn by fast-scrolling noise, so it licks and roars.
+  - **Glow:** bright enough for the glow to bloom the core without washing out the steps.
+- **Three shapes from one shader:**
+  - **The flamer's jet:** laid from the nozzle along the stream and turned about it to face the camera. It shoots out when lit, flickers in length while held, and dies back when let go. It angles to reach about chest height over the ground where it ends, so it hits creatures down a slope as the damage always did. Billows of the same fire roll off it (GPU particles), burning down as they go.
+  - **Burning creatures:** a blaze of three standing flames while they're alight. It shows on LAN clients too (a flag in each creature's snapshot).
+  - **Petrol bombs' pools:** seven standing flames over the spill, dying down with it.
+- **Untouched:** the lamp's beam burn and the campfire keep their own soft look, since they're not the flamer's fire.

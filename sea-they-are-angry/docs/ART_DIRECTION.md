@@ -124,6 +124,10 @@ The holm should read as a real North Sea islet beside the lighthouse's crag, and
 - **The props tell the story:** the flag still flying, the "No. 7 CAMP / AUTHORISED PERSONS ONLY" sign, a washing line, oil drums, a coal bunker, a water tank, duckboards over the mud. Keep any new props in that register: utilitarian, wartime, weathered.
 - **Light:** the huts' small windows glow warm when the generator runs; the searchlights are the cold white against it.
 
+## Fire
+
+- **The flamer, burning creatures and petrol fires are pixel fire:** chunky square pixels in a hard-stepped palette (white, yellow, orange, red, ember), licking and roaring, in the Doom-fire tradition. It's the one deliberately retro thing in the painted look, and it's meant to stand out as the hottest, angriest thing on screen.
+
 ## The wind turbine
 
 - **An early-1980s Danish-style machine**, the kind put up on islands then: three white glass-fibre blades on an upwind rotor with a spinner, a cream nacelle with a thin red stripe, and a galvanised four-legged lattice tower with a ladder. A green-grey control cabinet stands at its foot, with a yellow warning plate. It's newer than the camp, and should look it: clean metal and glass fibre against the old corrugated iron and concrete.

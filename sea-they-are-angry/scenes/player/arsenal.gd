@@ -57,6 +57,9 @@ var _burn_acc := {}
 var _models := {}
 var _tank: Node3D
 var _flame: GPUParticles3D
+## The flamer's jet of pixel fire (PixelFire), and how far out it reaches (0 to 1).
+var _jet: MeshInstance3D
+var _jet_reach := 0.0
 var _flame_light: OmniLight3D
 var _flame_sound: AudioStreamPlayer3D
 # Whether the keeper handed this frame to the arsenal: if not (busy, knocked down, in a
@@ -372,7 +375,7 @@ func _stop_flame() -> void:
 	if _flame_sound != null:
 		_flame_sound.stop()
 
-func _physics_process(_delta: float) -> void:
+func _physics_process(delta: float) -> void:
 	if not _ticked and not keeper.puppet:
 		cease()
 	_ticked = false
@@ -380,8 +383,36 @@ func _physics_process(_delta: float) -> void:
 	if _flame != null and keeper != null:
 		_flame.global_position = _muzzle()
 		var pm := _flame.process_material as ParticleProcessMaterial
-		pm.direction = keeper.aim_dir() + Vector3(0.0, 0.08, 0.0)
+		pm.direction = _jet_dir()
 		_flame_light.global_position = _muzzle() + keeper.aim_dir() * 2.0
+	_tend_jet(delta)
+
+# The way the stream goes: where the keeper aims, dipping or lifting to reach about chest
+# height over the ground where it ends, so it hits what's down a slope.
+func _jet_dir() -> Vector3:
+	var from := _muzzle()
+	var flat := keeper.aim_dir()
+	flat.y = 0.0
+	flat = flat.normalized() if flat.length() > 0.01 else Vector3.FORWARD
+	var end := from + flat * FLAME_RANGE
+	var ground := maxf(Terrain.height_at(end.x, end.z), Terrain.SEA_LEVEL)
+	var drop := clampf((ground + 1.0 - from.y) / FLAME_RANGE, -0.35, 0.12)
+	return (flat + Vector3(0.0, drop, 0.0)).normalized()
+
+# The jet shoots out when lit, roars and flickers in length while it's held, and dies
+# back when it's let go.
+func _tend_jet(delta: float) -> void:
+	if _jet == null or keeper == null:
+		return
+	_jet_reach = move_toward(_jet_reach, 1.0 if _flaming else 0.0, delta * (7.0 if _flaming else 5.0))
+	_jet.visible = _jet_reach > 0.01
+	if not _jet.visible:
+		return
+	var roar := 1.0 + sin(Time.get_ticks_msec() * 0.031) * 0.05 + randf_range(-0.04, 0.04)
+	var length := FLAME_RANGE * 1.05 * _jet_reach * roar
+	var dir := _jet_dir()
+	PixelFire.aim_jet(_jet, _muzzle() - dir.normalized() * 0.1, dir, length, 1.9 * maxf(_jet_reach, 0.3))
+	(_jet.material_override as ShaderMaterial).set_shader_parameter("reach", 1.0)
 
 # ---- petrol bombs ----
 
@@ -535,15 +566,10 @@ func _build_models() -> void:
 	cyl.material_override = Look.flat_mat(Color(0.62, 0.14, 0.1), 0.45)
 	var cap := Geo.cyl(_tank, 0.05, 0.08, Color.WHITE, Vector3(0.0, 0.29, 0.0))
 	cap.material_override = steel
-	# The flame: a roaring stream of fire, its light, its roar.
-	_flame = FX.emitter(self, global_position, FX._puff_mesh_ref(), Color(1.0, 0.55, 0.15, 0.95),
-		64, 0.42, Vector3.FORWARD, 9.0, 11.0, 14.0, -1.5, 0.35, 1.0, false, true, 2.2)
-	if _flame != null:
-		_flame.emitting = false
-	else:
-		_flame = GPUParticles3D.new()
-		_flame.process_material = ParticleProcessMaterial.new()
-		add_child(_flame)
+	# The flame: a roaring jet of pixel fire with billows rolling off it, its light,
+	# its roar.
+	_jet = PixelFire.jet(self)
+	_flame = PixelFire.billows(self)
 	_flame_light = OmniLight3D.new()
 	_flame_light.light_color = Color(1.0, 0.55, 0.2)
 	_flame_light.omni_range = 7.0
