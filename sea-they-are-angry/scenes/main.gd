@@ -888,6 +888,7 @@ func _build_rowing_boat(islet_foot: Vector3) -> void:
 	var islet_moor := Transform3D(Basis(Vector3.UP, slip), islet_at)
 	rowing_boat = RowingBoat.new()
 	rowing_boat.name = "RowingBoat"
+	rowing_boat.sea_mat = _sea_mat
 	add_child(rowing_boat)
 	var via := [main_at + outward * 3.5 + Vector3(0.0, 0.0, -1.5), Vector3(25.5, Terrain.SEA_LEVEL, -12.0), Vector3(25.0, Terrain.SEA_LEVEL, -21.5), islet_at + slip_out * 4.5]
 	# Where keepers take the boat: on the shingle just up from the jetty's foot, on flat ground.

@@ -65,6 +65,8 @@ var _oars: Array[Node3D] = []
 var _oar_rest: Array[Node3D] = []
 var _bob_t := 0.0
 var _net: Array = []
+## The sea's material: told where the boat is, so it isn't drawn inside the hull.
+var sea_mat: ShaderMaterial
 
 func _ready() -> void:
 	add_to_group("rowing_boat")
@@ -312,6 +314,9 @@ func _place(delta: float) -> void:
 	var pitch := (swell_at(at.x + fwd.x * e, at.z + fwd.z * e) - swell_at(at.x - fwd.x * e, at.z - fwd.z * e)) / (2.0 * e)
 	var roll := (swell_at(at.x + right.x * e, at.z + right.z * e) - swell_at(at.x - right.x * e, at.z - right.z * e)) / (2.0 * e)
 	_hull.rotation = Vector3(atan(pitch) * 0.8, 0.0, -atan(roll) * 0.8)
+	if sea_mat != null:
+		sea_mat.set_shader_parameter("boat_at", Vector4(at.x, at.z, cos(_yaw), sin(_yaw)))
+		sea_mat.set_shader_parameter("boat_half", Vector2(LENGTH * 0.5, BEAM * 0.5))
 	_pose_oars()
 
 ## The sea's height here, as sea.gdshader moves it (so the boat rides its swell).
