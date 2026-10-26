@@ -169,7 +169,7 @@ func _play_sting() -> void:
 	wav.format = AudioStreamWAV.FORMAT_16_BITS
 	wav.mix_rate = rate
 	wav.data = data
-	var p := AudioStreamPlayer.new()
+	var p := WebAudioFix.setup(AudioStreamPlayer.new())
 	p.stream = wav
 	p.volume_db = -8.0
 	add_child(p)

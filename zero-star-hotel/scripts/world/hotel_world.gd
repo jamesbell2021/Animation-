@@ -102,7 +102,7 @@ func _build() -> void:
 	manager = Helper.new()
 	actors.add_child(manager)
 	manager.setup(self, "manager", {}, {}, Vector2(HotelLayout.DESK_X + 90.0, HotelLayout.GROUND_Y))
-	_rave_player = AudioStreamPlayer.new()
+	_rave_player = WebAudioFix.setup(AudioStreamPlayer.new())
 	_rave_player.bus = "SFX"
 	_rave_player.volume_db = -14.0
 	add_child(_rave_player)
