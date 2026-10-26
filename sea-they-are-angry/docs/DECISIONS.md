@@ -498,3 +498,56 @@ This is step 1 of five: the place, the crossing, the camera and the helpers. Nex
   - **Saving.**
 
   `slice_economy`'s count of the trap slots the defences upgrade opens leaves out the holm's posts.
+
+## Creatures raid the camp (step 5)
+
+- **Two fronts:** from night 2, every third group of Bloated, Squid or Crabs in the night's table lands on one of the holm's two beaches instead and makes for the camp. From night 5 it's every other group.
+  - **Where they come from:** these groups come out of the table, so the main island sees that many fewer and the night is no bigger. Nights 2 and 3 send one group to the holm, night 4 sends two, and nights 5 to 8 send two or three.
+  - **What never goes:** Smotherers and the Eel stay with the light.
+  - **Co-op:** the same scaling as on the main island.
+  - **Once the camp has fallen:** nothing more is sent; it all comes for the light again. Losing the camp never makes the nights easier.
+- **The holm's own creature map (`Nav._build_holm`):** up each beach and straight at the nearest stretch of wire (kept clear of the corner towers), then inside to the parade ground and a stop before each building and the generator.
+  - **Separate from the main island's:** raiders stay on the holm (`Enemy.camp_raid`). They never try to walk to the light across the sea, and the main island's creatures never wander onto the holm.
+  - **The gate:** it's on the map, but going through the wire is shorter from both beaches, so they tear through it.
+  - **Dawn:** they go back down to the holm's own beaches.
+- **What they make for:** the nearest of the generator, the quarters, the mess hut and the greenhouse still standing (`Camp.targets()`). Crabs and Squid only go after keepers on their own island: a Squid on the holm won't chase a keeper across the water.
+- **The wire (`scenes/structures/camp_wire.gd`):** each of the five runs of wire (three whole sides and the two either side of the gate) is a barricade with 120 health. Creatures that walk into it stop and tear at it, under the searchlights.
+  - **Torn:** the strands part one by one.
+  - **Down:** the gap stands open.
+  - **Mending:** a scrap mends 60.
+- **The buildings (`scenes/structures/camp_building.gd`):**
+  - **Health:** the quarters and the mess have 220 each and the greenhouse 150. The generator keeps its 120 and is now measured to its walls, so creatures can reach it and keepers can mend it from outside.
+  - **Mending:** two driftwood mend 60. Scrap is scarce and the wire wants it.
+  - **Battered:** they lean and smoke.
+  - **Wrecked:** a building sinks to a ruin, and what's in it stops working until it's mended:
+    - **The quarters:** the stove goes out and can't be lit.
+    - **The mess:** no meals, and the research desk can't be used. A project under way waits, and isn't finished at dawn.
+    - **The greenhouse:** its glass goes, what's growing in it is lost at dawn, and nothing can be sown.
+    - **The generator:** no power: no searchlights, no hut lights.
+  - **A wrecked hut stays dark.**
+- **The camp has fallen** when the generator and all three buildings are wrecked. The HUD says so in red, the dawn report says so, and the tip says what to mend.
+  - **The run goes on.** As the owner asked, only the lighthouse's destruction ends it.
+  - **Why it's hard:** losing the camp loses its searchlights, its warmth, the mess and the research, and its crops. All the while, the nights stay the same size.
+- **Alarm bell (research):**
+  - **With it:** when a group lands on the holm, the camp's bell rings (made in code, `_s_camp_bell`: four clangs of an iron bell) and a warning says which beach.
+  - **Without it:** the lighthouse's foghorn doesn't sound for the holm, and the landing is only noticed if a person's keeper is on the holm. Otherwise the first sign is the searchlights swinging, the HUD's camp line going red, or "The camp's wire is down!".
+- **The HUD's camp line:** names anything wrecked, anything under half health, and how many runs of wire are down, in red, so a raid reads from the main island.
+- **The warden mends the camp by day:** wire from just inside it, buildings from in front of them, after seeing to the generator. The lighthouse's helper mends only the main island's.
+- **The balance bot** (`tools/playtest.gd`) now prints the camp's state each dawn.
+  - **Its day:** it fetches the holm's two cans of diesel into the generator and mends the camp with what it has.
+  - **By default** its keepers don't go to the holm, so the camp has only its own searchlights.
+  - **A fourth argument, `helpers`,** brings in the computer's keepers, the camp's warden among them.
+- **Balance, first pass:** with nobody on the holm, the camp at first fell on night 3 to two raids of three Bloated. The bursts by the huts caught both huts at once, and the bot had no scrap to mend them. So the buildings were made tougher (220 / 150) and are mended with driftwood rather than scrap. See the playtest numbers below.
+- **Tests:** `tests/slice_camp_raid.gd`:
+  - **Setup:** the camp's targets and wire, the holm's map (through the wire, back to sea off the holm), and which groups go for the camp.
+  - **A raid:** a Bloated tearing at the wire and then bursting on the generator. A Squid and a Crab on the holm going for the camp, not a keeper over the water.
+  - **Wrecking:** what stops working, and the camp falling without ending the run.
+  - **Mending:** mending by hand, and the warden mending.
+  - **The bell.**
+- **Playtest numbers** (`playtest.gd -- 6 bot 1`, after the change):
+  - **Nobody on the holm:** the camp takes its first raid on night 2 (quarters and mess at 45%, a run of wire down). It loses the generator and the greenhouse on night 3 and falls on night 6.
+  - **With the warden** (`helpers`): the camp comes through nights 2 and 3 untouched. It loses the generator on night 4 and the mess on night 5, but never falls in six nights.
+  - **Why it stays battered:** the bot spends its scrap before the generator's turn, so the wreck waits.
+  - **The light:** neither run lost the lighthouse.
+
+  So the camp needs someone on it, as asked. Left alone it is lost about a week in, and a warden keeps it alive but not whole.

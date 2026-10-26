@@ -62,6 +62,13 @@ func display_name() -> String:
 func smoke_point() -> Vector3:
 	return Vector3(0.6, HOUSE.y + 1.2, -0.8)
 
+# To its walls, not its middle: creatures reach it, and keepers mend it, from outside.
+func surface_distance(p: Vector3) -> float:
+	var local := to_local(p)
+	var dx := maxf(0.0, absf(local.x) - HOUSE.x * 0.5)
+	var dz := maxf(0.0, absf(local.z) - HOUSE.z * 0.5)
+	return Vector2(dx, dz).length()
+
 func repair_cost() -> Dictionary:
 	return {"scrap": 1, "driftwood": 1}
 

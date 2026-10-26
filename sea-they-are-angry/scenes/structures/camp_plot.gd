@@ -89,8 +89,18 @@ func yield_food() -> int:
 		n += 1
 	return n
 
+## The greenhouse it's in: smashed, what's growing is lost and nothing can be sown.
+var building: Structure
+
+func _wrecked() -> bool:
+	return building != null and building.is_destroyed()
+
 func _on_phase(p: int) -> void:
 	if p != Cycle.Phase.DAWN or state() != PLANTED:
+		return
+	if _wrecked():
+		_set_state(BARE)
+		Events.message.emit("The greenhouse is smashed: what was growing in it is lost.")
 		return
 	# The night just past: a storm can flatten what's growing outside.
 	if not under_glass and not Research.has("cloches") and Weather.tonight() == Weather.Kind.STORM and randf() < STORM_LOSS:
@@ -100,6 +110,8 @@ func _on_phase(p: int) -> void:
 	_set_state(RIPE)
 
 func interact_prompt() -> String:
+	if _wrecked():
+		return "The greenhouse is smashed: mend it before anything will grow"
 	match state():
 		BARE:
 			return "[E] Sow %s (%s)" % [crop_name(), Stock.cost_str(SOW_COST)]
@@ -110,6 +122,8 @@ func interact_prompt() -> String:
 	return ""
 
 func interact(_player: Node) -> bool:
+	if _wrecked():
+		return false
 	match state():
 		BARE:
 			if not Stock.spend(SOW_COST):

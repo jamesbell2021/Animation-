@@ -207,8 +207,25 @@ func _process(delta: float) -> void:
 			line += " · running, %d light%s" % [lit, "" if lit == 1 else "s"]
 		if Stock.get_amount("diesel") > 0:
 			line += " · Diesel %d" % Stock.get_amount("diesel")
+		# What's wrecked or torn down, so a raid on the holm reads from the main island.
+		var hurt := false
+		if camp.fallen():
+			line = "THE CAMP HAS FALLEN · mend the generator and the huts"
+			hurt = true
+		else:
+			var down: Array[String] = []
+			for s in [g] + camp.buildings.values():
+				if s.is_destroyed():
+					down.append(s.display_name().trim_prefix("the ") + " wrecked")
+				elif s.health_ratio() < 0.5:
+					down.append(s.display_name().trim_prefix("the ") + " %d%%" % roundi(s.health_ratio() * 100.0))
+			if camp.wire_down() > 0:
+				down.append("wire down %d" % camp.wire_down())
+			if not down.is_empty():
+				line += " · " + ", ".join(down)
+				hurt = true
 		_camp_label.text = line
-		_camp_label.add_theme_color_override("font_color", RED if g.fuel < Generator.LOW else PALE)
+		_camp_label.add_theme_color_override("font_color", RED if g.fuel < Generator.LOW or hurt else PALE)
 	if _msg_t > 0.0:
 		_msg_t = maxf(0.0, _msg_t - delta)
 		_msg_label.modulate.a = clampf(_msg_t / MSG_FADE, 0.0, 1.0)

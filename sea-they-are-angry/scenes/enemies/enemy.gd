@@ -303,6 +303,8 @@ func in_light(_mode: int, _delta: float) -> void:
 	pass
 
 func pick_target() -> Node3D:
+	if camp_raid:
+		return Enemy.nearest_camp(global_position)
 	return lighthouse
 
 # Points the lamp tests against its cone. Override for odd shapes (the Eel's head).
@@ -313,6 +315,29 @@ func light_probe_points() -> Array:
 	return out
 
 const HOME_IDS := ["cottage", "shed", "garden"]
+
+## Came ashore on the holm, for the camp: it makes for the camp's generator and buildings,
+## never the light (the holm isn't joined to the main island for them).
+var camp_raid := false
+
+## The nearest of the camp's generator and buildings still standing, or null.
+static func nearest_camp(from: Vector3) -> Structure:
+	var tree := Engine.get_main_loop() as SceneTree
+	var camp := tree.get_first_node_in_group("camp_root")
+	if camp == null:
+		return null
+	var best: Structure = null
+	var best_d := INF
+	for s in camp.targets():
+		var d := Geo.flat_dist(from, s.global_position)
+		if d < best_d:
+			best_d = d
+			best = s
+	return best
+
+## Whether two points are on the same island (the holm, or the main island).
+static func same_island(a: Vector3, b: Vector3) -> bool:
+	return Terrain.holm_side(a.x, a.z) == Terrain.holm_side(b.x, b.z)
 
 ## The nearest standing building of the homestead, or null if all are wrecked.
 static func nearest_home(from: Vector3) -> Structure:
@@ -482,6 +507,9 @@ func _enter_Approach() -> void:
 func replan() -> void:
 	if target != null and is_instance_valid(target):
 		set_route(Nav.route_to(global_position, target.global_position))
+	elif camp_raid:
+		# Nothing left standing in the camp: nowhere to go (the holm isn't joined to the light).
+		set_route([] as Array[Vector3])
 	else:
 		set_route(Nav.route_to_light(global_position))
 

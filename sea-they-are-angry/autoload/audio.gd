@@ -68,6 +68,7 @@ const SOUNDS := {
 	"trap_snap": ["_s_trap_snap", false],
 	"generator": ["_s_generator", true],
 	"searchlight": ["_s_searchlight", false],
+	"camp_bell": ["_s_camp_bell", false],
 }
 
 func _ready() -> void:
@@ -614,6 +615,25 @@ func _s_generator() -> PackedFloat32Array:
 		t += beat
 		k += 1
 	return _seamless(_gain(out, 1.2), 0.3)
+
+# The camp's alarm bell on the gate wire, swung hard: four clangs, each a struck iron
+# bell's out-of-tune partials ringing on under the next.
+func _s_camp_bell() -> PackedFloat32Array:
+	var n := _n(2.6)
+	var out := PackedFloat32Array()
+	out.resize(n)
+	var partials := [[1.0, 1.0, 3.0], [2.02, 0.55, 4.5], [2.74, 0.4, 6.0], [3.81, 0.25, 8.0], [5.4, 0.14, 11.0]]
+	for k in 4:
+		var at := _n(0.36 * float(k))
+		var seg := _n(1.4)
+		var hit := _env(_highpass(_noise(_n(0.02), 300 + k), 2000.0), 0.0005, 200.0)
+		var ring := PackedFloat32Array()
+		ring.resize(seg)
+		for pt in partials:
+			_mix(ring, _env(_tone(seg, 640.0 * float(pt[0]), 638.0 * float(pt[0])), 0.001, float(pt[2])), float(pt[1]))
+		_mix(ring, hit, 0.5)
+		_mix(out, _gain(ring, 0.8 if k % 2 == 0 else 0.65), 1.0, at)
+	return _gain(out, 0.55)
 
 # A searchlight's arc striking: a buzzing clunk as the shutter opens.
 func _s_searchlight() -> PackedFloat32Array:

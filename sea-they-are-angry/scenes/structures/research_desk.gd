@@ -2,7 +2,10 @@ class_name ResearchDesk
 extends Node3D
 ## A desk in the camp's mess, under a lamp, with the internees' papers spread on it.
 ## Work out a project here (Research): paid for from the store and the notes found about
-## the camp, one at a time, done by dawn.
+## the camp, one at a time, done by dawn. Nothing is worked out in a wrecked mess.
+
+## The mess hut it stands in.
+var building: Structure
 
 func _ready() -> void:
 	add_to_group("interactable")
@@ -18,13 +21,19 @@ func _ready() -> void:
 		sheet.material_override = paper
 		sheet.rotation.y = 0.3 * float(i - 2)
 
+## Whether work can go on here: the mess is standing.
+func usable() -> bool:
+	return building == null or not building.is_destroyed()
+
 func interact_prompt() -> String:
+	if not usable():
+		return "The mess is wrecked: mend the hut to work at the desk"
 	if Research.busy():
 		return "[E] Research: working out %s tonight" % Research.title(Run.researching)
 	return "[E] Research at the desk (the internees' notes: %d)" % Stock.get_amount("notes")
 
 func interact(player: Node) -> bool:
-	if not (player is Player):
+	if not (player is Player) or not usable():
 		return false
 	ChoiceMenu.open(player, "Research", menu_rows)
 	return true

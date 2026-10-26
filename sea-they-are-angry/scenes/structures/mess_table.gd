@@ -7,14 +7,19 @@ extends Node3D
 const MEAL := {"food": 1}
 const HEAL := 30
 
+## The mess hut: wrecked, nobody eats here until it's mended.
+var building: Structure
+
 func _ready() -> void:
 	add_to_group("interactable")
 
 func interact_prompt() -> String:
+	if building != null and building.is_destroyed():
+		return "The mess is wrecked: mend the hut to eat here"
 	return "[E] Eat in the mess (%s): fed, +%d health" % [Stock.cost_str(MEAL), HEAL]
 
 func interact(player: Node) -> bool:
-	if not player.has_method("eat_meal"):
+	if not player.has_method("eat_meal") or (building != null and building.is_destroyed()):
 		return false
 	if player.hunger >= 90.0 and player.hp >= player.max_hp:
 		Events.message.emit("%s isn't hungry." % player.keeper_name())

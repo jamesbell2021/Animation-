@@ -264,7 +264,16 @@ func _on_enemy_killed(e: Node) -> void:
 	_count(String(how) if how else "hook")
 
 func _on_structure_destroyed(s: Node) -> void:
-	if s is Fence:
+	if s is Structure and s.is_in_group("camp"):
+		_count("camp_lost")
+		if s.id == "wire":
+			hud.warn("The camp's wire is down!")
+		else:
+			var nm: String = s.display_name()
+			hud.warn("%s is wrecked!" % (nm.left(1).to_upper() + nm.substr(1)))
+			if camp.fallen():
+				hud.warn("The camp has fallen: no power, no warmth, no food from it till it's mended.")
+	elif s is Fence:
 		_count("fence")
 	elif s is Structure and Enemy.HOME_IDS.has(s.id):
 		_count("home")
@@ -286,6 +295,20 @@ func _on_group_warning(kind: String, points: Array, raid: bool) -> void:
 	if raid:
 		text += "  They're making for the cottage!"
 	hud.warn(text)
+
+# Something coming up the holm's beaches for the camp. With the alarm bell (research) the
+# camp's bell rings and says which beach; without it, only a keeper on the holm notices.
+func _on_holm_warning(kind: String, points: Array) -> void:
+	_count("camp_raid")
+	var beach := compass(points[0] - Vector3(Terrain.HOLM_C.x, 0.0, Terrain.HOLM_C.y))
+	if Research.has("bell"):
+		Audio.sfx("camp_bell", camp.generator.global_position, 2.0, 0.0)
+		hud.warn("The camp's bell! Something's coming up the holm's %s beach, for the camp." % beach)
+		return
+	for k in players:
+		if is_instance_valid(k) and not k.ai and Terrain.holm_side(k.global_position.x, k.global_position.z):
+			hud.warn("Out on the holm, something's coming ashore on the %s side." % beach)
+			return
 
 # Four short blasts: the light is smothered.
 func _on_smothered(on: bool) -> void:
@@ -701,11 +724,17 @@ func _build_spawner() -> void:
 		for side in [-1.0, 1.0]:
 			pts.append(Terrain.beach_point(i, 0.0, side * LANDING_OFFSET))
 	spawner.points = pts
+	var hp: Array[Vector3] = []
+	for i in Terrain.HOLM_BEACHES.size():
+		for side in [-1.0, 1.0]:
+			hp.append(Terrain.holm_beach_point(i, 0.0, side * LANDING_OFFSET * 0.6))
+	spawner.holm_points = hp
 	spawner.enemies_root = _enemies
 	spawner.lighthouse = lighthouse
 	add_child(spawner)
 	spawner.wave_incoming.connect(_on_wave_incoming)
 	spawner.group_warning.connect(_on_group_warning)
+	spawner.holm_warning.connect(_on_holm_warning)
 	lighthouse.lamp.smothered_changed.connect(_on_smothered)
 
 # ---- cycle ----
@@ -759,7 +788,7 @@ func _on_phase_changed(p: int) -> void:
 		_tally = {}
 	if p == Cycle.Phase.DAWN and Run.active:
 		_wash_up_oil()
-		_researched = Research.finish()
+		_researched = Research.finish() if camp.desk.usable() else ""
 		_place_notes()
 		_dawn_report()
 		var damaged := 0
@@ -802,6 +831,9 @@ func _dawn_report() -> void:
 	if not hurt_home.is_empty():
 		cost.append("%s damaged" % " and ".join(hurt_home))
 	cost.append("lighthouse %d/%d" % [lighthouse.hp, lighthouse.max_hp])
+	var camp_line := _camp_report()
+	if camp_line != "":
+		cost.append(camp_line)
 	cost.append("fuel %d%%" % roundi(lighthouse.lamp.fuel))
 	lines.append(" · ".join(cost))
 	var tip := ""
@@ -811,6 +843,10 @@ func _dawn_report() -> void:
 		tip = "Meet climbers on the ledge: a blow aimed outward knocks them over the edge."
 	elif g.call("smother") > 0:
 		tip = "When something climbs the tower, burn it on the ledge, or throw your boathook up at it from the crag top. Then go and pick the hook up."
+	elif camp.fallen():
+		tip = "The camp has fallen. Mend the generator and the huts (driftwood and scrap) to get its light, warmth and food back."
+	elif camp.wire_down() > 0:
+		tip = "Mend the camp's wire with scrap before dark: whatever comes up the holm's beaches has to tear through it."
 	elif g.call("fence") > 0:
 		tip = "Mend broken fences with driftwood before dark."
 	elif not hurt_home.is_empty():
@@ -829,6 +865,25 @@ func _dawn_report() -> void:
 	if _researched != "":
 		lines.append("Worked out overnight at the camp: %s." % Research.title(_researched))
 	hud.report("Night %d held." % Run.night, lines)
+
+# The camp's state for the dawn report: what's wrecked or hurt, or "" if it's all sound.
+func _camp_report() -> String:
+	if camp.fallen():
+		return "the camp has fallen"
+	var bad: Array[String] = []
+	var wrecked: Array[String] = []
+	for s in [camp.generator] + camp.buildings.values():
+		if s.is_destroyed():
+			wrecked.append(s.display_name())
+		elif s.is_damaged():
+			bad.append("%s %d%%" % [s.display_name(), roundi(s.health_ratio() * 100.0)])
+	var out: Array[String] = []
+	if not wrecked.is_empty():
+		out.append("%s wrecked" % " and ".join(wrecked))
+	out.append_array(bad)
+	if camp.wire_down() > 0:
+		out.append("%d run%s of wire down" % [camp.wire_down(), "" if camp.wire_down() == 1 else "s"])
+	return "camp: " + ", ".join(out) if not out.is_empty() else ""
 
 func _hurt_keeper() -> bool:
 	for p in players:

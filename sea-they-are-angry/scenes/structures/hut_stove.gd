@@ -12,6 +12,8 @@ const RADIUS := 4.8
 ## Where the stovepipe comes out of the roof (for the smoke).
 var pipe_top := Vector3.ZERO
 var burn := 0.0
+## The hut it stands in: wrecked, the stove's out and can't be lit.
+var building: Structure
 var _smoke: GPUParticles3D
 
 func _ready() -> void:
@@ -21,12 +23,20 @@ func _ready() -> void:
 func is_lit() -> bool:
 	return burn > 0.0
 
+func _wrecked() -> bool:
+	return building != null and building.is_destroyed()
+
 func heat_at(p: Vector3) -> float:
 	if burn <= 0.0 or Geo.flat_dist(p, global_position) > RADIUS or absf(p.y - global_position.y) > 1.5:
 		return 0.0
 	return HEAT
 
 func _process(delta: float) -> void:
+	if burn > 0.0 and _wrecked():
+		burn = 0.0
+		if _smoke != null:
+			_smoke.queue_free()
+			_smoke = null
 	if burn > 0.0:
 		burn = maxf(0.0, burn - delta)
 		if _smoke == null and is_inside_tree():
@@ -36,12 +46,14 @@ func _process(delta: float) -> void:
 			_smoke = null
 
 func interact_prompt() -> String:
+	if _wrecked():
+		return "The quarters are wrecked: mend the hut to light the stove"
 	if burn > 60.0:
 		return "The stove's burning: warm through by the hut"
 	return "[E] %s the stove (%s): warm by the hut" % ["Feed" if burn > 0.0 else "Light", Stock.cost_str(COST)]
 
 func interact(_player: Node) -> bool:
-	if burn > 60.0:
+	if burn > 60.0 or _wrecked():
 		return false
 	if not Stock.spend(COST):
 		Events.message.emit("Need " + Stock.cost_str(COST))

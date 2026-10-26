@@ -6,6 +6,8 @@ extends Node3D
 ## house, vegetable beds and a greenhouse, and the gate facing the rope bridge.
 ## The generator powers the searchlights and the huts' lights at night; keepers climb
 ## a tower's ladder to take its light (docs/DECISIONS.md, "The camp's power").
+## Creatures come up the holm's beaches for it: the wire, the generator, the huts and the
+## greenhouse can all be wrecked, and what's wrecked stops working until it's mended.
 
 const FENCE_H := 2.3
 const POST_EVERY := 2.6
@@ -31,6 +33,9 @@ var plots: Array[CampPlot] = []
 var stove: HutStove
 var mess: MessTable
 var desk: ResearchDesk
+## The camp's buildings by id ("quarters", "mess", "greenhouse"), as creatures see them.
+var buildings := {}
+var wire: Array[CampWire] = []
 
 var _wood: StandardMaterial3D
 var _post: StandardMaterial3D
@@ -73,6 +78,11 @@ func _ready() -> void:
 		_bed(Vector2(c.x - 5.0, c.y + 2.6 + float(i) * 2.0))
 	_greenhouse(Vector2(c.x + 4.6, c.y + 4.9))
 	_gate()
+	# What's in a building works only while it stands.
+	stove.building = buildings["quarters"]
+	mess.building = buildings["mess"]
+	desk.building = buildings["mess"]
+	plots[3].building = buildings["greenhouse"]
 
 func _ground(p: Vector2) -> Vector3:
 	return Vector3(p.x, Terrain.height_at(p.x, p.y), p.y)
@@ -104,23 +114,24 @@ func _fence_side(from: Vector2, to: Vector2, gate: bool) -> void:
 	for span in spans:
 		var a: Vector2 = from + dir * float(span[0])
 		var b: Vector2 = from + dir * float(span[1])
+		var strung: Array[Node3D] = []
 		for w in WIRES:
 			var y := 0.25 + float(w) * (FENCE_H - 0.4) / float(WIRES - 1)
 			var pa := _ground(a) + Vector3(0.0, y, 0.0)
 			var pb := _ground(b) + Vector3(0.0, y, 0.0)
-			_strand(pa, pb)
+			strung.append(_strand(pa, pb))
 		# The cranked tops carry two more strands, out over the ditch.
 		for w in 2:
 			var lean := Vector3(out.x, 0.0, out.y) * (0.22 + 0.2 * float(w))
 			var y := FENCE_H + 0.15 + 0.2 * float(w)
-			_strand(_ground(a) + Vector3(0.0, y, 0.0) + lean, _ground(b) + Vector3(0.0, y, 0.0) + lean)
-		var body := StaticBody3D.new()
-		body.collision_layer = 4
-		body.collision_mask = 0
-		add_child(body)
-		var mid := (a + b) * 0.5
-		var cs := Geo.box_shape(body, Vector3((b - a).length(), FENCE_H, 0.2), _ground(mid) + Vector3(0.0, FENCE_H * 0.5, 0.0))
-		cs.rotation.y = -atan2(dir.y, dir.x)
+			strung.append(_strand(_ground(a) + Vector3(0.0, y, 0.0) + lean, _ground(b) + Vector3(0.0, y, 0.0) + lean))
+		# Its body and health: creatures tear at it, keepers mend it.
+		var run := CampWire.new((b - a).length(), FENCE_H)
+		run.strands = strung
+		run.position = _ground((a + b) * 0.5)
+		run.rotation.y = -atan2(dir.y, dir.x)
+		add_child(run)
+		wire.append(run)
 
 func _fence_post(p: Vector2, out: Vector2) -> void:
 	var g := _ground(p)
@@ -130,12 +141,13 @@ func _fence_post(p: Vector2, out: Vector2) -> void:
 	top.material_override = _post
 	top.rotation = Vector3(out.y * 0.55, 0.0, -out.x * 0.55)
 
-func _strand(a: Vector3, b: Vector3) -> void:
+func _strand(a: Vector3, b: Vector3) -> MeshInstance3D:
 	var d := b - a
 	var m := Geo.box(self, Vector3(0.018, 0.018, d.length()), Color.WHITE, (a + b) * 0.5)
 	m.material_override = _wire
 	m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	m.look_at_from_position((a + b) * 0.5, b, Vector3.UP)
+	return m
 
 func _gate() -> void:
 	# Two leaves of timber and wire, left standing open.
@@ -283,27 +295,62 @@ func _hut(at: Vector2, label: String) -> void:
 	# A stovepipe through the roof.
 	var pipe := Geo.cyl(hut, 0.09, 1.0, Color(0.15, 0.15, 0.15), Vector3(HUT_LEN * 0.25, HUT_R + 0.3, 0.4))
 	pipe.name = "Stovepipe"
-	var body := StaticBody3D.new()
-	body.collision_layer = 4
-	body.collision_mask = 0
-	hut.add_child(body)
-	Geo.box_shape(body, Vector3(HUT_LEN, HUT_R * 1.2, HUT_R * 1.9), Vector3(0.0, HUT_R * 0.6, 0.0))
+	# Its body and health, beside it (so it can sag without the body scaling).
+	var b := CampBuilding.new(label.to_lower(), HUT_HP, Vector3(HUT_LEN, HUT_R * 1.2, HUT_R * 1.9))
+	b.visual = hut
+	b.position = hut.position
+	add_child(b)
+	buildings[b.id] = b
 	huts.append(hut)
 
 ## Each hut's lights draw this much from the generator.
 const HUT_DRAW := 0.015
+const HUT_HP := 220
+const GREENHOUSE_HP := 150
 
 func _process(_delta: float) -> void:
-	# The huts are lit while the generator runs, flickering as it runs dry.
+	# The huts are lit while the generator runs, flickering as it runs dry; a wrecked
+	# hut stays dark.
 	var level := generator.power_level() if generator != null else 0.0
-	for l in _hut_lights:
-		l.visible = level > 0.0
-		l.light_energy = 1.3 * level
-	for m in _hut_windows:
-		m.emission_energy_multiplier = 2.2 * level
-		m.albedo_color = Color(1.0, 0.85, 0.55) if level > 0.0 else Color(0.12, 0.13, 0.14)
+	var lit := 0
+	for h in huts.size():
+		var b: CampBuilding = buildings.get(huts[h].name.to_lower())
+		var on := level if b == null or not b.is_destroyed() else 0.0
+		if on > 0.0:
+			lit += 1
+		# Two lights and two window panes to a hut, one at each end.
+		for k in 2:
+			var i := h * 2 + k
+			if i < _hut_lights.size():
+				_hut_lights[i].visible = on > 0.0
+				_hut_lights[i].light_energy = 1.3 * on
+			if i < _hut_windows.size():
+				_hut_windows[i].emission_energy_multiplier = 2.2 * on
+				_hut_windows[i].albedo_color = Color(1.0, 0.85, 0.55) if on > 0.0 else Color(0.12, 0.13, 0.14)
 	if generator != null:
-		generator.set_draw(self, HUT_DRAW * float(huts.size()) if level > 0.0 else 0.0)
+		generator.set_draw(self, HUT_DRAW * float(lit) if level > 0.0 else 0.0)
+
+## What creatures make for on the holm: the generator and the buildings still standing.
+func targets() -> Array[Structure]:
+	var out: Array[Structure] = []
+	if generator != null and not generator.is_destroyed():
+		out.append(generator)
+	for b in buildings.values():
+		if not b.is_destroyed():
+			out.append(b)
+	return out
+
+## The camp has fallen: its generator and every building wrecked.
+func fallen() -> bool:
+	return targets().is_empty()
+
+## The runs of wire torn down.
+func wire_down() -> int:
+	var n := 0
+	for w in wire:
+		if w.is_destroyed():
+			n += 1
+	return n
 
 # A vegetable bed: ridged earth in rows, edged with boards, a few plants coming up.
 func _bed(at: Vector2) -> void:
@@ -346,10 +393,12 @@ func _greenhouse(at: Vector2) -> void:
 	var frame := Look.flat_mat(Color(0.82, 0.82, 0.78), 0.7)
 	var panes := Geo.box(gh, Vector3(W - 0.05, H - 0.45, D - 0.05), Color.WHITE, Vector3(0.0, 0.45 + (H - 0.45) * 0.5, 0.0))
 	panes.material_override = glass
+	var roof: Array[Node3D] = []
 	for sz in [-1.0, 1.0]:
 		var slope := Geo.box(gh, Vector3(W, 0.03, D * 0.58), Color.WHITE, Vector3(0.0, H + 0.42, sz * D * 0.25))
 		slope.rotation.x = sz * 0.55
 		slope.material_override = glass
+		roof.append(slope)
 	for i in 7:
 		var x := -W * 0.5 + float(i) * W / 6.0
 		for sz in [-1.0, 1.0]:
@@ -360,11 +409,13 @@ func _greenhouse(at: Vector2) -> void:
 			rafter.material_override = frame
 	var ridge := Geo.box(gh, Vector3(W, 0.08, 0.08), Color.WHITE, Vector3(0.0, H + 0.82, 0.0))
 	ridge.material_override = frame
-	var body := StaticBody3D.new()
-	body.collision_layer = 4
-	body.collision_mask = 0
-	gh.add_child(body)
-	Geo.box_shape(body, Vector3(W, H + 0.8, D), Vector3(0.0, (H + 0.8) * 0.5, 0.0))
+	var body := CampBuilding.new("greenhouse", GREENHOUSE_HP, Vector3(W, H + 0.8, D))
+	body.visual = gh
+	body.position = gh.position
+	body.breakable.append(panes)
+	body.breakable.append_array(roof)
+	add_child(body)
+	buildings["greenhouse"] = body
 	greenhouse = gh
 	# Its staging inside, worked from the doorway on the side facing the parade ground.
 	var bench := Geo.box(gh, Vector3(W - 0.8, 0.06, D - 1.0), Color.WHITE, Vector3(0.0, 0.5, 0.0))

@@ -33,9 +33,10 @@ godot --headless --path sea-they-are-angry --script res://tests/slice_economy.gd
 godot --headless --path sea-they-are-angry --script res://tests/slice_holm.gd
 godot --headless --path sea-they-are-angry --script res://tests/slice_survival.gd
 godot --headless --path sea-they-are-angry --script res://tests/slice_research.gd
+godot --headless --path sea-they-are-angry --script res://tests/slice_camp_raid.gd
 ```
 
-On Windows use `Godot_v4.3-stable_win64_console.exe` in place of `godot`. All ten tests ended in PASS on Godot 4.3 stable. The holm, survival and research tests reach the camp's classes only through the scene, never by name: `--script` compiles whatever a test names before the autoloads exist, and that left a camp script unusable. The older seven turn the helper keepers off (`Players.helpers = false`) because they script every keeper themselves; `slice_holm.gd` covers the holm, the bridge, the split screen and the helpers. Run them one at a time: they share `user://run.json`. For balance, `tools/playtest.gd` plays several nights with a bot and prints a line per night (see README). `slice_behaviour.gd` covers every item of the slice's verify list, from W moving up-screen to New Run restarting at night 1.
+On Windows use `Godot_v4.3-stable_win64_console.exe` in place of `godot`. All eleven tests ended in PASS on Godot 4.3 stable. The holm, survival, research and camp-raid tests reach the camp's classes only through the scene, never by name: `--script` compiles whatever a test names before the autoloads exist, and that left a camp script unusable. The older seven turn the helper keepers off (`Players.helpers = false`) because they script every keeper themselves; `slice_holm.gd` covers the holm, the bridge, the split screen and the helpers. Run them one at a time: they share `user://run.json`. For balance, `tools/playtest.gd` plays several nights with a bot and prints a line per night (see README). `slice_behaviour.gd` covers every item of the slice's verify list, from W moving up-screen to New Run restarting at night 1.
 
 Two kinds of console noise are expected and harmless:
 

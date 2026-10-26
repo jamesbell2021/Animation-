@@ -121,9 +121,9 @@ func _set_task(t: String, target: Node, where: Vector3) -> void:
 
 func _day_light() -> void:
 	# Mend what's broken and can be paid for, nearest first; then gather.
-	var fix := _nearest_fixable()
+	var fix := _nearest_fixable(false)
 	if fix != null:
-		_set_task("repair", fix, (fix as Node3D).global_position)
+		_set_task("repair", fix, _work_point(fix))
 		return
 	var lamp := keeper.lamp
 	if lamp != null and lamp.fuel < Lamp.FUEL_MAX - 30.0 and lamp.lighthouse.work_kind() == "can":
@@ -154,6 +154,11 @@ func _day_camp() -> void:
 	var gen := _generator()
 	if gen != null and gen.work_kind() != "":
 		_set_task("generator", gen, gen.global_position)
+		return
+	# Mend the camp after a raid: the wire, the huts, the greenhouse.
+	var fix := _nearest_fixable(true)
+	if fix != null:
+		_set_task("repair", fix, _work_point(fix))
 		return
 	var plot := _plot_to_work()
 	if plot != null:
@@ -604,13 +609,21 @@ func _climber_up() -> bool:
 			return true
 	return false
 
-func _nearest_fixable() -> Node:
+## Where to stand to mend something: its own work point (the camp's wire, from inside),
+## or the thing itself.
+func _work_point(s: Node) -> Vector3:
+	if s.has_method("work_point"):
+		return s.work_point()
+	return (s as Node3D).global_position
+
+# The nearest thing broken that can be paid for, on the holm (the warden) or the main island.
+func _nearest_fixable(holm: bool) -> Node:
 	var best: Node = null
 	var best_d := INF
 	for s in get_tree().get_nodes_in_group("structures"):
 		if not (s is Structure) or s is Lighthouse:
 			continue
-		if s.work_kind() != "hammer" or Terrain.on_holm(s.global_position.x, s.global_position.z):
+		if s.work_kind() != "hammer" or Terrain.holm_side(s.global_position.x, s.global_position.z) != holm:
 			continue
 		var d := Geo.flat_dist(s.global_position, keeper.global_position)
 		if d < best_d:

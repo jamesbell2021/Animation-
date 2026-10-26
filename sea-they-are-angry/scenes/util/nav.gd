@@ -4,12 +4,21 @@ extends RefCounted
 ## Up each beach, round the track at the crag's foot, then up the ledge to the
 ## lighthouse. Routes are shortest paths through it. Creatures don't collide with
 ## the ground, so the graph is what keeps them off the cliffs.
+## The holm has its own graph, not joined to the main island's: up each of its beaches,
+## straight at the camp's wire (which they must tear through), and on to the generator
+## and the buildings inside. Raiders that land on the holm stay on it.
 
 const BEACH_STEPS := [0.05, 0.3, 0.55, 0.8, 1.0]
 const RING_NODES := 16
 const LEDGE_NODES := 13
 const ENTRY_BEFORE := 14.0
 const SAME_LEVEL := 1.0
+const HOLM_BEACH_STEPS := [0.05, 0.35, 0.65, 0.85]
+## Either side of the wire, this far out and in; kept this far from the corner towers.
+const WIRE_SIDE := 1.6
+const CORNER_CLEAR := 3.0
+## Inside the camp: the parade ground, before each building, and the gate (from its centre).
+const CAMP_STOPS := [Vector2(0.0, 0.0), Vector2(-4.6, -2.3), Vector2(4.4, -2.3), Vector2(4.6, 2.5), Vector2(6.4, 0.6), Vector2(-8.6, 0.0)]
 
 static var _nodes: Array[Vector3] = []
 static var _links: Array = []
@@ -53,6 +62,53 @@ static func _ensure() -> void:
 		var at := c.normalized() * (c.length() - float(pad[2]) * 0.8)
 		var n := _add(Vector3(at.x, Terrain.height_at(at.x, at.y), at.y))
 		_link_to_ring(n, Terrain.compass_deg(at.x, at.y), ring)
+	_build_holm()
+
+static func _build_holm() -> void:
+	var c := Terrain.CAMP_C
+	var h := Terrain.CAMP_HALF
+	var stops: Array[int] = []
+	for o in CAMP_STOPS:
+		stops.append(_add2(c + o))
+	for i in range(1, stops.size()):
+		_link(stops[0], stops[i])
+	# The gate, from outside.
+	var gate := Terrain.camp_gate()
+	var out_gate := _add2(gate + Vector2(-WIRE_SIDE, 0.0))
+	_link(out_gate, stops[stops.size() - 1])
+	for b in Terrain.HOLM_BEACHES.size():
+		var prev := -1
+		for t in HOLM_BEACH_STEPS:
+			var n := _add(Terrain.holm_beach_point(b, float(t)))
+			if prev < 0:
+				_offshore.append(n)
+			else:
+				_link(prev, n)
+			prev = n
+		# Straight at the nearest stretch of wire, clear of the corner towers.
+		var top := Vector2(_nodes[prev].x, _nodes[prev].z)
+		var q := Vector2(clampf(top.x, c.x - h.x + CORNER_CLEAR, c.x + h.x - CORNER_CLEAR), clampf(top.y, c.y - h.y + CORNER_CLEAR, c.y + h.y - CORNER_CLEAR))
+		var gap := Vector2(absf(top.x - c.x) - h.x, absf(top.y - c.y) - h.y)
+		var normal := Vector2(signf(top.x - c.x), 0.0) if gap.x > gap.y else Vector2(0.0, signf(top.y - c.y))
+		if gap.x > gap.y:
+			q.x = c.x + normal.x * h.x
+		else:
+			q.y = c.y + normal.y * h.y
+		var outside := _add2(q + normal * WIRE_SIDE)
+		var inside := _add2(q - normal * WIRE_SIDE)
+		_link(prev, outside)
+		_link(outside, inside)
+		_link(prev, out_gate)
+		var best := stops[0]
+		for s in stops:
+			if _nodes[s].distance_to(_nodes[inside]) < _nodes[best].distance_to(_nodes[inside]):
+				best = s
+		_link(inside, best)
+		if best != stops[0]:
+			_link(inside, stops[0])
+
+static func _add2(p: Vector2) -> int:
+	return _add(Vector3(p.x, Terrain.height_at(p.x, p.y), p.y))
 
 static func _add(p: Vector3) -> int:
 	_nodes.append(p)

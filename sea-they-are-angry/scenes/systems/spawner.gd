@@ -31,6 +31,15 @@ const EEL_AT := 0.42
 const RAID_FROM_NIGHT := 2
 # While the Eel is about, other landings shrink to a quarter.
 const EEL_RATE := 0.25
+# The camp: from night 2 every third group of Bloated, Squid or Crabs lands on the holm's
+# beaches instead and makes for the camp; from night 5, every other one. They come out of
+# the night's table, so the main island sees that many fewer. Nothing is sent once the
+# camp has fallen: it all comes for the light again.
+const HOLM_FROM_NIGHT := 2
+const HOLM_EVERY := 3
+const HOLM_EVERY_LATE := 2
+const HOLM_LATE_FROM := 5
+const HOLM_KINDS := ["B", "S", "C"]
 const WARNINGS := {
 	"B": "Something stirs in the water",
 	"S": "Something skitters in the shallows",
@@ -42,8 +51,12 @@ const WARNINGS := {
 signal wave_incoming(points: Array, count: int)
 ## The same, with what kind it is and whether it's making for the homestead (for the warning text).
 signal group_warning(kind: String, points: Array, raid: bool)
+## A group is coming ashore on the holm, for the camp.
+signal holm_warning(kind: String, points: Array)
 
 var points: Array[Vector3] = []
+## Landing points on the holm's beaches (two to a beach), for the camp's raiders.
+var holm_points: Array[Vector3] = []
 var enemies_root: Node
 var lighthouse: Node3D
 
@@ -77,9 +90,21 @@ func night_table(n: int) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	for row in rows:
 		out.append({"t": float(row[0]), "kind": String(row[1]), "count": int(row[2]) + extra, "opp": row.size() > 3, "point": -1})
+	# Every so many of the groups that can, to the holm (counted in order through the night).
+	var every := HOLM_EVERY_LATE if n >= HOLM_LATE_FROM else HOLM_EVERY
+	var k := 0
+	for e in out:
+		e["holm"] = false
+		if n >= HOLM_FROM_NIGHT and HOLM_KINDS.has(e["kind"]):
+			k += 1
+			e["holm"] = k % every == 0
 	if eel_night(n, Players.humans(), Anger.value):
-		out.append({"t": EEL_AT, "kind": "E", "count": 1, "opp": false, "point": -1})
+		out.append({"t": EEL_AT, "kind": "E", "count": 1, "opp": false, "point": -1, "holm": false})
 	return out
+
+## Whether there's anything left on the holm to raid.
+func camp_standing() -> bool:
+	return not holm_points.is_empty() and Enemy.nearest_camp(Vector3.ZERO) != null
 
 func queue_size() -> int:
 	return _queue.size() + _pending.size()
@@ -104,6 +129,9 @@ func _queue_group(entry: Dictionary) -> void:
 	if points.is_empty():
 		return
 	var kind: String = entry.get("kind", "B")
+	if entry.get("holm", false) and camp_standing():
+		_queue_holm(entry)
+		return
 	var idx: int = entry["point"]
 	if idx < 0 or idx >= points.size():
 		idx = randi() % points.size()
@@ -136,6 +164,20 @@ func _queue_group(entry: Dictionary) -> void:
 	for i in count:
 		_pending.append({"at": landings[i % landings.size()], "delay": OMEN_TIME + STAGGER * float(i), "kind": kind, "raid": raid})
 
+# A group for the camp: one of the holm's beaches, all of them making for the camp.
+func _queue_holm(entry: Dictionary) -> void:
+	var kind: String = entry.get("kind", "B")
+	var idx := randi() % holm_points.size()
+	var count := ceili(float(entry["count"]) * (1.0 + 0.5 * float(Players.humans() - 1)))
+	if eel_active():
+		count = maxi(1, roundi(count * EEL_RATE))
+	var landings: Array = [holm_points[idx]]
+	wave_incoming.emit(landings, count)
+	holm_warning.emit(kind, landings)
+	_omens.append({"at": landings[0], "left": OMEN_TIME, "tick": 0.0})
+	for i in count:
+		_pending.append({"at": landings[0], "delay": OMEN_TIME + STAGGER * float(i), "kind": kind, "raid": false, "camp": true})
+
 ## True while an Eel encounter is under way.
 func eel_active() -> bool:
 	return not get_tree().get_nodes_in_group("eel").is_empty()
@@ -164,7 +206,7 @@ func _process(delta: float) -> void:
 	for p in _pending:
 		p["delay"] = float(p["delay"]) - delta
 		if p["delay"] <= 0.0:
-			_spawn_one(p["at"], String(p.get("kind", "B")), bool(p.get("raid", false)))
+			_spawn_one(p["at"], String(p.get("kind", "B")), bool(p.get("raid", false)), bool(p.get("camp", false)))
 		else:
 			still.append(p)
 	_pending = still
@@ -183,7 +225,7 @@ func _churn(delta: float) -> void:
 			still.append(o)
 	_omens = still
 
-func _spawn_one(at: Vector3, kind: String = "B", raid: bool = false) -> void:
+func _spawn_one(at: Vector3, kind: String = "B", raid: bool = false, camp: bool = false) -> void:
 	if enemies_root == null:
 		return
 	var e: Enemy
@@ -199,6 +241,7 @@ func _spawn_one(at: Vector3, kind: String = "B", raid: bool = false) -> void:
 			b.raid = raid
 			e = b
 	e.lighthouse = lighthouse
+	e.camp_raid = camp
 	var jitter := Vector3(randf_range(-JITTER, JITTER), 0.0, randf_range(-JITTER, JITTER))
 	e.position = Vector3(at.x, SPAWN_Y, at.z) + jitter
 	enemies_root.add_child(e)

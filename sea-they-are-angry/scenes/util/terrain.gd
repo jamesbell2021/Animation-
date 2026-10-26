@@ -374,6 +374,10 @@ static func on_ledge(x: float, z: float) -> bool:
 	return s >= 0.0 and absf(Vector2(x, z).length() - ledge_radius(s)) < LEDGE_HALF - 0.1
 
 ## Where the camp's gate is: the middle of the compound's west side, facing the bridge.
+## Whether a point is nearer the holm than the main island (for which island something is on).
+static func holm_side(x: float, z: float) -> bool:
+	return Vector2(x, z).distance_to(HOLM_C) < Vector2(x, z).length()
+
 static func camp_gate() -> Vector2:
 	return Vector2(CAMP_C.x - CAMP_HALF.x, CAMP_C.y)
 

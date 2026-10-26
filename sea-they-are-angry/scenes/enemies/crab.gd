@@ -128,8 +128,11 @@ func light_probe_points() -> Array:
 	return [global_position + Vector3(0.0, 0.4, 0.0), global_position + Vector3(0.0, 1.0, 0.0)]
 
 func pick_target() -> Node3D:
-	if _grudge != null and is_instance_valid(_grudge) and _grudge_t > 0.0 and not _grudge.downed and not _grudge.is_inside():
+	if _grudge != null and is_instance_valid(_grudge) and _grudge_t > 0.0 and not _grudge.downed and not _grudge.is_inside() \
+			and Enemy.same_island(global_position, _grudge.global_position):
 		return _grudge
+	if camp_raid:
+		return Enemy.nearest_camp(global_position)
 	var home := Enemy.nearest_home(global_position)
 	return home if home != null else lighthouse
 
