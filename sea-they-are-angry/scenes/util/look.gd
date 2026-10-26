@@ -42,6 +42,15 @@ static func textured(kind: String, tint: Color = Color.WHITE, tile: float = 1.0,
 	m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
 	return m
 
+## One of the camp's 1940s surfaces (art/textures: corrugated, concrete, brick, tarfelt,
+## rust, timber, hessian), in its own colours. `world`: projected in world space, so a
+## pattern runs the same way across every face (the huts' corrugations run round them).
+static func camp(kind: String, tile: float = 1.0, world: bool = false, roughness: float = 0.88, metallic: float = 0.0, tint: Color = Color.WHITE) -> StandardMaterial3D:
+	var m := textured(kind, tint, tile, roughness, 1.0)
+	m.uv1_world_triplanar = world
+	m.metallic = metallic
+	return m
+
 ## Weathered timber in a painted colour (the planks texture averages about 0.4).
 static func wood(color: Color, tile: float = 0.9, roughness: float = 0.92) -> StandardMaterial3D:
 	return textured("planks", color * 2.4, tile, roughness, 1.0)

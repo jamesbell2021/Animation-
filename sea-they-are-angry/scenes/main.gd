@@ -601,8 +601,9 @@ func _build_holm() -> void:
 			continue
 		var s := rng.randf_range(0.6, 1.5)
 		var at := Vector3(p.x, Terrain.height_at(p.x, p.y) - s * 0.25, p.y)
-		Look.rock(self, 1300 + i * 7, Vector3(s * 1.4, s * 1.1, s * 1.2), at, Color(0.34, 0.33, 0.31), 0.45)
+		Look.rock(self, 1300 + i * 7, Vector3(s * 1.4, s * 1.1, s * 1.2), at, HOLM_ROCK, 0.3)
 		placed += 1
+	_build_holm_rocks(rng)
 	# Rocks in the gully under the bridge, the sea breaking over them.
 	var e0: Vector3 = ends[0]
 	var e1: Vector3 = ends[1]
@@ -611,6 +612,63 @@ func _build_holm() -> void:
 		var q := e0.lerp(e1, u) + Vector3(rng.randf_range(-3.0, 3.0), 0.0, rng.randf_range(-3.0, 3.0))
 		q.y = Terrain.SEA_LEVEL - 0.7
 		Look.rock(self, 1700 + i * 13, Vector3(1.8, 1.6, 1.5) * rng.randf_range(0.7, 1.2), q, Color(0.27, 0.27, 0.27), 0.4)
+
+const HOLM_ROCK := Color(0.40, 0.30, 0.25)
+
+# Skerries off the holm, a sea stack off its north-east point, and boulders on its knolls.
+func _build_holm_rocks(rng: RandomNumberGenerator) -> void:
+	var c := Terrain.HOLM_C
+	var placed := 0
+	for i in 400:
+		if placed >= 9:
+			break
+		var a := rng.randf() * TAU
+		var dir := Vector2(sin(a), cos(a))
+		var want := rng.randf_range(5.0, 12.0)
+		var p := c
+		for k in 160:
+			p = c + dir * float(k) * 0.25
+			if Terrain.holm_edge_dist(p.x, p.y) > want:
+				break
+		if _near_landing(p) or Terrain.height_at(p.x, p.y) > Terrain.SEA_LEVEL - 0.6 or p.x < 34.0:
+			continue
+		for r in rng.randi_range(2, 4):
+			var s := rng.randf_range(1.0, 2.4)
+			var off := Vector3(rng.randf_range(-1.8, 1.8), 0.0, rng.randf_range(-1.8, 1.8))
+			var at := Vector3(p.x, Terrain.SEA_LEVEL - s * 0.45, p.y) + off
+			Look.rock(self, 2100 + i * 11 + r, Vector3(s * 1.5, s, s * 1.3), at, HOLM_ROCK.darkened(0.15), 0.15)
+		placed += 1
+	# The stack: a pillar of the same beds, cut off by the sea.
+	var sa := deg_to_rad(215.0)
+	var sp := c + Vector2(sin(sa), cos(sa)) * 6.0
+	for k in 160:
+		sp = c + Vector2(sin(sa), cos(sa)) * float(k) * 0.25
+		if Terrain.holm_edge_dist(sp.x, sp.y) > 7.0:
+			break
+	for t in 3:
+		var w := 2.4 - float(t) * 0.45
+		Look.rock(self, 2500 + t, Vector3(w, 2.2, w * 0.9), Vector3(sp.x, Terrain.SEA_LEVEL - 0.6 + float(t) * 1.7, sp.y), HOLM_ROCK, 0.12 if t == 2 else 0.0)
+	# Boulders where the rock breaks through the turf.
+	var b := 0
+	for i in 600:
+		if b >= 22:
+			break
+		var p := c + Vector2(rng.randf_range(-20.0, 20.0), rng.randf_range(-18.0, 18.0))
+		if Terrain.holm_outcrop(p.x, p.y) < 0.5 or Terrain.holm_edge_dist(p.x, p.y) > -1.0:
+			continue
+		var s := rng.randf_range(0.35, 0.9)
+		Look.rock(self, 2600 + i, Vector3(s * 1.3, s * 0.8, s), Vector3(p.x, Terrain.height_at(p.x, p.y) - s * 0.2, p.y), HOLM_ROCK, 0.4)
+		b += 1
+
+# Near where creatures land on the holm, or the bridge's gully: kept clear of rocks.
+func _near_landing(p: Vector2) -> bool:
+	for i in Terrain.HOLM_BEACHES.size():
+		for t in [0.0, 0.3]:
+			var q := Terrain.holm_beach_point(i, t)
+			if p.distance_to(Vector2(q.x, q.z)) < 6.0:
+				return true
+	var bc := Terrain.bridge_coords(p.x, p.y)
+	return bc.x > -0.2 and bc.x < 1.2 and absf(bc.y) < 5.0
 
 func _build_shed(at: Vector3) -> void:
 	var shed := Shed.new()
@@ -632,6 +690,10 @@ func _build_sea() -> void:
 	mat.set_shader_parameter("holm_c", Terrain.HOLM_C)
 	mat.set_shader_parameter("holm_half", Terrain.HOLM_HALF)
 	mat.set_shader_parameter("holm_round", Terrain.HOLM_ROUND)
+	mat.set_shader_parameter("holm_shore_tex", Terrain.holm_shore_texture())
+	var r := Terrain.SHORE_RECT
+	mat.set_shader_parameter("holm_shore_rect", Vector4(r.position.x, r.position.y, r.size.x, r.size.y))
+	mat.set_shader_parameter("use_holm_tex", 1.0)
 	_sea_mat = mat
 	sea.position = Vector3(24.0, Terrain.SEA_LEVEL, 0.0)
 	sea.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF

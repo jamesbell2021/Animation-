@@ -45,15 +45,19 @@ func _ready() -> void:
 	_update_running()
 
 func _build() -> void:
+	# A squat concrete engine house with a corrugated roof, its door rusted, its exhaust
+	# up through the roof.
 	var walls := Geo.box(self, HOUSE, Color.WHITE, Vector3(0.0, HOUSE.y * 0.5, 0.0))
-	walls.material_override = Look.stone(BRICK, 1.0)
-	var tin := Look.flat_mat(Color(0.27, 0.31, 0.27), 0.55)
-	tin.metallic = 0.5
-	var roof := Geo.box(self, Vector3(HOUSE.x + 0.3, 0.15, HOUSE.z + 0.3), Color.WHITE, Vector3(0.0, HOUSE.y + 0.05, 0.0))
-	roof.material_override = tin
+	walls.material_override = Look.camp("concrete", 1.5, true, 0.92)
+	var roof := Geo.box(self, Vector3(HOUSE.x + 0.3, 0.12, HOUSE.z + 0.3), Color.WHITE, Vector3(0.0, HOUSE.y + 0.05, 0.0))
+	roof.material_override = Look.camp("corrugated", 1.2, true, 0.7, 0.35)
+	roof.rotation.x = 0.06
 	var door := Geo.box(self, Vector3(0.08, 1.8, 1.0), Color.WHITE, Vector3(-HOUSE.x * 0.5 - 0.02, 0.9, 0.0))
-	door.material_override = Look.wood(Color(0.38, 0.3, 0.22), 0.8)
-	Geo.cyl(self, 0.12, 1.2, Color(0.12, 0.12, 0.12), Vector3(0.6, HOUSE.y + 0.6, -0.8))
+	door.material_override = Look.camp("rust", 1.0, false, 0.75, 0.4)
+	var vent := Geo.box(self, Vector3(0.06, 0.4, 0.9), Color.WHITE, Vector3(HOUSE.x * 0.5 + 0.02, 1.7, 0.4))
+	vent.material_override = Look.camp("rust", 1.0, false, 0.75, 0.4)
+	var exhaust := Geo.cyl(self, 0.12, 1.2, Color.WHITE, Vector3(0.6, HOUSE.y + 0.6, -0.8))
+	exhaust.material_override = Look.camp("rust", 0.5, false, 0.75, 0.4)
 	Geo.box_shape(self, HOUSE, Vector3(0.0, HOUSE.y * 0.5, 0.0))
 
 func display_name() -> String:

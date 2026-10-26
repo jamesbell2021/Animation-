@@ -13,6 +13,11 @@ uniform vec2 holm_c = vec2(48.5, 3.0);
 uniform vec2 holm_half = vec2(16.5, 13.5);
 uniform float holm_round = 5.0;
 uniform float holm_shore = 1.1;
+// The holm's real waterline, baked from the terrain (Terrain.holm_shore_texture): signed
+// metres from it over the rect (x, z, width, depth). Used instead of the box when set.
+uniform sampler2D holm_shore_tex : filter_linear, repeat_disable;
+uniform vec4 holm_shore_rect = vec4(24.0, -30.0, 56.0, 62.0);
+uniform float use_holm_tex = 0.0;
 uniform float foam_width = 0.4;
 uniform float swell = 0.09;
 // 0 by day, 1 at night: faint bioluminescent specks in the swell.
@@ -37,6 +42,11 @@ float shore_dist(vec2 p) {
 	float main_d = length(p) - shore_radius;
 	vec2 q = abs(p - holm_c) - (holm_half - vec2(holm_round));
 	float holm_d = length(max(q, vec2(0.0))) + min(max(q.x, q.y), 0.0) - holm_round - holm_shore;
+	if (use_holm_tex > 0.5) {
+		vec2 uv = (p - holm_shore_rect.xy) / holm_shore_rect.zw;
+		vec2 outside = max(max(-uv, uv - vec2(1.0)), vec2(0.0)) * holm_shore_rect.zw;
+		holm_d = texture(holm_shore_tex, clamp(uv, vec2(0.0), vec2(1.0))).r + length(outside);
+	}
 	return min(main_d, holm_d);
 }
 

@@ -41,16 +41,28 @@ var _wood: StandardMaterial3D
 var _post: StandardMaterial3D
 var _wire: StandardMaterial3D
 var _tin: StandardMaterial3D
+var _felt: StandardMaterial3D
+var _brick: StandardMaterial3D
+var _concrete: StandardMaterial3D
+var _rust: StandardMaterial3D
+var _sacking: StandardMaterial3D
 
 func _ready() -> void:
 	name = "Camp"
 	add_to_group("camp_root")
-	_wood = Look.wood(Color(0.38, 0.3, 0.22), 0.8)
-	_post = Look.wood(Color(0.3, 0.25, 0.2), 0.6)
+	# Weathered boards, silvered rough-sawn posts, olive corrugated iron gone to rust,
+	# tarred felt, red brick, board-marked concrete, sacking: the 1940s, after five years
+	# of North Sea weather and nobody since.
+	_wood = Look.wood(Color(0.34, 0.31, 0.27), 0.8)
+	_post = Look.camp("timber", 1.0)
 	_wire = Look.flat_mat(WIRE, 0.6)
 	_wire.metallic = 0.6
-	_tin = Look.flat_mat(TIN, 0.55)
-	_tin.metallic = 0.5
+	_tin = Look.camp("corrugated", 1.2, true, 0.7, 0.35)
+	_felt = Look.camp("tarfelt", 1.5, false, 0.95)
+	_brick = Look.camp("brick", 1.0)
+	_concrete = Look.camp("concrete", 1.5, true, 0.92, 0.0, Color(0.82, 0.82, 0.8))
+	_rust = Look.camp("rust", 1.0, false, 0.75, 0.4)
+	_sacking = Look.camp("hessian", 0.5, false, 1.0)
 	var c := Terrain.CAMP_C
 	var h := Terrain.CAMP_HALF
 	var corners := [Vector2(c.x - h.x, c.y - h.y), Vector2(c.x + h.x, c.y - h.y), Vector2(c.x + h.x, c.y + h.y), Vector2(c.x - h.x, c.y + h.y)]
@@ -78,6 +90,7 @@ func _ready() -> void:
 		_bed(Vector2(c.x - 5.0, c.y + 2.6 + float(i) * 2.0))
 	_greenhouse(Vector2(c.x + 4.6, c.y + 4.9))
 	_gate()
+	_dress()
 	# What's in a building works only while it stands.
 	stove.building = buildings["quarters"]
 	mess.building = buildings["mess"]
@@ -165,6 +178,177 @@ func _gate() -> void:
 		brace.material_override = _post
 		brace.rotation.x = sgn * 0.75
 
+# ---- dressing: what makes it a camp ----
+
+## The flag, so it can stream and flap in the wind.
+var _flag_holder: Node3D
+var _flag_t := 0.0
+
+func _dress() -> void:
+	var c := Terrain.CAMP_C
+	# Concrete paths: from the gate across the parade ground to the generator, and spurs
+	# to the huts' fronts and the greenhouse door.
+	_path(Vector2(c.x - 11.0, c.y), Vector2(c.x + 7.2, c.y), 1.5)
+	_path(Vector2(c.x - 4.6, c.y), Vector2(c.x - 4.6, c.y - 2.7), 1.2)
+	_path(Vector2(c.x + 4.4, c.y), Vector2(c.x + 4.4, c.y - 2.7), 1.2)
+	_path(Vector2(c.x + 4.6, c.y), Vector2(c.x + 4.6, c.y + 3.0), 1.2)
+	# Duckboards along the beds, laid against the mud.
+	for i in 3:
+		var at := _ground(Vector2(c.x - 1.0, c.y + 2.6 + float(i) * 2.0))
+		for k in 5:
+			var slat := Geo.box(self, Vector3(0.5, 0.04, 0.12), Color.WHITE, at + Vector3(0.0, 0.05, -0.3 + float(k) * 0.15))
+			slat.material_override = _wood
+	_flagpole(_ground(Vector2(c.x - 1.6, c.y - 1.4)))
+	_sign(_ground(Vector2(c.x - 12.3, c.y - 2.2)))
+	_water_tank(_ground(Vector2(c.x + 9.6, c.y - 5.6)))
+	for i in 5:
+		var a := float(i) * 1.3
+		_drum(_ground(Vector2(c.x + 9.2 + cos(a) * 0.55 * float(i % 3), c.y + 4.0 + sin(a) * 0.6 * float(i % 3))), i)
+	_sandbags(Vector2(c.x + 10.25, c.y - 0.9), Vector2(c.x + 10.25, c.y + 2.1))
+	_sandbags(Vector2(c.x + 7.2, c.y + 2.45), Vector2(c.x + 10.1, c.y + 2.45))
+	_coal_bunker(_ground(Vector2(c.x - 9.9, c.y + 4.3)))
+	_washing_line(_ground(Vector2(c.x - 9.7, c.y - 6.6)), _ground(Vector2(c.x - 9.7, c.y - 3.4)))
+
+func _process_flag(delta: float) -> void:
+	if _flag_holder == null:
+		return
+	_flag_t += delta * (0.6 + Weather.wind_now.length() * 0.5)
+	_flag_holder.rotation.y = 0.9 + sin(_flag_t * 3.1) * 0.25 + sin(_flag_t * 7.3) * 0.08
+	_flag_holder.rotation.x = sin(_flag_t * 4.7) * 0.06
+
+func _path(a: Vector2, b: Vector2, width: float) -> void:
+	var d := b - a
+	var mid := (a + b) * 0.5
+	var slab := Geo.box(self, Vector3(d.length() + width * 0.3, 0.08, width), Color.WHITE, _ground(mid) + Vector3(0.0, 0.0, 0.0))
+	slab.rotation.y = -atan2(d.y, d.x)
+	slab.material_override = _concrete
+	# Bedded into the ground, its top just proud of it, and cracked into bays.
+	slab.position.y += 0.01
+	var bays := int(d.length() / 1.6)
+	for i in range(1, bays):
+		var p := a + d * (float(i) / float(bays))
+		var joint := Geo.box(self, Vector3(0.03, 0.09, width), Color(0.2, 0.2, 0.19), _ground(p) + Vector3(0.0, 0.015, 0.0))
+		joint.rotation.y = -atan2(d.y, d.x)
+
+# A flagpole on the parade ground, its old flag faded and torn.
+func _flagpole(at: Vector3) -> void:
+	var pole := Geo.cyl(self, 0.05, 6.5, Color.WHITE, at + Vector3(0.0, 3.25, 0.0), 0.035)
+	pole.material_override = Look.flat_mat(Color(0.72, 0.70, 0.65), 0.6)
+	var knob := Geo.sphere(self, 0.08, Color.WHITE, at + Vector3(0.0, 6.55, 0.0))
+	knob.material_override = Look.flat_mat(Color(0.6, 0.5, 0.25), 0.4)
+	var plinth := Geo.box(self, Vector3(0.7, 0.3, 0.7), Color.WHITE, at + Vector3(0.0, 0.1, 0.0))
+	plinth.material_override = _concrete
+	var holder := Node3D.new()
+	add_child(holder)
+	holder.position = at + Vector3(0.0, 6.0, 0.0)
+	var cloth := Geo.box(holder, Vector3(1.3, 0.75, 0.02), Color.WHITE, Vector3(0.68, -0.4, 0.0))
+	cloth.material_override = Look.flat_mat(Color(0.42, 0.40, 0.44), 0.95)
+	# Torn at the fly.
+	var tear := Geo.box(holder, Vector3(0.3, 0.3, 0.025), Color.WHITE, Vector3(1.38, -0.62, 0.0))
+	tear.material_override = cloth.material_override
+	tear.rotation.z = 0.4
+	_flag_holder = holder
+
+# The board at the gate: the camp's name, painted, and the warning under it.
+func _sign(at: Vector3) -> void:
+	var board := Geo.box(self, Vector3(0.06, 0.9, 1.9), Color.WHITE, at + Vector3(0.0, 1.55, 0.0))
+	board.material_override = Look.wood(Color(0.62, 0.6, 0.55), 0.6)
+	for sz in [-0.8, 0.8]:
+		var post := Geo.box(self, Vector3(0.1, 2.0, 0.1), Color.WHITE, at + Vector3(0.0, 1.0, sz))
+		post.material_override = _post
+	var text := Label3D.new()
+	text.text = "No. 7 CAMP\nAUTHORISED PERSONS ONLY"
+	text.font_size = 46
+	text.pixel_size = 0.004
+	text.modulate = Color(0.12, 0.1, 0.08)
+	text.outline_size = 0
+	text.double_sided = false
+	text.position = at + Vector3(-0.04, 1.58, 0.0)
+	text.rotation.y = -PI * 0.5
+	add_child(text)
+
+# The water tank on its stand by the generator house, rusted through in places.
+func _water_tank(at: Vector3) -> void:
+	for sx in [-0.55, 0.55]:
+		for sz in [-0.55, 0.55]:
+			var leg := Geo.box(self, Vector3(0.14, 1.6, 0.14), Color.WHITE, at + Vector3(sx, 0.8, sz))
+			leg.material_override = _post
+	var tank := Geo.box(self, Vector3(1.5, 1.1, 1.5), Color.WHITE, at + Vector3(0.0, 2.15, 0.0))
+	tank.material_override = _rust
+	var lid := Geo.box(self, Vector3(1.55, 0.05, 1.55), Color.WHITE, at + Vector3(0.0, 2.73, 0.0))
+	lid.material_override = _rust
+	var pipe := Geo.cyl(self, 0.04, 1.6, Color.WHITE, at + Vector3(0.7, 0.8, 0.0))
+	pipe.material_override = _rust
+	var body := StaticBody3D.new()
+	# Solid to keepers only: creatures (which don't collide with layer 1) go by.
+	body.collision_layer = 1
+	body.collision_mask = 0
+	add_child(body)
+	Geo.box_shape(body, Vector3(1.4, 2.8, 1.4), at + Vector3(0.0, 1.4, 0.0))
+
+# An oil drum, rusted or still in its paint, standing or on its side.
+func _drum(at: Vector3, i: int) -> void:
+	var paint := [_rust, Look.camp("rust", 1.0, false, 0.6, 0.3, Color(0.75, 0.95, 0.75)), _rust]
+	var d := Geo.cyl(self, 0.29, 0.88, Color.WHITE, at + Vector3(0.0, 0.44, 0.0))
+	d.material_override = paint[i % paint.size()]
+	if i == 3:
+		d.rotation.z = PI * 0.5
+		d.position.y = at.y + 0.29
+	for k in 2:
+		if i != 3:
+			var hoop := Geo.cyl(self, 0.3, 0.03, Color.WHITE, at + Vector3(0.0, 0.3 + 0.3 * float(k), 0.0))
+			hoop.material_override = _rust
+
+# A low wall of sandbags: the blast wall round the generator house.
+func _sandbags(a: Vector2, b: Vector2) -> void:
+	var d := b - a
+	var n := maxi(2, int(d.length() / 0.55))
+	for row in 3:
+		for i in n - (row % 2):
+			var u := (float(i) + 0.5 + 0.5 * float(row % 2)) / float(n)
+			var p := _ground(a + d * u)
+			var bag := Geo.box(self, Vector3(0.55, 0.26, 0.38), Color.WHITE, p + Vector3(0.0, 0.13 + 0.25 * float(row), 0.0))
+			bag.rotation.y = -atan2(d.y, d.x) + 0.08 * sin(float(i * 7 + row * 3))
+			bag.material_override = _sacking
+	var body := StaticBody3D.new()
+	# Solid to keepers only: creatures (which don't collide with layer 1) go by.
+	body.collision_layer = 1
+	body.collision_mask = 0
+	add_child(body)
+	var cs := Geo.box_shape(body, Vector3(d.length(), 0.8, 0.4), _ground((a + b) * 0.5) + Vector3(0.0, 0.4, 0.0))
+	cs.rotation.y = -atan2(d.y, d.x)
+
+# The quarters' coal bunker: three concrete walls, a slope of coal and a shovel.
+func _coal_bunker(at: Vector3) -> void:
+	for k in 3:
+		var yaw := float(k) * PI * 0.5
+		var w := Geo.box(self, Vector3(1.2, 0.7, 0.12), Color.WHITE, at + Vector3(sin(yaw) * 0.55, 0.35, cos(yaw) * 0.55))
+		w.rotation.y = yaw
+		w.material_override = _concrete
+	var coal := Geo.box(self, Vector3(1.0, 0.35, 1.0), Color.WHITE, at + Vector3(0.0, 0.2, 0.0))
+	coal.rotation.x = 0.25
+	coal.material_override = Look.flat_mat(Color(0.06, 0.06, 0.065), 0.5)
+	var body := StaticBody3D.new()
+	# Solid to keepers only: creatures (which don't collide with layer 1) go by.
+	body.collision_layer = 1
+	body.collision_mask = 0
+	add_child(body)
+	Geo.box_shape(body, Vector3(1.3, 0.7, 1.3), at + Vector3(0.0, 0.35, 0.0))
+
+# A washing line from the quarters' end to a post, a shirt and a blanket left on it.
+func _washing_line(a: Vector3, b: Vector3) -> void:
+	for p in [a, b]:
+		var post := Geo.box(self, Vector3(0.08, 1.9, 0.08), Color.WHITE, p + Vector3(0.0, 0.95, 0.0))
+		post.material_override = _post
+	var line := Geo.box(self, Vector3(0.01, 0.01, a.distance_to(b)), Color.WHITE, (a + b) * 0.5 + Vector3(0.0, 1.78, 0.0))
+	line.material_override = Look.flat_mat(Color(0.6, 0.58, 0.5))
+	line.look_at_from_position(line.position, b + Vector3(0.0, 1.78, 0.0), Vector3.UP)
+	var cloth := [Color(0.55, 0.55, 0.5), Color(0.32, 0.3, 0.38), Color(0.6, 0.52, 0.42)]
+	for i in 3:
+		var p := a.lerp(b, 0.25 + 0.25 * float(i)) + Vector3(0.0, 1.45, 0.0)
+		var c := Geo.box(self, Vector3(0.03, 0.6, 0.55 - 0.1 * float(i)), Color.WHITE, p)
+		c.material_override = Look.flat_mat(cloth[i], 0.95)
+
 # ---- guard towers ----
 
 # A timber tower at a corner of the wire: four braced legs, a railed platform with a
@@ -230,7 +414,7 @@ func _tower(corner: Vector2) -> void:
 	var roof := Geo.cyl(t, L * 2.2, 0.9, Color.WHITE, Vector3(0.0, TOWER_DECK + 2.3, 0.0), 0.0)
 	(roof.mesh as CylinderMesh).radial_segments = 4
 	roof.rotation.y = PI * 0.25
-	roof.material_override = _tin
+	roof.material_override = _felt
 	# The ladder up the inward side: a keepers' ladder like the crag's.
 	var ladder := Ladder.new(t.to_global(Vector3(0.0, TOWER_DECK + 0.1, -L + 0.45)), t.to_global(Vector3(0.0, 0.0, -L - 1.0)),
 		t.to_global(Vector3(0.0, TOWER_DECK, -L - 0.2)), t.to_global(Vector3(0.0, 0.0, -L - 0.55)))
@@ -270,12 +454,20 @@ func _hut(at: Vector2, label: String) -> void:
 		rib.rotation.z = PI * 0.5
 		(rib.mesh as CylinderMesh).radial_segments = 20
 		rib.material_override = _tin
-	var brick := Look.stone(BRICK, 1.0)
+	# Its concrete base, a lip showing all round.
+	var base := Geo.box(hut, Vector3(HUT_LEN + 0.5, 0.3, HUT_R * 2.0 + 0.4), Color.WHITE, Vector3(0.0, -0.08, 0.0))
+	base.material_override = _concrete
 	for sx in [-1.0, 1.0]:
 		var end := Geo.cyl(hut, HUT_R - 0.05, 0.16, Color.WHITE, Vector3(sx * (HUT_LEN * 0.5 - 0.05), 0.0, 0.0))
 		end.rotation.z = PI * 0.5
 		(end.mesh as CylinderMesh).radial_segments = 20
-		end.material_override = brick
+		end.material_override = _brick
+		# A concrete step to the door, and a little lean-to porch over it.
+		var step := Geo.box(hut, Vector3(0.5, 0.18, 1.3), Color.WHITE, Vector3(sx * (HUT_LEN * 0.5 + 0.3), 0.09, 0.0))
+		step.material_override = _concrete
+		var porch := Geo.box(hut, Vector3(0.7, 0.05, 1.5), Color.WHITE, Vector3(sx * (HUT_LEN * 0.5 + 0.3), 2.15, 0.0))
+		porch.rotation.z = sx * 0.18
+		porch.material_override = _felt
 		var door := Geo.box(hut, Vector3(0.1, 1.9, 0.95), Color.WHITE, Vector3(sx * (HUT_LEN * 0.5 + 0.04), 0.95, 0.0))
 		door.material_override = _wood
 		var win_mat := Look.glow_mat(Color(0.12, 0.13, 0.14), 0.0)
@@ -283,6 +475,12 @@ func _hut(at: Vector2, label: String) -> void:
 		for sz in [-1.0, 1.0]:
 			var win := Geo.box(hut, Vector3(0.08, 0.6, 0.55), Color.WHITE, Vector3(sx * (HUT_LEN * 0.5 + 0.03), 1.25, sz * 1.15))
 			win.material_override = win_mat
+			# A painted frame and sill round it, and a glazing bar.
+			for k in 2:
+				var fr := Geo.box(hut, Vector3(0.1, 0.06, 0.65), Color.WHITE, Vector3(sx * (HUT_LEN * 0.5 + 0.05), 0.92 + 0.66 * float(k), sz * 1.15))
+				fr.material_override = _wood
+			var bar := Geo.box(hut, Vector3(0.1, 0.6, 0.04), Color.WHITE, Vector3(sx * (HUT_LEN * 0.5 + 0.06), 1.25, sz * 1.15))
+			bar.material_override = _wood
 		# Electric light inside, thrown out through the end windows.
 		var lamp := OmniLight3D.new()
 		lamp.light_color = Color(1.0, 0.86, 0.6)
@@ -308,7 +506,8 @@ const HUT_DRAW := 0.015
 const HUT_HP := 220
 const GREENHOUSE_HP := 150
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	_process_flag(delta)
 	# The huts are lit while the generator runs, flickering as it runs dry; a wrecked
 	# hut stays dark.
 	var level := generator.power_level() if generator != null else 0.0
@@ -383,7 +582,7 @@ func _greenhouse(at: Vector2) -> void:
 	var D := 3.6
 	var H := 2.0
 	var base := Geo.box(gh, Vector3(W, 0.45, D), Color.WHITE, Vector3(0.0, 0.22, 0.0))
-	base.material_override = Look.stone(BRICK, 1.0)
+	base.material_override = _brick
 	var glass := StandardMaterial3D.new()
 	glass.albedo_color = Color(0.75, 0.85, 0.82, 0.22)
 	glass.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
