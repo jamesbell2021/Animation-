@@ -69,6 +69,8 @@ func configure(n: int) -> void:
 			next_pad += 1
 	for i in range(1, wanted):
 		bind_device(i, devices[i])
+	# Playing alone, keeper one may use a pad as well as the keyboard and mouse.
+	InputSetup.set_pad(wanted == 1)
 	nodes.clear()
 
 static func action(idx: int, name: String) -> String:

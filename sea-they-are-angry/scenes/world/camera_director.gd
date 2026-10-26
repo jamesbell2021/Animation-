@@ -68,6 +68,7 @@ func _ready() -> void:
 		sv.use_taa = root.use_taa
 		sv.use_debanding = root.use_debanding
 		sv.scaling_3d_mode = root.scaling_3d_mode
+		sv.add_to_group("game_views")
 		sv.scaling_3d_scale = root.scaling_3d_scale
 		sv.positional_shadow_atlas_size = root.positional_shadow_atlas_size
 		sv.audio_listener_enable_3d = false

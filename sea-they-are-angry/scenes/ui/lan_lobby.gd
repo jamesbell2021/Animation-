@@ -17,7 +17,7 @@ var _list: VBoxContainer
 var _view := "menu"
 
 func _ready() -> void:
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var shade := ColorRect.new()
 	shade.color = Color(0.02, 0.03, 0.06, 0.88)
 	shade.set_anchors_preset(Control.PRESET_FULL_RECT)

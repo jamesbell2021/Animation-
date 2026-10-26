@@ -1,8 +1,8 @@
 # Sea They Are Angry
 
-A lighthouse keeper on a tiny North Sea rock, late 1980s. By day you gather driftwood, scrap, kelp and bioluminescent matter from the shoreline, mend the fences, plant the garden, set traps and refuel the lamp. At dusk the fog and the storm roll in. At night things walk up out of the water toward the light. The lamp's beam slows them; your boathook does the rest. If the lamp goes dark, the run is over. There is no winning, only how many nights you last.
+A lighthouse keeper on a tiny North Sea rock, late 1980s. By day you gather driftwood, scrap, kelp and bioluminescent matter from the shoreline, mend the fences, plant the garden, set traps and refuel the lamp. At dusk the fog and the storm roll in. At night things walk up out of the water toward the light. The lamp's beam slows them; your boathook does the rest. If the lamp goes dark, the run is over. Hold it until the relief boat comes (10 nights on the normal sea, 8 on a calm one, 12 on a raging one) and the keepers sail away: the end of Chapter One. Or stay on the rock for endless nights.
 
-Across a rope bridge from the lighthouse lies the holm, a low flat island with an old wartime camp on it: fenced with barbed wire, a guard tower and searchlight at each corner, Nissen huts, vegetable beds and a greenhouse. There are always three keepers: any that people don't play are helpers run by the computer, one keeping the light and one the camp. Losing the lighthouse ends the run. Losing the camp doesn't, but it makes everything harder: from night 2 some of each night's creatures land on the holm instead and tear through the wire at the generator, the huts and the greenhouse, and whatever's wrecked stops working until it's mended.
+Across a rope bridge from the lighthouse lies the holm, a low islet of sandstone shelves and turf with an old wartime camp on it: fenced with barbed wire, a guard tower and searchlight at each corner, Nissen huts, vegetable beds and a greenhouse. There are always three keepers: any that people don't play are helpers run by the computer, one keeping the light and one the camp. Losing the lighthouse ends the run. Losing the camp doesn't, but it makes everything harder: from night 2 some of each night's creatures land on the holm instead and tear through the wire at the generator, the huts and the greenhouse, and whatever's wrecked stops working until it's mended.
 
 The island, buildings and effects are built in code. The characters are rigged models built by a Blender script. Sound is synthesised at start-up.
 
@@ -21,6 +21,8 @@ godot --headless --path sea-they-are-angry --script res://tools/playtest.gd -- 6
 ```
 
 Gameplay reel: `tools/reel/make_reel.sh` records 16 captioned shots of the main gameplay with Godot's Movie Maker and joins them into one MP4 (needs ffmpeg, and `xvfb-run` with no display; set `GODOT=` to the binary). It takes about an hour, since every frame is fully rendered.
+
+Builds: `godot --headless --path sea-they-are-angry --export-release "Linux" build/linux/SeaTheyAreAngry.x86_64` or `--export-release "Windows" build/windows/SeaTheyAreAngry.exe`. Each needs Godot 4.3's export template for that platform installed; the `.pck` goes next to the program.
 
 Headless load check (no window):
 
@@ -50,6 +52,10 @@ Or Play on the LAN: one keeper to a machine, each on a screen of its own (host f
 | Skip the rest of the day or dawn | Enter | | |
 | Pause | Esc | | Start |
 
+Playing alone, or on the LAN, a gamepad works for keeper one too, with the layout in the gamepad column; the right stick aims until the mouse moves again. In local co-op the pads belong to keepers two and three.
+
+**Settings** (title screen, or the pause menu): the volume, music and sounds; full screen or a window and its size; the graphics (Low, Medium or High, and a render scale below 100% for slower machines); and keeper one's keys, which can be changed to any key or mouse button (two controls can't share one: they swap). They're kept in `user://settings.cfg`. The game's hints name the keys as they're set, or the pad's buttons when someone's on one.
+
 The camera frames whichever island you're on and follows you across the bridge. When the people playing are on different islands, the screen splits (Baldur's Gate style) along a line square to the way between them, and joins up again when they come back together. Helper keepers get no view of their own.
 
 Keepers face the way they walk and turn to their aim to swing. Each carries a paraffin lantern that lights at dusk. A keeper who falls goes down; a teammate holds Use beside them for 3 seconds to revive them, and everyone gets up at dawn. The run ends when the lamp goes dark or every keeper is down. Only one keeper can work the lamp at a time.
@@ -57,7 +63,7 @@ Keepers face the way they walk and turn to their aim to swing. Each carries a pa
 ## What is in the slice
 
 - The island, after Bad North: a meadow ringed by cliffs, three beaches where the sea comes ashore, and the lighthouse on a crag in the middle. The only way up is a ledge path that winds round the crag. Day/dusk/night/dawn lighting with fog.
-- The holm to the east, over an 18 m rope bridge that sags, bounces under footsteps and swings in the wind (after Carrick-a-Rede): the old camp in grey box, its wire, towers, searchlights, huts, beds and greenhouse. A camera that follows the keepers between the islands, and a split screen when people are apart.
+- The holm to the east, over an 18 m rope bridge that sags, bounces under footsteps and swings in the wind (after Carrick-a-Rede). Its shore is ragged, with coves at its two beaches, stepped sandstone cliffs and a wave-cut shelf at their foot, skerries, a sea stack and boulders; turf knolls and bare outcrops on top. The camp is dressed as a Second World War internment camp left to the weather: corrugated-iron Nissen huts on concrete bases, felted tower roofs, a brick and concrete generator house, rust, sandbags, duckboards, a water tank, oil drums, a coal bunker, a washing line, a flag that flies in the wind and a No. 7 Camp sign. A camera that follows the keepers between the islands, and a split screen when people are apart.
 - Hunger and warmth: keepers get hungry, and cold outdoors at night (worse in rain and storms). Eat at the cottage or the camp's mess; warm up by the campfire, the cottage door or the quarters' stove (a driftwood lights it). The camp's three beds and greenhouse grow kale, cabbages, tomatoes and beans from seed; a storm can flatten the beds, never the greenhouse.
 - The camp's power: a diesel generator runs the four searchlights and the huts' lights from dusk to dawn, burning faster the more it runs; jerrycans of diesel wash up on the holm's beaches. Climb a tower's ladder and take its searchlight (E): aim it, Q for a focused beam that burns. Left alone, the lights sweep the ground outside the wire.
 - Research at the camp: tins of the internees' papers turn up about the camp, a page of their 1940s diary at a time. At the desk in front of the mess, a page and some of the store work out a project overnight: searchlights that track on their own, silvered reflectors, a governor for the generator, cold frames, tinning, and three new defences for the cairns (barbed wire that slows and cuts, tripwire flares, sandbag walls that creatures must batter down). The holm has four defence posts of its own.
@@ -71,6 +77,9 @@ Keepers face the way they walk and turn to their aim to swing. Each carries a pa
 
   Tab or the mouse wheel changes what's in hand (1 to 5 picks it; [ and ] or the d-pad for the other keepers).
 - Helper keepers (`scenes/player/keeper_ai.gd`) fill the places people don't take, so there are always three. The lighthouse's helper gathers and mends by day and works the lamp at night (or holds the ledge if someone else has it); the camp's warden does its rounds by day and walks the wire at night. Both fight what comes close, revive downed keepers, and walk the keepers' map (`KeeperNav`: the ledge, the ladders, the bridge, the camp). The creatures still scale with the number of people playing.
+  - **Their weapons:** the lighthouse's helper takes the shotgun off the shed wall when nobody has it and fires it at whatever comes close (a person can take it back at the workbench). Once a person has a longbow, the workbench can make one for a helper too, who shoots at what's past the boathook's reach. Helpers leave the flamer and the petrol bombs alone.
+- **Chapter One's end** (`scenes/systems/rescue.gd`, `scenes/world/relief_boat.gd`): the HUD counts down the nights to the relief boat. The last night the sea sends more than ever. At that dawn the *Mary Ann* steams in to a beach (the message names it) and waits; everyone goes down to the shingle and aboard (E at her plank; helpers make their own way), and she takes them off. A card ends the chapter and points to Chapter Two, The Harbour: back to the title, or stay on the rock for endless nights. Mending the camp's wireless (research) calls her two nights sooner.
+- **The first days' jobs** (`scenes/systems/jobs.gd`): a list down the right of the screen on the first three days that teaches the rock as you go (gather, mend, eat, cross the bridge, fill the generator, take a weapon, sow, work the lamp), each ticked off when a person's keeper does it. Kept with the save.
 - Characters modelled, rigged, textured and animated in Blender by scripts (`art/source/characters/build_characters.py`, `animate.py`): IK-solved walks, runs and sprints with planted feet, tool work, ladder climbs and creature gaits. Hard hits knock keepers and creatures down as ragdolls, and they get back up with real get-up animations from where they fall.
 - Keeper movement, mouse aim, boathook attack. A blow aimed outward on the ledge knocks a creature over the edge. Keepers have their own ladders down the crag.
 - The lamp: fuel, wide and focused beams (the focused one reaches the beaches), auto-sweep when nobody operates it, Burning to Guttering to Dark.
@@ -103,4 +112,4 @@ Plan 2 ([docs/prompts/02_first_release_phases_A-G.md](docs/prompts/02_first_rele
 
 ## For the next session
 
-Start with [HANDOFF.md](HANDOFF.md). The phase plans are in [docs/prompts/](docs/prompts/), the first real models are in [art/](art/README.md), and the chosen visual style is in [docs/ART_DIRECTION.md](docs/ART_DIRECTION.md).
+Start with [HANDOFF.md](HANDOFF.md). To play it with an eye for what needs work, use [docs/PLAYTEST_CHECKLIST.md](docs/PLAYTEST_CHECKLIST.md). The phase plans are in [docs/prompts/](docs/prompts/), the first real models are in [art/](art/README.md), and the chosen visual style is in [docs/ART_DIRECTION.md](docs/ART_DIRECTION.md).

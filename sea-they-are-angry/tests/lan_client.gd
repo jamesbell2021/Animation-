@@ -22,6 +22,17 @@ func _until(cond: Callable, frames: int) -> bool:
 		await physics_frame
 	return cond.call()
 
+# Something of this script's in the game here (a puppet only, if asked).
+func _found(script_file: String, puppet: bool) -> bool:
+	var main = current_scene
+	if main == null:
+		return false
+	for n in main.get_children():
+		var sc = n.get_script()
+		if sc != null and sc.resource_path.ends_with(script_file) and (not puppet or n.get("puppet")):
+			return true
+	return false
+
 func _stage() -> int:
 	return root.get_node("Stock").get_amount("poison") - 100
 
@@ -115,8 +126,16 @@ func _go() -> void:
 	await _wait(20)
 	_ack(true)
 
-	# 5: the end.
-	check(await _at(5) or not Run.active, "stage 5")
+	# 5: the squid's ink and the thrown boathook.
+	check(await _at(5), "stage 5")
+	_ack(false)
+	check(await _until(func(): return _found("ink_cloud.gd", false), 600), "the squid's ink shows here")
+	check(await _until(func(): return _found("harpoon.gd", true), 600), "the host's boathook flies here")
+	_ack(true)
+	check(await _until(func(): return not _found("harpoon.gd", true), 900), "and goes when the host's keeper has it back")
+
+	# 6: the end.
+	check(await _at(6) or not Run.active, "stage 6")
 	_ack(false)
 	check(await _until(func(): return not Run.active and main.hud._over.visible, 300), "the run ends here too, and says so")
 	check(main.hud._over_btn.disabled, "the host starts the next one")

@@ -218,7 +218,7 @@ func _process(delta: float) -> void:
 			var held: String = "" if p.ai or p.arsenal == null else " · " + p.arsenal.hud_text()
 			parts.append(who + ("DOWN" if p.downed else "HP %d / %d · Flares %d" % [p.hp, p.max_hp, p.flares()] + needs + held))
 		_player_label.text = "   ".join(parts)
-		_prompt_label.text = player.interact_prompt() if Run.active else ""
+		_prompt_label.text = Settings.keys_in(player.interact_prompt(), player.idx) if Run.active else ""
 	if lighthouse and is_instance_valid(lighthouse):
 		_lh_label.text = "Lighthouse %d / %d" % [lighthouse.hp, lighthouse.max_hp]
 		_lh_label.add_theme_color_override("font_color", RED if lighthouse.health_ratio() < 0.3 else PALE)
@@ -263,7 +263,7 @@ func _process(delta: float) -> void:
 	if _jobs_box.visible:
 		for i in Jobs.LIST.size():
 			var did := Jobs.done(Jobs.LIST[i][0])
-			_job_labels[i].text = ("✓ " if did else "○ ") + String(Jobs.LIST[i][1])
+			_job_labels[i].text = ("✓ " if did else "○ ") + Settings.keys_in(String(Jobs.LIST[i][1]), player.idx if player != null else 0)
 			_job_labels[i].add_theme_color_override("font_color", Color(0.55, 0.62, 0.55) if did else PALE)
 	if _msg_t > 0.0:
 		_msg_t = maxf(0.0, _msg_t - delta)
@@ -311,12 +311,12 @@ func _mmss(seconds: float) -> String:
 	return "%02d:%02d" % [floori(s / 60.0), s % 60]
 
 func _on_message(text: String) -> void:
-	_msg_label.text = text
+	_msg_label.text = Settings.keys_in(text)
 	_msg_label.modulate.a = 1.0
 	_msg_t = MSG_TIME
 
 func _show_warning(text: String) -> void:
-	_warn_label.text = text
+	_warn_label.text = Settings.keys_in(text)
 	_warn_label.visible = true
 	_warn_label.modulate.a = 1.0
 	_warn_t = WARN_TIME
@@ -331,7 +331,7 @@ func report(heading: String, lines: Array, time: float = REPORT_TIME) -> void:
 	Net.relay_report(heading, lines, time)
 	_show_warning(heading)
 	_warn_t = time
-	_report_label.text = "\n".join(lines)
+	_report_label.text = Settings.keys_in("\n".join(lines))
 	_report_label.visible = true
 	_report_label.modulate.a = 1.0
 	_report_t = time

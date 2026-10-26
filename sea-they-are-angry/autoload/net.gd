@@ -383,6 +383,14 @@ func _send_input() -> void:
 	var aim: Vector3 = me.aim_dir()
 	var point := Vector3.INF
 	var cam := get_viewport().get_camera_3d()
+	if InputSetup.pad_active:
+		# On a pad: the right stick aims, or the way the keeper walks.
+		var stick := InputSetup.pad_stick()
+		if stick.length() > 0.35:
+			aim = Vector3(stick.x, 0.0, stick.y).normalized()
+		elif move.length() > 0.3:
+			aim = Vector3(move.x, 0.0, move.y).normalized()
+		cam = null
 	if cam != null:
 		var mp := get_viewport().get_mouse_position()
 		var from := cam.project_ray_origin(mp)
@@ -733,6 +741,23 @@ func _show_shot(kind: String, a: Array) -> void:
 			b.from = a[0]
 			b.to = a[1]
 			_main.add_child(b)
+		"ink":
+			var cloud := InkCloud.new()
+			_main.add_child(cloud)
+			cloud.global_position = a[0]
+		"harpoon":
+			# The boathook in flight: for the look of it; the host knocks the climber off.
+			var idx := int(a[0])
+			if idx < 0 or idx >= _main.players.size():
+				return
+			var h := Harpoon.new()
+			h.keeper = _main.players[idx]
+			h.puppet = true
+			for e in get_tree().get_nodes_in_group("enemies"):
+				if e is Enemy and int(a[2]) > 0 and e.net_id == int(a[2]):
+					h.target = e
+			_main.add_child(h)
+			h.global_position = a[1]
 
 # ---- menus for a keeper on another machine ----
 

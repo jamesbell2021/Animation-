@@ -275,7 +275,7 @@ func _run() -> void:
 	var kind := Weather.tonight()
 	Cycle._enter(Cycle.Phase.DUSK)
 	await frames(2)
-	check(main.hud._phase_label.text.ends_with(Weather.KIND_NAMES[kind]), "the HUD names tonight's weather: " + main.hud._phase_label.text)
+	check(main.hud._phase_label.text.contains("· " + Weather.KIND_NAMES[kind]), "the HUD names tonight's weather: " + main.hud._phase_label.text)
 	check(is_equal_approx(main.atmosphere.weather._target, Weather.KIND_LEVELS[kind][Cycle.Phase.DUSK]), "the storm builds to tonight's level")
 
 	print("RESULT: ", "PASS" if fails == 0 else "FAIL (%d)" % fails)

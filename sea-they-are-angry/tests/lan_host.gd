@@ -117,8 +117,24 @@ func _go() -> void:
 	check(not is_instance_valid(b) or b.hp < hp0, "the shot hit the Bloated here (%d -> %d)" % [hp0, b.hp if is_instance_valid(b) else 0])
 	check(Run.barrels == 1, "one barrel spent")
 
-	# 5: the end, for everyone.
+	# 5: a squid inks, and the host's keeper throws the boathook: both seen on the client.
+	var sq = load("res://scenes/enemies/squid.gd").new()
+	sq.lighthouse = main.lighthouse
+	sq.position = me.global_position + Vector3(4.0, 0.0, 0.0)
+	main.get_node("Enemies").add_child(sq)
+	await _wait(5)
+	sq._ink_t = 0.0
+	sq._ink(0.016)
+	check(me.has_hook, "the host's keeper has the boathook to throw")
+	me._let_fly(null)
 	_stage(5)
+	await _unack()
+	check(await _ack(), "the client saw the ink and the boathook")
+	for h in get_nodes_in_group("harpoons"):
+		h._give_back()
+
+	# 6: the end, for everyone.
+	_stage(6)
 	await _wait(60)
 	Run.end_run("Test over")
 	await _wait(240)

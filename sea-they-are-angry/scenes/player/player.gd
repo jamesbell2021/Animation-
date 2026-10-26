@@ -79,6 +79,10 @@ var idx := 0
 var ai := false
 var ai_move := Vector2.ZERO
 var ai_held := {}
+## A helper's one-off presses this frame (the attack that draws a bow or fires a barrel),
+## and the point it aims its arrows at; KeeperAI sets them.
+var ai_just := {}
+var ai_point := Vector3.INF
 ## 100 fed, 0 starving; 100 warm, 0 freezing.
 var hunger := 100.0
 var warmth := 100.0
@@ -408,7 +412,9 @@ func _act(a: String) -> String:
 func _just(a: String) -> bool:
 	if remote:
 		return Net.just(idx, a)
-	return not ai and Input.is_action_just_pressed(_act(a))
+	if ai:
+		return bool(ai_just.get(a, false))
+	return Input.is_action_just_pressed(_act(a))
 
 func _held(a: String) -> bool:
 	if remote:
@@ -666,6 +672,17 @@ func _update_aim() -> void:
 			_aim = Vector3(flat.x, 0.0, flat.y).normalized()
 		return
 	_lamp_point = Vector3.INF
+	if InputSetup.pad_active:
+		# Keeper one on a pad (playing alone, or on the LAN): the right stick aims.
+		var pad := InputSetup.pad_stick()
+		if pad.length() > 0.35:
+			_aim = Vector3(pad.x, 0.0, pad.y).normalized()
+			_aim_face_t = maxf(_aim_face_t, 0.15)
+			return
+		var walk := Vector2(velocity.x, velocity.z)
+		if walk.length() > 0.3:
+			_aim = Vector3(walk.x, 0.0, walk.y).normalized()
+		return
 	if camera == null:
 		return
 	var mp := get_viewport().get_mouse_position()
@@ -842,6 +859,7 @@ func _let_fly(target: Node3D) -> void:
 	var from := rig.bone_position("hand.R") if rig != null else global_position + Vector3(0.0, 1.5, 0.0)
 	get_parent().add_child(h)
 	h.global_position = from
+	Net.relay_shot("harpoon", [idx, from, h.target.get("net_id") if h.target != null else -1])
 	Audio.sfx("swing", global_position, 2.0, 0.1)
 
 ## The thrown boathook is back in hand.
@@ -1088,7 +1106,9 @@ func flare_point() -> Vector3:
 	var to := Vector3.INF
 	if remote:
 		to = Net.input_for(idx).get("point", Vector3.INF)
-	elif camera != null and idx == 0 and (Players.devices.size() <= idx or Players.devices[idx] == Players.KEYBOARD_MOUSE):
+	elif ai:
+		to = ai_point
+	elif camera != null and idx == 0 and not InputSetup.pad_active and (Players.devices.size() <= idx or Players.devices[idx] == Players.KEYBOARD_MOUSE):
 		var mp := get_viewport().get_mouse_position()
 		to = _ground_hit(camera.project_ray_origin(mp), camera.project_ray_normal(mp))
 	if to == Vector3.INF:
