@@ -9,5 +9,5 @@ signal message(text: String)
 signal lore(text: String)
 signal run_ended(reason: String, night: int)
 ## A keeper did one of the things the first days' jobs teach ("gather", "repair", "eat",
-## "generator", "sow", "lamp"); see JobList.
+## "generator", "sow", "lamp", "eggs"); see JobList.
 signal did(what: String, keeper: Node)

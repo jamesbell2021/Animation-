@@ -401,7 +401,7 @@ static func nearest_camp(from: Vector3) -> Structure:
 
 ## Whether two points are on the same island (the holm, or the main island).
 static func same_island(a: Vector3, b: Vector3) -> bool:
-	return Terrain.holm_side(a.x, a.z) == Terrain.holm_side(b.x, b.z)
+	return Terrain.island_of(a.x, a.z) == Terrain.island_of(b.x, b.z)
 
 ## The nearest standing building of the homestead, or null if all are wrecked.
 static func nearest_home(from: Vector3) -> Structure:

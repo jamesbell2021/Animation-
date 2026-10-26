@@ -133,8 +133,20 @@ func _go() -> void:
 	for h in get_nodes_in_group("harpoons"):
 		h._give_back()
 
-	# 6: the end, for everyone.
+	# 6: the host's keeper rows out to Gull Rock: the client sees the boat go, with it aboard.
+	Cyc._enter(0)
+	if me.downed:
+		me.revive(1.0)
+	await _wait(60)
+	me.global_position = main.rowing_boat.landings[0].global_position + Vector3(0.0, 0.3, 0.0)
+	await _wait(5)
+	check(main.rowing_boat.use_from(0, me), "the host's keeper takes the boat out")
 	_stage(6)
+	await _unack()
+	check(await _ack(), "the client saw it rowing")
+
+	# 7: the end, for everyone.
+	_stage(7)
 	await _wait(60)
 	Run.end_run("Test over")
 	await _wait(240)

@@ -124,6 +124,12 @@ The holm should read as a real North Sea islet beside the lighthouse's crag, and
 - **The props tell the story:** the flag still flying, the "No. 7 CAMP / AUTHORISED PERSONS ONLY" sign, a washing line, oil drums, a coal bunker, a water tank, duckboards over the mud. Keep any new props in that register: utilitarian, wartime, weathered.
 - **Light:** the huts' small windows glow warm when the generator runs; the searchlights are the cold white against it.
 
+## Gull Rock and its gulls
+
+- **The rock:** grey whinstone, not the holm's red sandstone: a different rock for a different islet. Ledged cliffs where the gulls stand, white guano streaked down from the ledges, orange Xanthoria lichen on the tops (it grows where birds perch), black wrack at the waterline. Rich green turf on top, the kind a colony manures, with cushions of pink thrift.
+- **The gulls:** herring gulls, as the North Sea has them: white head and body, pale grey back and wings, black wingtips with white spots, a yellow bill with a red spot, pink legs. Standing, they face into the wind with their black primaries crossed over the tail. Soaring, their wings make a shallow M.
+- **The boat:** a Northern Isles yoal, double-ended and clinker-built (lapped planks show), painted off-white with a teal top strake and a red rubbing strake, bare timber inside.
+
 ## The four keepers
 
 | Keeper | Role | Read at a glance | Signature prop |

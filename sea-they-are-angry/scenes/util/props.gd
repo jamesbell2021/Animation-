@@ -23,7 +23,7 @@ static func _cyl(parent: Node, r: float, h: float, color: Color, pos: Vector3, s
 	return mi
 
 ## A short timber jetty running out to sea from a point on the shore, with a rowboat tied alongside.
-static func jetty(parent: Node, start: Vector3, angle: float) -> void:
+static func jetty(parent: Node, start: Vector3, angle: float, with_boat: bool = true) -> void:
 	var root := Node3D.new()
 	root.name = "Jetty"
 	root.position = start + Vector3(0.0, -0.05, 0.0)
@@ -39,6 +39,8 @@ static func jetty(parent: Node, start: Vector3, angle: float) -> void:
 		var z := 1.1 + float(i) * 0.9
 		for side in [-0.6, 0.6]:
 			_cyl(root, 0.08, 2.2, Color(0.30, 0.24, 0.18), Vector3(side, deck_y - 0.8, z), 6, -1.0, true)
+	if not with_boat:
+		return
 	# Rowboat: a hull from a squashed, open half-box with a bench and oars.
 	var boat := Node3D.new()
 	boat.position = Vector3(1.4, Terrain.SEA_LEVEL - root.position.y + 0.12, 2.6)

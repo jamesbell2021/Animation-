@@ -467,7 +467,8 @@ func _build_snap() -> Dictionary:
 	for sl in _main.camp.searchlights:
 		sls.append([sl._aim, sl.mode, sl.is_lit()])
 	return {"ph": Cycle.phase, "tl": Cycle.time_left, "p": ps, "e": es,
-		"l": [lamp.yaw, lamp.state, lamp.mode, lamp.fuel, lamp._smothered], "s": sls}
+		"l": [lamp.yaw, lamp.state, lamp.mode, lamp.fuel, lamp._smothered], "s": sls,
+		"rb": _main.rowing_boat.net_snap() if _main.rowing_boat != null else []}
 
 @rpc("authority", "unreliable_ordered")
 func _snap(d: Dictionary) -> void:
@@ -489,6 +490,9 @@ func _snap(d: Dictionary) -> void:
 	var sls: Array = d.get("s", [])
 	for i in mini(sls.size(), _main.camp.searchlights.size()):
 		_main.camp.searchlights[i].net_apply(sls[i])
+	var rb: Array = d.get("rb", [])
+	if not rb.is_empty() and _main.rowing_boat != null:
+		_main.rowing_boat.net_apply(rb)
 
 func _apply_enemies(list: Array) -> void:
 	var here := {}
@@ -542,7 +546,10 @@ func _build_state() -> Dictionary:
 			register_scav(n)
 			sc.append([int(n.get_meta("net_id")), n.kind, n.amount, n.global_position, n.available, n.once])
 	var gen: Generator = _main.camp.generator
-	return {"run": SaveSys.snapshot(), "st": st, "tr": traps, "sc": sc,
+	var nests := []
+	for n in get_tree().get_nodes_in_group("gull_nests"):
+		nests.append(n.eggs)
+	return {"run": SaveSys.snapshot(), "st": st, "tr": traps, "sc": sc, "nests": nests,
 		"gen": [gen.fuel, gen.running], "stove": _main.camp.stove.burn, "rs": Run.researching}
 
 @rpc("authority", "reliable")
@@ -567,6 +574,10 @@ func _state(d: Dictionary) -> void:
 	if gen.size() == 2:
 		_main.camp.generator.net_apply(float(gen[0]), bool(gen[1]))
 	_main.camp.stove.burn = float(d.get("stove", 0.0))
+	var eggs: Array = d.get("nests", [])
+	var nests := get_tree().get_nodes_in_group("gull_nests")
+	for i in mini(eggs.size(), nests.size()):
+		nests[i].net_set_eggs(int(eggs[i]))
 	for n in get_tree().get_nodes_in_group("interactable"):
 		if n.has_method("refresh") and (n is CampPlot or n is GardenPlot):
 			n.refresh()

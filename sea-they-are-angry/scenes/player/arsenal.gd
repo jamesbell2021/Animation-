@@ -436,7 +436,8 @@ func _bomb_point() -> Vector3:
 func refresh() -> void:
 	if keeper == null or _models.is_empty():
 		return
-	var working: bool = keeper._job_tool != ""
+	# Hands busy with a tool, or with the oars (or sitting in the boat): nothing in hand.
+	var working: bool = keeper._job_tool != "" or keeper.riding != null or keeper._ride_layers
 	for w in _models:
 		_models[w].visible = w == weapon and not working
 	keeper._hook_holder.visible = weapon == "hook" and keeper.has_hook and not working

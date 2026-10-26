@@ -102,6 +102,30 @@ const BRIDGE_HALF := 0.55
 # The ground mesh's extent: the main island's square, and the holm's beside it.
 const HOLM_GRID_X := Vector2(GRID_HALF, 77.0)
 
+# Gull Rock: a small, steep islet off the north-east, where the gulls nest. A rowing
+# boat runs out to it from the east beach's jetty (RowingBoat). Its long axis lies
+# north-west to south-east; it rises to a turf knoll at the north-west end, its cliffs
+# stand straight up out of the sea on the far side, and a slip of flat rock runs down
+# into the water on the side facing the lighthouse, where the boat comes in.
+const ISLET_C := Vector2(24.0, -38.5)
+const ISLET_HALF := Vector2(7.0, 4.6)
+const ISLET_YAW := 28.0
+const ISLET_HEIGHT := 2.0
+const ISLET_KNOLL := 1.3
+const ISLET_KNOLL_AT := Vector2(-3.4, -0.6)
+const ISLET_CLIFF := 1.2
+## Compass bearing of the landing slip from the islet's middle: toward the jetty.
+const ISLET_LANDING := 355.0
+## Its ground mesh: a patch of its own north of the main island's square.
+const ISLET_GRID := Rect2(12.0, -52.0, 26.0, 24.0)
+## Gull Rock's colours: grey whinstone, orange lichen where the birds stand, guano,
+## and the rich green turf that a gull colony feeds.
+const WHIN := Color(0.40, 0.40, 0.39)
+const WHIN_DARK := Color(0.25, 0.26, 0.26)
+const XANTHORIA := Color(0.80, 0.50, 0.16)
+const GUANO := Color(0.86, 0.85, 0.80)
+const COLONY_TURF := Color(0.27, 0.42, 0.14)
+
 static var _noise: FastNoiseLite
 static var _detail: FastNoiseLite
 static var _bridge_ends: Array = []
@@ -218,7 +242,7 @@ static func beach_half_width(t: float) -> float:
 ## Height of the ground at a point: the main island or the holm, whichever stands
 ## higher there (both fall away to the same sea floor).
 static func height_at(x: float, z: float) -> float:
-	return maxf(_main_height(x, z), _holm_height(x, z))
+	return maxf(maxf(_main_height(x, z), _holm_height(x, z)), _islet_height(x, z))
 
 static func _main_height(x: float, z: float) -> float:
 	_ensure_noise()
@@ -392,16 +416,25 @@ const SHORE_RECT := Rect2(24.0, -30.0, 56.0, 62.0)
 const SHORE_STEP := 0.5
 
 static func holm_shore_texture() -> ImageTexture:
-	var w := int(SHORE_RECT.size.x / SHORE_STEP)
-	var hgt := int(SHORE_RECT.size.y / SHORE_STEP)
+	return _shore_texture(SHORE_RECT, _holm_height)
+
+## The same for Gull Rock's patch of sea.
+const ISLET_SHORE_RECT := Rect2(8.0, -56.0, 32.0, 32.0)
+
+static func islet_shore_texture() -> ImageTexture:
+	return _shore_texture(ISLET_SHORE_RECT, _islet_height)
+
+static func _shore_texture(rect: Rect2, height_fn: Callable) -> ImageTexture:
+	var w := int(rect.size.x / SHORE_STEP)
+	var hgt := int(rect.size.y / SHORE_STEP)
 	var n := w * hgt
 	var land := PackedByteArray()
 	land.resize(n)
 	for j in hgt:
 		for i in w:
-			var x := SHORE_RECT.position.x + (float(i) + 0.5) * SHORE_STEP
-			var z := SHORE_RECT.position.y + (float(j) + 0.5) * SHORE_STEP
-			land[j * w + i] = 1 if _holm_height(x, z) > SEA_LEVEL + 0.02 else 0
+			var x := rect.position.x + (float(i) + 0.5) * SHORE_STEP
+			var z := rect.position.y + (float(j) + 0.5) * SHORE_STEP
+			land[j * w + i] = 1 if float(height_fn.call(x, z)) > SEA_LEVEL + 0.02 else 0
 	var to_land := _chamfer(land, w, hgt, 1)
 	var to_sea := _chamfer(land, w, hgt, 0)
 	var img := Image.create(w, hgt, false, Image.FORMAT_RF)
@@ -522,6 +555,130 @@ static func on_ledge(x: float, z: float) -> bool:
 static func holm_side(x: float, z: float) -> bool:
 	return Vector2(x, z).distance_to(HOLM_C) < Vector2(x, z).length()
 
+## Which island a point belongs to: 0 the main island, 1 the holm, 2 Gull Rock (by
+## nearness, so the sea round each counts as its own).
+static func island_of(x: float, z: float) -> int:
+	if Vector2(x, z).distance_to(ISLET_C) < ISLET_HALF.x + 7.0:
+		return 2
+	return 1 if holm_side(x, z) else 0
+
+# ---- Gull Rock ----
+
+## A point in the islet's own frame: x along its length (north-west negative), y across.
+static func islet_local(x: float, z: float) -> Vector2:
+	return (Vector2(x, z) - ISLET_C).rotated(-deg_to_rad(ISLET_YAW))
+
+static func islet_world(q: Vector2) -> Vector3:
+	var w := ISLET_C + q.rotated(deg_to_rad(ISLET_YAW))
+	return Vector3(w.x, height_at(w.x, w.y), w.y)
+
+## Signed distance from the islet's clifftop (negative on top), with a ragged edge.
+static func islet_edge_dist(x: float, z: float) -> float:
+	_ensure_noise()
+	var q := islet_local(x, z)
+	var e := Vector2(q.x / ISLET_HALF.x, q.y / ISLET_HALF.y)
+	var d := (e.length() - 1.0) * minf(ISLET_HALF.x, ISLET_HALF.y)
+	d += _noise.get_noise_2d(x * 0.5 + 300.0, z * 0.5 - 80.0) * 1.3
+	d += _detail.get_noise_2d(x * 1.1 - 40.0, z * 1.1 + 210.0) * 0.35
+	return d
+
+## True on Gull Rock (its top, cliffs or the slip) rather than either other island.
+static func on_islet(x: float, z: float) -> bool:
+	if Vector2(x, z).distance_to(ISLET_C) > ISLET_HALF.x + 10.0:
+		return false
+	var hi := _islet_height(x, z)
+	return hi > _main_height(x, z) and hi > _holm_height(x, z) and hi > SEA_LEVEL - 0.3
+
+# The landing slip: how far up it (0 out under the sea, 1 on the top), how far off its
+# centre line, and its weight.
+static func _islet_slip(x: float, z: float) -> Vector3:
+	var a := deg_to_rad(ISLET_LANDING)
+	var q := Vector2(x, z) - ISLET_C
+	var along := q.x * sin(a) + q.y * cos(a)
+	var lateral := absf(q.x * cos(a) - q.y * sin(a))
+	var edge := _slip_edge()
+	var outer := edge + 4.6
+	var inner := edge - 1.2
+	var t := clampf((outer - along) / (outer - inner), 0.0, 1.0)
+	var half := lerpf(2.4, 1.6, smoothstep(0.2, 0.9, t))
+	var k := (1.0 - smoothstep(half, half + 1.1, lateral)) * smoothstep(inner - 1.5, inner, along) * (1.0 - smoothstep(outer, outer + 2.5, along))
+	return Vector3(t, lateral, k)
+
+static var _slip_edge_r := -1.0
+
+# How far out the clifftop is where the slip comes up (worked out once).
+static func _slip_edge() -> float:
+	if _slip_edge_r < 0.0:
+		_slip_edge_r = _islet_radius_toward(ISLET_LANDING)
+	return _slip_edge_r
+
+# How far the clifftop lies from the middle along a compass bearing (marching out).
+static func _islet_radius_toward(bearing: float) -> float:
+	var a := deg_to_rad(bearing)
+	var dir := Vector2(sin(a), cos(a))
+	var r := 0.0
+	while r < 14.0:
+		var p := ISLET_C + dir * r
+		if islet_edge_dist(p.x, p.y) > 0.0:
+			return r
+		r += 0.1
+	return r
+
+## The slip: a point up it, t from 0 (in the sea) to 1 (the top), offset sideways.
+static func islet_slip_point(t: float, lateral: float = 0.0) -> Vector3:
+	var a := deg_to_rad(ISLET_LANDING)
+	var edge := _slip_edge()
+	var along := lerpf(edge + 4.6, edge - 1.2, t)
+	var p := Vector2(sin(a), cos(a)) * along + Vector2(cos(a), -sin(a)) * lateral + ISLET_C
+	return Vector3(p.x, height_at(p.x, p.y), p.y)
+
+static func islet_slip_weight(x: float, z: float) -> float:
+	return _islet_slip(x, z).z
+
+## Bare rock pushing up through the turf on the top.
+static func islet_outcrop(x: float, z: float) -> float:
+	var n := _detail.get_noise_2d(x * 0.7 + 510.0, z * 0.7 - 33.0)
+	return smoothstep(0.22, 0.4, n)
+
+static func _islet_knoll(x: float, z: float) -> float:
+	var q := islet_local(x, z)
+	var k := q - ISLET_KNOLL_AT
+	return exp(-(k.x * k.x / 9.0 + k.y * k.y / 5.0))
+
+static func _islet_height(x: float, z: float) -> float:
+	_ensure_noise()
+	if Vector2(x, z).distance_to(ISLET_C) > ISLET_HALF.x + 20.0:
+		return SEA_FLOOR - 5.0
+	var d := islet_edge_dist(x, z)
+	if d > 14.0:
+		return SEA_FLOOR - 5.0
+	var top := ISLET_HEIGHT + _islet_knoll(x, z) * ISLET_KNOLL
+	top += _noise.get_noise_2d(x * 0.9 + 70.0, z * 0.9) * 0.2 + _detail.get_noise_2d(x * 1.4, z * 1.4) * 0.06
+	top += islet_outcrop(x, z) * (0.3 + 0.2 * _detail.get_noise_2d(x * 2.6, z * 2.6))
+	# Sheer on the seaward side (the far side from the lighthouse), a little gentler toward it.
+	var q := islet_local(x, z)
+	var landward := Vector2(sin(deg_to_rad(ISLET_LANDING)), cos(deg_to_rad(ISLET_LANDING)))
+	var facing := (Vector2(x, z) - ISLET_C).normalized().dot(landward)
+	var cliff := ISLET_CLIFF * (0.75 + 0.35 * clampf(facing, 0.0, 1.0) + 0.2 * (top - ISLET_HEIGHT))
+	var shelf := clampf(_noise.get_noise_2d(x * 0.3 + 99.0, z * 0.3) * 2.5 - 0.2, 0.0, 1.0) * 1.1 * clampf(facing + 0.4, 0.0, 1.0)
+	var foot := SEA_LEVEL + 0.28 + _detail.get_noise_2d(x * 2.1, z * 2.1) * 0.05 if shelf > 0.4 else SHELF_DEPTH - 0.6
+	var t := clampf(d / cliff, 0.0, 1.0)
+	# The rock stands in ledges: three steps where the birds sit.
+	var stepped := lerpf(smoothstep(0.0, 1.0, t), floor(t * 3.0) / 3.0 + smoothstep(0.0, 1.0, fmod(t * 3.0, 1.0)) / 3.0, 0.55)
+	var h := lerpf(top, foot, stepped) + _detail.get_noise_2d(x * 1.8, z * 1.8) * 0.3 * t * (1.0 - t) * 4.0
+	if d > cliff:
+		var past := d - cliff
+		if past < shelf:
+			h = foot + _detail.get_noise_2d(x * 3.3, z * 3.3) * 0.04 - (past / maxf(shelf, 0.1)) * 0.12
+		else:
+			var from := foot if shelf > 0.4 else SHELF_DEPTH - 0.6
+			h = lerpf(from, SEA_FLOOR, smoothstep(0.0, 6.0, past - shelf))
+	var slip := _islet_slip(x, z)
+	if slip.z > 0.0:
+		var hs := lerpf(BEACH_SEA_H, ISLET_HEIGHT - 0.05, slip.x) + _detail.get_noise_2d(x * 2.6, z * 2.6) * 0.05
+		h = lerpf(h, hs, slip.z)
+	return h
+
 static func camp_gate() -> Vector2:
 	return Vector2(CAMP_C.x - CAMP_HALF.x, CAMP_C.y)
 
@@ -532,6 +689,10 @@ static func _holm_path_dist(x: float, z: float) -> float:
 
 ## True where grass may grow: flat meadow or crag top, off the tracks, pads and beaches.
 static func is_grassy(x: float, z: float) -> bool:
+	if on_islet(x, z):
+		if islet_edge_dist(x, z) > -0.7 or islet_slip_weight(x, z) > 0.2 or islet_outcrop(x, z) > 0.35:
+			return false
+		return slope_at(x, z) < 0.45 and height_at(x, z) > ISLET_HEIGHT - 0.4
 	if on_holm(x, z):
 		if holm_edge_dist(x, z) > -0.5 or in_camp(x, z, -0.8):
 			return false
@@ -560,6 +721,8 @@ static func _hash(i: int, j: int, k: int) -> float:
 
 static func color_at(x: float, z: float, h: float, steep: float) -> Color:
 	_ensure_noise()
+	if on_islet(x, z):
+		return _islet_color(x, z, h, steep)
 	if on_holm(x, z):
 		return _holm_color(x, z, h, steep)
 	var r := Vector2(x, z).length()
@@ -600,6 +763,8 @@ static func color_at(x: float, z: float, h: float, steep: float) -> Color:
 ## whatever is left. Follows the same rules as color_at, so texture and paint agree.
 static func layers_at(x: float, z: float, h: float, steep: float) -> Vector4:
 	_ensure_noise()
+	if on_islet(x, z):
+		return _islet_layers(x, z, h, steep)
 	if on_holm(x, z):
 		return _holm_layers(x, z, h, steep)
 	var r := Vector2(x, z).length()
@@ -679,6 +844,43 @@ static func _holm_layers(x: float, z: float, h: float, steep: float) -> Vector4:
 	var wet := clampf((SEA_LEVEL + 0.25 - h) * 2.5, 0.0, 1.0)
 	return Vector4(rock, shingle, dirt, wet)
 
+# Gull Rock: turf greened by the colony on top, worn bare where they crowd; grey
+# whinstone in ledges, splashed white below the perches and orange with Xanthoria
+# lichen above them; a slip of flat rock, wet and weedy at the bottom.
+static func _islet_color(x: float, z: float, h: float, steep: float) -> Color:
+	var l := _islet_layers(x, z, h, steep)
+	var n := _noise.get_noise_2d(x * 1.9 + 11.0, z * 1.9)
+	var c := COLONY_TURF.lerp(GRASS_B, clampf(n * 0.8 + 0.3, 0.0, 1.0))
+	c = c.lerp(DIRT, l.z * 0.8)
+	var rock := WHIN.lerp(WHIN_DARK, clampf(_detail.get_noise_2d(x * 2.2, z * 2.2) + 0.5, 0.0, 1.0) * 0.8)
+	# Lichen on the faces that catch the rain, highest up; guano streaking down from the ledges.
+	var lichen := smoothstep(0.15, 0.45, _noise.get_noise_2d(x * 1.3 - 5.0, z * 1.3 + h * 0.4)) * smoothstep(SEA_LEVEL + 1.0, SEA_LEVEL + 1.8, h)
+	rock = rock.lerp(XANTHORIA, lichen * 0.55)
+	var streak := smoothstep(0.35, 0.7, _detail.get_noise_2d(x * 4.0 + z * 0.5, h * 1.2 + z * 4.0))
+	rock = rock.lerp(GUANO, streak * smoothstep(0.25, 0.6, steep) * smoothstep(SEA_LEVEL + 0.5, SEA_LEVEL + 1.2, h) * 0.85)
+	rock = rock.lerp(WRACK, smoothstep(SEA_LEVEL + 0.4, SEA_LEVEL, h) * 0.85)
+	c = c.lerp(rock, l.x)
+	if h < SEA_LEVEL + 0.1:
+		c = c.lerp(WET, clampf((SEA_LEVEL + 0.1 - h) * 3.0, 0.0, 1.0))
+	if h < SEA_LEVEL - 0.5:
+		c = SEABED
+	return c
+
+static func _islet_layers(x: float, z: float, h: float, steep: float) -> Vector4:
+	var slip := islet_slip_weight(x, z)
+	var past_edge := smoothstep(-0.5, 0.5, islet_edge_dist(x, z)) * (1.0 - slip)
+	var rock := maxf(maxf(smoothstep(0.2, 0.42, steep), past_edge), islet_outcrop(x, z) * 0.9)
+	rock = maxf(rock, slip * 0.9)
+	var dirt := 0.0
+	if _detail.get_noise_2d(x * 0.9 + 15.0, z * 0.9) > 0.35:
+		dirt = 0.5
+	var shingle := 0.0
+	if h < SEA_LEVEL - 0.5:
+		shingle = 1.0
+		rock *= 0.3
+	var wet := clampf((SEA_LEVEL + 0.25 - h) * 2.5, 0.0, 1.0)
+	return Vector4(rock, shingle, dirt, wet)
+
 ## The ground's surface normal from the height function itself (smooth everywhere).
 static func normal_at(x: float, z: float) -> Vector3:
 	var e := 0.12
@@ -691,6 +893,10 @@ static func normal_at(x: float, z: float) -> Vector3:
 ## (UV: rock, shingle; UV2: dirt, wet).
 static func build_mesh() -> ArrayMesh:
 	return _grid_mesh(-GRID_HALF, GRID_HALF, -GRID_HALF, GRID_HALF)
+
+## Gull Rock's ground: a patch of its own, out past the main island's square.
+static func build_islet_mesh() -> ArrayMesh:
+	return _grid_mesh(ISLET_GRID.position.x, ISLET_GRID.end.x, ISLET_GRID.position.y, ISLET_GRID.end.y)
 
 ## The holm's ground, beside the main island's: the same grid, so the two meet exactly.
 static func build_holm_mesh() -> ArrayMesh:

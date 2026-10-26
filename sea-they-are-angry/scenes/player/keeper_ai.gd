@@ -660,7 +660,8 @@ func _downed_keeper() -> Player:
 	var best: Player = null
 	var best_d := 40.0
 	for k in get_tree().get_nodes_in_group("player"):
-		if k != keeper and k is Player and k.downed:
+		# Out on Gull Rock or in the boat, they're out of reach: they'll get up at dawn.
+		if k != keeper and k is Player and k.downed and k.riding == null and Terrain.island_of(k.global_position.x, k.global_position.z) != 2:
 			var d := Geo.flat_dist(k.global_position, keeper.global_position)
 			if d < best_d:
 				best_d = d

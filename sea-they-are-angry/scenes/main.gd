@@ -23,6 +23,8 @@ const LIGHT_TWEEN := 2.0
 const GRASS_TUFTS := 9500
 const HOLM_GRASS_TUFTS := 5000
 const JETTY_LATERAL := 4.2
+const ISLET_GRASS_TUFTS := 450
+const NESTS := 6
 # Keepers' ladders down the east-south-east face, from the top to the ledge and the ledge
 # to the meadow: above the upper ledge fence, so they land on the defended side of it,
 # and clear of the lighthouse door so the lamp and refuel prompts win there.
@@ -113,6 +115,9 @@ var _sky_mat: ProceduralSkyMaterial
 var _sea_mat: ShaderMaterial
 var atmosphere: Atmosphere
 var _sun: DirectionalLight3D
+## Gull Rock's boat, and the gulls.
+var rowing_boat: RowingBoat
+var gulls: GullFlocks
 var _enemies: Node3D
 var _tween: Tween
 
@@ -126,6 +131,7 @@ func _ready() -> void:
 	add_child(lighthouse)
 	_build_homestead()
 	_build_holm()
+	_build_islet()
 	_build_fences()
 	_build_ladders()
 	_build_scavenge()
@@ -577,13 +583,23 @@ func _build_ground() -> void:
 	var hcs := CollisionShape3D.new()
 	hcs.shape = holm_mesh.create_trimesh_shape()
 	ground.add_child(hcs)
+	# Gull Rock's, out to the north-east.
+	var islet_mesh := Terrain.build_islet_mesh()
+	var imi := MeshInstance3D.new()
+	imi.name = "IsletGround"
+	imi.mesh = islet_mesh
+	imi.material_override = Look.terrain_mat()
+	ground.add_child(imi)
+	var ics := CollisionShape3D.new()
+	ics.shape = islet_mesh.create_trimesh_shape()
+	ground.add_child(ics)
 	_build_rocks()
 	_build_grass()
 	Props.flowers(self, 240)
 	Props.ledge_rope(self, 0.12, 0.97, 16)
 	# The landing: a jetty off the east beach, with pots stacked on the shingle.
 	var east := float(Terrain.BEACHES[0])
-	Props.jetty(self, _shore_point(0, JETTY_LATERAL), deg_to_rad(east))
+	Props.jetty(self, _shore_point(0, JETTY_LATERAL), deg_to_rad(east), false)
 	Props.lobster_pot(self, Terrain.beach_point(0, 0.66, JETTY_LATERAL - 0.6) + Vector3(0.0, -0.05, 0.0), 0.4)
 	Props.lobster_pot(self, Terrain.beach_point(0, 0.7, JETTY_LATERAL + 0.5) + Vector3(0.0, -0.05, 0.0), 1.3)
 	var shed: Vector3 = _on_pad(Terrain.PADS[2][0], Terrain.PADS[2][1])
@@ -593,8 +609,6 @@ func _build_ground() -> void:
 	Props.barrel(self, _on_pad(shed.x - 2.3, shed.z + 0.2), Color(0.18, 0.2, 0.22))
 	var cottage: Vector3 = _on_pad(Terrain.PADS[0][0], Terrain.PADS[0][1])
 	Props.washing_line(self, _on_pad(cottage.x + 3.2, cottage.z + 0.6), _on_pad(cottage.x + 2.4, cottage.z + 2.4))
-	for i in 5:
-		Props.gull(self, 31 + i * 17)
 
 # Where the sea meets beach i's shingle, offset sideways.
 func _shore_point(i: int, lateral: float) -> Vector3:
@@ -637,7 +651,7 @@ func _build_rocks() -> void:
 		var p: Vector3 = boulders[i]
 		p.y -= 0.1
 		Look.rock(self, 500 + i * 13, Vector3(0.9, 0.6, 0.8), p, Look.STONE, 0.8)
-	var stacks := [Vector3(-25.0, 0, -13.0), Vector3(24.5, 0, -11.0), Vector3(-10.0, 0, -27.0), Vector3(15.0, 0, -24.0), Vector3(-26.5, 0, 9.0), Vector3(25.0, 0, 12.5), Vector3(-16.0, 0, 22.0)]
+	var stacks := [Vector3(-25.0, 0, -13.0), Vector3(30.5, 0, -19.5), Vector3(-10.0, 0, -27.0), Vector3(15.0, 0, -24.0), Vector3(-26.5, 0, 9.0), Vector3(25.0, 0, 12.5), Vector3(-16.0, 0, 22.0)]
 	for i in stacks.size():
 		var p: Vector3 = stacks[i]
 		var h := 2.5 + float(i % 3) * 1.4
@@ -665,6 +679,14 @@ func _build_grass() -> void:
 			continue
 		p.y = Terrain.height_at_v(p)
 		var b := Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * rng.randf_range(0.6, 1.2))
+		xforms.append(Transform3D(b, p))
+	# Gull Rock's turf, thick where the colony feeds it.
+	for i in ISLET_GRASS_TUFTS:
+		var q := Vector2(rng.randf_range(-1.0, 1.0) * Terrain.ISLET_HALF.x, rng.randf_range(-1.0, 1.0) * Terrain.ISLET_HALF.y)
+		var p := Terrain.islet_world(q)
+		if not Terrain.is_grassy(p.x, p.z):
+			continue
+		var b := Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * rng.randf_range(0.7, 1.3))
 		xforms.append(Transform3D(b, p))
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
@@ -697,6 +719,200 @@ func _build_homestead() -> void:
 	_face_inward(garden)
 	add_child(garden)
 	_build_shed(_on_pad(Terrain.PADS[2][0], Terrain.PADS[2][1]))
+
+# ---- Gull Rock ----
+
+# The islet: rocks round it and on it, thrift in the turf, the gulls' nests, the iron
+# ring and post at the slip's foot, the rowing boat that runs out to it from the jetty,
+# and the gulls themselves.
+func _build_islet() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 4711
+	# Skerries and fallen blocks at the cliffs' foot, and boulders on the top.
+	var placed := 0
+	for i in 160:
+		if placed >= 26:
+			break
+		var a := rng.randf() * TAU
+		var dir := Vector2(sin(a), cos(a))
+		var p := Terrain.ISLET_C
+		for k in 100:
+			p = Terrain.ISLET_C + dir * float(k) * 0.2
+			if Terrain.islet_edge_dist(p.x, p.y) > rng.randf_range(0.8, 2.6):
+				break
+		if Terrain.islet_slip_weight(p.x, p.y) > 0.05 or Geo.flat_dist(Vector3(p.x, 0, p.y), Terrain.islet_slip_point(0.3)) < 4.0:
+			continue
+		var sz := rng.randf_range(0.6, 1.5)
+		var at := Vector3(p.x, maxf(Terrain.height_at(p.x, p.y), Terrain.SEA_LEVEL - 0.3) - sz * 0.3, p.y)
+		Look.rock(self, 1500 + i * 7, Vector3(sz * 1.3, sz * 1.1, sz * 1.2), at, Terrain.WHIN, 0.25)
+		placed += 1
+	for sk in [Vector2(-9.5, -3.0), Vector2(9.0, 4.0), Vector2(-6.0, 6.5)]:
+		var w := Terrain.islet_world(sk)
+		w.y = Terrain.SEA_LEVEL - 0.5
+		Look.rock(self, 1900 + int(sk.x * 10.0), Vector3(1.8, 2.4, 1.6), w, Terrain.WHIN_DARK, 0.2)
+	var tops: Array[Vector3] = []
+	for i in 40:
+		if tops.size() >= 6:
+			break
+		var q := Vector2(rng.randf_range(-0.8, 0.8) * Terrain.ISLET_HALF.x, rng.randf_range(-0.7, 0.7) * Terrain.ISLET_HALF.y)
+		var w := Terrain.islet_world(q)
+		if Terrain.islet_outcrop(w.x, w.z) < 0.4 or Terrain.islet_edge_dist(w.x, w.z) > -1.0:
+			continue
+		var sz := rng.randf_range(0.5, 0.9)
+		Look.rock(self, 1700 + i * 5, Vector3(sz * 1.2, sz * 0.8, sz), w - Vector3(0.0, sz * 0.15, 0.0), Terrain.WHIN, 0.15)
+		tops.append(w + Vector3(0.0, sz * 0.55, 0.0))
+	_islet_thrift(rng)
+	# The nests, spread over the top and the upper ledges, clear of the slip.
+	var nests: Array[Vector3] = []
+	for i in 300:
+		if nests.size() >= NESTS:
+			break
+		var q := Vector2(rng.randf_range(-0.9, 0.9) * Terrain.ISLET_HALF.x, rng.randf_range(-0.85, 0.85) * Terrain.ISLET_HALF.y)
+		var w := Terrain.islet_world(q)
+		if Terrain.islet_edge_dist(w.x, w.z) > -0.5 or Terrain.slope_at(w.x, w.z) > 0.5 or not Terrain.walkable(w.x, w.z):
+			continue
+		if Geo.flat_dist(w, Terrain.islet_slip_point(1.0)) < 2.6 or Terrain.islet_slip_weight(w.x, w.z) > 0.05:
+			continue
+		var crowded := false
+		for o in nests:
+			crowded = crowded or Geo.flat_dist(o, w) < 2.4
+		if crowded:
+			continue
+		nests.append(w)
+		var n := GullNest.new()
+		n.seed_value = 600 + i
+		n.position = w
+		n.rotation.y = rng.randf() * TAU
+		add_child(n)
+	# The slip's foot: an iron ring in a stone post, the boat's line made fast to it.
+	var foot := _islet_foot()
+	var post := Props._cyl(self, 0.12, 0.7, Terrain.WHIN_DARK, foot + Vector3(1.2, 0.2, 0.0), 6)
+	var ring := MeshInstance3D.new()
+	var tor := TorusMesh.new()
+	tor.inner_radius = 0.07
+	tor.outer_radius = 0.1
+	ring.mesh = tor
+	ring.material_override = Look.flat_mat(Color(0.32, 0.18, 0.12), 0.6)
+	ring.position = post.position + Vector3(0.0, 0.3, 0.13)
+	ring.rotation.x = PI * 0.5
+	add_child(ring)
+	_build_rowing_boat(foot)
+	# The gulls, and everywhere they stand.
+	gulls = GullFlocks.new()
+	add_child(gulls)
+	var into_wind := atan2(Weather.WIND_DIR.x, Weather.WIND_DIR.z)
+	for w in nests:
+		gulls.add_perch(w + Vector3(0.45, 0.0, 0.2), into_wind, 2)
+	for w in tops:
+		gulls.add_perch(w, into_wind, 2)
+	var perched := 0
+	for i in 400:
+		if perched >= 18:
+			break
+		var a := rng.randf() * TAU
+		var dir := Vector2(sin(a), cos(a))
+		var r := 0.0
+		var p := Terrain.ISLET_C
+		while r < 12.0 and Terrain.islet_edge_dist(p.x, p.y) < -0.35:
+			r += 0.15
+			p = Terrain.ISLET_C + dir * r
+		# The clifftop's edge, or a ledge a step down.
+		p += dir * rng.randf_range(0.0, 0.9)
+		var h := Terrain.height_at(p.x, p.y)
+		if h < Terrain.SEA_LEVEL + 0.6 or Terrain.islet_slip_weight(p.x, p.y) > 0.05:
+			continue
+		gulls.add_perch(Vector3(p.x, h, p.y), into_wind, 2)
+		perched += 1
+	for b in Terrain.BEACHES.size():
+		for lat: float in [-1.6, 1.4]:
+			gulls.add_perch(Terrain.beach_point(b, 0.42, lat), into_wind, 0)
+	for b in Terrain.HOLM_BEACHES.size():
+		gulls.add_perch(Terrain.holm_beach_point(b, 0.45, 1.0), into_wind, 1)
+
+func _islet_foot() -> Vector3:
+	var t := 0.0
+	while t < 1.0 and Terrain.islet_slip_point(t).y < Terrain.SEA_LEVEL + 0.1:
+		t += 0.01
+	return Terrain.islet_slip_point(t)
+
+# Thrift: cushions of sea pink all over the top.
+func _islet_thrift(rng: RandomNumberGenerator) -> void:
+	var cushion := SphereMesh.new()
+	cushion.radius = 0.16
+	cushion.height = 0.16
+	cushion.radial_segments = 8
+	cushion.rings = 3
+	cushion.is_hemisphere = true
+	var green := Look.flat_mat(Color(0.25, 0.36, 0.17), 0.95)
+	var flower := SphereMesh.new()
+	flower.radius = 0.035
+	flower.height = 0.07
+	flower.radial_segments = 5
+	flower.rings = 2
+	var pink := Look.flat_mat(Color(0.93, 0.55, 0.70), 0.8)
+	for i in 120:
+		var q := Vector2(rng.randf_range(-1.0, 1.0) * Terrain.ISLET_HALF.x, rng.randf_range(-1.0, 1.0) * Terrain.ISLET_HALF.y)
+		var w := Terrain.islet_world(q)
+		if Terrain.islet_edge_dist(w.x, w.z) > 0.6 or w.y < Terrain.SEA_LEVEL + 0.8 or Terrain.islet_slip_weight(w.x, w.z) > 0.1:
+			continue
+		var c := MeshInstance3D.new()
+		c.mesh = cushion
+		c.material_override = green
+		c.position = w
+		c.scale = Vector3.ONE * rng.randf_range(0.7, 1.4)
+		c.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(c)
+		for k in 5:
+			var f := MeshInstance3D.new()
+			f.mesh = flower
+			f.material_override = pink
+			var a := rng.randf() * TAU
+			f.position = Vector3(sin(a) * 0.08, 0.11 + rng.randf() * 0.04, cos(a) * 0.08)
+			f.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			c.add_child(f)
+
+# The boat at the east beach's jetty, with its line out to Gull Rock.
+func _build_rowing_boat(islet_foot: Vector3) -> void:
+	var east := deg_to_rad(float(Terrain.BEACHES[0]))
+	var start := _shore_point(0, JETTY_LATERAL)
+	var jetty := Transform3D(Basis(Vector3.UP, east), start + Vector3(0.0, -0.05, 0.0))
+	var main_at := jetty * Vector3(1.55, 0.0, 2.7)
+	main_at.y = Terrain.SEA_LEVEL
+	var main_moor := Transform3D(Basis(Vector3.UP, east + 0.08), main_at)
+	var outward := Vector3(sin(east), 0.0, cos(east))
+	var slip := deg_to_rad(Terrain.ISLET_LANDING)
+	var slip_out := Vector3(sin(slip), 0.0, cos(slip))
+	var across := Vector3(cos(slip), 0.0, -sin(slip))
+	var islet_at := islet_foot + slip_out * 2.3 + across * 1.3
+	islet_at.y = Terrain.SEA_LEVEL
+	var islet_moor := Transform3D(Basis(Vector3.UP, slip), islet_at)
+	rowing_boat = RowingBoat.new()
+	rowing_boat.name = "RowingBoat"
+	add_child(rowing_boat)
+	var via := [main_at + outward * 3.5 + Vector3(0.0, 0.0, -1.5), Vector3(25.5, Terrain.SEA_LEVEL, -12.0), Vector3(25.0, Terrain.SEA_LEVEL, -21.5), islet_at + slip_out * 4.5]
+	# Where keepers take the boat: on the shingle just up from the jetty's foot, on flat ground.
+	var board_at := start
+	var t := 0.0
+	while t < 0.6:
+		var c := Terrain.beach_point(0, t, JETTY_LATERAL - 0.9)
+		if c.y > Terrain.SEA_LEVEL + 0.25 and Terrain.walkable(c.x, c.z) and Terrain.slope_at(c.x, c.z) < 0.6:
+			board_at = c
+			break
+		t += 0.01
+	rowing_boat.setup(main_moor, board_at, islet_moor, islet_foot, via)
+	# The running line: made fast to the jetty's end post and to the ring on the rock.
+	_line(jetty * Vector3(0.6, 0.25, 3.8), jetty * Vector3(0.75, 0.0, 5.2) + Vector3(0.0, Terrain.SEA_LEVEL - start.y - 0.1, 0.0))
+	_line(islet_foot + Vector3(1.2, 0.5, 0.0), islet_foot + slip_out * 3.0 + Vector3(0.0, Terrain.SEA_LEVEL - islet_foot.y - 0.05, 0.0))
+
+# A rope hanging slack from a to b, where it goes under the water.
+func _line(a: Vector3, b: Vector3) -> void:
+	var prev := a
+	for i in range(1, 7):
+		var t := float(i) / 6.0
+		var p := a.lerp(b, t) - Vector3(0.0, sin(t * PI) * 0.18, 0.0)
+		var line := Props._box(self, Vector3(0.018, 0.018, prev.distance_to(p)), Color(0.44, 0.37, 0.25), (prev + p) * 0.5)
+		line.look_at_from_position(line.position, p, Vector3.UP)
+		prev = p
 
 # The holm: the camp on it, the rope bridge across to it, rocks along its shore.
 func _build_holm() -> void:
@@ -816,6 +1032,9 @@ func _build_sea() -> void:
 	var r := Terrain.SHORE_RECT
 	mat.set_shader_parameter("holm_shore_rect", Vector4(r.position.x, r.position.y, r.size.x, r.size.y))
 	mat.set_shader_parameter("use_holm_tex", 1.0)
+	mat.set_shader_parameter("islet_shore_tex", Terrain.islet_shore_texture())
+	var ir := Terrain.ISLET_SHORE_RECT
+	mat.set_shader_parameter("islet_shore_rect", Vector4(ir.position.x, ir.position.y, ir.size.x, ir.size.y))
 	_sea_mat = mat
 	sea.position = Vector3(24.0, Terrain.SEA_LEVEL, 0.0)
 	sea.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -1019,6 +1238,11 @@ func _on_phase_changed(p: int) -> void:
 		_tally = {}
 		if Run.active and Rescue.is_last_night() and not Net.is_client():
 			hud.warn("The last night. The relief boat comes at dawn: hold the light!")
+		if Run.active and not Net.is_client():
+			for k in players:
+				if is_instance_valid(k) and not k.ai and Terrain.island_of(k.global_position.x, k.global_position.z) == 2:
+					hud.warn("%s is still out on Gull Rock: row back before it's dark!" % k.keeper_name())
+					break
 	if p == Cycle.Phase.DAWN and Run.active and not Net.is_client():
 		_wash_up_oil()
 		_wash_up_shells()

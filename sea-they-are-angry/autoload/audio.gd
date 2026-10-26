@@ -74,6 +74,10 @@ const SOUNDS := {
 	"arrow_hit": ["_s_arrow_hit", false],
 	"flamer": ["_s_flamer", true],
 	"glass": ["_s_glass", false],
+	"gull_call": ["_s_gull_call", false],
+	"gull_laugh": ["_s_gull_laugh", false],
+	"gull_alarm": ["_s_gull_alarm", false],
+	"oar": ["_s_oar", false],
 }
 
 func _ready() -> void:
@@ -885,3 +889,65 @@ func _s_trap_snap() -> PackedFloat32Array:
 		var link := _env(_tone(_n(0.1), 2300.0 + 400.0 * k, 2200.0 + 400.0 * k), 0.001, 50.0)
 		_mix(clack, link, 0.25, _n(0.05) * (k + 1))
 	return _gain(clack, 1.0)
+
+# ---- the gulls and the boat ----
+
+# One gull note: a nasal, harmonic-rich voice whose pitch rises then falls (or the other
+# way), roughened with a little breath. `f` is where it peaks.
+func _gull_note(seconds: float, f0: float, f: float, f1: float, rough: float, seed_value: int) -> PackedFloat32Array:
+	var n := _n(seconds)
+	var b := PackedFloat32Array()
+	b.resize(n)
+	var ph := 0.0
+	var r := RandomNumberGenerator.new()
+	r.seed = seed_value
+	var wob := 0.0
+	for i in n:
+		var t := float(i) / float(n)
+		var fr := lerpf(f0, f, smoothstep(0.0, 0.35, t)) if t < 0.35 else lerpf(f, f1, smoothstep(0.35, 1.0, t))
+		wob = lerpf(wob, r.randf_range(-1.0, 1.0), 0.02)
+		ph += TAU * fr * (1.0 + wob * rough * 0.03) / RATE
+		# A buzzy, reedy wave: strong low harmonics, a nasal third and fifth.
+		var v := sin(ph) * 0.55 + sin(ph * 2.0) * 0.45 + sin(ph * 3.0) * 0.38 + sin(ph * 4.0) * 0.16 + sin(ph * 5.0) * 0.22 + sin(ph * 6.0) * 0.08
+		var env := smoothstep(0.0, 0.08, t) * (1.0 - smoothstep(0.7, 1.0, t))
+		b[i] = v * env
+	var breath := _env(_highpass(_noise(n, seed_value + 3), 1800.0), 0.02, 6.0)
+	_mix(b, breath, 0.05 * rough)
+	return _lowpass(_highpass(b, 450.0), 5200.0)
+
+# A herring gull's mew, the long "kee-ow" with a couple of shorter ones after.
+func _s_gull_call() -> PackedFloat32Array:
+	var out := PackedFloat32Array()
+	out.resize(_n(1.3))
+	_mix(out, _gull_note(0.42, 900.0, 1450.0, 760.0, 1.0, 801), 0.55)
+	_mix(out, _gull_note(0.24, 1000.0, 1350.0, 900.0, 1.0, 802), 0.42, _n(0.55))
+	_mix(out, _gull_note(0.22, 980.0, 1300.0, 880.0, 1.0, 803), 0.35, _n(0.86))
+	return _gain(out, 0.75)
+
+# The laughing long call: head thrown back, a run of short "ha" notes falling away.
+func _s_gull_laugh() -> PackedFloat32Array:
+	var out := PackedFloat32Array()
+	out.resize(_n(1.9))
+	_mix(out, _gull_note(0.38, 820.0, 1400.0, 1100.0, 1.0, 811), 0.5)
+	for k in 7:
+		var f := 1250.0 - float(k) * 45.0
+		_mix(out, _gull_note(0.12, f * 0.85, f, f * 0.78, 1.4, 820 + k), 0.4 - 0.025 * k, _n(0.45 + 0.17 * float(k)))
+	return _gain(out, 0.75)
+
+# Alarm: hard, quick "kek-kek-kek".
+func _s_gull_alarm() -> PackedFloat32Array:
+	var out := PackedFloat32Array()
+	out.resize(_n(0.9))
+	for k in 4:
+		_mix(out, _gull_note(0.11, 1300.0, 1650.0, 1150.0, 2.0, 840 + k), 0.55, _n(0.2 * float(k)))
+	return _gain(out, 0.8)
+
+# An oar's stroke: the blade's chunk and swirl in the water, and the loom knocking in
+# the thole pins.
+func _s_oar() -> PackedFloat32Array:
+	var n := _n(0.8)
+	var water := _env(_lowpass(_highpass(_noise(n, 860), 250.0), 1800.0), 0.03, 4.5)
+	var knock := _env(_tone(_n(0.12), 210.0, 160.0, 1), 0.001, 40.0)
+	_mix(water, knock, 0.35)
+	return _gain(water, 1.1)
+

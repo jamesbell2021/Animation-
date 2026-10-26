@@ -36,6 +36,8 @@ var storm := 0.0
 ## The wind over the island right now (m/s, horizontal): a breeze on a calm night, a
 ## gale in a storm, gusting. Smoke and anything else that drifts reads it.
 static var wind_now := Vector3(0.7, 0.0, 0.18)
+## How stormy it is right now, 0 to 1 (the gulls and the rowing boat read it).
+static var storm_now := 0.0
 const WIND_DIR := Vector3(0.96, 0.0, 0.26)
 var vignette: ShaderMaterial
 var _target := 0.0
@@ -210,6 +212,7 @@ func _place_watchers() -> void:
 
 func _process(delta: float) -> void:
 	storm = move_toward(storm, _target, delta / RAMP)
+	storm_now = storm
 	_gust = maxf(0.0, _gust - delta * 0.6)
 	wind_now = WIND_DIR * (0.7 + storm * 5.0 + _gust * 3.5)
 	_apply_storm()

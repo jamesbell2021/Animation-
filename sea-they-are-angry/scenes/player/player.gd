@@ -167,6 +167,16 @@ var net_prompt := ""
 var net_name := ""
 ## Gone aboard the relief boat (the end of the chapter).
 var boarded := false
+## In the rowing boat (RowingBoat), at seat `ride_seat` (0 at the oars). While it's
+## set the boat carries the keeper and nothing else is done.
+var riding: Node3D = null
+var ride_seat := 0
+var _ride_t := 0.0
+var _ride_from := Vector3.ZERO
+var _ride_out := false
+var _ride_to := Vector3.ZERO
+var _ride_layers := false
+var _ride_mask := Vector2i.ZERO
 var _net: Array = []
 var _net_shot := -1
 # Reeling from a blow: slid back over the stagger clip's slide, no control meanwhile.
@@ -441,6 +451,9 @@ func _physics_process(delta: float) -> void:
 	_flicker += delta
 	if _lantern_light.visible:
 		_lantern_light.light_energy = 1.5 + 0.12 * sin(_flicker * 11.0) * sin(_flicker * 7.3)
+	if riding != null:
+		_ride_step(delta)
+		return
 	if downed:
 		if rig != null and rig.is_ragdoll():
 			_follow_ragdoll()
@@ -1153,7 +1166,7 @@ func _pour_dirty() -> void:
 	_start_job("can", lh, "use_dirty")
 
 func is_busy() -> bool:
-	return _scripted
+	return _scripted or riding != null
 
 # ---- knocked about ----
 
@@ -1326,7 +1339,7 @@ func _find_interactable() -> Node:
 			d -= 1.5
 		if d > best_d:
 			continue
-		if n.interact_prompt() == "":
+		if _prompt_of(n) == "":
 			continue
 		best = n
 		best_d = d
@@ -1335,6 +1348,8 @@ func _find_interactable() -> Node:
 func interact_prompt() -> String:
 	if puppet:
 		return net_prompt
+	if riding != null:
+		return ""
 	var mate := _downed_mate()
 	if mate != null:
 		return _keys("[E] Hold to revive %s  (%d%%)" % [mate.keeper_name(), roundi(mate.revive_progress * 100.0)])
@@ -1349,10 +1364,14 @@ func interact_prompt() -> String:
 	if _job_tool == "can":
 		return "Pouring oil..."
 	if _target != null and is_instance_valid(_target):
-		return _keys(_target.interact_prompt())
+		return _keys(_prompt_of(_target))
 	if not has_hook:
 		return "Your boathook lies by the tower: walk over it to take it back"
 	return ""
+
+# What a thing offers this keeper: some (the boat's landings) depend on who's asking.
+func _prompt_of(n: Node) -> String:
+	return n.prompt_for(self) if n.has_method("prompt_for") else n.interact_prompt()
 
 # Rewrite keyboard hints for keepers on a gamepad or the arrow keys.
 func _keys(text: String) -> String:
@@ -1415,7 +1434,7 @@ func revive(fraction: float) -> void:
 	Events.message.emit("%s is back on their feet." % keeper_name())
 
 func take_damage(amount: int, from: Vector3 = Vector3.INF) -> void:
-	if puppet or hp <= 0 or downed or not Run.active or _inside:
+	if puppet or hp <= 0 or downed or not Run.active or _inside or riding != null:
 		return
 	amount = maxi(1, roundi(float(amount) * Difficulty.keeper_damage()))
 	hp = maxi(0, hp - amount)
@@ -1442,6 +1461,101 @@ func take_damage(amount: int, from: Vector3 = Vector3.INF) -> void:
 			Run.end_run("Every keeper is down.")
 
 ## Aboard the relief boat: out of the game, stowed with her.
+# ---- the rowing boat ----
+
+## Climb into the rowing boat at a seat (RowingBoat seats its crew).
+func ride(boat: Node3D, seat: int) -> void:
+	leave_light()
+	_stop_operating()
+	arsenal.cease()
+	riding = boat
+	ride_seat = seat
+	_ride_t = 0.0
+	_ride_out = false
+	_ride_from = global_position
+	_ride_mask = Vector2i(collision_layer, collision_mask)
+	collision_layer = 0
+	collision_mask = 0
+	velocity = Vector3.ZERO
+	arsenal.refresh()
+
+## Climb out onto the shore at `to`.
+func dismount(to: Vector3) -> void:
+	if riding == null:
+		return
+	_ride_out = true
+	_ride_t = 0.0
+	_ride_from = global_position
+	_ride_to = to
+
+func _ride_step(delta: float) -> void:
+	_ride_t += delta
+	var k := smoothstep(0.0, 1.0, _ride_t / RowingBoat.STEP_TIME)
+	var arc := Vector3(0.0, sin(k * PI) * 0.3, 0.0)
+	velocity = Vector3.ZERO
+	if _ride_out:
+		global_position = _ride_from.lerp(_ride_to, k) + arc
+		_seated_pose(1.0 - k, -1.0)
+		if k >= 1.0:
+			riding = null
+			_ride_out = false
+			_clear_seated()
+			arsenal.refresh()
+			collision_layer = _ride_mask.x
+			collision_mask = _ride_mask.y
+			global_position = _ride_to + Vector3(0.0, 0.05, 0.0)
+		return
+	if not is_instance_valid(riding):
+		riding = null
+		_clear_seated()
+		collision_layer = _ride_mask.x
+		collision_mask = _ride_mask.y
+		return
+	var x: Transform3D = riding.seat_xform(ride_seat)
+	global_position = _ride_from.lerp(x.origin, k) + arc
+	facing = x.basis.get_euler().y
+	rotation.y = facing
+	_seated_pose(k, riding.pull() if ride_seat == 0 else -1.0)
+
+const _SEAT_BONES := ["thigh.L", "thigh.R", "shin.L", "shin.R", "spine", "chest", "upper_arm.L", "upper_arm.R", "forearm.L", "forearm.R"]
+
+## Sitting on a thwart, `w` of the way down; at the oars when `pull` is 0 (reached out
+## at the catch) to 1 (pulled in at the finish), hands on the knees when it's negative.
+func _seated_pose(w: float, pull: float) -> void:
+	if not _clips():
+		return
+	rig.locomote(0.0)
+	rig.activity("")
+	_ride_layers = true
+	rig.layer("thigh.L", Vector3(-1.45 * w, 0.0, -0.12 * w))
+	rig.layer("thigh.R", Vector3(-1.45 * w, 0.0, 0.12 * w))
+	rig.layer("shin.L", Vector3(1.35 * w, 0.0, 0.0))
+	rig.layer("shin.R", Vector3(1.35 * w, 0.0, 0.0))
+	if pull < 0.0:
+		rig.layer("spine", Vector3(0.12 * w, 0.0, 0.0))
+		rig.layer("chest", Vector3.ZERO)
+		rig.layer("upper_arm.L", Vector3(-0.55 * w, 0.0, -0.1 * w))
+		rig.layer("upper_arm.R", Vector3(-0.55 * w, 0.0, 0.1 * w))
+		rig.layer("forearm.L", Vector3(-0.7 * w, 0.0, 0.0))
+		rig.layer("forearm.R", Vector3(-0.7 * w, 0.0, 0.0))
+		return
+	var reach := 1.0 - pull
+	# Lean in to the catch with straight arms, sit back and draw the elbows past the
+	# ribs at the finish.
+	rig.layer("spine", Vector3((0.4 * reach - 0.22 * pull) * w, 0.0, 0.0))
+	rig.layer("chest", Vector3((0.15 * reach - 0.1 * pull) * w, 0.0, 0.0))
+	rig.layer("upper_arm.L", Vector3(-(0.35 + 0.95 * reach) * w, 0.0, -0.25 * w))
+	rig.layer("upper_arm.R", Vector3(-(0.35 + 0.95 * reach) * w, 0.0, 0.25 * w))
+	rig.layer("forearm.L", Vector3(-(1.5 - 1.25 * reach) * w, 0.0, 0.0))
+	rig.layer("forearm.R", Vector3(-(1.5 - 1.25 * reach) * w, 0.0, 0.0))
+
+func _clear_seated() -> void:
+	_ride_layers = false
+	if not _clips():
+		return
+	for b in _SEAT_BONES:
+		rig.layer(b, Vector3.ZERO)
+
 func board(boat: Node3D) -> void:
 	if boarded:
 		return
@@ -1478,6 +1592,8 @@ func net_snap() -> Array:
 		flags |= 64
 	if has_hook:
 		flags |= 128
+	if riding != null and not _ride_out:
+		flags |= 256 | ((ride_seat + 1) << 10)
 	var light := -1
 	var camp := get_tree().get_first_node_in_group("camp_root")
 	if manning != null and camp != null:
@@ -1554,6 +1670,17 @@ func _puppet_step(delta: float) -> void:
 	_swing_t = maxf(0.0, _swing_t - delta)
 	if downed or ragdolled or _inside:
 		return
+	if int(_net[7]) & 256 != 0:
+		var seat := ((int(_net[7]) >> 10) & 3) - 1
+		var boat := get_tree().get_first_node_in_group("rowing_boat")
+		var was := _ride_layers
+		_seated_pose(1.0, boat.pull() if seat == 0 and boat != null else -1.0)
+		if not was:
+			arsenal.refresh()
+		return
+	if _ride_layers:
+		_clear_seated()
+		arsenal.refresh()
 	if _clips() and int(_net[7]) & 16 != 0:
 		rig.locomote(0.0)
 		rig.activity("climb")

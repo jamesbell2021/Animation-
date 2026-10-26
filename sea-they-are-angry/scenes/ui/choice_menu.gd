@@ -176,7 +176,7 @@ func _refresh_remote() -> void:
 
 func _stock_line() -> String:
 	var parts: Array[String] = []
-	for k in ["driftwood", "scrap", "bio", "seaweed", "food", "oil", "dirty_fuel"]:
+	for k in ["driftwood", "scrap", "bio", "seaweed", "food", "eggs", "oil", "dirty_fuel"]:
 		var v := Stock.get_amount(k)
 		if v > 0:
 			parts.append("%s %d" % [k.replace("_", " "), v])
