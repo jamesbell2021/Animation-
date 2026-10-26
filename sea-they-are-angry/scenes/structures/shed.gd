@@ -80,6 +80,8 @@ func menu_rows(p: Player) -> Array:
 	var gun_with := Arsenal.holder("shotgun")
 	if gun_with == p.idx:
 		rows.append({"text": "Hang the shotgun back on the wall", "do": arms.take_away.bind("shotgun")})
+	elif gun_with >= 0 and _helper(gun_with) != null:
+		rows.append({"text": "Take the shotgun back from %s" % Players.NAMES[gun_with % Players.NAMES.size()], "do": take_back.bind(gun_with, p)})
 	elif gun_with >= 0:
 		rows.append({"text": "The shotgun: %s has it" % Players.NAMES[gun_with % Players.NAMES.size()], "enabled": false, "do": nobody})
 	else:
@@ -102,6 +104,12 @@ func menu_rows(p: Player) -> Array:
 	if not arms.carries("bow"):
 		rows.append({"text": "Make a longbow (%s): driftwood stave, kelp-cord string" % Stock.cost_str(BOW_COST),
 			"enabled": Stock.can_afford(BOW_COST), "do": make_bow.bind(p)})
+	else:
+		# One's own made: one for a helper keeper too, who'll shoot what comes near it.
+		for k in Players.nodes:
+			if is_instance_valid(k) and k.ai and k.arsenal != null and not k.arsenal.carries("bow"):
+				rows.append({"text": "Make a longbow for %s (%s)" % [k.keeper_name(), Stock.cost_str(BOW_COST)],
+					"enabled": Stock.can_afford(BOW_COST), "do": make_bow_for.bind(k)})
 	rows.append({"text": "Whittle %d arrows (%s)   %d in store" % [ARROWS_MADE, Stock.cost_str(ARROWS_COST), Stock.get_amount("arrows")],
 		"enabled": Stock.can_afford(ARROWS_COST), "do": make.bind(ARROWS_COST, "arrows", ARROWS_MADE)})
 	rows.append({"text": "Fill %d petrol bombs (%s: bio in a bottle, a kelp rag)   %d in store" % [BOMBS_MADE, Stock.cost_str(BOMBS_COST), Stock.get_amount("bombs")],
@@ -129,6 +137,28 @@ func make_bow(p: Player) -> void:
 	Audio.sfx("hammer", global_position, -4.0, 0.1)
 	Events.message.emit("%s has a longbow: hold attack to draw, let go to loose." % p.keeper_name())
 	p.arsenal.give("bow")
+
+func make_bow_for(k: Player) -> void:
+	if k.arsenal.carries("bow") or not Stock.spend(BOW_COST):
+		return
+	Audio.sfx("hammer", global_position, -4.0, 0.1)
+	k.arsenal.give("bow")
+	k.arsenal.select("hook")
+	Events.message.emit("%s has a longbow now, and will shoot what comes near (arrows from the store)." % k.keeper_name())
+
+## A helper keeper with the shotgun (or nothing): who has it, if they're the computer's.
+func _helper(idx: int) -> Player:
+	if idx < 0 or idx >= Players.nodes.size():
+		return null
+	var k = Players.nodes[idx]
+	return k if is_instance_valid(k) and k is Player and k.ai else null
+
+func take_back(from_idx: int, p: Player) -> void:
+	var k := _helper(from_idx)
+	if k == null:
+		return
+	k.arsenal.take_away("shotgun")
+	p.arsenal.give("shotgun")
 
 func make(cost: Dictionary, kind: String, n: int) -> void:
 	if Stock.spend(cost):

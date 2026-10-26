@@ -272,6 +272,7 @@ func _ink(delta: float) -> void:
 		var cloud := InkCloud.new()
 		get_parent().add_child(cloud)
 		cloud.global_position = global_position
+		Net.relay_shot("ink", [global_position])
 		Audio.sfx("squid_ink", global_position, -2.0, 0.1)
 
 func in_light(mode: int, delta: float) -> void:

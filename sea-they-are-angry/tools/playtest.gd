@@ -1,17 +1,20 @@
 extends SceneTree
 ## Balance playtest: plays nights with a simple keeper bot and prints what happened.
-##   godot --headless --path sea-they-are-angry --script res://tools/playtest.gd -- [nights] [bot|idle] [keepers] [helpers]
+##   godot --headless --path sea-they-are-angry --script res://tools/playtest.gd -- [nights] [bot|idle] [keepers] [helpers] [calm|angry|raging]
 ## "helpers" brings in the computer's keepers to make up three (the camp's warden among
 ## them); without it every keeper is the bot's and the camp has only its searchlights.
 ## "bot" keeps the lamp manned: it burns whatever is on the beaches with the focused
 ## beam and holds the nearest climber in the wide beam. "idle" leaves the lamp to sweep
 ## by itself. Between nights the bot patches up what it can afford, like a player would.
+## The sea is the difficulty (angry, the normal one, if not given). It stops when the
+## relief boat comes, since that's the end of the chapter.
 ## Your own Continue save and best night are backed up first and put back afterwards.
 
 var nights := 3
 var mode := "bot"
 var keepers := 1
 var helpers := false
+var sea := 1
 var stats := {}
 # A human at the lamp: picks a new target about once a second and aims a few degrees off.
 const REACTION := 1.1
@@ -33,6 +36,9 @@ func _go() -> void:
 		keepers = int(a[2])
 	if a.size() > 3:
 		helpers = a[3] == "helpers"
+	if a.size() > 4:
+		sea = maxi(0, ["calm", "angry", "raging"].find(a[4]))
+	root.get_node("Run").next_difficulty = sea
 	var saved := _backup()
 	if FileAccess.file_exists("user://run.json"):
 		DirAccess.remove_absolute(ProjectSettings.globalize_path("user://run.json"))
@@ -150,6 +156,10 @@ func _go() -> void:
 		print("   smothered for %.0f s" % stats.get("smothered_s", 0.0))
 		print("   lamp lit %.0f s, focused %.0f s, of which burning something %.0f s" % [stats.get("lit_s", 0.0), stats.get("focus_s", 0.0), stats.get("burn_s", 0.0)])
 		if not run.active:
+			break
+		var rescue_night: int = load("res://scenes/systems/rescue.gd").night()
+		if run.night - 1 >= rescue_night:
+			print("THE BOAT CAME after night %d (%s sea): the end of Chapter One" % [rescue_night, ["calm", "angry", "raging"][sea]])
 			break
 		# Let dawn play out, then patch up like a player would during the day.
 		for i in 120:

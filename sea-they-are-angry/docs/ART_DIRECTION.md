@@ -115,6 +115,15 @@ The owner's brief is "a Valheim look". In practice that means simple, faceted lo
 
 Weather and real character models are in (see DECISIONS). Still to do for the full look: foliage variety (heather, thrift, kelp on the shingle), a sky that shows at the horizon, and pushing the character script further (cloth folds, more facial detail).
 
+## The holm and the old camp
+
+The holm should read as a real North Sea islet beside the lighthouse's crag, and its camp as a Second World War internment camp that's been left to the weather for forty years.
+
+- **The rock:** red-brown sandstone in steps and beds (darker bands), lichen on the tops of the outcrops, black-brown wrack on the wave-cut shelf, heather on the turf knolls. A ragged shore with coves where the two beaches are, skerries off the points and a single sea stack. Nothing smooth or symmetrical.
+- **The camp's materials** (generated tiling textures, `art/source/textures/build_textures.py camp`): corrugated iron in faded army green, rusting through in patches; red brick, sooty in places; concrete in shuttered courses with moss and lichen; black roofing felt; rust; silvered timber; and hessian sandbags. Everything faded and stained, nothing painted fresh.
+- **The props tell the story:** the flag still flying, the "No. 7 CAMP / AUTHORISED PERSONS ONLY" sign, a washing line, oil drums, a coal bunker, a water tank, duckboards over the mud. Keep any new props in that register: utilitarian, wartime, weathered.
+- **Light:** the huts' small windows glow warm when the generator runs; the searchlights are the cold white against it.
+
 ## The four keepers
 
 | Keeper | Role | Read at a glance | Signature prop |

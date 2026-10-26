@@ -13,7 +13,10 @@ extends Node
 ##            its rounds; from dusk it climbs the tower facing the danger and works its
 ##            searchlight, burning whatever comes near the wire.
 ## Either drops what it's doing to fight anything that comes close, to get a downed
-## keeper back on their feet, or to go and pick up its thrown boathook.
+## keeper back on their feet, or to go and pick up its thrown boathook. It fights with
+## the shed's weapons when it has them: the lighthouse keeper takes the shotgun off the
+## wall if nobody has it (a person can take it back at the shed), and a longbow made
+## for it at the shed. It leaves the flamer and the petrol bombs to the people.
 
 const THINK_EVERY := 0.4
 const ARRIVE := 0.55
@@ -27,6 +30,13 @@ const DWELL := 3.5
 ## Aiming the lamp: a new target about once a second, a few degrees off, like a person.
 const REACTION := 1.0
 const AIM_ERROR_DEG := 3.0
+## The shotgun at this range or closer; the bow out to this, past the boathook's reach.
+const GUN_RANGE := 6.0
+const BOW_RANGE := 11.0
+## How far it draws the bow before it looses (a full draw is 1).
+const BOW_DRAW := 0.8
+## Cartridges it leaves in the box for the people when it takes the shotgun.
+const SHELLS_SPARE := 2
 
 var keeper: Player
 var role := "light"
@@ -53,6 +63,7 @@ func _physics_process(delta: float) -> void:
 	if keeper == null or not is_instance_valid(keeper) or not Run.active:
 		return
 	keeper.ai_held.clear()
+	keeper.ai_just.clear()
 	if keeper.downed or keeper.is_climbing() or keeper.is_busy() or keeper.is_staggering():
 		keeper.ai_move = Vector2.ZERO
 		return
@@ -91,6 +102,11 @@ func _decide() -> void:
 		return
 	# Hungry or cold: see to it before it slows them down.
 	if _see_to_needs():
+		return
+	# The shotgun on the wall and cartridges in the box: the lighthouse keeper takes it.
+	if _wants_gun():
+		var shed := _shed()
+		_set_task("arm", shed, shed.global_position)
 		return
 	if not keeper.has_hook:
 		var hook := _my_hook()
@@ -208,6 +224,15 @@ func _act(delta: float) -> void:
 					_route.clear()
 		"fight":
 			_fight()
+		"arm":
+			var shed := _task_target as Shed
+			if shed != null and is_instance_valid(shed) and shed.surface_distance(keeper.global_position) <= Player.INTERACT_RANGE:
+				if _wants_gun():
+					keeper.arsenal.give("shotgun")
+					keeper.arsenal.select("hook")
+					Events.message.emit("%s takes the shotgun off the shed wall. (Take it back at the shed if you want it.)" % keeper.keeper_name())
+				_task = ""
+				_route.clear()
 		"board":
 			if _task_target != null and is_instance_valid(_task_target) and Geo.flat_dist(keeper.global_position, _task_target.shore) <= ReliefBoat.BOARD_RANGE:
 				_task_target.take_aboard(keeper)
@@ -288,8 +313,8 @@ func _act(delta: float) -> void:
 			pass
 
 func _fight() -> void:
-	var e := _task_target as Node3D
-	if e == null or not is_instance_valid(e):
+	var e: Node3D = _task_target if is_instance_valid(_task_target) else null
+	if e == null:
 		_task = ""
 		return
 	var to := e.global_position - keeper.global_position
@@ -299,7 +324,14 @@ func _fight() -> void:
 		_route.clear()
 		_goal = keeper.global_position - to.normalized() * BURST_CLEAR
 		return
-	if to.length() <= STRIKE_RANGE:
+	var d := to.length()
+	var arms := keeper.arsenal
+	if arms != null and _shoot(e, to, d):
+		return
+	if arms != null and arms.in_hand():
+		arms.cease()
+		arms.select("hook")
+	if d <= STRIKE_RANGE:
 		_route.clear()
 		_goal = Vector3.INF
 		keeper.ai_move = Vector2.ZERO
@@ -311,6 +343,52 @@ func _fight() -> void:
 		# Step in on the near side.
 		_route.clear()
 		_goal = e.global_position - to.normalized() * (STRIKE_RANGE - 0.4)
+
+# Fight with what it carries from the shed: stand, aim and fire the shotgun when it's
+# close, or draw and loose the bow at something past the boathook's reach. False to
+# fight with the boathook instead.
+func _shoot(e: Node3D, to: Vector3, d: float) -> bool:
+	var arms := keeper.arsenal
+	var free := Difficulty.free_ammo()
+	var gun := arms.available("shotgun") and (Run.barrels > 0 or Stock.get_amount("shells") > 0 or free)
+	var bow := arms.available("bow") and (Stock.get_amount("arrows") > 0 or free or arms.draw >= 0.0)
+	var use := ""
+	if gun and d <= GUN_RANGE:
+		use = "shotgun"
+	elif bow and d > STRIKE_RANGE + 0.5 and d <= BOW_RANGE:
+		use = "bow"
+	if use == "":
+		return false
+	if arms.weapon != use:
+		arms.cease()
+		arms.select(use)
+	_route.clear()
+	_goal = Vector3.INF
+	keeper.ai_move = Vector2.ZERO
+	keeper._aim = to.normalized()
+	keeper._aim_face_t = 0.3
+	keeper.ai_point = e.global_position
+	if use == "shotgun":
+		keeper.ai_just["attack"] = arms._cd <= 0.0 and arms._reload_t <= 0.0
+	elif arms.draw < 0.0:
+		keeper.ai_just["attack"] = arms._cd <= 0.0
+		keeper.ai_held["attack"] = true
+	else:
+		# Hold the draw until it's far enough back, then let go.
+		keeper.ai_held["attack"] = arms.draw < BOW_DRAW
+	return true
+
+func _shed() -> Shed:
+	for s in get_tree().get_nodes_in_group("structures"):
+		if s is Shed and not s.is_destroyed():
+			return s
+	return null
+
+func _wants_gun() -> bool:
+	if role != "light" or keeper.arsenal == null or keeper.operating or keeper.manning != null \
+			or Arsenal.holder("shotgun") >= 0 or _shed() == null:
+		return false
+	return Difficulty.free_ammo() or Run.barrels + Stock.get_amount("shells") > SHELLS_SPARE
 
 # Up in the lamp room: burn the nearest creature the focused beam can reach, or hold
 # the closest in the wide beam. Leave to deal with something on the tower.

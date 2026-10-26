@@ -228,6 +228,7 @@ func begin_run(continue_save: bool, n: int) -> void:
 		Players.wanted = clampi(n, 1, Players.MAX)
 		Players.devices = [Players.KEYBOARD_MOUSE]
 		Players.nodes.clear()
+		InputSetup.set_pad(true)
 	else:
 		Players.configure(n)
 	var total := Players.MAX if Players.helpers else Players.wanted
@@ -550,6 +551,7 @@ func _build_environment() -> void:
 	_sun.shadow_enabled = true
 	_sun.directional_shadow_max_distance = 80.0
 	add_child(_sun)
+	Settings.use_world(_env, _sun)
 
 func _build_ground() -> void:
 	var ground := StaticBody3D.new()

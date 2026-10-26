@@ -22,11 +22,14 @@ InputSetup="*res://autoload/input_setup.gd"
 Audio="*res://autoload/audio.gd"
 Players="*res://autoload/players.gd"
 Net="*res://autoload/net.gd"
+Settings="*res://autoload/settings.gd"
 
 [display]
 
 window/size/viewport_width=1600
 window/size/viewport_height=900
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
 
 [gui]
 

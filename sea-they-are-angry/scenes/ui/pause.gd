@@ -29,6 +29,7 @@ func _ready() -> void:
 	title.add_theme_color_override("font_color", Color(1.0, 0.78, 0.42))
 	box.add_child(title)
 	_resume = _button(box, "Resume", toggle)
+	_button(box, "Settings", _open_settings)
 	_button(box, "Quit to Title", _quit_to_title)
 	var note := Label.new()
 	note.text = "Quitting returns you to the start of this day."
@@ -67,6 +68,14 @@ func toggle() -> void:
 	_panel.visible = paused
 	if paused:
 		_resume.grab_focus()
+
+func _open_settings() -> void:
+	var menu := preload("res://scenes/ui/settings_menu.gd").new()
+	_panel.visible = false
+	add_child(menu)
+	menu.closed.connect(func() -> void:
+		_panel.visible = true
+		_resume.grab_focus())
 
 func _quit_to_title() -> void:
 	get_tree().paused = false

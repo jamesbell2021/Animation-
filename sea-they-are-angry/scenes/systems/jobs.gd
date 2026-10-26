@@ -7,14 +7,14 @@ extends Node
 ## third night.
 
 const LIST := [
-	["gather", "Gather something on a beach (E)"],
-	["repair", "Mend a fence or a building (E, with driftwood)"],
+	["gather", "Gather something on a beach [E]"],
+	["repair", "Mend a fence or a building [E] with driftwood"],
 	["eat", "Eat a meal: the cottage, or the camp's mess"],
 	["bridge", "Cross the rope bridge to the old camp"],
 	["generator", "Fill the camp's generator with diesel"],
-	["shed", "Take a weapon from the shed's workbench (Tab to change)"],
+	["shed", "Take a weapon from the shed's workbench ([Tab] to change)"],
 	["sow", "Sow a bed: the cottage garden, or the camp's"],
-	["lamp", "At dusk, work the lamp: R at the lighthouse door"],
+	["lamp", "At dusk, work the lamp: [R] at the lighthouse door"],
 ]
 ## After this night the list goes, done or not.
 const UNTIL_NIGHT := 3

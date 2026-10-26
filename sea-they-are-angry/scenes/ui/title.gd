@@ -12,6 +12,7 @@ var _sea_btn: Button
 var _sea_note: Label
 var _device_label: Label
 var _first: Button
+var _hint: Label
 
 func _ready() -> void:
 	layer = 20
@@ -27,17 +28,17 @@ func _ready() -> void:
 	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(shade)
 	var box := VBoxContainer.new()
-	box.position = Vector2(90, 150)
+	box.position = Vector2(90, 70)
 	box.custom_minimum_size = Vector2(470, 0)
-	box.add_theme_constant_override("separation", 14)
+	box.add_theme_constant_override("separation", 6)
 	root.add_child(box)
-	var title := _label(box, "Sea They\nAre Angry", 80, GOLD)
+	var title := _label(box, "Sea They\nAre Angry", 74, GOLD)
 	Fonts.use_title(title)
 	title.add_theme_constant_override("line_spacing", -22)
 	var sub := _label(box, "Keep the light burning.", 26, PALE)
 	Fonts.use_serif(sub)
 	var gap := Control.new()
-	gap.custom_minimum_size = Vector2(0, 26)
+	gap.custom_minimum_size = Vector2(0, 14)
 	box.add_child(gap)
 	var save := SaveSys.load_run()
 	if not save.is_empty():
@@ -51,6 +52,7 @@ func _ready() -> void:
 	_sea_btn.gui_input.connect(_on_sea_input)
 	_sea_note = _label(box, "", 16, Color(0.75, 0.8, 0.85))
 	_button(box, "Play on the LAN", _on_lan)
+	_button(box, "Settings", _on_settings)
 	_button(box, "Credits", _on_credits)
 	_button(box, "Quit", _on_quit)
 	_device_label = _label(box, "", 16, Color(0.75, 0.8, 0.85))
@@ -58,17 +60,23 @@ func _ready() -> void:
 	if Net.last_error != "":
 		_label(box, Net.last_error, 18, Color(1.0, 0.55, 0.45))
 		Net.last_error = ""
+	# The record on one line, to leave the menu room on a small screen.
+	var record: Array[String] = []
 	var best := SaveSys.load_best()
 	if best > 0:
-		_label(box, "Best: night %d" % best, 18, GOLD)
+		record.append("Best: night %d." % best)
 	if SaveSys.chapter_done(1):
 		var seas: int = int(SaveSys.load_profile().get("chapters", {}).get("1", 0))
-		_label(box, "Chapter One: the light held (%s). Chapter Two, The Harbour, is coming." % Difficulty.NAMES[clampi(seas, 0, 2)].to_lower(), 18, GOLD)
-	var hint := _label(root, "WASD move · mouse aim · LMB attack · Tab weapon · E use · R lamp · Q beam · Esc pause · Hold the light until the relief boat comes", 15, Color(0.8, 0.84, 0.9, 0.8))
+		record.append("Chapter One: the light held (%s). Chapter Two, The Harbour, is coming." % Difficulty.NAMES[clampi(seas, 0, 2)].to_lower())
+	if not record.is_empty():
+		_label(box, "  ".join(record), 18, GOLD)
+	_hint = _label(root, "", 15, Color(0.8, 0.84, 0.9, 0.8))
+	var hint := _hint
+	_update_hint()
 	hint.anchor_top = 1.0
 	hint.anchor_bottom = 1.0
 	hint.offset_left = 90.0
-	hint.offset_top = -50.0
+	hint.offset_top = -36.0
 	_update_keepers()
 	_update_sea()
 	_first.grab_focus.call_deferred()
@@ -88,7 +96,7 @@ func _button(parent: Node, text: String, cb: Callable) -> Button:
 	b.text = text
 	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	b.flat = true
-	b.add_theme_font_size_override("font_size", 34)
+	b.add_theme_font_size_override("font_size", 31)
 	Fonts.use_title(b)
 	b.add_theme_color_override("font_color", PALE)
 	b.add_theme_color_override("font_focus_color", GOLD)
@@ -153,6 +161,20 @@ func _on_lan() -> void:
 	var lan := preload("res://scenes/ui/lan_lobby.gd").new()
 	add_child(lan)
 	lan.closed.connect(func() -> void: _first.grab_focus())
+
+func _on_settings() -> void:
+	var menu := preload("res://scenes/ui/settings_menu.gd").new()
+	add_child(menu)
+	menu.closed.connect(func() -> void:
+		_update_hint()
+		_first.grab_focus())
+
+# The keys named as they are now set (Settings).
+func _update_hint() -> void:
+	var k := func(a: String) -> String: return Settings.key_name(a)
+	_hint.text = "%s%s%s%s move · mouse aim · %s attack · %s weapon · %s use · %s lamp · %s beam · Esc pause · Hold the light until the relief boat comes" % [
+		k.call("move_up"), k.call("move_left"), k.call("move_down"), k.call("move_right"),
+		Settings._short(k.call("attack")), k.call("weapon_next"), k.call("interact"), k.call("operate"), k.call("beam_mode")]
 
 func _on_credits() -> void:
 	var c := preload("res://studio/credits.gd").open(self, "Sea They Are Angry", [

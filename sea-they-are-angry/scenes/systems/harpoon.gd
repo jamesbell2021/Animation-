@@ -13,6 +13,9 @@ const REST_OUT := 1.3
 
 var keeper: Player
 var target: Node3D
+## On a LAN client: only for the look of it. It strikes nothing, and goes when the host
+## says its keeper has the boathook back.
+var puppet := false
 var _vel := Vector3.ZERO
 var _flying := true
 var _falling := false
@@ -62,6 +65,10 @@ func _physics_process(delta: float) -> void:
 	# Lying at the tower's foot: its keeper takes it back by walking over it.
 	if _glint:
 		_glint.visible = int(_t * 2.0) % 2 == 0
+	if puppet:
+		if keeper == null or not is_instance_valid(keeper) or keeper.has_hook:
+			queue_free()
+		return
 	if keeper != null and is_instance_valid(keeper) and not keeper.downed:
 		if Geo.flat_dist(keeper.global_position, global_position) < PICK_UP_RANGE and absf(keeper.global_position.y - global_position.y) < 1.5:
 			_give_back()
@@ -69,7 +76,7 @@ func _physics_process(delta: float) -> void:
 func _strike() -> void:
 	_flying = false
 	_falling = true
-	if target != null and is_instance_valid(target) and target.has_method("harpooned"):
+	if not puppet and target != null and is_instance_valid(target) and target.has_method("harpooned"):
 		target.harpooned(keeper)
 	Audio.sfx("hit", global_position, 0.0, 0.1)
 	# Rebounds off the stone and drops to the tower's foot, below where it struck.
@@ -109,7 +116,7 @@ func is_lying() -> bool:
 	return not _flying and not _falling
 
 func _give_back() -> void:
-	if keeper != null and is_instance_valid(keeper):
+	if not puppet and keeper != null and is_instance_valid(keeper):
 		keeper.take_back_hook()
 	queue_free()
 

@@ -639,12 +639,70 @@ This is step 1 of five: the place, the crossing, the camera and the helpers. Nex
 - **On the LAN:**
   - **Pause:** it shows the menu but stops nothing, since the night goes on for everyone else.
   - **Skipping the day:** only the host can.
-- **Not sent, yet:** the ink a Squid squirts, and the boathook thrown at a Smotherer, aren't shown in flight on clients (their effects are).
+- **Ink and the thrown boathook** are sent as shots: the client draws the Squid's cloud, and a boathook that flies at the climber, drops at the tower's foot and lies there until the host says its keeper has it back. Neither does anything on the client; which creatures the ink hides already comes over with each creature.
 - **Tests:** `tests/run_lan.sh` runs a host and a client as two Godot processes on this machine (`GODOT=... tests/run_lan.sh`). They step along together:
   - **Joining:** the lobby, and the keeper slots.
   - **Moving:** the client's keeper walking on both machines.
   - **What the client sees:** the host's creature, the battered fence, the store, dusk and the lamp, the message, and effects and sounds arriving.
   - **The shed's menu:** opened on the client, run on the host; the shotgun taken.
   - **Firing:** the client's shot hitting the host's Bloated.
+  - **Ink and the boathook:** a Squid's cloud and the host's thrown boathook showing on the client, and the boathook going when it's picked up.
   - **The run's end:** on both machines.
   - **Afterwards:** a New Run for everyone, and the client leaving with its keeper handed to the computer.
+
+## The holm reshaped (owner's request: "take time and care to shape the new island to be more realistic")
+
+- **A real islet's outline, not a rounded box.** `Terrain.holm_edge_dist` warps the box with two scales of noise so the shore wanders, cuts a cove at each of the two beaches, and blends (`_smin`) round the camp so there is never sea within 5 m of the wire (`HOLM_DRY`).
+- **Its height** (`Terrain._holm_height`): turf knolls on the open ground, bare sandstone outcrops, a stepped cliff, and a wave-cut shelf just above the sea at the cliff's foot. The colours follow: sandstone and its darker beds on the cliffs, lichen, wrack on the shelf, heather on the knolls; `is_grassy` keeps grass off the rock.
+- **The sea knows the new shore.** The foam band used to follow a rounded box; now `Terrain.holm_shore_texture()` bakes the real waterline into a distance texture (half-metre cells) that `sea.gdshader` reads, so surf breaks where the rock actually is.
+- **Rocks in the water** (`main._build_holm_rocks`): skerries off the points, a sea stack to the south-west, boulders on the shelf; never on a landing, where creatures come ashore.
+
+## The camp textured and dressed (owner's request: "texture the camp well to match the theme")
+
+- **A Second World War internment camp left to the North Sea weather.** New tiling textures, generated like the rest by `art/source/textures/build_textures.py` (`camp` builds just these): corrugated iron, concrete, brick, roofing felt, rust, weathered timber and hessian. `Look.camp()` makes the material.
+- **The buildings:** Nissen huts in corrugated iron (laid in world space, so the ribs line up across a hut) on concrete bases with steps and porches; felted tower roofs on timber posts; the generator in a brick and concrete house with a corrugated roof, a rusted door, a vent and an exhaust.
+- **The dressing** (`Camp._dress`): paths and duckboards between the huts, a flagpole whose flag flies with the wind (`Weather.wind_now`), the "No. 7 CAMP / AUTHORISED PERSONS ONLY" sign, a water tank, oil drums, sandbags, a coal bunker and a washing line.
+- **The dressing doesn't get in the way of a fight:** its collision is on layer 1 only, so keepers walk round it and creatures don't snag on it.
+
+## Survive until rescued: the end of Chapter One (owner's request: "a survive until rescued mechanic, then they head off in a boat and it's set up for the next chapter")
+
+- **How long:** the boat comes at the dawn after night 8 on a calm sea, 10 on an angry one and 12 on a raging one (`Rescue.NIGHTS`). Long enough for the camp, research and raids to come into it, short enough to finish in a few evenings. The HUD's phase line counts down ("boat in 3 nights"), the dawn report says so, and dusk on the last night warns that the sea will throw everything.
+- **The last night** sends 30% more in each landing (`LAST_NIGHT_SURGE`).
+- **A reason to mend the wireless:** a research project ("The camp's wireless": 3 scrap, a bio, a page of notes) calls the boat two nights sooner.
+- **The boat** is the *Mary Ann*, a Kirkhaven fishing boat: built in code with a hull, bulwarks, rubbing strakes, tyre fenders, a wheelhouse, funnel, mast lights and fish boxes. She steams in over 14 seconds and lies off a beach with a plank to the shore. The day doesn't advance while she waits.
+- **Going aboard:** each person's keeper walks down and presses E at her plank (the prompt wins over anything else nearby); helpers drop everything and make their own way. When everyone's aboard she sails, with the camera following her out. She waits for every person; a helper that hasn't found its way down in 150 seconds is taken aboard anyway, so a stuck helper can't hold everyone up.
+- **The chapter's end:** a card, "Chapter One: The Light Held", with the nights held, the sea and the creatures killed, and a few lines setting up Chapter Two, The Harbour (Kirkhaven's lights have gone out). Then **back to the title**, or **stay on the rock**: an endless run with no boat (`Run.endless`), kept with the save. The profile remembers the chapter was finished, and on which sea, and the title says so.
+- **On the LAN** the boat, boarding and the card happen on every machine; only the host chooses what happens next.
+- **Tests:** `slice_rescue.gd`.
+
+## The first days' jobs (owner's request: "a first-day tutorial job list", from the list of what the game still needed)
+
+- **A checklist, not a tutorial that stops play.** Down the right of the screen for the first three days: gather, mend, eat, cross the bridge, fill the generator, take a weapon from the shed, sow a bed, work the lamp at dusk. Each ticks off when a person's keeper does it (a helper doing it doesn't count), and the list goes once they're all done or after night 3.
+- **How it knows:** the game says what a keeper did through `Events.did(what, keeper)` from the scavenge points, repairs, meals, the generator, the beds and the lamp; crossing the bridge and having a weapon are checked as they happen. The ticks are kept with the save (`Run.jobs`).
+- **Keys in the list follow the settings:** the jobs name keys as `[E]`, which the HUD swaps for the key actually set, or the pad's button.
+- **Tests:** `slice_jobs.gd`.
+
+## Settings, and a pad for keeper one (from the list of what the game still needed)
+
+- **One settings screen** from the title and the pause menu (`scenes/ui/settings_menu.gd`, kept by `autoload/settings.gd` in `user://settings.cfg`):
+  - **Sound:** the master volume, the music and the sounds (the audio buses), 0 to 100%.
+  - **Display:** full screen or a window, the window's size (1280×720 to 2560×1440), the graphics and the render scale.
+  - **Graphics:** Low turns off ambient occlusion and water reflections, halves the sun's shadow map and makes the fog cheaper; Medium keeps the ambient occlusion; High is everything. The fog stays on at every level, since the beam in the fog is the game's look. The render scale (50% to 100%) draws the world smaller and sharpens it back up with FSR, for slow machines.
+  - **Keys:** each of keeper one's controls can go on any key or mouse button. Putting one on a key another uses swaps them, so nothing is ever left without a key. The number keys (the weapons) and Esc stay as they are. The wheel stays on the weapons alongside whatever key is chosen.
+- **The interface scales with the window** (`canvas_items` stretch from the 1600×900 it was laid out for), so the menus fit at 1280×720 and aren't tiny at 1440p. The title's menu was tightened to fit with every line showing.
+- **The game's text names the real keys.** Prompts, messages, reports and the jobs are written with the default keys in brackets (`[E] Repair`); `Settings.keys_in` swaps in the key keeper one has set, the arrow-key layout's, or a pad's button.
+- **A pad for keeper one** when only one person plays on the machine: alone, or on the LAN (where every machine has one person). The same layout as keepers two and three, on any pad. The right stick aims while it's being used; moving the mouse goes back to the mouse. In local co-op the pads stay with keepers two and three.
+- **Tests:** `slice_settings.gd`.
+
+## The helpers use the shed's weapons (from the list of what the game still needed)
+
+- **The lighthouse's helper takes the shotgun** off the wall by day when nobody has it and there are more than 2 cartridges in the box. It fires at whatever comes within 6 m. A person who wants it takes it back at the workbench ("Take the shotgun back from Hamish"), and the helper won't take it from a person.
+- **Longbows for helpers** are made at the workbench for the usual 3 driftwood and a kelp, once the person has their own. A helper shoots what's past the boathook's reach (out to its 7 m fighting range), drawing to about 80% before it looses.
+- **Not the flamer or the petrol bombs:** they set fire to what's near the target, the helpers' fights are close to the keepers, and the flamer drinks the bio everyone needs. They stay the people's.
+- **Ammunition is the store's,** the same as anyone's: a helper with the shotgun spends the cartridges.
+- **Tests:** `slice_helpers.gd`.
+
+## A Windows build
+
+- **An export preset for Windows** next to Linux (`export_presets.cfg`): `--export-release "Windows" build/windows/SeaTheyAreAngry.exe`, the program and its `.pck` side by side. It needs Godot 4.3's `windows_release_x86_64.exe` template installed. The program's icon and version details are left as Godot's (that needs `rcedit`).
+

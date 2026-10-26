@@ -1,6 +1,6 @@
 # Handoff: Sea They Are Angry
 
-Read this first, then `docs/DECISIONS.md` and `git log`. Written 2026-10-19 at the end of a cloud session.
+Read this first, then `docs/DECISIONS.md` and `git log`. Written 2026-10-19 at the end of a cloud session; brought up to date 2026-10-26.
 
 ## Where things stand
 
@@ -12,6 +12,8 @@ Read this first, then `docs/DECISIONS.md` and `git log`. Written 2026-10-19 at t
 | 4. Roadmap after v0.2.0 | `docs/prompts/04_after_v0.2_roadmap.md` | Ideas for after playtests |
 
 The work lives on branch `claude/windows-build-omarchy-d2b94k` of `jamesbell2021/Animation-`, in the `sea-they-are-angry/` folder. The repo also holds other projects (`neon-mega-tank/`, `animation-principles/`); leave them alone.
+
+Since 2026-10-19 the owner asked for, and got, a great deal that plan 2 places later or doesn't have (each has its section in DECISIONS): the holm and its old camp across a rope bridge, with a generator, searchlights, hunger and warmth, crops, research and raids; the shed's weapons; three difficulty levels; LAN play; the holm reshaped and the camp textured; an ending, the relief boat at the end of Chapter One; the first days' jobs; a settings screen; helpers that use the shed's weapons; and a Windows build. Before more building, the owner should play it: `docs/PLAYTEST_CHECKLIST.md` is a list of what to try and look out for.
 
 To start the next session, open Claude Code in `sea-they-are-angry/` and say:
 
@@ -35,10 +37,14 @@ godot --headless --path sea-they-are-angry --script res://tests/slice_survival.g
 godot --headless --path sea-they-are-angry --script res://tests/slice_research.gd
 godot --headless --path sea-they-are-angry --script res://tests/slice_camp_raid.gd
 godot --headless --path sea-they-are-angry --script res://tests/slice_arms.gd
+godot --headless --path sea-they-are-angry --script res://tests/slice_rescue.gd
+godot --headless --path sea-they-are-angry --script res://tests/slice_jobs.gd
+godot --headless --path sea-they-are-angry --script res://tests/slice_settings.gd
+godot --headless --path sea-they-are-angry --script res://tests/slice_helpers.gd
 GODOT=godot sea-they-are-angry/tests/run_lan.sh   # the LAN test: a host and a client, two processes
 ```
 
-On Windows use `Godot_v4.3-stable_win64_console.exe` in place of `godot`. All twelve tests ended in PASS on Godot 4.3 stable. The holm, survival, research and camp-raid tests reach the camp's classes only through the scene, never by name: `--script` compiles whatever a test names before the autoloads exist, and that left a camp script unusable. The older seven turn the helper keepers off (`Players.helpers = false`) because they script every keeper themselves; `slice_holm.gd` covers the holm, the bridge, the split screen and the helpers. Run them one at a time: they share `user://run.json`. For balance, `tools/playtest.gd` plays several nights with a bot and prints a line per night (see README). `slice_behaviour.gd` covers every item of the slice's verify list, from W moving up-screen to New Run restarting at night 1.
+On Windows use `Godot_v4.3-stable_win64_console.exe` in place of `godot`. All sixteen tests and the LAN test ended in PASS on Godot 4.3 stable (2026-10-26). The holm, survival, research and camp-raid tests reach the camp's classes only through the scene, never by name: `--script` compiles whatever a test names before the autoloads exist, and that left a camp script unusable. The older seven turn the helper keepers off (`Players.helpers = false`) because they script every keeper themselves; `slice_holm.gd` covers the holm, the bridge, the split screen and the helpers. Run them one at a time: they share `user://run.json`. For balance, `tools/playtest.gd` plays several nights with a bot and prints a line per night (see README). `slice_behaviour.gd` covers every item of the slice's verify list, from W moving up-screen to New Run restarting at night 1.
 
 Two kinds of console noise are expected and harmless:
 
