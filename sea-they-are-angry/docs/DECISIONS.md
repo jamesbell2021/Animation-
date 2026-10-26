@@ -578,7 +578,7 @@ This is step 1 of five: the place, the crossing, the camera and the helpers. Nex
   - **Fuel:** a tank lasts about six seconds. When it runs dry, the keeper pours a bio from the store into it (1.5 s), so it competes with the lamp for bio.
   - **Moving:** the keeper walks at 60% while it's going.
   - **Visible:** the gas bottle shows on the back of whoever carries it.
-- **Petrol bombs:** 2 for a bio and a kelp rag. They're thrown to where the keeper aims, up to 12 m.
+- **Petrol bombs:** 2 for a bio and a kelp rag. They're thrown to the mouse's point, up to 12 m. On a pad, with no cursor, they go to the nearest creature within 25° of the aim, otherwise 10 m ahead.
   - **The smash:** 20 damage and alight for 4 s within 2.2 m, then a pool of fire 2.3 m across for 7 s. Anything in the pool takes 16 a second and is alight.
   - **Into the sea:** only steam.
 - **Rat poison:** 4 tins in the shed, and no more. Bait at a trap cairn costs a tin and a kelp, and does no damage on the spot. It does work on the first three creatures that eat it:

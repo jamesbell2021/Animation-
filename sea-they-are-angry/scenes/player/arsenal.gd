@@ -374,7 +374,7 @@ func _throw_bomb() -> void:
 	if not Stock.spend({"bombs": 1}):
 		return
 	_cd = BOMB_CD
-	var to := keeper.flare_point()
+	var to := _bomb_point()
 	var d := to - keeper.global_position
 	d.y = 0.0
 	if d.length() > BOMB_RANGE:
@@ -393,6 +393,24 @@ func _throw_bomb() -> void:
 		keeper.rig.shot("throw")
 	if Stock.get_amount("bombs") <= 0:
 		select("hook")
+
+## Where a bomb should land: under the mouse; on a pad (no cursor), at the nearest
+## creature within 25° of the aim and in range, or ahead along the aim.
+func _bomb_point() -> Vector3:
+	if keeper.camera != null and keeper.idx == 0 and (Players.devices.size() <= keeper.idx or Players.devices[keeper.idx] == Players.KEYBOARD_MOUSE):
+		return keeper.flare_point()
+	var best: Node3D = null
+	var best_d := BOMB_RANGE
+	for e in get_tree().get_nodes_in_group("enemies"):
+		if not _live(e):
+			continue
+		var to: Vector3 = e.global_position - keeper.global_position
+		to.y = 0.0
+		var d := to.length()
+		if d < best_d and d > 1.5 and rad_to_deg(keeper.aim_dir().angle_to(to / d)) < 25.0:
+			best = e
+			best_d = d
+	return best.global_position if best != null else keeper.flare_point()
 
 # ---- what's in hand ----
 
@@ -491,7 +509,7 @@ func _build_models() -> void:
 	cap.material_override = steel
 	# The flame: a roaring stream of fire, its light, its roar.
 	_flame = FX.emitter(self, global_position, FX._puff_mesh_ref(), Color(1.0, 0.55, 0.15, 0.95),
-		64, 0.42, Vector3.FORWARD, 9.0, 11.0, 14.0, -1.5, 0.35, 1.0, false, true, 4.0)
+		64, 0.42, Vector3.FORWARD, 9.0, 11.0, 14.0, -1.5, 0.35, 1.0, false, true, 2.2)
 	if _flame != null:
 		_flame.emitting = false
 	else:
