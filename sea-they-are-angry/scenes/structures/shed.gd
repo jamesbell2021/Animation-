@@ -1,6 +1,16 @@
 class_name Shed
 extends Structure
 ## The oil and tool store beside the cottage. Creatures that raid the homestead batter it.
+## Inside, the workbench: the old keeper's double-barrelled shotgun on the wall and his
+## box of cartridges, a weed burner to rig as a flamer, tins of rat poison, and what's
+## needed to make a longbow and arrows from driftwood and fill petrol bombs with bio.
+
+const FLAMER_COST := {"scrap": 2}
+const BOW_COST := {"driftwood": 3, "seaweed": 1}
+const ARROWS_COST := {"driftwood": 1, "scrap": 1}
+const ARROWS_MADE := 5
+const BOMBS_COST := {"bio": 1, "seaweed": 1}
+const BOMBS_MADE := 2
 
 const WIDTH := 2.4
 const DEPTH := 2.0
@@ -39,6 +49,91 @@ func _refresh() -> void:
 	# The door hangs off one hinge, then off both.
 	_door.rotation.z = hurt * 0.6
 	_door.position.x = 0.2 + hurt * 0.2
+
+# ---- the workbench ----
+
+# Badly damaged and the means to mend it: the hammer first. Otherwise, the workbench.
+func _wants_repair() -> bool:
+	return is_destroyed() or (is_damaged() and Stock.can_afford(repair_cost()))
+
+func interact_prompt() -> String:
+	if _wants_repair():
+		return super.interact_prompt()
+	return "[E] The workbench: shotgun, flamer, longbow, petrol bombs"
+
+func work_kind() -> String:
+	return super.work_kind() if _wants_repair() else ""
+
+func interact(player: Node) -> bool:
+	if _wants_repair():
+		return super.interact(player)
+	if not (player is Player):
+		return false
+	ChoiceMenu.open(player, "The shed", menu_rows.bind(player))
+	return true
+
+func menu_rows(p: Player) -> Array:
+	var rows := []
+	var arms: Arsenal = p.arsenal
+	var nobody := func() -> void: pass
+	# The shotgun on its pegs.
+	var gun_with := Arsenal.holder("shotgun")
+	if gun_with == p.idx:
+		rows.append({"text": "Hang the shotgun back on the wall", "do": arms.take_away.bind("shotgun")})
+	elif gun_with >= 0:
+		rows.append({"text": "The shotgun: %s has it" % Players.NAMES[gun_with % Players.NAMES.size()], "enabled": false, "do": nobody})
+	else:
+		rows.append({"text": "Take the double-barrelled shotgun off the wall (%d cartridges in the box)" % Stock.get_amount("shells"), "do": arms.give.bind("shotgun")})
+	# The weed burner.
+	var flamer_with := Arsenal.holder("flamer")
+	if not Run.flamer_rigged:
+		rows.append({"text": "Rig a flamer from the weed burner (%s): burns bio, nice and deadly" % Stock.cost_str(FLAMER_COST),
+			"enabled": Stock.can_afford(FLAMER_COST), "do": rig_flamer.bind(p)})
+	elif flamer_with == p.idx:
+		if Run.flamer_fuel < Arsenal.TANK - 10.0:
+			rows.append({"text": "Fill the flamer's tank (%s)   %d%%" % [Stock.cost_str(Arsenal.REFILL_COST), roundi(Run.flamer_fuel)],
+				"enabled": Stock.can_afford(Arsenal.REFILL_COST), "do": fill_flamer})
+		rows.append({"text": "Leave the flamer in the shed", "do": arms.take_away.bind("flamer")})
+	elif flamer_with >= 0:
+		rows.append({"text": "The flamer: %s has it" % Players.NAMES[flamer_with % Players.NAMES.size()], "enabled": false, "do": nobody})
+	else:
+		rows.append({"text": "Take the flamer (tank %d%%)" % roundi(Run.flamer_fuel), "do": arms.give.bind("flamer")})
+	# A longbow of one's own, and arrows for everyone's.
+	if not arms.carries("bow"):
+		rows.append({"text": "Make a longbow (%s): driftwood stave, kelp-cord string" % Stock.cost_str(BOW_COST),
+			"enabled": Stock.can_afford(BOW_COST), "do": make_bow.bind(p)})
+	rows.append({"text": "Whittle %d arrows (%s)   %d in store" % [ARROWS_MADE, Stock.cost_str(ARROWS_COST), Stock.get_amount("arrows")],
+		"enabled": Stock.can_afford(ARROWS_COST), "do": make.bind(ARROWS_COST, "arrows", ARROWS_MADE)})
+	rows.append({"text": "Fill %d petrol bombs (%s: bio in a bottle, a kelp rag)   %d in store" % [BOMBS_MADE, Stock.cost_str(BOMBS_COST), Stock.get_amount("bombs")],
+		"enabled": Stock.can_afford(BOMBS_COST), "do": make.bind(BOMBS_COST, "bombs", BOMBS_MADE)})
+	rows.append({"text": "Rat poison: %d tins (set it as bait at a trap cairn)" % Stock.get_amount("poison"), "enabled": false, "do": nobody})
+	return rows
+
+func rig_flamer(p: Player) -> void:
+	if Run.flamer_rigged or not Stock.spend(FLAMER_COST):
+		return
+	Run.flamer_rigged = true
+	Run.flamer_fuel = Arsenal.TANK * 0.5
+	Audio.sfx("hammer", global_position, -2.0, 0.1)
+	Events.message.emit("The weed burner's rigged as a flamer: hold attack to burn. It drinks bio.")
+	p.arsenal.give("flamer")
+
+func fill_flamer() -> void:
+	if Stock.spend(Arsenal.REFILL_COST):
+		Run.flamer_fuel = Arsenal.TANK
+		Audio.sfx("refuel", global_position, -2.0, 0.1)
+
+func make_bow(p: Player) -> void:
+	if p.arsenal.carries("bow") or not Stock.spend(BOW_COST):
+		return
+	Audio.sfx("hammer", global_position, -4.0, 0.1)
+	Events.message.emit("%s has a longbow: hold attack to draw, let go to loose." % p.keeper_name())
+	p.arsenal.give("bow")
+
+func make(cost: Dictionary, kind: String, n: int) -> void:
+	if Stock.spend(cost):
+		Stock.add(kind, n)
+		Audio.sfx("hammer", global_position, -6.0, 0.1)
 
 func smoke_point() -> Vector3:
 	return Vector3(0.0, WALL_H + 0.2, 0.0)

@@ -23,6 +23,14 @@ var max_hp_bonus := [0, 0, 0]
 var crops := [0, 0, 0, 0, 0]
 ## Flares in each keeper's gun.
 var flares := [2, 2, 2]
+## What each keeper carries besides the boathook ("bow", "shotgun", "flamer"; see Arsenal).
+## There's one shotgun and one weed burner: whoever isn't carrying them, they're in the shed.
+var arms := [[], [], []]
+## The weed burner rigged as a flamer yet, and what's in its tank (0 to 100).
+var flamer_rigged := false
+var flamer_fuel := 0.0
+## Cartridges in the shotgun's two barrels.
+var barrels := 2
 ## Seeds each night's weather roll (see Weather.tonight), so a reload keeps it.
 var weather_seed := 0
 var weather_for := 0
@@ -44,6 +52,10 @@ func start_new() -> void:
 	max_hp_bonus = [0, 0, 0]
 	crops = [0, 0, 0, 0, 0]
 	flares = [2, 2, 2]
+	arms = [[], [], []]
+	flamer_rigged = false
+	flamer_fuel = 0.0
+	barrels = 2
 	weather_seed = randi()
 	weather_for = 0
 	Anger.reset()
@@ -77,6 +89,14 @@ func start_loaded(d: Dictionary) -> void:
 	flares = [2, 2, 2]
 	for i in mini(fl.size(), 3):
 		flares[i] = clampi(int(fl[i]), 0, 2)
+	arms = [[], [], []]
+	var ar: Array = d.get("arms", [])
+	for i in mini(ar.size(), 3):
+		for w in ar[i]:
+			arms[i].append(String(w))
+	flamer_rigged = bool(d.get("flamer_rigged", false))
+	flamer_fuel = clampf(float(d.get("flamer_fuel", 0.0)), 0.0, 100.0)
+	barrels = clampi(int(d.get("barrels", 2)), 0, 2)
 	weather_seed = int(d.get("weather_seed", randi()))
 	weather_for = 0
 	Anger.set_value(int(d.get("anger", 0)))

@@ -148,6 +148,10 @@ var in_menu := false
 var _reviving := false
 ## The boathook is in hand (false while it lies where it was thrown).
 var has_hook := true
+## What else they fight with, from the shed (the longbow, shotgun, flamer, petrol bombs).
+var arsenal: Arsenal
+## What a blow from this keeper is, for the dawn tally ("hook", "arrow", "shot", ...).
+var hit_kind := "hook"
 # Reeling from a blow: slid back over the stagger clip's slide, no control meanwhile.
 var _stagger_t := 0.0
 var _stagger_len := 0.45
@@ -187,6 +191,8 @@ func _ready() -> void:
 		Geo.box(_hook_holder, Vector3(0.06, 0.06, 1.6), Color(0.18, 0.15, 0.12), Vector3(0.0, 0.0, -0.6))
 		Geo.box(_hook_holder, Vector3(0.06, 0.25, 0.06), Color(0.3, 0.3, 0.32), Vector3(0.0, -0.1, -1.4))
 	Geo.cyl_shape(self, 0.35, 1.6, Vector3(0.0, 0.8, 0.0))
+	arsenal = Arsenal.new(self)
+	add_child(arsenal)
 
 # Loads a Z-up, vertex-coloured GLB from art/ and stands it upright. Returns null if
 # the file is missing or not imported yet, so the primitive fallback is used.
@@ -458,7 +464,10 @@ func _physics_process(delta: float) -> void:
 			lamp.toggle_mode()
 	else:
 		_move(delta)
-		if _just("attack") and _attack_cd <= 0.0:
+		_switch_weapon()
+		if arsenal.in_hand():
+			arsenal.tick(delta, _just("attack"), _held("attack"))
+		elif _just("attack") and _attack_cd <= 0.0:
 			_attack()
 		if _just("flare"):
 			_fire_flare()
@@ -686,7 +695,7 @@ func _move(delta: float) -> void:
 			_sprint_cd = SPRINT_COOLDOWN
 	else:
 		_sprint_t = maxf(0.0, _sprint_t - delta)
-	spd *= need_speed()
+	spd *= need_speed() * arsenal.move_mult()
 	velocity.x = dir.x * spd
 	velocity.z = dir.z * spd
 
@@ -703,6 +712,17 @@ func _clamp_to_island(before: Vector3) -> void:
 	else:
 		global_position.x = before.x
 		global_position.z = before.z
+
+# Tab / the mouse wheel / a pad's d-pad change what's in hand; 1 to 5 pick it outright.
+func _switch_weapon() -> void:
+	if _just("weapon_next"):
+		arsenal.cycle(1)
+	elif _just("weapon_prev"):
+		arsenal.cycle(-1)
+	if idx == 0 and not ai:
+		for i in Arsenal.ORDER.size():
+			if InputMap.has_action("weapon_%d" % (i + 1)) and Input.is_action_just_pressed("weapon_%d" % (i + 1)):
+				arsenal.select(Arsenal.ORDER[i])
 
 func _attack() -> void:
 	if not has_hook:
@@ -792,7 +812,7 @@ func take_back_hook() -> void:
 	if has_hook:
 		return
 	has_hook = true
-	_hook_holder.visible = _job_tool == ""
+	arsenal.refresh()
 	Audio.sfx("gather", global_position, -2.0, 0.1)
 
 func _climber_on_tower() -> bool:
@@ -978,9 +998,10 @@ func _start_job(tool: String, target: Node, action: String = "interact") -> void
 	_job_strikes = 0
 	_job_len = STRIKE_TIME * STRIKES if tool == "hammer" else POUR_TIME
 	velocity = Vector3.ZERO
-	_hook_holder.visible = false
 	_hammer.visible = tool == "hammer"
 	_can.visible = tool == "can"
+	arsenal.cease()
+	arsenal.refresh()
 	var d: Vector3 = (target as Node3D).global_position - global_position
 	if Vector2(d.x, d.z).length() > 0.05:
 		facing = atan2(-d.x, -d.z)
@@ -1011,7 +1032,7 @@ func _end_job(done: bool) -> void:
 	_job_target = null
 	_hammer.visible = false
 	_can.visible = false
-	_hook_holder.visible = has_hook
+	arsenal.refresh()
 	_hook_pivot.rotation.z = 0.0
 	_scripted = false
 	# The work is done: now the stock is spent and the repair or the oil goes in.

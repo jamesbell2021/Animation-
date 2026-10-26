@@ -551,3 +551,42 @@ This is step 1 of five: the place, the crossing, the camera and the helpers. Nex
   - **The light:** neither run lost the lighthouse.
 
   So the camp needs someone on it, as asked. Left alone it is lost about a week in, and a warden keeps it alive but not whole.
+
+## The shed's weapons (owner's request: "a flamer from a weed burner ... a poison trap from rat poison ... a homemade longbow from driftwood ... petrol bombs from bio fuel ... a double-barrel shotgun with limited ammo")
+
+- **Where they come from:** the garden shed has a workbench now. E opens it, unless the shed is damaged and can be mended, when the hammer comes first, as at the cottage.
+  - **One of each:** the shotgun and the weed burner are single objects. Whoever carries one has it, and anyone else sees "Callum has it". Hung back up, they're in the shed for anyone. Each keeper makes their own longbow.
+  - **Where they're kept:** what each keeper carries is saved (`Run.arms`), along with the flamer's tank and the shotgun's loaded barrels.
+- **What's in hand (`scenes/player/arsenal.gd`):** the boathook, longbow, shotgun, flamer or petrol bombs, changed with Tab, the mouse wheel or 1 to 5 (P1), [ and ] (P2 on the arrow keys), or the d-pad.
+  - **Attack:** works whatever's in hand.
+  - **The boathook:** still thrown at a climber on the tower, but only with the hook in hand.
+  - **The HUD:** says what each person's keeper holds and its ammunition.
+  - **Helpers:** keep to the boathook.
+- **The longbow:** 3 driftwood and a kelp cord, and 5 arrows for a driftwood and a scrap.
+  - **Using it:** hold attack to draw (0.8 s, walking at half speed), let go to loose. An arrow does 12 damage at a quarter draw and 40 at a full one, and flies 26 m almost flat.
+  - **Aiming:** it's aimed at the body of whatever's on the ground under the aim, so it works from the crag top down onto a beach.
+  - **Arrows aren't recovered,** to keep it simple.
+- **The double-barrelled shotgun:** 9 pellets in a 24° cone out to 11 m, 7 damage each and 1.6 times that inside 3.5 m.
+  - **Damage:** each pellet hits the first creature in its line. Two barrels at 3 m kill a Bloated outright.
+  - **Reloading:** after both barrels, the keeper breaks it open and loads two from the store (1.6 s). A loud crack and boom, a muzzle flash, smoke, and a shove back.
+  - **Limited ammunition, as asked:** there is no way to make cartridges.
+    - **The box in the shed:** 10 at the start.
+    - **Wash-ups:** a tin of 3 washes up every third dawn from the third, and the dawn report says where.
+  - **Crabs** still shrug off pellets from the front, like any blow.
+- **The flamer:** rigging the weed burner costs 2 scrap and comes with half a tank. Hold attack for a roaring 5.5 m stream, 17° either side.
+  - **Its effect:** whatever's in it stops and writhes (the beam's burn), takes 34 damage a second, and burns on for 2.5 s after (8 a second).
+  - **Fuel:** a tank lasts about six seconds. When it runs dry, the keeper pours a bio from the store into it (1.5 s), so it competes with the lamp for bio.
+  - **Moving:** the keeper walks at 60% while it's going.
+  - **Visible:** the gas bottle shows on the back of whoever carries it.
+- **Petrol bombs:** 2 for a bio and a kelp rag. They're thrown to where the keeper aims, up to 12 m.
+  - **The smash:** 20 damage and alight for 4 s within 2.2 m, then a pool of fire 2.3 m across for 7 s. Anything in the pool takes 16 a second and is alight.
+  - **Into the sea:** only steam.
+- **Rat poison:** 4 tins in the shed, and no more. Bait at a trap cairn costs a tin and a kelp, and does no damage on the spot. It does work on the first three creatures that eat it:
+  - **Poisoned:** 14 s of poison, 3.5 a second and 30% slower, about 49 in all.
+  - **Squid** skitter over it.
+- **Fire and poison over time:** both live on the creatures (`Enemy.on_fire`, `Enemy.poisoned`), so any source can use them. The sea puts fire out.
+- **Who gets the kill:** a keeper's blow is now tallied by what it was (`Player.hit_kind`: "shot", "arrow", "flame", "bomb", "poison"), and the dawn report lists each.
+- **The Eel:** takes half damage from these weapons (the boathook does a quarter). The beam is still what brings it down.
+- **Friendly fire:** none. The flamer, fire pools and shot don't hurt keepers, so co-op and the helpers aren't punished for standing near them.
+- **Sounds,** all made in code: the shotgun, the bow's thrum, an arrow striking, the flamer's roaring loop, and glass smashing.
+- **Tests:** `tests/slice_arms.gd` (40 checks): the workbench, switching, each weapon doing what it says, the cartridges running out, the poison, the wash-up and the save.

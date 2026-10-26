@@ -174,6 +174,10 @@ func _process(delta: float) -> void:
 	if Stock.get_amount("dirty_fuel") > 0:
 		stock += " · Dirty fuel %d" % Stock.get_amount("dirty_fuel")
 	stock += " · Seeds %d" % Stock.get_amount("seeds")
+	# What the shed's weapons need, once there's any.
+	for k in [["arrows", "Arrows"], ["shells", "Cartridges"], ["bombs", "Petrol bombs"], ["poison", "Rat poison"]]:
+		if Stock.get_amount(k[0]) > 0:
+			stock += " · %s %d" % [k[1], Stock.get_amount(k[0])]
 	_stock_label.text = stock
 	if player and is_instance_valid(player):
 		var parts: Array[String] = []
@@ -183,7 +187,8 @@ func _process(delta: float) -> void:
 				continue
 			var who: String = ((p.keeper_name() + " ") if p.ai else ("P%d %s " % [p.idx + 1, p.keeper_name()])) if list.size() > 1 else "Keeper "
 			var needs := " · Fed %d · Warm %d" % [roundi(p.hunger), roundi(p.warmth)]
-			parts.append(who + ("DOWN" if p.downed else "HP %d / %d · Flares %d" % [p.hp, p.max_hp, p.flares()] + needs))
+			var held: String = "" if p.ai or p.arsenal == null else " · " + p.arsenal.hud_text()
+			parts.append(who + ("DOWN" if p.downed else "HP %d / %d · Flares %d" % [p.hp, p.max_hp, p.flares()] + needs + held))
 		_player_label.text = "   ".join(parts)
 		_prompt_label.text = player.interact_prompt() if Run.active else ""
 	if lighthouse and is_instance_valid(lighthouse):

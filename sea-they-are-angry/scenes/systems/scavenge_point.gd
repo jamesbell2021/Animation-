@@ -35,6 +35,8 @@ func _ready() -> void:
 			_build_diesel()
 		"notes":
 			_build_notes()
+		"shells":
+			_build_shells()
 		"seaweed":
 			_build_seaweed()
 		"oil":
@@ -100,6 +102,16 @@ func _build_oil() -> void:
 	m.metallic = 0.8
 	slick.material_override = m
 
+# A dented tin of twelve-bore cartridges, a few red cases spilled from it.
+func _build_shells() -> void:
+	var tin := Geo.box(_mesh, Vector3(0.26, 0.1, 0.18), Color.WHITE, Vector3(0.0, 0.05, 0.0))
+	tin.material_override = Look.flat_mat(Color(0.3, 0.35, 0.28), 0.6)
+	for i in 3:
+		var c := Geo.cyl(_mesh, 0.025, 0.08, Color.WHITE, Vector3(0.18 + 0.05 * float(i), 0.03, -0.05 + 0.06 * float(i)))
+		c.rotation.z = PI * 0.5
+		c.material_override = Look.flat_mat(Color(0.75, 0.15, 0.12), 0.5)
+	Look.glint(_mesh, Vector3(0.0, 0.25, 0.0), Color(1.0, 0.85, 0.6), 0.25)
+
 # A rusted tin box, its lid off, a sheaf of damp pages in it.
 func _build_notes() -> void:
 	var tin := Geo.box(_mesh, Vector3(0.32, 0.12, 0.22), Color.WHITE, Vector3(0.0, 0.06, 0.0))
@@ -143,7 +155,11 @@ func _on_phase_changed(p: int) -> void:
 
 func interact_prompt() -> String:
 	if available:
-		return "[E] Pick up the papers (notes for the research desk)" if kind == "notes" else "[E] Gather %s" % kind
+		if kind == "notes":
+			return "[E] Pick up the papers (notes for the research desk)"
+		if kind == "shells":
+			return "[E] Pick up the tin of cartridges (%d)" % amount
+		return "[E] Gather %s" % kind
 	return ""
 
 func interact(_player: Node) -> bool:

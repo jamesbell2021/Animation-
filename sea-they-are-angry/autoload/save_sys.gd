@@ -20,6 +20,10 @@ func save_run() -> void:
 		"max_hp_bonus": Run.max_hp_bonus,
 		"crops": Run.crops,
 		"flares": Run.flares,
+		"arms": Run.arms,
+		"flamer_rigged": Run.flamer_rigged,
+		"flamer_fuel": Run.flamer_fuel,
+		"barrels": Run.barrels,
 		"weather_seed": Run.weather_seed,
 	}
 	var f := FileAccess.open(RUN_PATH, FileAccess.WRITE)

@@ -38,7 +38,8 @@ Choose 1 to 3 keepers on the title screen, then New Run (or Continue).
 |---|---|---|---|
 | Move | W A S D | Arrow keys | Left stick |
 | Aim | Mouse | Facing direction | Right stick |
-| Boathook swing | Left mouse | Ctrl | X or right trigger |
+| Attack with what's in hand: swing, shoot, burn, throw (hold to draw the bow or keep the flamer going) | Left mouse | Ctrl | X or right trigger |
+| Change what's in hand: boathook, longbow, shotgun, flamer, petrol bombs | Tab / mouse wheel, or 1 to 5 | [ ] | D-pad left / right |
 | Use: gather, repair, refuel, climb a ladder, revive (hold) | E | Shift | A |
 | Work the lamp (walk in at the door) / leave it | R (within 3.8 m of the lighthouse) | / | Y |
 | Take a camp searchlight (up a tower) / let it go | E (R also lets go) | Shift | A |
@@ -61,6 +62,14 @@ Keepers face the way they walk and turn to their aim to swing. Each carries a pa
 - The camp's power: a diesel generator runs the four searchlights and the huts' lights from dusk to dawn, burning faster the more it runs; jerrycans of diesel wash up on the holm's beaches. Climb a tower's ladder and take its searchlight (E): aim it, Q for a focused beam that burns. Left alone, the lights sweep the ground outside the wire.
 - Research at the camp: tins of the internees' papers turn up about the camp, a page of their 1940s diary at a time. At the desk in front of the mess, a page and some of the store work out a project overnight: searchlights that track on their own, silvered reflectors, a governor for the generator, cold frames, tinning, and three new defences for the cairns (barbed wire that slows and cuts, tripwire flares, sandbag walls that creatures must batter down). The holm has four defence posts of its own.
 - Raids on the camp: groups land on the holm's two beaches and tear through the wire (scrap mends it). They go for the generator, the quarters (their stove), the mess (meals and the research desk) and the greenhouse (its crop); wrecked, each stops working until mended with driftwood and scrap. With the generator and all three wrecked, the camp has fallen. The alarm bell (research) rings when they land and says where; without it, nobody on the main island hears them come.
+- The shed's workbench (`scenes/structures/shed.gd`, `scenes/player/arsenal.gd`):
+  - **Shotgun:** the old keeper's double-barrelled shotgun is on the wall, with only a box of 10 cartridges. A tin of 3 washes up every third dawn.
+  - **Flamer:** rig the weed burner as one (2 scrap). It burns bio from its tank, and whatever's in the stream stops, writhes and burns on after.
+  - **Longbow:** make one of driftwood and kelp cord, and whittle arrows (driftwood and scrap). Hold to draw, let go to loose.
+  - **Petrol bombs:** fill them with bio and a kelp rag. They smash into a pool of fire.
+  - **Rat poison:** bait from the shed's tins at a trap cairn sickens what eats it.
+
+  Tab or the mouse wheel changes what's in hand (1 to 5 picks it; [ and ] or the d-pad for the other keepers).
 - Helper keepers (`scenes/player/keeper_ai.gd`) fill the places people don't take, so there are always three. The lighthouse's helper gathers and mends by day and works the lamp at night (or holds the ledge if someone else has it); the camp's warden does its rounds by day and walks the wire at night. Both fight what comes close, revive downed keepers, and walk the keepers' map (`KeeperNav`: the ledge, the ladders, the bridge, the camp). The creatures still scale with the number of people playing.
 - Characters modelled, rigged, textured and animated in Blender by scripts (`art/source/characters/build_characters.py`, `animate.py`): IK-solved walks, runs and sprints with planted feet, tool work, ladder climbs and creature gaits. Hard hits knock keepers and creatures down as ragdolls, and they get back up with real get-up animations from where they fall.
 - Keeper movement, mouse aim, boathook attack. A blow aimed outward on the ledge knocks a creature over the edge. Keepers have their own ladders down the crag.

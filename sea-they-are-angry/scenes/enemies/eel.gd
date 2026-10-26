@@ -20,6 +20,9 @@ const RELEASE_TIME := 2.0
 const BEAM_HP := 90
 const BEAM_DPS := 12.0
 const MELEE_MULT := 0.25
+# Arrows, shot and fire from the shed's weapons bite deeper than the boathook, but the
+# beam is still what brings it down.
+const RANGED_MULT := 0.5
 const CRUSH_DPS := 5.0
 const SURGE_REACH := 1.2
 const PRONE_TIME := 1.5
@@ -452,8 +455,8 @@ func take_damage(amount: int, from_dir: Vector3 = Vector3.ZERO, source: Node = n
 	if state != &"Coil" or hp <= 0:
 		return
 	if source is Player:
-		amount = maxi(1, roundi(float(amount) * MELEE_MULT))
-		last_hit = "hook"
+		amount = maxi(1, roundi(float(amount) * (MELEE_MULT if source.hit_kind == "hook" else RANGED_MULT)))
+		last_hit = source.hit_kind
 	hp -= amount
 	if source != null:
 		FX.spray(get_parent(), global_position + Vector3(0.0, 1.5, 0.0), from_dir, Color(0.4, 0.5, 0.35))

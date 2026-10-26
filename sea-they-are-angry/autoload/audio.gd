@@ -69,6 +69,11 @@ const SOUNDS := {
 	"generator": ["_s_generator", true],
 	"searchlight": ["_s_searchlight", false],
 	"camp_bell": ["_s_camp_bell", false],
+	"shotgun": ["_s_shotgun", false],
+	"bow": ["_s_bow", false],
+	"arrow_hit": ["_s_arrow_hit", false],
+	"flamer": ["_s_flamer", true],
+	"glass": ["_s_glass", false],
 }
 
 func _ready() -> void:
@@ -615,6 +620,55 @@ func _s_generator() -> PackedFloat32Array:
 		t += beat
 		k += 1
 	return _seamless(_gain(out, 1.2), 0.3)
+
+# ---- the shed's weapons ----
+
+# A twelve-bore going off: a hard crack, a deep boom rolling off over the water.
+func _s_shotgun() -> PackedFloat32Array:
+	var n := _n(1.6)
+	var crack := _env(_highpass(_noise(n, 911), 900.0), 0.0005, 38.0)
+	var boom := _env(_lowpass(_noise(n, 912), 260.0), 0.001, 5.5)
+	_mix(boom, _env(_tone(n, 90.0, 38.0), 0.001, 7.0), 0.9)
+	_mix(boom, crack, 0.9)
+	# The echo off the cliffs.
+	var echo := _env(_lowpass(_noise(_n(1.0), 913), 500.0), 0.02, 6.0)
+	_mix(boom, echo, 0.25, _n(0.42))
+	return _gain(boom, 1.3)
+
+# A longbow loosed: the string's deep thrum and the arrow's hiss away.
+func _s_bow() -> PackedFloat32Array:
+	var n := _n(0.5)
+	var thrum := _env(_tone(n, 120.0, 95.0, 1), 0.001, 16.0)
+	var hiss := _env(_highpass(_noise(n, 920), 2500.0), 0.01, 14.0)
+	_mix(thrum, hiss, 0.35)
+	return _gain(thrum, 1.1)
+
+# An arrow striking home: a wet thock.
+func _s_arrow_hit() -> PackedFloat32Array:
+	var n := _n(0.25)
+	var thock := _env(_tone(n, 260.0, 140.0), 0.0005, 30.0)
+	_mix(thock, _env(_lowpass(_noise(n, 921), 900.0), 0.0005, 35.0), 0.7)
+	return thock
+
+# The flamer roaring: a loop of torn, rushing fire with a low throb under it.
+func _s_flamer() -> PackedFloat32Array:
+	var n := _n(3.0)
+	var roar := _gain(_lowpass(_noise(n, 930), 700.0), 0.9)
+	_mix(roar, _gain(_highpass(_noise(n, 931), 2200.0), 0.12))
+	var throb := _tone(n, 46.0, 46.0, 1)
+	for i in n:
+		roar[i] *= 0.8 + 0.2 * sin(float(i) / RATE * TAU * 7.0) * sin(float(i) / RATE * TAU * 2.3)
+	_mix(roar, throb, 0.15)
+	return _seamless(roar, 0.3)
+
+# A bottle smashing.
+func _s_glass() -> PackedFloat32Array:
+	var n := _n(0.6)
+	var out := _env(_highpass(_noise(n, 940), 3000.0), 0.0005, 12.0)
+	for k in 6:
+		var f := 2600.0 + 900.0 * float(k)
+		_mix(out, _env(_tone(_n(0.3), f, f * 0.97), 0.0005, 25.0 + 4.0 * k), 0.12, _n(0.015 * k))
+	return _gain(out, 0.9)
 
 # The camp's alarm bell on the gate wire, swung hard: four clangs, each a struck iron
 # bell's out-of-tune partials ringing on under the next.

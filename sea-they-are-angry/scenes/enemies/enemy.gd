@@ -376,6 +376,9 @@ func change_state(s: StringName) -> void:
 
 func _physics_process(delta: float) -> void:
 	state_t += delta
+	_afflictions(delta)
+	if not is_inside_tree() or is_queued_for_deletion():
+		return
 	if is_wading():
 		speed_mult *= WADE_MULT
 	if burning > 0.0:
@@ -405,6 +408,59 @@ func _physics_process(delta: float) -> void:
 	# Reset after use: the lamp re-applies these every physics frame through in_light().
 	speed_mult = 1.0
 	lit_this_frame = false
+
+# ---- set alight, and poisoned ----
+
+## Seconds left alight (a flamer's stream, a petrol bomb): it burns on, hurting, after.
+var on_fire := 0.0
+## Seconds left poisoned (rat poison at a trap): it sickens, slows and weakens.
+var poisoned := 0.0
+const FIRE_DPS := 8.0
+const POISON_DPS := 3.5
+const POISON_SLOW := 0.7
+var _dot := 0.0
+var _dot_fx_t := 0.0
+
+func set_alight(t: float) -> void:
+	on_fire = maxf(on_fire, t)
+
+func poison(t: float) -> void:
+	poisoned = maxf(poisoned, t)
+
+func _afflictions(delta: float) -> void:
+	if (on_fire <= 0.0 and poisoned <= 0.0) or hp <= 0:
+		return
+	if state == &"Emerge" or state == &"Retreat" and _in_water:
+		# Into the sea: that puts the fire out.
+		on_fire = 0.0
+	var dps := 0.0
+	var how := ""
+	if on_fire > 0.0:
+		on_fire = maxf(0.0, on_fire - delta)
+		dps += FIRE_DPS
+		how = "flame"
+	if poisoned > 0.0:
+		poisoned = maxf(0.0, poisoned - delta)
+		dps += POISON_DPS
+		speed_mult *= POISON_SLOW
+		if how == "":
+			how = "poison"
+	_dot_fx_t -= delta
+	if _dot_fx_t <= 0.0:
+		_dot_fx_t = 0.25
+		var at := global_position + Vector3(randf_range(-0.3, 0.3), randf_range(0.6, 1.4), randf_range(-0.3, 0.3))
+		if on_fire > 0.0:
+			FX.embers(get_parent(), at)
+			if randf() < 0.4:
+				Audio.sfx("crackle", at, -6.0, 0.3)
+		if poisoned > 0.0 and randf() < 0.6:
+			FX.spray(get_parent(), at, Vector3.DOWN, Color(0.45, 0.8, 0.3))
+	_dot += dps * delta
+	if _dot >= 1.0:
+		var n := int(_dot)
+		_dot -= float(n)
+		last_hit = how
+		take_damage(n, Vector3.ZERO, null)
 
 # ---- burning in the focused beam ----
 
@@ -712,7 +768,7 @@ func take_damage(amount: int, from_dir: Vector3 = Vector3.ZERO, source: Node = n
 	if state == &"Emerge" or hp <= 0 or not is_vulnerable():
 		return
 	if source is Player:
-		last_hit = "hook"
+		last_hit = source.hit_kind
 	hp -= amount
 	var shoved := false
 	var out := Vector3(global_position.x, 0.0, global_position.z).normalized()

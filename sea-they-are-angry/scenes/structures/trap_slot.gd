@@ -22,6 +22,8 @@ const TRAPS := {
 	"chain": {"name": "Chain plate", "cost": {"driftwood": 1, "scrap": 2}, "uses": 2,
 		"blurb": "flips a Crab: stunned, and the boathook bites twice as deep."},
 	# Worked out at the camp's research desk ("needs").
+	"poison": {"name": "Rat poison", "cost": {"poison": 1, "seaweed": 1}, "uses": 3,
+		"blurb": "kelp bait laced from the shed's tins: poisons the first 3 to eat it, sickening them slow and weak."},
 	"wire": {"name": "Barbed wire", "cost": {"scrap": 1, "driftwood": 1}, "uses": 40, "needs": "wire",
 		"blurb": "slows anything pushing through to a crawl and cuts it. Wears out after 40 s of it."},
 	"tripwire": {"name": "Tripwire flare", "cost": {"scrap": 1, "bio": 1}, "uses": 1, "needs": "tripwire",
@@ -29,6 +31,7 @@ const TRAPS := {
 	"sandbags": {"name": "Sandbag wall", "cost": {"driftwood": 2, "seaweed": 1}, "uses": 1, "needs": "sandbags", "wall": true,
 		"blurb": "a wall across the path that creatures must batter down (160). Patch it with driftwood."},
 }
+const POISON_TIME := 14.0
 const WIRE_R := 1.4
 const WIRE_SLOW := 0.35
 const WIRE_DPS := 5.0
@@ -243,6 +246,12 @@ func _spring(e: Enemy) -> bool:
 			else:
 				e.stagger(OTHER_STAGGER)
 			FX.sparks(get_parent(), at)
+		"poison":
+			# Squid skitter over bait; a Crab's armour doesn't care what it eats.
+			if e is Squid:
+				return false
+			e.poison(POISON_TIME * mult)
+			FX.spray(get_parent(), at + Vector3(0.0, 0.3, 0.0), Vector3.UP, Color(0.45, 0.8, 0.3))
 		"tripwire":
 			# The flare goes off from a stake beside the path, straight into it.
 			var f := Flare.new()
@@ -331,6 +340,24 @@ func _build_trap(k: String) -> Node3D:
 				coil.rotation = Vector3(PI * 0.5, a + PI * 0.5, 0.0)
 				n.add_child(coil)
 				Geo.box(n, Vector3(0.05, 0.75, 0.05), Color.WHITE, coil.position + Vector3(0.0, 0.03, 0.0)).material_override = Look.flat_mat(Look.WOOD_PALE)
+		"poison":
+			# A heap of kelp bait, green with poison, and the empty tin beside it.
+			var bait := MeshInstance3D.new()
+			var sm := SphereMesh.new()
+			sm.radius = 0.4
+			sm.height = 0.22
+			sm.radial_segments = 8
+			sm.rings = 3
+			bait.mesh = sm
+			bait.material_override = Look.flat_mat(Color(0.25, 0.42, 0.18), 0.5)
+			bait.position.y = 0.05
+			n.add_child(bait)
+			for i in 7:
+				var a := TAU * float(i) / 7.0
+				var pellet := Geo.sphere(n, 0.035, Color.WHITE, Vector3(sin(a) * 0.3, 0.14, cos(a) * 0.3))
+				pellet.material_override = Look.flat_mat(Color(0.35, 0.75, 0.85), 0.4)
+			var tin := Geo.cyl(n, 0.07, 0.14, Color.WHITE, Vector3(0.5, 0.07, 0.25))
+			tin.material_override = Look.flat_mat(Color(0.75, 0.15, 0.1), 0.5)
 		"tripwire":
 			var stake_l := Geo.box(n, Vector3(0.05, 0.3, 0.05), Color.WHITE, Vector3(-0.7, 0.15, 0.0))
 			stake_l.material_override = Look.flat_mat(Look.WOOD_PALE)

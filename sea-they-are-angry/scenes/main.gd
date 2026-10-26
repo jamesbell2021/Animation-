@@ -788,6 +788,7 @@ func _on_phase_changed(p: int) -> void:
 		_tally = {}
 	if p == Cycle.Phase.DAWN and Run.active:
 		_wash_up_oil()
+		_wash_up_shells()
 		_researched = Research.finish() if camp.desk.usable() else ""
 		_place_notes()
 		_dawn_report()
@@ -817,6 +818,9 @@ func _dawn_report() -> void:
 		how.append("%d in traps" % g.call("trap"))
 	if g.call("flare") > 0:
 		how.append("%d to flares" % g.call("flare"))
+	for k in [["shot", "shot"], ["arrow", "to arrows"], ["flame", "burned by the flamer"], ["bomb", "to petrol bombs"], ["poison", "poisoned"]]:
+		if g.call(k[0]) > 0:
+			how.append("%d %s" % [g.call(k[0]), k[1]])
 	var lines: Array[String] = []
 	lines.append("%d came ashore%s" % [g.call("ashore"), (" · " + " · ".join(how)) if not how.is_empty() else ""])
 	var cost: Array[String] = []
@@ -862,6 +866,8 @@ func _dawn_report() -> void:
 		lines.append(tip)
 	if _oil_tonight:
 		lines.append("An oil drum has washed up on the %s beach." % compass(_oil_at))
+	if _shells_tonight:
+		lines.append("A tin of shotgun cartridges has washed up on the %s beach." % compass(_shells_at))
 	if _researched != "":
 		lines.append("Worked out overnight at the camp: %s." % Research.title(_researched))
 	hud.report("Night %d held." % Run.night, lines)
@@ -905,6 +911,25 @@ func _wash_up_oil() -> void:
 	sp.once = true
 	sp.position = Terrain.beach_point(beach, 0.5, 0.8)
 	_oil_at = sp.position
+	add_child(sp)
+
+# Every third dawn from the third, a tin of a few cartridges from some wreck: the
+# shotgun's only ammunition besides the box in the shed.
+const SHELLS_FIRST := 3
+const SHELLS_EVERY := 3
+const SHELLS_TIN := 3
+var _shells_tonight := false
+var _shells_at := Vector3.ZERO
+
+func _wash_up_shells() -> void:
+	_shells_tonight = Run.night >= SHELLS_FIRST and (Run.night - SHELLS_FIRST) % SHELLS_EVERY == 0
+	if not _shells_tonight:
+		return
+	var beach := (Run.night / SHELLS_EVERY + 1) % Terrain.BEACHES.size()
+	var sp := ScavengePoint.new("shells", SHELLS_TIN)
+	sp.once = true
+	sp.position = Terrain.beach_point(beach, 0.55, -0.9)
+	_shells_at = sp.position
 	add_child(sp)
 
 func _on_run_ended(_reason: String, _night: int) -> void:
