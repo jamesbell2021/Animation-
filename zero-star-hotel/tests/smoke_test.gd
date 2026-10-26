@@ -192,6 +192,14 @@ func _play_day() -> void:
 		if not is_instance_valid(world) or world.is_queued_for_deletion():
 			break
 		max_guests = maxi(max_guests, world.guests.size())
+		# Like a player who read the morning heads-up: fix rooms before the inspector comes.
+		if Hotel.inspector_visiting() and GameManager.hour < 12.0 and world.manager.queue.size() < 2:
+			for i in Hotel.ROOMS:
+				var r: Dictionary = Hotel.rooms[i]
+				if r.open and int(r.damage) > 0:
+					world.manager_repair(i)
+				elif r.open and (float(r.dirt) > 60.0 or int(r.roaches) > 0):
+					world.manager_clean(i)
 		for inc in world.incidents:
 			kinds_seen[inc.kind] = true
 			if not inc.done and inc.claimed_by == null:

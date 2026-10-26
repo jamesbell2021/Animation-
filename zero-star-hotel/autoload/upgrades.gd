@@ -9,7 +9,7 @@ const CATEGORIES := ["Building", "Pool", "Bar", "Peace & Quiet", "Security"]
 
 const DEFS := {
 	"floors": {
-		"name": "Open Another Floor", "category": "Building", "max": 2, "cost": 900.0, "growth": 2.6,
+		"name": "Open Another Floor", "category": "Building", "max": 2, "cost": 600.0, "growth": 2.5,
 		"levels": ["1 floor", "2 floors", "3 floors"],
 		"desc": "Rip out the asbestos (carefully) and open another floor of four rooms.",
 	},

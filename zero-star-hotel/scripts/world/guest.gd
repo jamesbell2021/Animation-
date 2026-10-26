@@ -151,7 +151,15 @@ func _process(delta: float) -> void:
 				avatar.set_pose(VendorAvatar.Pose.SWIM)
 				world.pool_risk_tick(self, delta)
 			if _think <= 0.0:
-				_decide()
+				if state == S.LOUNGE and _rng.randf() < 0.35:
+					# Off for a dip. The towel stays on the lounger, obviously.
+					state = S.SWIM
+					position = HotelLayout.swim_spot(_rng)
+					avatar.set_pose(VendorAvatar.Pose.SWIM)
+					_think = _rng.randf_range(6.0, 14.0)
+					world.guest_at_pool(self, true)
+				else:
+					_decide()
 		S.TO_BAR:
 			if step_path(delta):
 				state = S.DRINK
@@ -224,14 +232,7 @@ func _decide() -> void:
 			weights["pool"] = 0.4  # a drunken night swim. What could go wrong?
 	match GuestTypes.weighted_pick(weights, _rng):
 		"pool":
-			_leave_spots()
-			state = S.TO_POOL
-			avatar.set_pose(VendorAvatar.Pose.IDLE)
-			lounger = world.claim_lounger(self)
-			if lounger >= 0:
-				go_to(HotelLayout.lounger(lounger))
-			else:
-				go_to(HotelLayout.swim_spot(_rng))
+			go_pool()
 		"bar":
 			_leave_spots()
 			stool = world.claim_stool(self)
@@ -252,6 +253,18 @@ func _decide() -> void:
 			else:
 				walk_to(HotelLayout.room_spot(room, _rng))
 				_think = _rng.randf_range(6.0, 14.0)
+
+
+## Head for the pool, bagging a sunlounger if there's one left.
+func go_pool() -> void:
+	_leave_spots()
+	state = S.TO_POOL
+	avatar.set_pose(VendorAvatar.Pose.IDLE)
+	lounger = world.claim_lounger(self)
+	if lounger >= 0:
+		go_to(HotelLayout.lounger(lounger))
+	else:
+		go_to(HotelLayout.swim_spot(_rng))
 
 
 func _arrive_pool() -> void:

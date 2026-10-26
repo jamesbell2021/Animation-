@@ -71,7 +71,7 @@ static func booking_mix(stars: int) -> Dictionary:
 			"lads": w = 4.0 - stars * 1.0
 			"hens": w = 2.5 - stars * 0.5
 			"backpackers": w = 2.0 - stars * 0.4
-			"mums": w = 2.0
+			"mums": w = 2.6
 			"family": w = 1.0 + stars * 1.0
 			"couples": w = 0.8 + stars * 0.8
 			"pensioners": w = 1.5 + stars * 0.5

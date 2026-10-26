@@ -19,8 +19,8 @@ const QUALITY_DESC := [
 	"Matching curtains, working shower, a kettle.",
 	"Fresh paint, air-con, a telly from this century.",
 ]
-const QUALITY_COST := [130.0, 380.0, 850.0]
-const BASE_RATE := [11.0, 16.0, 23.0, 32.0]   # per guest, per night
+const QUALITY_COST := [120.0, 300.0, 600.0]
+const BASE_RATE := [12.0, 20.0, 32.0, 48.0]   # per guest, per night
 const REVIEW_WINDOW := 12
 const MAX_STRIKES := 2
 
@@ -121,7 +121,7 @@ func upgrade_room(i: int) -> bool:
 
 
 func room_rate(i: int) -> float:
-	return roundf(BASE_RATE[int(rooms[i].quality)] * Economy.room_mult() * (1.0 + 0.2 * stars))
+	return roundf(BASE_RATE[int(rooms[i].quality)] * Economy.room_mult() * (1.0 + 0.35 * stars))
 
 
 func free_rooms() -> Array:
@@ -422,8 +422,28 @@ func inspector_visiting() -> bool:
 	return inspection_day == GameManager.day
 
 
+## True only while the inspector is actually walking round (set by the hotel scene).
+var inspector_on_site := false
+
+
+## Problems the inspector would spot right now, for the morning heads-up.
+func inspection_problems() -> Array:
+	var out := []
+	for i in ROOMS:
+		var r: Dictionary = rooms[i]
+		if not r.open:
+			continue
+		if int(r.roaches) > 0:
+			out.append("cockroaches in %s" % room_label(i))
+		elif float(r.dirt) > 65.0:
+			out.append("%s is filthy" % room_label(i))
+		elif int(r.damage) > 0:
+			out.append("%s is smashed up" % room_label(i))
+	return out
+
+
 func add_strike(why: String) -> void:
-	if not inspector_visiting():
+	if not inspector_visiting() or not inspector_on_site:
 		return
 	strikes += 1
 	GameManager.notify("Inspector saw: %s (%d/%d strikes)" % [why, strikes, MAX_STRIKES + 1], "bad")

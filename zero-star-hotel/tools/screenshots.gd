@@ -72,8 +72,13 @@ func _run() -> void:
 	world.camera.position = Vector2(1300, 600)
 	await wait(0.5)
 	await shot("afternoon")
-	world.camera.position = Vector2(1900, 640)
-	await wait(0.3)
+	# A towel war on the terrace.
+	var at_pool: Array = world.guests.filter(func(x): return x.is_present() and not x.is_busy())
+	if at_pool.size() >= 2:
+		at_pool[0].lounger = world.claim_lounger(at_pool[0])
+		world._start_lounger_war(at_pool[1], at_pool[0])
+	world.camera.position = Vector2(1600, 600)
+	await wait(0.6)
 	await shot("pool")
 	# Stage some chaos for the camera.
 	var g: Array = world.guests.filter(func(x): return x.is_present())

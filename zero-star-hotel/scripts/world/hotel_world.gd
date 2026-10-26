@@ -38,6 +38,7 @@ var _rng := RandomNumberGenerator.new()
 func _ready() -> void:
 	_rng.randomize()
 	name = "HotelWorld"
+	Hotel.inspector_on_site = false
 	_build()
 	GameManager.day_ended.connect(_on_day_ended)
 	GameManager.phase_changed.connect(_on_phase)
@@ -59,6 +60,9 @@ func _ready() -> void:
 		GameManager.notify("Day %d at %s. %s" % [GameManager.day, Hotel.name_of_hotel, Lines.STAR_TITLES[Hotel.stars]], "info")
 	if Hotel.inspector_visiting():
 		GameManager.notify("The star inspector arrives at NOON. Clean every room and squash every cockroach!", "warning")
+		var problems := Hotel.inspection_problems()
+		if not problems.is_empty():
+			GameManager.notify("Fix before noon: %s." % ", ".join(problems.slice(0, 5)), "bad")
 
 
 func _build() -> void:
@@ -161,6 +165,18 @@ func _process(delta: float) -> void:
 
 func _on_phase(phase: String) -> void:
 	match phase:
+		"Pool time":
+			# The great lounger rush: mums (and anyone else keen) charge out with their towels.
+			var rush := 0
+			for g: Guest in guests:
+				if not g.is_present() or g.is_busy() or g.child or g.state != Guest.S.ROOM:
+					continue
+				var keen: float = {"mums": 0.9, "hens": 0.5, "lads": 0.35, "family": 0.5}.get(g.type_id, 0.25)
+				if g.lounger < 0 and _rng.randf() < keen:
+					g.go_pool()
+					rush += 1
+			if rush > Upgrades.lounger_count():
+				GameManager.notify("The lounger rush is on! Towels at the ready...", "warning")
 		"Happy hour":
 			AudioManager.play_music("night")
 			GameManager.notify("Happy hour! The bar is open. %s" % Economy.PINT_PRICES[Economy.pint_price_index].name, "info")
@@ -243,12 +259,20 @@ func guest_at_pool(guest: Guest, swimming: bool) -> void:
 		return
 	if Upgrades.level("pool") == 0 and _rng.randf() < 0.4:
 		guest.say("Something touched my leg!", "bad", 1.6)
-	# Sunlounger war: a mum without a lounger eyes up one already taken.
-	if guest.type_id == "mums" and Upgrades.lounger_count() <= loungers.size():
-		for other: Guest in loungers.values():
-			if other.type_id == "mums" and other.group_id != guest.group_id and not other.is_busy():
-				_start_lounger_war(guest, other)
-				return
+	# Sunlounger war: no lounger left, so somebody's towel has to go. The mums never back down.
+	if guest.lounger >= 0 or Upgrades.lounger_count() > loungers.size():
+		return
+	var temper: float = {"mums": 0.85, "hens": 0.35, "lads": 0.2}.get(guest.type_id, 0.08)
+	if _rng.randf() > temper / Upgrades.lounger_count() * 4.0:
+		return
+	var target: Guest = null
+	for other: Guest in loungers.values():
+		if other.group_id == guest.group_id or other.is_busy() or other.incident:
+			continue
+		if target == null or (other.type_id == "mums" and target.type_id != "mums"):
+			target = other
+	if target:
+		_start_lounger_war(guest, target)
 
 
 # --- Seats --------------------------------------------------------------------------------------
@@ -317,7 +341,8 @@ func bar_trouble_tick(guest: Guest, delta: float) -> void:
 func pool_risk_tick(guest: Guest, delta: float) -> void:
 	if guest.is_busy():
 		return
-	var risk := 0.0
+	# Bombing, belly-flops, "watch this!"... the swamp doesn't help.
+	var risk := 0.0008 + 0.0015 * float(guest.type_def().trouble)
 	if guest.child:
 		risk = 0.004
 	if guest.drunk >= 2.0:
@@ -361,7 +386,13 @@ func _maybe_thief() -> void:
 
 
 func _start_lounger_war(a: Guest, b: Guest) -> void:
-	_start_incident("lounger", b.position, [a, b])
+	# The challenger storms out of the pool and squares up, towel in hand.
+	var spot := HotelLayout.lounger(b.lounger) if b.lounger >= 0 else b.position
+	a.position = spot + Vector2(34, 0)
+	b.position = spot + Vector2(-20, 0)
+	a.face(b.position)
+	b.face(a.position)
+	_start_incident("lounger", spot, [a, b])
 
 
 func _start_incident(kind: String, at: Vector2, involved: Array, room := -1) -> Incident:
@@ -822,8 +853,16 @@ func _send_inspector() -> void:
 	inspector = Visitor.new()
 	actors.add_child(inspector)
 	inspector.setup_inspector(self, tour)
+	Hotel.inspector_on_site = true
+	inspector.tree_exiting.connect(_on_inspector_left)
 	GameManager.notify("The star inspector has arrived! Clipboard at the ready.", "warning")
 	AudioManager.play_sfx("event")
+
+
+func _on_inspector_left() -> void:
+	Hotel.inspector_on_site = false
+	if Hotel.inspector_visiting():
+		GameManager.notify("The inspector has gone. Verdict tonight (%d/%d strikes)." % [Hotel.strikes, Hotel.MAX_STRIKES + 1], "info")
 
 
 func _inspect_room(i: int) -> void:

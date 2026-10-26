@@ -33,6 +33,14 @@ func build() -> void:
 		if insp.passed:
 			AudioManager.play_sfx("star")
 			AudioManager.play_sfx("cheer")
+			if Hotel.stars >= 3:
+				var win := UITheme.title("THREE STARS! YOU DID IT!", 40)
+				win.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+				v.add_child(win)
+				var sub_l := UITheme.label("From health hazard to proper hotel in %d days. Keep going for the money (and the reviews)!" % int(summary.get("day", 1)), 18, UITheme.SEA_DARK)
+				sub_l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+				sub_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+				v.add_child(sub_l)
 	var cols := HBoxContainer.new()
 	cols.add_theme_constant_override("separation", 18)
 	cols.size_flags_vertical = Control.SIZE_EXPAND_FILL

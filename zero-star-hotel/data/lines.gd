@@ -43,7 +43,7 @@ const MANAGER := ["I'm the manager!", "Everyone calm down!", "Not in my hotel!",
 
 const INCIDENT_TEXT := {
 	"music": ["Room %s is having a rave!", "Bass is shaking room %s!"],
-	"fight": ["Fight at the bar!", "Two lads are scrapping!", "Punch-up by the pool!"],
+	"fight": ["Fight at the bar!", "Two lads are scrapping!", "Punch-up at the bar!"],
 	"vandal": ["Someone's trashing room %s!", "A telly just flew out of room %s!"],
 	"theft": ["A thief is sneaking around!", "Someone's nicking towels!"],
 	"pool": ["Someone's flailing in the pool!", "Drunk belly-flop! Help!"],
@@ -55,7 +55,7 @@ const RESOLVED := {
 	"fight": ["Fight broken up!", "Everyone's friends again. Probably."],
 	"vandal": ["Vandal stopped!", "The telly survives. Just."],
 	"theft": ["Thief chased off!", "Towels saved!"],
-	"pool": ["Rescued! Nobody drowns at Hotel Paradiso!", "Saved! Arm bands for everyone."],
+	"pool": ["Rescued! Nobody drowns on my watch!", "Saved! Arm bands for everyone."],
 	"lounger": ["Lounger war settled.", "Peace by the pool. Towels down."],
 	"roach": ["Squashed!"],
 }
@@ -139,7 +139,7 @@ static func pick(list: Array, rng: RandomNumberGenerator = null) -> String:
 static func money(amount: float) -> String:
 	if absf(amount) >= 10000.0:
 		return "€%sk" % String.num(amount / 1000.0, 1)
-	if absf(amount - roundf(amount)) < 0.005 or absf(amount) >= 50.0:
+	if absf(amount - roundf(amount)) < 0.005 or absf(amount) >= 10.0:
 		return "€%d" % int(roundf(amount))
 	return "€%.2f" % amount
 
