@@ -51,6 +51,10 @@ func _ready() -> void:
 	Game.player = player
 	add_child(player)
 	player.attach_view_model(rig.cam)
+	var ab: Abilities = Abilities.new()
+	ab.name = "Abilities"
+	Game.abilities = ab
+	add_child(ab)
 	var zep: Zeppelin = Zeppelin.new()
 	zep.name = "Zeppelin"
 	Game.zep = zep
@@ -141,6 +145,7 @@ func clear_world() -> void:
 		p.turret = null
 	Game.combat.clear()
 	Game.fx.clear()
+	Game.abilities.reset()
 	Game.world.build_city()
 	Game.zep.reset()
 	Game.sel = null
@@ -244,12 +249,16 @@ func act(a: String, t: String) -> void:
 				return
 			var tt: Turret = pad.turret
 			var c: int = Game.up_cost(tt.type, tt.lvl) if tt.lvl < Game.MAXL else 0
+			if tt.lvl == 2 and t != "a" and t != "b":
+				Game.banner.emit("", "CHOOSE AN UPGRADE PATH IN THE PANEL", 1.6)
+				Game.sfx.play("deny")
+				return
 			if tt.lvl >= Game.MAXL or Game.funds < c:
 				Game.sfx.play("deny")
 				return
 			Game.funds -= c
 			tt.spent += c
-			tt.level_up()
+			tt.level_up(t)
 			Game.sfx.play("build")
 			Game.fx.sparks(pad.pos + Vector3(0, 8, 0), 40, Mats.GOLD, 60.0)
 			Game.fx.text(pad.pos + Vector3(0, 18, 0), "強化!", Mats.GOLD, 9.0, 1.0)
@@ -369,6 +378,18 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if Game.state != Game.State.PLAY or Game.player.active:
 		return
+	if event is InputEventMouseButton and Game.abilities.targeting != "":
+		var tb: InputEventMouseButton = event
+		if tb.pressed and tb.button_index == MOUSE_BUTTON_LEFT:
+			var p: Variant = Game.abilities.ground_at(tb.position)
+			if p is Vector3:
+				Game.abilities.fire(Game.abilities.targeting, p)
+			get_viewport().set_input_as_handled()
+			return
+		if tb.pressed and tb.button_index == MOUSE_BUTTON_RIGHT:
+			Game.abilities.cancel()
+			get_viewport().set_input_as_handled()
+			return
 	if event is InputEventMouseButton:
 		var b: InputEventMouseButton = event
 		if b.button_index == MOUSE_BUTTON_WHEEL_UP and b.pressed:
@@ -430,10 +451,18 @@ func _key(k: InputEventKey) -> void:
 			else:
 				pl.enter("zep")
 		KEY_ESCAPE:
-			if pl.active:
+			if Game.abilities.targeting != "":
+				Game.abilities.cancel()
+			elif pl.active:
 				pl.exit_seat()
 			else:
 				select(null)
+		KEY_7:
+			Game.abilities.request("air")
+		KEY_8:
+			Game.abilities.request("storm")
+		KEY_9:
+			Game.abilities.request("flood")
 		KEY_Q:
 			if pl.active:
 				pl.swap()
@@ -492,6 +521,9 @@ func _process(delta: float) -> void:
 			step(sdt / float(n))
 	Game.rig.update(delta)
 	Game.combat.draw()
+	if Game.abilities.targeting != "":
+		Game.abilities.reticle = Game.abilities.ground_at(get_viewport().get_mouse_position())
+	Game.abilities.draw()
 	Game.fx.draw()
 	_update_pads()
 	_crt.set_shader_parameter("hurt", Game.hurt if Game.state == Game.State.PLAY else 0.0)
@@ -515,6 +547,8 @@ func step(dt: float) -> void:
 		t.update(dt)
 	Game.zep.update(dt)
 	Game.player.update(dt)
+	if Game.state == Game.State.PLAY:
+		Game.abilities.update(dt)
 	Game.combat.update(dt)
 	Game.fx.update(dt)
 	if Game.demo:

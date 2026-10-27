@@ -220,8 +220,10 @@ func update(dt: float) -> void:
 		exit_seat()
 		return
 	# Keys and gamepad nudge the aim too.
-	var kx: float = float(Input.is_physical_key_pressed(KEY_RIGHT) or Input.is_physical_key_pressed(KEY_D)) - float(Input.is_physical_key_pressed(KEY_LEFT) or Input.is_physical_key_pressed(KEY_A))
-	var ky: float = float(Input.is_physical_key_pressed(KEY_UP) or Input.is_physical_key_pressed(KEY_W)) - float(Input.is_physical_key_pressed(KEY_DOWN) or Input.is_physical_key_pressed(KEY_S))
+	# In the airship WASD flies it (see Zeppelin._fly); the arrow keys still aim.
+	var wasd: bool = not (seat is String)
+	var kx: float = float(Input.is_physical_key_pressed(KEY_RIGHT) or (wasd and Input.is_physical_key_pressed(KEY_D))) - float(Input.is_physical_key_pressed(KEY_LEFT) or (wasd and Input.is_physical_key_pressed(KEY_A)))
+	var ky: float = float(Input.is_physical_key_pressed(KEY_UP) or (wasd and Input.is_physical_key_pressed(KEY_W))) - float(Input.is_physical_key_pressed(KEY_DOWN) or (wasd and Input.is_physical_key_pressed(KEY_S)))
 	var jx: float = Input.get_joy_axis(0, JOY_AXIS_RIGHT_X)
 	var jy: float = Input.get_joy_axis(0, JOY_AXIS_RIGHT_Y)
 	if absf(jx) < 0.15:

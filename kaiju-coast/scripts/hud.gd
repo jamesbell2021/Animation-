@@ -27,6 +27,11 @@ var fps_seat: Label
 var fps_weap: Label
 var fps_bar: ProgressBar
 var fps_hint: Label
+var fps_abil: Label
+var abil_bar: HBoxContainer
+var abil_buttons: Dictionary = {}
+var abil_bars: Dictionary = {}
+var target_hint: Label
 var title_screen: Control
 var over_screen: Control
 var over_big: Label
@@ -423,10 +428,14 @@ func _rebuild_panel() -> void:
 			var st: Dictionary = t.stat()
 			_title(head, d2["jp"], d2["name"])
 			var tg: String = "GROUND + AIR" if (st["ground"] and st["air"]) else ("AIR ONLY" if st["air"] else "GROUND ONLY")
-			var sub: Label = _label("%s  ·  %s" % [_stars(t.lvl, 4), tg], 12, GOLD)
+			var bname: String = ""
+			if t.branch != "":
+				var bd: Dictionary = Game.BRANCH[t.type][t.branch]
+				bname = "  ·  %s %s" % [bd["jp"], bd["name"]]
+			var sub: Label = _label("%s  ·  %s%s" % [_stars(t.lvl, 4), tg, bname], 12, GOLD)
 			panel_box.add_child(sub)
 			panel_box.add_child(_hp_bar(t.hp / Game.max_hp(t.lvl)))
-			var nx: Dictionary = Game.tstat(t.type, t.lvl + 1) if t.lvl < Game.MAXL else {}
+			var nx: Dictionary = Game.tstat(t.type, t.lvl + 1, t.branch) if t.lvl < Game.MAXL else {}
 			var grid: GridContainer = GridContainer.new()
 			grid.columns = 3
 			grid.add_theme_constant_override("h_separation", 18)
@@ -434,9 +443,18 @@ func _rebuild_panel() -> void:
 			_cell(grid, "DAMAGE", "%d" % roundi(st["dmg"]), "" if nx.is_empty() else "%d" % roundi(nx["dmg"]))
 			_cell(grid, "PER SEC", "%.2f" % float(st["rate"]), "" if nx.is_empty() else "%.2f" % float(nx["rate"]))
 			_cell(grid, "RANGE", "%d" % roundi(st["range"]), "" if nx.is_empty() else "%d" % roundi(nx["range"]))
+			if t.lvl == 2:
+				var uc2: int = Game.up_cost(t.type, t.lvl)
+				panel_box.add_child(_label("LEVEL 3: CHOOSE A PATH", 11, DIM))
+				for br: String in ["a", "b"]:
+					var bd2: Dictionary = Game.BRANCH[t.type][br]
+					panel_box.add_child(_item(bd2["jp"], "%s  %s" % [br.to_upper(), bd2["name"]], bd2["desc"], "¥%d" % uc2, f < uc2,
+						func() -> void: Game.main.act("up", br)))
 			var row2: HFlowContainer = HFlowContainer.new()
 			panel_box.add_child(row2)
-			if t.lvl < Game.MAXL:
+			if t.lvl == 2:
+				pass
+			elif t.lvl < Game.MAXL:
 				var uc: int = Game.up_cost(t.type, t.lvl)
 				var bu: Button = _button("強化 UPGRADE ¥%d [U]" % uc, func() -> void: Game.main.act("up", ""))
 				bu.disabled = f < uc
@@ -544,6 +562,44 @@ func _build_acts() -> void:
 		else:
 			Game.main.select("zep")))
 	acts.add_child(_button("武器庫 ARMORY  [B]", func() -> void: Game.main.select(null if (Game.sel is String and Game.sel == "armory") else "armory")))
+	# Special attacks along the bottom.
+	abil_bar = HBoxContainer.new()
+	abil_bar.anchor_left = 0.5
+	abil_bar.anchor_right = 0.5
+	abil_bar.anchor_top = 1.0
+	abil_bar.anchor_bottom = 1.0
+	abil_bar.offset_bottom = -14
+	abil_bar.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	abil_bar.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	abil_bar.add_theme_constant_override("separation", 6)
+	root.add_child(abil_bar)
+	for k: String in Abilities.ORDER:
+		var d: Dictionary = Abilities.DEFS[k]
+		var v: VBoxContainer = VBoxContainer.new()
+		v.add_theme_constant_override("separation", 0)
+		abil_bar.add_child(v)
+		var b: Button = _button("%s %s [%s]" % [d["jp"], d["name"], d["key"]], func() -> void: Game.abilities.request(k))
+		b.tooltip_text = d["desc"]
+		b.add_theme_font_size_override("font_size", 13)
+		v.add_child(b)
+		var pb: ProgressBar = ProgressBar.new()
+		pb.custom_minimum_size = Vector2(0, 3)
+		pb.show_percentage = false
+		pb.max_value = 1.0
+		pb.step = 0.0
+		pb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		v.add_child(pb)
+		abil_buttons[k] = b
+		abil_bars[k] = pb
+	target_hint = _label("", 16, GOLD)
+	target_hint.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	target_hint.anchor_top = 0.14
+	target_hint.anchor_bottom = 0.14
+	target_hint.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	target_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	target_hint.label_settings.outline_size = 6
+	target_hint.label_settings.outline_color = Color(0, 0, 0, 0.9)
+	root.add_child(target_hint)
 
 
 func _build_banner() -> void:
@@ -602,7 +658,10 @@ func _build_fps() -> void:
 	fps_bar.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	fps_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	fps_box.add_child(fps_bar)
-	fps_hint = _label("Mouse aim · Click fire · Right-click zoom · Q / wheel swap weapon · R reload · Tab next gun · Esc leave", 12, DIM)
+	fps_abil = _label("", 12, GOLD)
+	fps_abil.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	fps_box.add_child(fps_abil)
+	fps_hint = _label("", 12, DIM)
 	fps_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	fps_box.add_child(fps_hint)
 	fps_box.visible = false
@@ -615,6 +674,10 @@ func on_seat_changed() -> void:
 		fps_seat.text = pl.seat_name()
 		fps_weap.text = "機関砲 GUNNER" if pl.weapon == "gun" else "噴進砲 ROCKETEER"
 		fps_weap.label_settings.font_color = JADE if pl.weapon == "gun" else GOLD
+		if pl.seat is String:
+			fps_hint.text = "WASD fly the airship · Mouse aim · Click fire · Right-click zoom · Q swap weapon · Tab next gun · Esc leave"
+		else:
+			fps_hint.text = "Mouse aim · Click fire · Right-click zoom · Q / wheel swap weapon · R reload · Tab next gun · Esc leave"
 	refresh(true)
 
 
@@ -760,9 +823,30 @@ func _on_state() -> void:
 func refresh(force: bool = false) -> void:
 	var play: bool = Game.state == Game.State.PLAY
 	acts.visible = play and not Game.player.active
+	abil_bar.visible = play and not Game.player.active
+	target_hint.visible = play and Game.abilities.targeting != ""
 	if not play:
 		panel.visible = false
 		return
+	var ab: Abilities = Game.abilities
+	var line: PackedStringArray = PackedStringArray()
+	for k: String in Abilities.ORDER:
+		var d: Dictionary = Abilities.DEFS[k]
+		var b: Button = abil_buttons[k]
+		var ready: bool = ab.is_ready(k)
+		var cdv: float = float(ab.cd[k])
+		var state_txt: String = "READY" if ready else ("WAVE %d" % int(d["unlock"]) if not ab.unlocked(k) else "%ds" % ceili(cdv))
+		b.text = "%s %s [%s]  %s" % [d["jp"], d["name"], d["key"], state_txt]
+		b.disabled = not ready
+		(abil_bars[k] as ProgressBar).value = 1.0 if ready else (1.0 - cdv / float(d["cd"]) if ab.unlocked(k) else 0.0)
+		if ab.targeting == k:
+			b.add_theme_stylebox_override("normal", _box(Color(0.3, 0.22, 0.04, 0.9), GOLD, 2))
+		else:
+			b.remove_theme_stylebox_override("normal")
+		line.append("%s %s %s" % [d["key"], d["jp"], state_txt])
+	fps_abil.text = "  ·  ".join(line)
+	if ab.targeting != "":
+		target_hint.text = "Click the sea to call %s · right-click or Esc to cancel" % Abilities.DEFS[ab.targeting]["name"]
 	s_funds.text = "¥%d" % Game.funds
 	var c: int = maxi(0, ceili(Game.city))
 	s_city.text = "%d%%" % c

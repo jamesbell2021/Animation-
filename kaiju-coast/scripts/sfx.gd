@@ -8,7 +8,7 @@ const POOL3D: int = 28
 const GAPS: Dictionary = {
 	"cannon": 0.06, "gun": 0.045, "rocket": 0.08, "boom": 0.05, "boom_big": 0.12, "zap": 0.08, "rail": 0.1,
 	"flak": 0.07, "hanabi": 0.06, "splat": 0.07, "crit": 0.09, "roar": 0.5, "roar_boss": 0.8, "beam": 0.3,
-	"stomp": 0.18, "crash": 0.25, "click": 0.03, "deny": 0.1, "reload": 0.2,
+	"stomp": 0.18, "crash": 0.25, "thunder": 0.15, "jet": 0.5, "flood": 1.0, "click": 0.03, "deny": 0.1, "reload": 0.2,
 }
 
 var streams: Dictionary = {}
@@ -175,6 +175,20 @@ func _render() -> void:
 	for i: int in range(steps.size()):
 		Synth.pluck(b, i * 0.06, Synth.midi_f(62 + steps[i]), 0.2, 0.6)
 	streams["build"] = Synth.to_wav(b)
+	b = Synth.alloc(3.0)
+	Synth.tone(b, 0, 2.8, 90, 55, "saw", 0.14, 0.6, 700)
+	Synth.noise(b, 0, 2.8, 0.5, "bp", 300, 2400, 1.5, 0.9)
+	streams["jet"] = Synth.to_wav(b)
+	b = Synth.alloc(3.0)
+	Synth.noise(b, 0, 0.12, 0.6, "hp", 1800)
+	Synth.noise(b, 0.02, 2.6, 0.55, "lp", 600, 60, 0.7, 0.05)
+	Synth.tone(b, 0.0, 1.8, 50, 28, "sine", 0.35, 0.02)
+	streams["thunder"] = Synth.to_wav(b)
+	b = Synth.alloc(4.0)
+	Synth.noise(b, 0, 3.6, 0.55, "lp", 200, 1400, 0.8, 1.2)
+	Synth.noise(b, 0.4, 3.0, 0.3, "bp", 900, 300, 1.0, 0.6)
+	Synth.tone(b, 0, 3.4, 45, 30, "sine", 0.3, 0.8)
+	streams["flood"] = Synth.to_wav(b)
 	b = Synth.alloc(0.25)
 	Synth.noise(b, 0, 0.05, 0.25, "bp", 3000, 0, 4.0)
 	Synth.noise(b, 0.12, 0.05, 0.25, "bp", 2200, 0, 4.0)

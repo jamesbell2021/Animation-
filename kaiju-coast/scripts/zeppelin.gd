@@ -19,6 +19,9 @@ var cd: float = 0.0
 var bomb_cd: float = 0.0
 var pod_cd: float = 0.0
 var side: float = 1.0
+var pilot_speed: float = 22.0
+var _rejoin: float = 1.0                ## 0..1 blend back onto the patrol path after you fly it
+var _rejoin_from: Vector3 = Vector3.ZERO
 
 var _body: Node3D
 var _line: ShaderMaterial
@@ -132,10 +135,45 @@ func seat_pos() -> Vector3:
 	return global_transform * Vector3(0, -36, -48)
 
 
+func piloted() -> bool:
+	return Game.player != null and Game.player.active and Game.player.seat is String
+
+
+## You're at the helm: A/D (or the left stick) turn, W/S throttle up and down.
+func _fly(dt: float) -> void:
+	var steer: float = float(Input.is_physical_key_pressed(KEY_D)) - float(Input.is_physical_key_pressed(KEY_A))
+	var throttle: float = float(Input.is_physical_key_pressed(KEY_W)) - float(Input.is_physical_key_pressed(KEY_S))
+	var jx: float = Input.get_joy_axis(0, JOY_AXIS_LEFT_X)
+	var jy: float = Input.get_joy_axis(0, JOY_AXIS_LEFT_Y)
+	if absf(jx) > 0.2:
+		steer += jx
+	if absf(jy) > 0.2:
+		throttle -= jy
+	pilot_speed = clampf(pilot_speed + throttle * 22.0 * dt, 6.0, 60.0)
+	var turn: float = -clampf(steer, -1.0, 1.0) * 0.5
+	# Keep it over the bay: turn back in when it strays too far.
+	var home: Vector3 = Vector3(0, 0, -300) - position
+	if absf(position.x) > 700.0 or position.z < -1000.0 or position.z > 160.0:
+		turn += wrapf(Game.yaw_to(home.x, home.z) - yaw, -PI, PI) * 0.8
+	yaw += turn * dt
+	roll = lerpf(roll, clampf(-turn * 0.5, -0.2, 0.2), minf(1.0, dt * 2.0))
+	var fwd: Vector3 = Vector3(-sin(yaw), 0, -cos(yaw))
+	vel = fwd * pilot_speed
+	position += vel * dt
+	position.y = lerpf(position.y, 125.0 + sin(Game.t * 0.4) * 3.0, dt)
+	# When you let go, pick the nearest point of the patrol loop and drift back onto it.
+	ang = atan2((position.z + 80.0) / 105.0, position.x / 230.0)
+	_rejoin = 0.0
+	_rejoin_from = position
+
+
 func _place(dt: float) -> void:
 	var nx: float = cos(ang) * 230.0
 	var nz: float = -80.0 + sin(ang) * 105.0
 	var np: Vector3 = Vector3(nx, 125.0 + sin(Game.t * 0.4) * 3.0, nz)
+	if _rejoin < 1.0:
+		_rejoin = minf(1.0, _rejoin + dt / 4.0)
+		np = _rejoin_from.lerp(np, smoothstep(0.0, 1.0, _rejoin))
 	if dt > 0.0:
 		vel = (np - position) / dt
 		var ny: float = Game.yaw_to(np.x - position.x, np.z - position.z)
@@ -178,8 +216,11 @@ func update(dt: float) -> void:
 			Game.banner.emit("雷神丸 再出撃", "RAIJIN-MARU IS BACK IN THE AIR", 2.4)
 			Game.hud_dirty.emit()
 		return
-	ang += dt * 0.05
-	_place(dt)
+	if piloted():
+		_fly(dt)
+	else:
+		ang += dt * 0.05
+		_place(dt)
 	rotation.y = yaw
 	_body.rotation = Vector3(0, 0, roll)
 	_draw_carp()

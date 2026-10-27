@@ -12,6 +12,8 @@ uniform vec3 moon_dir = vec3(0.3, 0.27, -0.92);
 uniform float t = 0.0;
 uniform float flat_far = 0.0;   // 1 on the far horizon plane: no waves, and discard inside the near plane
 uniform vec4 near_rect = vec4(-1600.0, -1700.0, 1600.0, 0.0);
+uniform vec4 surge = vec4(0.0);   // flood gates: front z, x from, x to, height
+uniform float amp = 1.0;          // storm swell
 
 varying vec3 wpos;
 varying vec3 wnorm;
@@ -27,9 +29,13 @@ void vertex() {
 		float a1 = p.x * 0.019 + t * 1.1;
 		float a2 = p.z * 0.027 - t * 1.4;
 		float a3 = (p.x + p.z) * 0.05 + t * 2.1;
-		h = 1.3 * sin(a1) + 1.1 * sin(a2) + 0.6 * sin(a3);
-		g.x = 1.3 * 0.019 * cos(a1) + 0.6 * 0.05 * cos(a3);
-		g.y = 1.1 * 0.027 * cos(a2) + 0.6 * 0.05 * cos(a3);
+		h = (1.3 * sin(a1) + 1.1 * sin(a2) + 0.6 * sin(a3)) * amp;
+		g.x = (1.3 * 0.019 * cos(a1) + 0.6 * 0.05 * cos(a3)) * amp;
+		g.y = (1.1 * 0.027 * cos(a2) + 0.6 * 0.05 * cos(a3)) * amp;
+		if (surge.w > 0.0) {
+			float band = exp(-pow((p.z - surge.x) / 16.0, 2.0)) * smoothstep(surge.y - 40.0, surge.y, p.x) * smoothstep(surge.z + 40.0, surge.z, p.x);
+			h += surge.w * band;
+		}
 	}
 	VERTEX.y += h;
 	wpos = p + vec3(0.0, h, 0.0);

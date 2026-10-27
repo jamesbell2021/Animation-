@@ -34,6 +34,8 @@ func set_mode(m: String) -> void:
 
 func update(dt: float) -> void:
 	_t += dt
+	if mode == "free":
+		return
 	var xf: Transform3D
 	var fov: float = 60.0
 	match mode:

@@ -12,6 +12,168 @@ func check(cond: bool, label: String) -> void:
 		_fail += 1
 
 
+func _steps(n: int) -> void:
+	for i: int in range(n):
+		Game.main.step(1.0 / 30.0)
+
+
+func _spawn(t: String, p: Vector3) -> Kaiju:
+	var k: Kaiju = Game.main.spawn_kaiju(t)
+	k.position = p
+	k.target_x = p.x
+	k.pose(0.0)
+	k.refresh_hits()
+	return k
+
+
+## Weak points, upgrade paths, kaiju specials, the airship helm and special attacks.
+func _features() -> void:
+	print("-- features --")
+	Game.new_game()
+	Game.funds = 99999
+	Game.spawn_q.clear()
+	Game.phase = "wave"
+	# Shoot an eye out.
+	var oni: Kaiju = _spawn("oni", Vector3(0, 0, -60))
+	oni.hp = 1e6
+	oni.max_hp = 2000.0
+	for s: Dictionary in oni.spheres:
+		if s["weak"]:
+			s["whp"] = 100.0
+	_steps(2)
+	var idx: int = -1
+	for h: Dictionary in oni.hits:
+		if h["weak"]:
+			idx = h["idx"]
+			break
+	check(idx >= 0, "oni has weak points")
+	for i: int in range(6):
+		Game.combat.hurt_kaiju(oni, 40.0, "kin", oni.aim, Vector3.FORWARD, true, "p", idx)
+	check(not oni.spheres[idx]["weak"] and oni.enraged, "shooting out an eye blinds and enrages it")
+	check(not (oni.spheres[idx]["eye"] as Node3D).visible, "the destroyed eye goes dark")
+	check(oni.stagger > 0.5, "heavy hits stagger (%.2f)" % oni.stagger)
+	oni.hp = 1.0
+	Game.combat.hurt_kaiju(oni, 50.0, "kin", oni.aim, Vector3.FORWARD, false, "t")
+	check(oni.dying, "oni dies")
+	_steps(160)
+	check(not Game.kaiju.has(oni), "death sequence finishes and removes it")
+	# Upgrade paths.
+	Game.main.select(Game.pads[3])
+	Game.main.act("build", "cannon")
+	Game.main.act("up", "")
+	Game.main.act("up", "")
+	check(Game.pads[3].turret.lvl == 2, "level 3 needs a path choice")
+	Game.main.act("up", "a")
+	check(Game.pads[3].turret.lvl == 3 and Game.pads[3].turret.branch == "a", "cannon took the SANDAN path")
+	check(int(Game.pads[3].turret.stat()["pellets"]) == 6, "SANDAN fires six pellets")
+	for t: String in ["rocket", "tesla", "rail", "flak"]:
+		var b: Dictionary = Game.tstat(t, 3, "b")
+		check(not b.is_empty(), "%s path B stats" % t)
+	# Orochi: sever a head.
+	var oro: Kaiju = _spawn("orochi", Vector3(60, 0, -120))
+	oro.hp = 1e6
+	oro.max_hp = 10000.0
+	_steps(2)
+	var eyes: Array[int] = []
+	for i2: int in range(oro.spheres.size()):
+		if oro.spheres[i2]["weak"] and eyes.size() < 2:
+			eyes.append(i2)
+	for e: int in eyes:
+		for j: int in range(30):
+			Game.combat.hurt_kaiju(oro, 100.0, "kin", oro.aim, Vector3.FORWARD, true, "p", e)
+	var severed: int = 0
+	for h2: Dictionary in oro._heads:
+		if not h2["alive"]:
+			severed += 1
+	check(oro._heads.size() == 5 and severed == 1, "Orochi has 5 heads and one was severed")
+	oro.hp = 1.0
+	Game.combat.hurt_kaiju(oro, 50.0, "kin", oro.aim, Vector3.FORWARD, false, "t")
+	# Kanizame burrows to a sea fort.
+	Game.main.select(Game.pads[10])
+	Game.main.act("build", "cannon")
+	var fort: Turret = Game.pads[10].turret
+	var kani: Kaiju = _spawn("kani", Game.pads[10].pos + Vector3(0, 0, -200))
+	kani.hp = 1e6
+	var hp0: float = fort.hp
+	var saw_burrow: bool = false
+	for i3: int in range(30 * 20):
+		Game.main.step(1.0 / 30.0)
+		saw_burrow = saw_burrow or kani.burrowing
+		if not Game.turrets.has(fort) or fort.hp < hp0:
+			break
+	check(saw_burrow, "Kanizame burrowed")
+	check(not Game.turrets.has(fort) or fort.hp < hp0, "and ambushed the sea fort")
+	kani.hp = 1.0
+	Game.combat.hurt_kaiju(kani, 50.0, "kin", kani.aim, Vector3.FORWARD, false, "t")
+	# Ryujin coils round a fort.
+	Game.main.select(Game.pads[11])
+	Game.main.act("build", "cannon")
+	var fort2: Turret = Game.pads[11].turret
+	var ryu: Kaiju = _spawn("ryu", Game.pads[11].pos + Vector3(0, 0, -50))
+	ryu.hp = 1e6
+	var coiled: bool = false
+	for i4: int in range(30 * 10):
+		Game.main.step(1.0 / 30.0)
+		coiled = coiled or ryu.state == "coil"
+	check(coiled, "Ryujin coiled round the fort")
+	ryu.hp = 1.0
+	Game.combat.hurt_kaiju(ryu, 50.0, "kin", ryu.aim, Vector3.FORWARD, false, "t")
+	# A tengu dives at the gun you're in.
+	var seat: Turret = Game.pads[3].turret
+	Game.player.enter(seat)
+	var tg: Kaiju = _spawn("tengu", seat.pad.pos + Vector3(0, 80, -150))
+	tg.hp = 1e6
+	tg.dive = true
+	var shp: float = seat.hp
+	for i5: int in range(30 * 6):
+		Game.main.step(1.0 / 30.0)
+		if seat.hp < shp:
+			break
+	check(seat.hp < shp, "a diving tengu hit your gun")
+	tg.hp = 1.0
+	Game.combat.hurt_kaiju(tg, 50.0, "kin", tg.aim, Vector3.FORWARD, false, "t")
+	# Fly the airship.
+	Game.player.enter("zep")
+	var z0: Vector3 = Game.zep.position
+	var w: InputEventKey = InputEventKey.new()
+	w.physical_keycode = KEY_W
+	w.pressed = true
+	Input.parse_input_event(w)
+	await get_tree().process_frame
+	_steps(90)
+	w.pressed = false
+	Input.parse_input_event(w)
+	check(Game.zep.pilot_speed > 25.0, "W throttles the airship up (%.0f)" % Game.zep.pilot_speed)
+	check(Game.zep.position.distance_to(z0) > 40.0, "the airship flew")
+	Game.player.exit_seat()
+	_steps(30)
+	# Special attacks.
+	var target: Kaiju = _spawn("oni", Vector3(-100, 0, -80))
+	target.hp = 3000.0
+	target.max_hp = 3000.0
+	_steps(2)
+	var h0: float = target.hp
+	Game.wave = 5
+	for k: String in Abilities.ORDER:
+		check(Game.abilities.is_ready(k), "%s ready" % k)
+	Game.abilities.fire("air", Vector3(-100, 0, -80))
+	_steps(30 * 6)
+	check(target.hp < h0, "airstrike hit (%d -> %d)" % [int(h0), int(target.hp)])
+	var h1: float = target.hp
+	Game.abilities.fire("storm", Vector3(-100, 0, -80))
+	_steps(30 * 9)
+	check(target.hp < h1, "lightning storm hit")
+	if target.dying:
+		target = _spawn("oni", Vector3(-100, 0, -40))
+	target.hp = 3000.0
+	target.position.z = -40.0
+	var z1: float = target.position.z
+	Game.abilities.fire("flood", Vector3(-100, 0, -40))
+	_steps(30 * 3)
+	check(target.position.z < z1 - 40.0, "flood gates pushed it back out (%d -> %d)" % [int(z1), int(target.position.z)])
+	check(not Game.abilities.is_ready("air"), "abilities go on cooldown")
+
+
 func _ready() -> void:
 	var main: Node = load("res://scenes/main.tscn").instantiate()
 	add_child(main)
@@ -94,6 +256,7 @@ func _ready() -> void:
 			Game.main.step(1.0 / 30.0)
 			s3 += 1
 	check(Game.state == Game.State.OVER, "the city can fall")
+	await _features()
 	Game.main.to_title()
 	check(Game.state == Game.State.TITLE, "back to the title")
 	print("== %s ==" % ("ALL PASS" if _fail == 0 else "%d FAILED" % _fail))

@@ -41,6 +41,17 @@ var stagger: float = 0.0                 ## 0..1, builds up under heavy fire: sl
 var recoil: float = 0.0                  ## head snap when a weak point is hit
 var enraged: bool = false                ## a weak point was destroyed: faster and angrier
 var _death_step: int = 0
+var knock: float = 0.0                   ## pushed back out to sea by the flood gates
+# Special moves.
+var burrowing: bool = false
+var burrow_done: bool = false
+var burrow_target: Turret = null
+var coil_t: float = 0.0
+var coil_done: bool = false
+var coil_target: Turret = null
+var dive: bool = false
+var _heads: Array[Dictionary] = []      ## Orochi: {segs, head, mouth, eyes, alive}
+var _breath_head: int = 0
 var wounds: Array[Dictionary] = []
 var spheres: Array[Dictionary] = []      ## {node, off, r, weak}
 var hits: Array[Dictionary] = []         ## world space, refreshed each frame: {p, r, weak}
@@ -84,6 +95,8 @@ func setup(t: String, hp_mul: float, id: int) -> void:
 			_build_ryu(col)
 		"tengu":
 			_build_tengu(col)
+		"orochi":
+			_build_orochi(col)
 	scale = Vector3.ONE * float(def["scale"]) * size_jit
 
 
@@ -338,6 +351,106 @@ func _build_tengu(c: Color) -> void:
 	mouth = _joint("mouth", head, Vector3(0, -1, -15))
 
 
+## Yamata-no-Orochi: a huge scaled body, five necks with dragon heads, three tails. Each head's
+## eyes are weak points; shoot both out and the head is severed.
+func _build_orochi(c: Color) -> void:
+	var body: Node3D = _joint("body", self, Vector3(0, 14, 0))
+	_part_g(body, "body", _spine, func(sb: SolidBuilder) -> void:
+		sb.ellipsoid(Vector3.ZERO, Vector3(34, 20, 42), 8, 16, c, 3, 12)
+		for i: int in range(9):
+			var z: float = -26.0 + float(i) * 7.0
+			var h: float = 8.0 + sin(float(i) * 0.8) * 3.0
+			sb.glow_tri(Vector3(-2.2, 18.0 - absf(z) * 0.18, z), Vector3(2.2, 18.0 - absf(z) * 0.18, z), Vector3(0, 18.0 + h - absf(z) * 0.18, z + 4.0), Mats.SAKURA)
+		for i2: int in range(14):
+			var a: float = TAU * float(i2) / 14.0
+			sb.edge(Vector3(cos(a) * 30.0, -6, sin(a) * 36.0), Vector3(cos(a) * 24.0, 10, sin(a) * 30.0), Mats.GOLD * 0.8))
+	_hit(body, Vector3.ZERO, 30.0)
+	for t: int in range(3):
+		var prev: Node3D = _joint("otail%d_0" % t, body, Vector3((float(t) - 1.0) * 14.0, -2, 34))
+		prev.rotation.y = (float(t) - 1.0) * 0.4
+		for i3: int in range(7):
+			var r0: float = 7.0 - 0.85 * float(i3)
+			var r1: float = 7.0 - 0.85 * float(i3 + 1)
+			_part(prev, "otail%d" % i3, func(sb: SolidBuilder) -> void: sb.tube(Vector3.ZERO, Vector3(0, -1.0, 8.0), r0, r1, 8, c, 0, 4))
+			if i3 < 6:
+				prev = _joint("otail%d_%d" % [t, i3 + 1], prev, Vector3(0, -1.0, 8.0))
+	for h: int in range(5):
+		var segs: Array = []
+		for j: int in range(9):
+			var r0n: float = lerpf(6.5, 3.8, float(j) / 9.0)
+			var r1n: float = lerpf(6.5, 3.8, float(j + 1) / 9.0)
+			var seg: Node3D = _joint("neck%d_%d" % [h, j], self, Vector3.ZERO)
+			_part(seg, "neck%d" % j, func(sb: SolidBuilder) -> void:
+				sb.tube(Vector3.ZERO, Vector3(0, 0, -6.0), r0n, r1n, 8, c, 0, 4)
+				if j % 2 == 0:
+					sb.plate(PackedVector3Array([Vector3(0, r0n * 0.9, -0.5), Vector3(0, r0n + 3.0, 1.5), Vector3(0, r1n * 0.9, -5.0)]), Mats.GOLD))
+			if j % 2 == 1:
+				_hit(seg, Vector3(0, 0, -3), r0n + 1.0)
+			segs.append(seg)
+		var head: Node3D = _joint("ohead%d" % h, self, Vector3.ZERO)
+		_part(head, "ohead", func(sb: SolidBuilder) -> void:
+			sb.ellipsoid(Vector3.ZERO, Vector3(9, 7.5, 12), 5, 10, c, 1, 6)
+			sb.box(Vector3(0, -1.0, -16), Vector3(10, 6.5, 13), c)
+			for i4: int in range(5):
+				sb.cone(Vector3(-4.0 + float(i4) * 2.0, -4.3, -21.8), Vector3(-4.0 + float(i4) * 2.0, -7.0, -21.8), 0.7, 3, Mats.WHITE)
+			for s: float in [-1.0, 1.0]:
+				sb.cone(Vector3(s * 5.0, 5.5, 0), Vector3(s * 9.0, 16.0, 7.0), 1.6, 5, Mats.GOLD)
+				var prev2: Vector3 = Vector3(s * 5.0, -2, -21)
+				for k: int in range(1, 7):
+					var p: Vector3 = Vector3(s * (5.0 + float(k) * 3.6), -2.0 - float(k) * 1.4 + sin(float(k)) * 1.8, -21.0 + float(k) * 3.0)
+					sb.edge(prev2, p, Mats.WHITE)
+					prev2 = p)
+		var eye_idx: Array[int] = []
+		for s2: float in [-1.0, 1.0]:
+			eye_idx.append(spheres.size())
+			_weak(head, "eye", Vector3(s2 * 5.0, 3.5, -9.0), Vector3(1.8, 1.4, 1.0), Color(1.0, 0.85, 0.3), 3.4, 0.05)
+		_hit(head, Vector3(0, 0, -6), 10.0)
+		var m: Node3D = Node3D.new()
+		m.position = Vector3(0, -2, -23)
+		head.add_child(m)
+		_heads.append({"segs": segs, "head": head, "mouth": m, "eyes": eye_idx, "alive": true})
+	mouth = _heads[2]["mouth"]
+
+
+func _pose_orochi(ph: float) -> void:
+	var body: Node3D = _j["body"]
+	body.position.y = 14.0 + sin(ph * 2.0) * 1.2
+	body.rotation.x = -stagger * 0.15
+	for t: int in range(3):
+		for i: int in range(7):
+			var n: Node3D = _j["otail%d_%d" % [t, i]]
+			n.rotation.y = (float(t) - 1.0) * 0.4 * float(i == 0) + sin(Game.t * 0.8 + float(i) * 0.5 + float(t)) * 0.15
+	var breathing: bool = breath_t > 0.0
+	for h: int in range(_heads.size()):
+		var hd: Dictionary = _heads[h]
+		var segs: Array = hd["segs"]
+		var alive: bool = hd["alive"]
+		var base: Vector3 = Vector3((float(h) - 2.0) * 11.0, 30.0 + sin(ph * 2.0) * 1.2, -24.0)
+		var pts: Array[Vector3] = []
+		for j: int in range(segs.size() + 1):
+			var fj: float = float(j)
+			var lift: float = 5.2 if alive else 3.0
+			var p: Vector3 = base + Vector3(
+				sin(Game.t * 0.8 + float(h) * 1.7 + fj * 0.35) * fj * 1.1 + (float(h) - 2.0) * fj * 1.3,
+				fj * lift + sin(Game.t * 0.6 + float(h)) * fj * 0.25,
+				-fj * 3.4)
+			if breathing and h == _breath_head:
+				p.z -= fj * 1.2
+				p.y -= fj * 0.8
+			pts.append(p)
+		for j2: int in range(segs.size()):
+			var seg: Node3D = segs[j2]
+			var d: Vector3 = pts[j2 + 1] - pts[j2]
+			var len: float = maxf(0.5, d.length())
+			seg.position = pts[j2]
+			seg.basis = Basis.looking_at(d / len, Vector3.UP).scaled(Vector3(1, 1, len / 6.0))
+		var head: Node3D = hd["head"]
+		var tip: Vector3 = pts[pts.size() - 1]
+		head.position = tip
+		var pitch: float = -0.35 + sin(Game.t * 1.1 + float(h)) * 0.15 + recoil * 1.0 - (0.35 if (breathing and h == _breath_head) else 0.0)
+		head.rotation = Vector3(pitch, (float(h) - 2.0) * 0.18 + sin(Game.t * 0.7 + float(h) * 2.0) * 0.25, 0)
+
+
 # ------------------------------------------------------------------ posing --
 
 func pose(dt: float) -> void:
@@ -379,15 +492,24 @@ func pose(dt: float) -> void:
 		"ryu":
 			var pts: Array[Vector3] = []
 			var n: int = _segs.size()
-			for i3: int in range(n):
-				var f: float = float(i3) / float(n)
-				var ox: float = sin(ph - float(i3) * 0.55) * 8.0 * (0.4 + f)
-				var oy: float = sin(ph * 1.2 - float(i3) * 0.7) * 6.0 + 4.0
-				if rear > 0.0:
-					oy += maxf(0.0, 6.0 - float(i3)) * rear * 6.5
-				pts.append(Vector3(ox, oy, float(i3) * 7.5))
-			var hy: float = 6.0 + sin(ph * 1.2) * 6.0 - 2.0 + rear * 39.0
-			var hp_: Vector3 = Vector3(sin(ph) * 3.0, hy, -2)
+			var hp_: Vector3
+			if state == "coil":
+				# Wrapped round the fort in a rising helix, head reared over the top.
+				for i6: int in range(n):
+					var a6: float = ph * 1.2 + float(i6) * 0.55
+					pts.append(Vector3(cos(a6) * 16.0, 2.0 + float(n - i6) * 1.8, sin(a6) * 16.0))
+				var ah: float = ph * 1.2 - 0.6
+				hp_ = Vector3(cos(ah) * 13.0, 2.0 + float(n + 1) * 1.8 + 5.0, sin(ah) * 13.0)
+			else:
+				for i3: int in range(n):
+					var f: float = float(i3) / float(n)
+					var ox: float = sin(ph - float(i3) * 0.55) * 8.0 * (0.4 + f)
+					var oy: float = sin(ph * 1.2 - float(i3) * 0.7) * 6.0 + 4.0
+					if rear > 0.0:
+						oy += maxf(0.0, 6.0 - float(i3)) * rear * 6.5
+					pts.append(Vector3(ox, oy, float(i3) * 7.5))
+				var hy: float = 6.0 + sin(ph * 1.2) * 6.0 - 2.0 + rear * 39.0
+				hp_ = Vector3(sin(ph) * 3.0, hy, -2)
 			for i4: int in range(n):
 				var seg: Node3D = _segs[i4]
 				var p: Vector3 = pts[i4]
@@ -399,6 +521,8 @@ func pose(dt: float) -> void:
 			_j["head"].position = hp_
 			_j["head"].rotation.x = 0.15 + rear * 0.3 + recoil * 1.2
 			_j["head"].rotation.z = sin(Game.t * 29.0) * (recoil + stagger * 0.4) * 0.5
+		"orochi":
+			_pose_orochi(ph)
 		"tengu":
 			var fl: float = sin(ph * 3.0)
 			for s5: float in [-1.0, 1.0]:
@@ -473,7 +597,46 @@ func weak_hit(idx: int, dmg: float) -> bool:
 	wounds.append({"local": to_local(p), "dir": ((p - global_position).normalized() + Vector3(0, 0.8, 0)).normalized(), "t": 0.0})
 	enraged = true
 	stagger = 1.0
+	for h: int in range(_heads.size()):
+		var hd: Dictionary = _heads[h]
+		if not hd["alive"]:
+			continue
+		var all_out: bool = true
+		for e: int in hd["eyes"]:
+			if spheres[e]["weak"]:
+				all_out = false
+		if all_out:
+			_sever(h)
 	return true
+
+
+## Orochi: a head with both eyes shot out is severed, leaving a spurting stump.
+func _sever(h: int) -> void:
+	var hd: Dictionary = _heads[h]
+	hd["alive"] = false
+	var segs: Array = hd["segs"]
+	var stump: Node3D = segs[5]
+	var p: Vector3 = stump.global_position
+	(hd["head"] as Node3D).visible = false
+	for j: int in range(6, segs.size()):
+		(segs[j] as Node3D).visible = false
+	wounds.append({"local": to_local(p), "dir": Vector3.UP, "t": 0.0})
+	wounds.append({"local": to_local(p), "dir": Vector3(0, 0.6, -0.8).normalized(), "t": 0.1})
+	hp -= max_hp * 0.08
+	Game.fx.spray(p, Vector3.UP, 120, 110.0, 12)
+	Game.fx.boom(p, 2.5, Mats.BLOOD)
+	Game.fx.text(p + Vector3(0, 20, 0), "首落とし! HEAD SEVERED", Mats.SHU, 22.0, 2.2, 8.0)
+	Game.sfx.play_at("roar_boss", p, 1.3)
+	Game.fx.shake_at(p, 3.0)
+	if Game.voice != null:
+		Game.voice.say("sever")
+	var alive: int = 0
+	for o: Dictionary in _heads:
+		if o["alive"]:
+			alive += 1
+	if alive == 0 and not dying:
+		hp = 0.0
+		Game.combat.kill_kaiju(self, Vector3.UP)
 
 
 func weak_kind(idx: int) -> String:
@@ -485,6 +648,10 @@ func add_stagger(dmg: float) -> void:
 
 
 func mouth_pos() -> Vector3:
+	if not _heads.is_empty():
+		var hd: Dictionary = _heads[_breath_head]
+		if hd["alive"]:
+			return (hd["mouth"] as Node3D).global_position
 	return mouth.global_position if mouth != null else aim
 
 
@@ -510,7 +677,20 @@ func update(dt: float) -> void:
 		_update_tengu(dt, spd)
 		return
 	var on_land: bool = position.z > Game.coast_z(position.x)
+	if knock > 0.0:
+		var push: float = minf(knock, dt * 90.0)
+		position.z -= push
+		knock -= push
+		if state == "rampage":
+			state = "advance"
+	if burrowing:
+		_update_burrow(dt, spd)
+		return
+	if state == "coil":
+		_update_coil(dt)
+		return
 	if state == "advance":
+		_try_specials()
 		var stop_z: float = Game.coast_z(target_x) + Game.STOP + (14.0 if def["boss"] else 0.0)
 		var dx: float = target_x - position.x
 		var dz: float = stop_z - position.z
@@ -548,7 +728,9 @@ func update(dt: float) -> void:
 			if randf() < 0.3:
 				Game.fx.text(position + Vector3(randf_range(-20, 20), 60.0 * float(def["scale"]), 10), ["ズシン!", "ドシン!", "ガシャーン!"].pick_random(), Mats.GOLD, 14.0, 1.2)
 	# Wading deeper out at sea, standing on the beach.
-	if type == "ryu":
+	if type == "orochi":
+		position.y = lerpf(position.y, 2.0 if on_land else -Game.depth_at(position.z) * 0.6, minf(1.0, dt * 2.0))
+	elif type == "ryu":
 		position.y = lerpf(position.y, 1.0 if on_land else -5.0, dt)
 		rear = minf(1.0, rear + dt * 0.7) if state == "rampage" else 0.0
 	else:
@@ -577,7 +759,7 @@ func _footsteps(on_land: bool) -> void:
 			if position.z > -600.0:
 				Game.sfx.play_at("stomp", fp, sc)
 				Game.fx.shake_at(fp, 0.5 * sc)
-	elif type == "kani" and not on_land and randf() < 0.1:
+	elif (type == "kani" or type == "orochi") and not on_land and randf() < 0.1:
 		Game.fx.ring(position + Vector3(randf_range(-20, 20), 0.6, randf_range(-10, 10)), 3.0, 18.0, 1.2, Mats.CYAN)
 	elif type == "ryu" and not on_land and randf() < 0.2:
 		var b: float = randf_range(0, 100)
@@ -632,7 +814,16 @@ func _update_breath(dt: float) -> void:
 	breath_t = 1.9
 	fired = false
 	roar_t = 1.9
-	breath_cd = randf_range(9, 13) * (0.6 if boss else 1.0)
+	breath_cd = randf_range(9, 13) * (0.6 if boss else 1.0) * (0.45 if type == "orochi" else 1.0)
+	if not _heads.is_empty():
+		var alive: Array[int] = []
+		for h: int in range(_heads.size()):
+			if _heads[h]["alive"]:
+				alive.append(h)
+		if alive.is_empty():
+			breath_t = 0.0
+			return
+		_breath_head = alive.pick_random()
 	Game.sfx.play_at("roar_boss" if boss else "roar", position, 0.8)
 
 
@@ -640,32 +831,118 @@ func _update_tengu(dt: float, spd: float) -> void:
 	orb += dt * 0.8
 	var target: Vector3
 	var zep: Zeppelin = Game.zep
-	if not zep.down:
+	var seat: Turret = Game.player.seat if (Game.player.active and Game.player.seat is Turret) else null
+	if dive and (seat == null or not Game.turrets.has(seat)):
+		dive = false
+	if not dive and seat != null and randf() < dt * 0.06 and position.distance_to(seat.pad.pos) < 650.0:
+		dive = true
+		Game.fx.text(position + Vector3(0, 12, 0), "急降下!", Mats.SAKURA, 14.0, 1.4)
+		Game.banner.emit("", "上空注意!  A TENGU IS DIVING AT YOU", 2.0)
+	if dive:
+		target = seat.pad.pos + Vector3(0, 12, 0)
+		spd *= 2.4
+	elif not zep.down:
 		target = zep.position + Vector3(cos(orb) * 60.0, 10.0 + sin(orb * 1.3) * 18.0, sin(orb) * 60.0)
 	else:
 		target = Vector3(target_x + cos(orb) * 50.0, 55.0 + sin(orb * 1.7) * 10.0, 110.0 + sin(orb) * 40.0)
 	var d: Vector3 = target - position
 	var dist: float = maxf(0.01, d.length())
-	var s: float = minf(spd, dist * 2.0)
-	vel = vel.lerp(d / dist * s, minf(1.0, dt * 2.0))
+	var s: float = minf(spd, dist * 2.0) if not dive else spd
+	vel = vel.lerp(d / dist * s, minf(1.0, dt * (5.0 if dive else 2.0)))
 	position += vel * dt
 	var ny: float = Game.yaw_to(vel.x, vel.z)
 	var dyaw: float = wrapf(ny - yaw, -PI, PI)
 	yaw += dyaw * minf(1.0, dt * 3.0)
 	bank = lerpf(bank, clampf(dyaw * 2.0, -0.8, 0.8), minf(1.0, dt * 3.0))
-	phase += dt * 3.2
+	phase += dt * (5.0 if dive else 3.2)
 	atk -= dt
-	if not zep.down and position.distance_to(zep.position) < 110.0 and atk <= 0.0:
+	if dive and dist < 14.0:
+		dive = false
+		Game.combat.hurt_turret(seat, 55.0)
+		Game.fx.boom(seat.pad.pos + Vector3(0, 10, 0), 1.6, Mats.SAKURA)
+		Game.fx.text(seat.pad.pos + Vector3(0, 22, 0), "ドガッ!", Mats.SAKURA, 12.0, 1.0)
+		Game.sfx.play_at("boom", seat.pad.pos, 1.2)
+		Game.shake = maxf(Game.shake, 2.5)
+		Game.flash = maxf(Game.flash, 0.25)
+		vel = Vector3(randf_range(-30, 30), 60, randf_range(-30, 30))
+		atk = 2.0
+	elif not dive and not zep.down and position.distance_to(zep.position) < 110.0 and atk <= 0.0:
 		atk = randf_range(1.0, 1.6)
 		Game.fx.beam(mouth_pos(), zep.position + Vector3(randf_range(-20, 20), randf_range(-10, 10), randf_range(-30, 30)), Mats.RYU, 1.4, 0.25)
 		Game.combat.hurt_zep(6.0 * (1.0 + 0.05 * float(Game.wave)))
-	elif zep.down and dist < 60.0:
+	elif zep.down and not dive and dist < 60.0:
 		if not Game.demo:
 			Game.city -= float(def["city"]) * dt
 			Game.hurt = minf(1.0, Game.hurt + dt * 0.5)
 		if atk <= 0.0:
 			atk = 1.2
 			Game.fx.boom(Vector3(position.x + randf_range(-10, 10), 4, 100.0 + randf_range(-30, 30)), 1.0, Mats.RYU)
+
+
+## Kanizame: dive under the bay towards a sea fort, then burst up beneath it.
+func _try_specials() -> void:
+	if type == "kani" and not burrow_done and position.z < -40.0:
+		for t: Turret in Game.turrets:
+			if t.pad.fort and t.pad.pos.z > position.z and Vector2(t.pad.pos.x - position.x, t.pad.pos.z - position.z).length() < 240.0:
+				burrow_target = t
+				burrow_done = true
+				burrowing = true
+				Game.fx.text(position + Vector3(0, 30, 0), "潜行! BURROWING", Mats.KANI, 14.0, 1.6)
+				Game.fx.ring(Vector3(position.x, 0.6, position.z), 10.0, 40.0, 2.0, Mats.CYAN)
+				return
+	if type == "ryu" and not coil_done:
+		for t2: Turret in Game.turrets:
+			if t2.pad.fort and Vector2(t2.pad.pos.x - position.x, t2.pad.pos.z - position.z).length() < 70.0:
+				coil_target = t2
+				coil_done = true
+				state = "coil"
+				coil_t = 6.0
+				Game.fx.text(t2.pad.pos + Vector3(0, 40, 0), "締め付け! CONSTRICT", Mats.RYU, 14.0, 1.8)
+				Game.sfx.play_at("roar", position, 1.0)
+				return
+
+
+func _update_burrow(dt: float, spd: float) -> void:
+	var t: Turret = burrow_target
+	if t == null or not is_instance_valid(t) or not Game.turrets.has(t):
+		burrowing = false
+		return
+	position.y = lerpf(position.y, -50.0, minf(1.0, dt * 1.5))
+	var d: Vector2 = Vector2(t.pad.pos.x - position.x, t.pad.pos.z - position.z)
+	phase += dt * 3.0
+	if randf() < dt * 6.0:
+		Game.fx.ring(Vector3(position.x + randf_range(-10, 10), 0.6, position.z + randf_range(-10, 10)), 2.0, 12.0, 1.0, Mats.CYAN)
+	if d.length() < 6.0 and position.y < -30.0:
+		burrowing = false
+		position.y = -Game.depth_at(position.z)
+		Game.fx.boom(t.pad.pos, 3.0, Mats.CYAN)
+		Game.fx.ring(Vector3(t.pad.pos.x, 0.6, t.pad.pos.z), 14.0, 60.0, 2.0, Mats.CYAN)
+		Game.fx.sparks(t.pad.pos, 60, Mats.CYAN, 90.0, 50.0)
+		Game.fx.text(t.pad.pos + Vector3(0, 30, 0), "奇襲! AMBUSH", Mats.KANI, 18.0, 1.8)
+		Game.sfx.play_at("boom_big", t.pad.pos, 1.2)
+		Game.combat.hurt_turret(t, 170.0)
+		stagger = 0.6
+		return
+	var dir: Vector2 = d.normalized()
+	position.x += dir.x * spd * 1.5 * dt
+	position.z += dir.y * spd * 1.5 * dt
+	yaw = lerp_angle(yaw, Game.yaw_to(dir.x, dir.y), minf(1.0, dt * 3.0))
+
+
+## Ryujin: coil round a sea fort and crush the gun on it.
+func _update_coil(dt: float) -> void:
+	var t: Turret = coil_target
+	coil_t -= dt
+	if t == null or not is_instance_valid(t) or not Game.turrets.has(t) or coil_t <= 0.0:
+		state = "advance"
+		return
+	position.x = lerpf(position.x, t.pad.pos.x, minf(1.0, dt * 2.0))
+	position.z = lerpf(position.z, t.pad.pos.z, minf(1.0, dt * 2.0))
+	position.y = lerpf(position.y, -4.0, minf(1.0, dt * 2.0))
+	phase += dt * 2.0
+	Game.combat.hurt_turret(t, 35.0 * dt)
+	if randf() < dt * 4.0:
+		Game.fx.sparks(t.pad.pos + Vector3(0, 8, 0), 3, Mats.FIRE, 30.0)
 
 
 func _update_dying(dt: float) -> void:

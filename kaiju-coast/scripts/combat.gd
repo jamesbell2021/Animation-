@@ -17,6 +17,8 @@ class Shot:
 	var dt: String = "kin"
 	var by: String = "t"
 	var origin: Vector3
+	var cluster: bool = false
+	var big: bool = false
 
 var shots: Array[Shot] = []
 
@@ -40,6 +42,8 @@ func fire(d: Dictionary) -> void:
 	s.dmg = float(d["dmg"])
 	s.dt = d.get("dt", "kin")
 	s.by = d.get("by", "t")
+	s.cluster = d.get("cluster", false)
+	s.big = d.get("big", false)
 	shots.append(s)
 
 
@@ -169,9 +173,11 @@ func impact(s: Shot, p: Vector3, k: Kaiju, weak: bool, idx: int = -1) -> void:
 				md = minf(md, (h["p"] as Vector3).distance_to(p) - float(h["r"]))
 			if md < s.splash:
 				hurt_kaiju(o, s.dmg * 0.6, s.dt, p, (o.position - p + Vector3(0, 5, 0)).normalized(), false, s.by)
+	if s.cluster:
+		_cluster(s, p)
 	match s.kind:
 		"flak":
-			Game.fx.hanabi(p, 1.0)
+			Game.fx.hanabi(p, 1.8 if s.big else 1.0)
 			Game.sfx.play_at("hanabi", p, 0.8)
 		"rocket", "bomb", "prkt":
 			var size: float = 3.0 if s.kind == "bomb" else (2.0 if s.kind == "prkt" else 1.4)
@@ -273,7 +279,23 @@ func kill_kaiju(k: Kaiju, dir: Vector3) -> void:
 		Game.banner.emit("大鬼 撃破", "THE DAI-ONI FALLS", 3.0)
 
 
-func rail_hit(a: Vector3, b: Vector3, dmg: float, by: String) -> void:
+## Cluster rockets: bomblets scatter round the impact and each one bursts.
+func _cluster(s: Shot, p: Vector3) -> void:
+	for i: int in range(6):
+		var a: float = TAU * float(i) / 6.0 + randf() * 0.5
+		var q: Vector3 = p + Vector3(cos(a), 0, sin(a)) * randf_range(7, 18)
+		q.y = maxf(q.y, Game.surface_y(q.x, q.z))
+		Game.fx.boom(q, 0.7, Mats.FIRE)
+		for o: Kaiju in Game.kaiju.duplicate():
+			if o.dying:
+				continue
+			for h: Dictionary in o.hits:
+				if (h["p"] as Vector3).distance_to(q) - float(h["r"]) < 12.0:
+					hurt_kaiju(o, s.dmg * 0.3, "exp", q, (o.position - q).normalized(), false, s.by)
+					break
+
+
+func rail_hit(a: Vector3, b: Vector3, dmg: float, by: String, crit_mult: float = 0.0) -> void:
 	var done: Array[Kaiju] = []
 	var d: Vector3 = b - a
 	var a2: float = d.length_squared()
@@ -289,7 +311,7 @@ func rail_hit(a: Vector3, b: Vector3, dmg: float, by: String) -> void:
 			break
 		var hk: Kaiju = best["k"]
 		done.append(hk)
-		hurt_kaiju(hk, dmg, "rail", best["p"], d.normalized(), best["weak"], by, best["idx"])
+		hurt_kaiju(hk, dmg, "rail", best["p"], d.normalized(), best["weak"], by, best["idx"], crit_mult)
 		Game.fx.spray(best["p"], d.normalized(), 18, 70.0, 2)
 
 

@@ -29,6 +29,20 @@ const TT: Dictionary = {
 }
 const TT_KEYS: Array[String] = ["cannon", "rocket", "tesla", "rail", "flak"]
 
+## Level 3 is a fork: each gun picks one of two specialisations, which carries on to level 4.
+const BRANCH: Dictionary = {
+	"cannon": {"a": {"name": "SANDAN SHOT", "jp": "散弾", "desc": "Six-pellet burst. Wrecks anything close."},
+		"b": {"name": "TEKKO AP", "jp": "徹甲", "desc": "Armour-piercing shells, longer reach."}},
+	"rocket": {"a": {"name": "KOBAKU CLUSTER", "jp": "子爆", "desc": "Every rocket scatters bomblets."},
+		"b": {"name": "MURE SWARM", "jp": "群れ", "desc": "Three more rockets in every salvo."}},
+	"tesla": {"a": {"name": "ARASHI STORM", "jp": "嵐", "desc": "Chains to three more kaiju, wider reach."},
+		"b": {"name": "IKAZUCHI OVERLOAD", "jp": "雷", "desc": "One huge bolt that stuns."}},
+	"rail": {"a": {"name": "NIDAN DOUBLE", "jp": "二段", "desc": "A second slug right behind the first."},
+		"b": {"name": "KYUSHO SNIPER", "jp": "急所", "desc": "Aims for weak points. Triple damage on them."}},
+	"flak": {"a": {"name": "HOSHI STARBURST", "jp": "星", "desc": "Huge bursts that also hit wading kaiju."},
+		"b": {"name": "TSUIBI TRACKER", "jp": "追尾", "desc": "Homing shells, faster fire."}},
+}
+
 const KT: Dictionary = {
 	"oni": {"name": "ONIGAMI", "jp": "鬼神", "hp": 640.0, "spd": 15.0, "reward": 60, "col": Color(0.71, 0.42, 1.0),
 		"arm": {}, "city": 2.0, "breath": true, "pts": 3, "scale": 1.0, "air": false, "boss": false},
@@ -40,6 +54,8 @@ const KT: Dictionary = {
 		"arm": {}, "city": 1.2, "breath": false, "pts": 2, "scale": 1.0, "air": true, "boss": false},
 	"daioni": {"name": "DAI-ONI", "jp": "大鬼", "hp": 4000.0, "spd": 9.0, "reward": 650, "col": Color(1.0, 0.23, 0.19),
 		"arm": {"kin": 0.8, "exp": 0.8, "elec": 0.8}, "city": 5.0, "breath": true, "pts": 12, "scale": 1.9, "air": false, "boss": true},
+	"orochi": {"name": "YAMATA-NO-OROCHI", "jp": "八岐大蛇", "hp": 7200.0, "spd": 7.0, "reward": 900, "col": Color(0.95, 0.25, 0.6),
+		"arm": {"kin": 0.85, "elec": 0.75}, "city": 6.0, "breath": true, "pts": 14, "scale": 1.0, "air": false, "boss": true},
 }
 
 const ZUP: Dictionary = {
@@ -64,6 +80,7 @@ var zep: Zeppelin
 var sfx: Sfx
 var music: Music
 var voice: Node = null
+var abilities: Abilities
 
 var pads: Array[Pad] = []
 var kaiju: Array[Kaiju] = []
@@ -160,15 +177,50 @@ func make_pads() -> void:
 		i += 1
 
 
-func tstat(type: String, lvl: int) -> Dictionary:
+func tstat(type: String, lvl: int, branch: String = "") -> Dictionary:
 	var d: Dictionary = TT[type]
 	var l: float = float(lvl - 1)
-	return {
+	var st: Dictionary = {
 		"dmg": float(d["dmg"]) * (1.0 + 0.6 * l), "rate": float(d["rate"]) * (1.0 + 0.15 * l),
 		"range": float(d["range"]) * (1.0 + 0.1 * l), "spd": float(d["spd"]), "ground": d["ground"], "air": d["air"],
 		"dt": d["dt"], "splash": float(d["splash"]) * (1.0 + 0.12 * l), "chain": int(d["chain"]) + int(l),
-		"salvo": 2 + int(floor(l / 1.5)),
+		"salvo": 2 + int(floor(l / 1.5)), "pellets": 1, "cluster": false, "stun": false, "double": false,
+		"sniper": false, "homing": false,
 	}
+	if lvl < 3 or branch == "":
+		return st
+	match type + branch:
+		"cannona":
+			st["pellets"] = 6
+			st["range"] = float(st["range"]) * 0.85
+			st["dmg"] = float(st["dmg"]) * 1.2
+		"cannonb":
+			st["dt"] = "rail"
+			st["range"] = float(st["range"]) * 1.25
+			st["dmg"] = float(st["dmg"]) * 1.25
+		"rocketa":
+			st["cluster"] = true
+		"rocketb":
+			st["salvo"] = int(st["salvo"]) + 3
+			st["dmg"] = float(st["dmg"]) * 0.75
+		"teslaa":
+			st["chain"] = int(st["chain"]) + 3
+			st["range"] = float(st["range"]) * 1.2
+		"teslab":
+			st["chain"] = 1
+			st["dmg"] = float(st["dmg"]) * 2.6
+			st["stun"] = true
+		"raila":
+			st["double"] = true
+		"railb":
+			st["sniper"] = true
+		"flaka":
+			st["splash"] = float(st["splash"]) * 1.6
+			st["ground"] = true
+		"flakb":
+			st["homing"] = true
+			st["rate"] = float(st["rate"]) * 1.4
+	return st
 
 
 func up_cost(type: String, lvl: int) -> int:
@@ -209,10 +261,11 @@ func make_wave(n: int) -> Array[String]:
 		var k: String = "oni" if n == 1 else pool.pick_random()
 		list.append(k)
 		pts -= int(KT[k]["pts"])
+	# Bosses: the Dai-Oni on wave 5, Yamata-no-Orochi on wave 10, both from wave 15.
 	if boss:
-		list.append("daioni")
+		list.append("orochi" if n % 10 == 0 else "daioni")
 		if n >= 15:
-			list.append("daioni")
+			list.append("daioni" if n % 10 == 0 else "orochi")
 	return list
 
 
@@ -229,7 +282,8 @@ func start_wave() -> void:
 	hp_mul = 1.0 + 0.15 * float(wave - 1) + 0.022 * float((wave - 1) * (wave - 1))
 	spawn_t = 0.5
 	var boss: bool = wave % 5 == 0
-	banner.emit("第" + jp_num(wave) + "波", ("WAVE %d · A GREAT ONI RISES" % wave) if boss else ("WAVE %d · %d KAIJU" % [wave, spawn_q.size()]), 2.6)
+	var boss_line: String = "WAVE %d · THE EIGHT-HEADED SERPENT RISES" % wave if wave % 10 == 0 else "WAVE %d · A GREAT ONI RISES" % wave
+	banner.emit("第" + jp_num(wave) + "波", boss_line if boss else ("WAVE %d · %d KAIJU" % [wave, spawn_q.size()]), 2.6)
 	sfx.play("gong")
 	music.set_mode("boss" if boss else "battle")
 	hud_dirty.emit()
@@ -272,6 +326,7 @@ func live_kaiju() -> int:
 
 func new_game() -> void:
 	main.clear_world()
+	abilities.reset()
 	demo = false
 	state = State.PLAY
 	funds = 420

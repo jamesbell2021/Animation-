@@ -21,6 +21,10 @@ var _volcano_t: float = 0.0
 var _beacon_mat: ShaderMaterial
 var _lava_mat: ShaderMaterial
 var _city_root: Node3D
+var _sky_mat: ShaderMaterial
+var _flash: float = 0.0
+## Seconds of forced storm weather (the lightning storm ability).
+var storm_boost: float = 0.0
 
 
 func _ready() -> void:
@@ -44,6 +48,9 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	for m: ShaderMaterial in _ocean_mats:
 		m.set_shader_parameter("t", Game.t)
+	_flash = maxf(0.0, _flash - delta * 4.0)
+	_sky_mat.set_shader_parameter("flash", _flash)
+	storm_boost = maxf(0.0, storm_boost - delta)
 	_update_buildings(delta)
 	_update_traffic(delta)
 	_volcano_t -= delta
@@ -52,12 +59,24 @@ func _process(delta: float) -> void:
 		Game.fx.smoke(Vector3(330 + randf_range(-30, 30), 160, -1480 + randf_range(-20, 20)), Vector3(randf_range(-4, 4), randf_range(14, 24), 0), randf_range(14, 26), 7.0)
 
 
+func lightning_flash() -> void:
+	_flash = 1.0
+	Game.flash = maxf(Game.flash, 0.12)
+
+
+## Flood-gates surge: a moving ridge on the sea between x0 and x1 at depth z.
+func set_surge(z: float, x0: float, x1: float, height: float) -> void:
+	for m: ShaderMaterial in _ocean_mats:
+		m.set_shader_parameter("surge", Vector4(z, x0, x1, height))
+
+
 # ------------------------------------------------------------------ sky & sea --
 
 func _make_environment() -> void:
 	env = Environment.new()
 	env.background_mode = Environment.BG_SKY
 	var sky_mat: ShaderMaterial = ShaderMaterial.new()
+	_sky_mat = sky_mat
 	sky_mat.shader = preload("res://shaders/sky.gdshader")
 	sky_mat.set_shader_parameter("moon_dir", MOON_DIR)
 	var sky: Sky = Sky.new()

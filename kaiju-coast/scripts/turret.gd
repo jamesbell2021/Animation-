@@ -16,6 +16,9 @@ var cd: float = 0.0
 var recoil: float = 0.0
 var target: Kaiju = null
 var manned: bool = false
+var branch: String = ""                  ## "" until level 3, then "a" or "b" (see Game.BRANCH)
+var _double_t: float = -1.0
+var _double_target: Kaiju = null
 
 var _head: Node3D
 var _gun: Node3D
@@ -36,8 +39,10 @@ func setup(p: Pad, t: String) -> void:
 	hp = Game.max_hp(lvl)
 
 
-func level_up() -> void:
+func level_up(br: String = "") -> void:
 	var frac: float = hp / Game.max_hp(lvl)
+	if lvl == 2 and br != "":
+		branch = br
 	lvl += 1
 	hp = maxf(frac, 0.6) * Game.max_hp(lvl)
 	rebuild()
@@ -155,7 +160,12 @@ func _apply_pose() -> void:
 	_gun.position.z = (-3.0 if type == "cannon" else 0.0) + recoil * 2.2
 	_model.visible = not (manned and Game.player.active)
 	var low: bool = hp < Game.max_hp(lvl) * 0.35 and sin(Game.t * 12.0) > 0.0
-	_line.set_shader_parameter("tint", Vector3(1.0, 0.1, 0.2) if low else Vector3(1, 1, 1))
+	var base: Vector3 = Vector3(1, 1, 1)
+	if branch == "a":
+		base = Vector3(0.75, 1.15, 1.6)
+	elif branch == "b":
+		base = Vector3(1.7, 1.15, 0.45)
+	_line.set_shader_parameter("tint", Vector3(1.0, 0.1, 0.2) if low else base)
 
 
 func muzzle() -> Vector3:
@@ -169,7 +179,7 @@ func top() -> Vector3:
 
 
 func stat() -> Dictionary:
-	return Game.tstat(type, lvl)
+	return Game.tstat(type, lvl, branch)
 
 
 func valid_target(k: Kaiju, st: Dictionary) -> bool:
@@ -203,6 +213,10 @@ func find_target(st: Dictionary) -> Kaiju:
 func update(dt: float) -> void:
 	cd -= dt
 	recoil = maxf(0.0, recoil - dt * 4.0)
+	if _double_t >= 0.0:
+		_double_t -= dt
+		if _double_t < 0.0 and _double_target != null and is_instance_valid(_double_target) and not _double_target.dying:
+			_rail_shot(_double_target.aim, stat())
 	if type == "tesla" and randf() < 0.5:
 		var tp: Vector3 = top()
 		Game.fx.line_flash(tp, tp + Vector3(randf_range(-9, 9), randf_range(-3, 8), randf_range(-9, 9)), Mats.WHITE, 0.05)
@@ -220,6 +234,11 @@ func update(dt: float) -> void:
 		return
 	var from: Vector3 = pad.pos + Vector3(0, 7, 0)
 	var a: Vector3 = k.aim
+	if st["sniper"]:
+		for h: Dictionary in k.hits:
+			if h["weak"] and (h["p"] as Vector3).y > 0.0:
+				a = h["p"]
+				break
 	if float(st["spd"]) > 0.0:
 		var tt: float = from.distance_to(a) / float(st["spd"])
 		a += k.vel * tt
@@ -242,17 +261,27 @@ func _fire(k: Kaiju, a: Vector3, st: Dictionary) -> void:
 	match type:
 		"cannon":
 			var n: int = [1, 2, 2, 3][lvl - 1]
-			for i: int in range(n):
-				var j: Vector3 = Vector3(randf_range(-6, 6), randf_range(-4, 4), randf_range(-6, 6))
-				C.fire({"kind": "shell", "pos": m, "vel": dir * float(st["spd"]) + j, "dmg": float(st["dmg"]) / float(n) * (1.35 if n > 1 else 1.0),
-					"dt": "kin", "by": "t", "life": 1.6})
+			var pellets: int = int(st["pellets"])
+			if pellets > 1:
+				for i: int in range(pellets):
+					var j2: Vector3 = Vector3(randf_range(-30, 30), randf_range(-14, 14), randf_range(-30, 30))
+					C.fire({"kind": "shell", "pos": m, "vel": dir * float(st["spd"]) + j2, "dmg": float(st["dmg"]) / float(pellets) * 1.5,
+						"dt": "kin", "by": "t", "life": 1.2})
+			else:
+				if branch == "b":
+					n = 1
+				for i: int in range(n):
+					var j: Vector3 = Vector3(randf_range(-6, 6), randf_range(-4, 4), randf_range(-6, 6))
+					C.fire({"kind": "shell", "pos": m, "vel": dir * float(st["spd"]) + j, "dmg": float(st["dmg"]) / float(n) * (1.35 if n > 1 else 1.0),
+						"dt": st["dt"], "by": "t", "life": 1.6})
 			Game.fx.sparks(m, 6, Mats.TRACER, 40.0, 40.0)
 			Game.fx.muzzle(m, Mats.TRACER, 4.0)
 			Game.sfx.play_at("cannon", m, 0.8)
 		"rocket":
 			for i: int in range(int(st["salvo"])):
 				C.fire({"kind": "rocket", "pos": m + Vector3(0, 2, 0), "vel": Vector3(dir.x * 60.0 + randf_range(-20, 20), 50.0 + randf_range(0, 25), dir.z * 60.0 + randf_range(-20, 20)),
-					"acc": 420.0, "max": 330.0, "homing": k, "dmg": st["dmg"], "dt": "exp", "splash": st["splash"], "by": "t", "life": 5.0})
+					"acc": 420.0, "max": 330.0, "homing": k, "dmg": st["dmg"], "dt": "exp", "splash": st["splash"], "by": "t", "life": 5.0,
+					"cluster": st["cluster"]})
 			Game.sfx.play_at("rocket", m, 0.8)
 		"tesla":
 			var from: Vector3 = top()
@@ -264,8 +293,13 @@ func _fire(k: Kaiju, a: Vector3, st: Dictionary) -> void:
 				done.append(cur)
 				var p: Vector3 = cur.aim
 				Game.fx.bolt(from, p, 0.22)
+				if st["stun"]:
+					Game.fx.beam(from, p, Mats.BOLT, 2.4, 0.3)
+					Game.fx.bolt(from, p, 0.3)
 				C.hurt_kaiju(cur, float(st["dmg"]) * (0.75 if c > 0 else 1.0), "elec", p, (p - from).normalized(), false, "t")
-				cur.slow = 1.2
+				cur.slow = 2.5 if st["stun"] else 1.2
+				if st["stun"]:
+					cur.stagger = 1.0
 				Game.fx.sparks(p, 8, Mats.BOLT, 50.0, 40.0)
 				from = p
 				var nx: Kaiju = null
@@ -280,14 +314,24 @@ func _fire(k: Kaiju, a: Vector3, st: Dictionary) -> void:
 				cur = nx
 			Game.sfx.play_at("zap", top(), 0.9)
 		"rail":
-			var end: Vector3 = m + dir * float(st["range"]) * 1.2
-			C.rail_hit(m, end, st["dmg"], "t")
-			Game.fx.beam(m, end, Mats.BOLT, 1.6, 0.35)
-			Game.fx.sparks(m, 14, Mats.WHITE, 70.0, 40.0)
-			Game.sfx.play_at("rail", m, 1.0)
-			Game.fx.shake_at(m, 0.6)
+			_rail_shot(a, st)
+			if st["double"]:
+				_double_t = 0.25
+				_double_target = k
 		"flak":
 			var life: float = m.distance_to(a) / float(st["spd"]) + 0.05
 			C.fire({"kind": "flak", "pos": m, "vel": dir * float(st["spd"]) + Vector3(randf_range(-10, 10), randf_range(-10, 10), randf_range(-10, 10)),
-				"dmg": st["dmg"], "dt": "kin", "splash": st["splash"], "by": "t", "life": life})
+				"dmg": st["dmg"], "dt": "kin", "splash": st["splash"], "by": "t", "life": life * (1.6 if st["homing"] else 1.0),
+				"homing": k if st["homing"] else null, "big": branch == "a"})
 			Game.sfx.play_at("flak", m, 0.7)
+
+
+func _rail_shot(a: Vector3, st: Dictionary) -> void:
+	var m: Vector3 = muzzle()
+	var dir: Vector3 = (a - m).normalized()
+	var end: Vector3 = m + dir * float(st["range"]) * 1.2
+	Game.combat.rail_hit(m, end, st["dmg"], "t", 3.0 if st["sniper"] else 0.0)
+	Game.fx.beam(m, end, Mats.GOLD if st["sniper"] else Mats.BOLT, 1.6, 0.35)
+	Game.fx.sparks(m, 14, Mats.WHITE, 70.0, 40.0)
+	Game.sfx.play_at("rail", m, 1.0)
+	Game.fx.shake_at(m, 0.6)

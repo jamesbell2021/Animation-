@@ -27,7 +27,7 @@ func _ready() -> void:
 	Game.wave = 4
 	Game.start_wave()
 	Game.spawn_q.clear()
-	var specs: Array = [["oni", Vector3(-40, 0, -150)], ["kani", Vector3(120, 0, -240)], ["ryu", Vector3(-200, 0, -300)], ["tengu", Vector3(60, 100, -120)], ["daioni", Vector3(30, 0, -420)], ["oni", Vector3(220, 0, -520)]]
+	var specs: Array = [["oni", Vector3(-40, 0, -150)], ["kani", Vector3(120, 0, -240)], ["ryu", Vector3(-200, 0, -300)], ["tengu", Vector3(60, 100, -120)], ["daioni", Vector3(30, 0, -420)], ["orochi", Vector3(230, 0, -330)]]
 	for s: Array in specs:
 		var k: Kaiju = Game.main.spawn_kaiju(s[0])
 		k.position = s[1]
@@ -90,6 +90,28 @@ func _ready() -> void:
 		await get_tree().process_frame
 	await _shot("fps_airship")
 	Game.player.exit_seat()
+	# Close on the Orochi, then the special attacks.
+	var oro: Kaiju = null
+	for k2: Kaiju in Game.kaiju:
+		if k2.type == "orochi":
+			oro = k2
+	if oro != null:
+		Game.rig.cmd_x = oro.position.x
+		Game.rig.zoom = 0.45
+		for i: int in range(45):
+			Game.main.step(1.0 / 30.0)
+			await get_tree().process_frame
+		await _shot("orochi")
+	Game.rig.zoom = 1.0
+	Game.rig.cmd_x = 0.0
+	Game.wave = 5
+	Game.abilities.fire("air", Vector3(-60, 0, -200))
+	Game.abilities.fire("flood", Vector3(80, 0, -100))
+	Game.abilities.fire("storm", Vector3(200, 0, -300))
+	for i: int in range(40):
+		Game.main.step(1.0 / 30.0)
+		await get_tree().process_frame
+	await _shot("abilities")
 	print("showcase done")
 	get_tree().quit()
 
