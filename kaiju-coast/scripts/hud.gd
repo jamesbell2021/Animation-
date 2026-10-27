@@ -60,6 +60,7 @@ var _settings_from: String = ""
 var _set_widgets: Dictionary = {}
 var _banner_t: float = 0.0
 var subtitle: Label
+var touch: TouchControls
 var _sub_t: float = 0.0
 var _sig: String = ""
 var _tick: float = 0.0
@@ -201,6 +202,8 @@ func _ready() -> void:
 	_build_tutorial()
 	_build_pause()
 	_build_settings()
+	touch = TouchControls.new()
+	root.add_child(touch)
 	Game.banner.connect(show_banner)
 	Game.hud_dirty.connect(func() -> void: refresh(true))
 	Game.state_changed.connect(_on_state)
@@ -714,7 +717,9 @@ func on_seat_changed() -> void:
 		fps_seat.text = pl.seat_name()
 		fps_weap.text = "機関砲 GUNNER" if pl.weapon == "gun" else "噴進砲 ROCKETEER"
 		fps_weap.label_settings.font_color = JADE if pl.weapon == "gun" else GOLD
-		if pl.seat is String:
+		if TouchControls.enabled():
+			fps_hint.text = "Drag to aim · left stick %s · hold 撃 to fire" % ("flies the airship" if pl.seat is String else "fine-aims")
+		elif pl.seat is String:
 			fps_hint.text = "WASD fly the airship · Mouse aim · Click fire · Right-click zoom · Q swap weapon · Tab next gun · Esc leave"
 		else:
 			fps_hint.text = "Mouse aim · Click fire · Right-click zoom · Q / wheel swap weapon · R reload · Tab next gun · Esc leave"
@@ -783,10 +788,15 @@ func _build_title() -> void:
 	grid.columns = 2
 	grid.add_theme_constant_override("h_separation", 18)
 	hv.add_child(grid)
-	for row: Array in [["Click a ring", "Build or upgrade a gun"], ["Drag · A/D · wheel", "Pan and zoom the command view"],
+	var rows: Array = [["Click a ring", "Build or upgrade a gun"], ["Drag · A/D · wheel", "Pan and zoom the command view"],
 			["F · Z", "Man the selected gun · board the airship"], ["Mouse · click · Q", "Aim · fire · swap machine gun and rockets"],
 			["Tab · Esc", "Jump to the next gun · back to command (Esc: menu)"], ["7 · 8 · 9", "Airstrike · lightning storm · flood gates"],
-			["Space · T · P · M", "Next wave · speed · pause · music"], ["Controller", "Fully supported: see Settings"]]:
+			["Space · T · P · M", "Next wave · speed · pause · music"], ["Controller", "Fully supported: see Settings"]]
+	if TouchControls.enabled():
+		rows = [["Tap a ring", "Build or upgrade a gun"], ["Drag · pinch", "Pan and zoom the command view"],
+			["MAN A GUN", "Fight from the selected gun or the airship"], ["Drag · hold 撃", "Aim · fire (the left stick flies the airship)"],
+			["Ability buttons", "Tap one, then tap the sea to call it in"], ["Controller", "Fully supported: see Settings"]]
+	for row: Array in rows:
 		grid.add_child(_label(row[0], 12, JADE))
 		grid.add_child(_label(row[1], 12, PAPER))
 	var drow: HBoxContainer = HBoxContainer.new()

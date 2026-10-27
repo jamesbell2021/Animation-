@@ -139,7 +139,7 @@ func piloted() -> bool:
 	return Game.player != null and Game.player.active and Game.player.seat is String
 
 
-## You're at the helm: A/D (or the left stick) turn, W/S throttle up and down.
+## You're at the helm: A/D (or the left stick, or the touch stick) turn, W/S throttle up and down.
 func _fly(dt: float) -> void:
 	var steer: float = float(Input.is_physical_key_pressed(KEY_D)) - float(Input.is_physical_key_pressed(KEY_A))
 	var throttle: float = float(Input.is_physical_key_pressed(KEY_W)) - float(Input.is_physical_key_pressed(KEY_S))
@@ -149,6 +149,9 @@ func _fly(dt: float) -> void:
 		steer += jx
 	if absf(jy) > 0.2:
 		throttle -= jy
+	var ts: Vector2 = Game.hud.touch.stick()
+	steer += ts.x
+	throttle -= ts.y
 	pilot_speed = clampf(pilot_speed + throttle * 22.0 * dt, 6.0, 60.0)
 	var turn: float = -clampf(steer, -1.0, 1.0) * 0.5
 	# Keep it over the bay: turn back in when it strays too far.

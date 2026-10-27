@@ -132,12 +132,18 @@ func enter(s: Variant) -> void:
 	zoom = false
 	ammo = 4 + int(Game.armory["rkt"])
 	reload = 0.0
-	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	capture_mouse()
 	Game.rig.set_mode("fps")
 	_vm.visible = true
 	_show_weapon()
 	Game.hud.on_seat_changed()
 	Game.sfx.play("click")
+
+
+## Hide and lock the mouse for aiming. Phones have no mouse to capture.
+static func capture_mouse() -> void:
+	if not OS.has_feature("mobile"):
+		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 
 func exit_seat() -> void:
@@ -190,7 +196,8 @@ func on_hit(weak: bool) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if not active:
+	# Touches arrive twice: as touches (see TouchControls) and as made-up mouse events. Skip those.
+	if not active or event.device == InputEvent.DEVICE_ID_EMULATION:
 		return
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		var m: InputEventMouseMotion = event
@@ -200,7 +207,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event is InputEventMouseButton:
 		var b: InputEventMouseButton = event
 		if Input.mouse_mode != Input.MOUSE_MODE_CAPTURED and b.pressed:
-			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+			capture_mouse()
 		if b.button_index == MOUSE_BUTTON_LEFT:
 			firing = b.pressed
 		elif b.button_index == MOUSE_BUTTON_RIGHT:
@@ -233,6 +240,11 @@ func update(dt: float) -> void:
 		jy = 0.0
 	yaw -= (kx * 1.4 + jx * 2.2) * dt * fov
 	pitch += (ky * 1.0 - jy * 1.6 * (-1.0 if invert_y else 1.0)) * dt * fov
+	if wasd and Game.hud != null:
+		# The touch stick nudges a gun's aim (in the airship it flies instead).
+		var ts: Vector2 = Game.hud.touch.stick()
+		yaw -= ts.x * 1.6 * dt * fov
+		pitch -= ts.y * 1.2 * dt * fov * (-1.0 if invert_y else 1.0)
 	var pad_fire: bool = Input.get_joy_axis(0, JOY_AXIS_TRIGGER_RIGHT) > 0.4
 	var pad_zoom: bool = Input.get_joy_axis(0, JOY_AXIS_TRIGGER_LEFT) > 0.4
 	pitch = clampf(pitch, -1.35 if seat is String else -0.35, 1.25)

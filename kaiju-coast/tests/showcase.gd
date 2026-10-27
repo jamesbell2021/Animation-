@@ -154,6 +154,17 @@ func _ready() -> void:
 		Game.main.step(1.0 / 30.0)
 		await get_tree().process_frame
 	await _shot("fps_storm")
+	# Phone controls.
+	TouchControls.forced = true
+	Game.world.set_weather("clear")
+	Game.player.enter(Game.pads[10].turret)
+	Game.player.yaw = 0.0
+	Game.player.pitch = 0.08
+	for i: int in range(30):
+		Game.main.step(1.0 / 30.0)
+		await get_tree().process_frame
+	await _shot("touch")
+	TouchControls.forced = false
 	Game.player.exit_seat()
 	print("showcase done")
 	get_tree().quit()

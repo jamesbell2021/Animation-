@@ -24,6 +24,8 @@ var _pad_cycle: int = -1
 
 func _ready() -> void:
 	Game.main = self
+	if "--touch" in OS.get_cmdline_user_args():
+		TouchControls.forced = true
 	Sfx.make_buses()
 	Game.make_pads()
 	var world: World = World.new()
@@ -357,7 +359,10 @@ func toggle_pause() -> void:
 	Game.hud.show_pause(Game.paused)
 	if Game.player.active:
 		Game.player.firing = false
-		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if Game.paused else Input.MOUSE_MODE_CAPTURED
+		if Game.paused:
+			Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+		else:
+			Player.capture_mouse()
 	Game.hud.refresh(true)
 
 

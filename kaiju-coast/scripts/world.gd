@@ -132,7 +132,7 @@ func _update_weather(dt: float) -> void:
 		m.set_shader_parameter("rain", rain)
 		m.set_shader_parameter("flash", _flash)
 	env.fog_density = 0.00042 + rain * 0.00045
-	env.fog_light_color = Color(0.05, 0.02, 0.07).lerp(Color(0.07, 0.07, 0.1), storm)
+	env.fog_light_color = Color(0.05, 0.02, 0.07).lerp(Color(0.045, 0.04, 0.065), storm)
 	_rain_mi.visible = rain > 0.01
 	if _rain_mi.visible and Game.rig != null:
 		var spd: float = 150.0 + storm * 60.0

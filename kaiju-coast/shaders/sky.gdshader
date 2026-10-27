@@ -46,7 +46,7 @@ void sky() {
 	crater += exp(-pow((length(q - vec2(0.22, 0.48)) - 0.09) * 30.0, 2.0));
 	col = mix(col, moon + vec3(1.2, 0.08, 0.15) * crater * 0.5, disc);
 	col += vec3(2.6, 0.18, 0.28) * rim + vec3(0.5, 0.03, 0.08) * halo;
-	col = mix(col, vec3(0.05, 0.04, 0.08) + vec3(0.02, 0.0, 0.02) * toward, storm * 0.6 * smoothstep(-0.05, 0.2, h));
+	col = mix(col, vec3(0.028, 0.022, 0.05) + vec3(0.02, 0.0, 0.02) * toward, storm * 0.6 * smoothstep(-0.05, 0.2, h));
 	col += vec3(0.55, 0.5, 0.85) * flash * smoothstep(-0.1, 0.4, h);
 	COLOR = col;
 }

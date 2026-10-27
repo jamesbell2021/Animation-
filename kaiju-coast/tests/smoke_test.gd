@@ -288,6 +288,71 @@ func _atmosphere() -> void:
 	check(Game.city_warned, "low city warning")
 
 
+func _touch_ev(index: int, pos: Vector2, pressed: bool) -> void:
+	var e: InputEventScreenTouch = InputEventScreenTouch.new()
+	e.index = index
+	e.position = pos
+	e.pressed = pressed
+	Game.hud.touch._input(e)
+
+
+func _drag_ev(index: int, pos: Vector2, rel: Vector2) -> void:
+	var e: InputEventScreenDrag = InputEventScreenDrag.new()
+	e.index = index
+	e.position = pos
+	e.relative = rel
+	Game.hud.touch._input(e)
+
+
+## The on-screen controls used on phones.
+func _touch() -> void:
+	print("-- touch controls --")
+	TouchControls.forced = true
+	var tc: TouchControls = Game.hud.touch
+	Game.new_game()
+	Game.tutorial.skip()
+	Game.funds = 4000
+	Game.main.select(Game.pads[3])
+	Game.main.act("build", "cannon")
+	Game.main.select(null)
+	Game.player.enter(Game.turrets[0])
+	await get_tree().process_frame
+	check(tc.visible, "touch controls show in first person")
+	var fire: Vector2 = tc._buttons()["fire"][0]
+	_touch_ev(0, fire, true)
+	check(Game.player.firing, "holding 撃 fires")
+	_touch_ev(0, fire, false)
+	check(not Game.player.firing, "letting go stops")
+	var yaw0: float = Game.player.yaw
+	_touch_ev(1, Vector2(tc.size.x * 0.6, tc.size.y * 0.3), true)
+	_drag_ev(1, Vector2(tc.size.x * 0.6 + 80, tc.size.y * 0.3), Vector2(80, 0))
+	_touch_ev(1, Vector2(tc.size.x * 0.6 + 80, tc.size.y * 0.3), false)
+	check(Game.player.yaw < yaw0, "dragging aims")
+	Game.player.enter("zep")
+	var start: Vector2 = Vector2(250, tc.size.y - 250)
+	_touch_ev(2, start, true)
+	_drag_ev(2, start + Vector2(80, -80), Vector2(80, -80))
+	check(tc.stick().length() > 0.9, "the stick deflects")
+	var yaw_z: float = Game.zep.yaw
+	for i: int in range(30):
+		Game.main.step(1.0 / 30.0)
+	check(absf(wrapf(Game.zep.yaw - yaw_z, -PI, PI)) > 0.05, "the stick steers the airship")
+	_touch_ev(2, start, false)
+	_touch_ev(0, tc._buttons()["exit"][0], true)
+	_touch_ev(0, tc._buttons()["exit"][0], false)
+	check(not Game.player.active, "EXIT leaves the seat")
+	var z0: float = Game.rig.zoom
+	_touch_ev(0, Vector2(500, 300), true)
+	_touch_ev(1, Vector2(700, 300), true)
+	_drag_ev(1, Vector2(900, 300), Vector2(200, 0))
+	_touch_ev(0, Vector2(500, 300), false)
+	_touch_ev(1, Vector2(900, 300), false)
+	check(Game.rig.zoom < z0, "pinch zooms the command view in (%.2f -> %.2f)" % [z0, Game.rig.zoom])
+	TouchControls.forced = false
+	await get_tree().process_frame
+	check(not tc.visible, "hidden without a touchscreen")
+
+
 func _pad_press(button: JoyButton) -> void:
 	for pressed: bool in [true, false]:
 		var e: InputEventJoypadButton = InputEventJoypadButton.new()
@@ -384,6 +449,7 @@ func _ready() -> void:
 	check(Game.state == Game.State.OVER, "the city can fall")
 	await _features()
 	await _atmosphere()
+	await _touch()
 	await _menus_and_settings()
 	Game.main.to_title()
 	check(Game.state == Game.State.TITLE, "back to the title")
