@@ -61,6 +61,8 @@ var _set_widgets: Dictionary = {}
 var _banner_t: float = 0.0
 var subtitle: Label
 var touch: TouchControls
+## Trailer filming: hide the menus and bars, keep the crosshair, banners and subtitles.
+var film: bool = false
 var _sub_t: float = 0.0
 var _sig: String = ""
 var _tick: float = 0.0
@@ -1176,3 +1178,7 @@ func _process(delta: float) -> void:
 	if _tick <= 0.0:
 		_tick = 0.2
 		refresh()
+	if film:
+		for c: Control in [top, panel, acts, abil_bar, fps_box, title_screen, over_screen, tut_box, target_hint, banner_box]:
+			c.visible = false
+		overlay.visible = Game.player.active

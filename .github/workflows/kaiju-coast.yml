@@ -34,6 +34,11 @@ on:
         type: boolean
         default: false
 
+# A newer push makes an older build of the same branch pointless.
+concurrency:
+  group: kaiju-coast-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   GODOT_VERSION: "4.3"
   ITCH_PROJECT: gamesdevnisite/kaiju-coast
@@ -41,6 +46,7 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
 
@@ -66,16 +72,21 @@ jobs:
             "templates/version.txt" -d "$templates"
           rm "Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
 
-      # rcedit (through wine) stamps the game's icon and version into the Windows .exe.
+      # rcedit (through wine) stamps the game's icon and version into the Windows .exe. Installing
+      # wine has hung on a slow mirror before, so it's time-boxed: if it fails the build still
+      # goes ahead, with Godot's default exe icon and a warning.
       - name: Install wine and rcedit for the Windows icon
+        timeout-minutes: 12
+        continue-on-error: true
         run: |
           sudo dpkg --add-architecture i386
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq wine wine64 > /dev/null
+          sudo timeout 300 apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive timeout 420 apt-get install -y -qq wine wine64 > /dev/null
           wget -q https://github.com/electron/rcedit/releases/download/v2.0.0/rcedit-x64.exe -O "$RUNNER_TEMP/rcedit-x64.exe"
           echo "WINEDEBUG=-all" >> "$GITHUB_ENV"
           echo "WINEDLLOVERRIDES=mscoree,mshtml=" >> "$GITHUB_ENV"
-          WINEDEBUG=-all WINEDLLOVERRIDES="mscoree,mshtml=" wineboot --init || echo "::warning::wineboot exited $?"
+          WINEDEBUG=-all WINEDLLOVERRIDES="mscoree,mshtml=" timeout 180 wineboot --init || echo "::warning::wineboot exited $?"
+          echo "RCEDIT_OK=1" >> "$GITHUB_ENV"
 
       - name: Configure signing keys and editor settings
         env:
@@ -112,9 +123,11 @@ jobs:
           export/android/debug_keystore = "$RUNNER_TEMP/debug.keystore"
           export/android/debug_keystore_user = "androiddebugkey"
           export/android/debug_keystore_pass = "android"
-          export/windows/rcedit = "$RUNNER_TEMP/rcedit-x64.exe"
-          export/windows/wine = "/usr/bin/wine"
           EOF2
+          if [ "$RCEDIT_OK" = "1" ]; then
+            printf 'export/windows/rcedit = "%s"\nexport/windows/wine = "/usr/bin/wine"\n' "$RUNNER_TEMP/rcedit-x64.exe" \
+              >> ~/.config/godot/editor_settings-${GODOT_VERSION}.tres
+          fi
 
       - name: Import and run the smoke test
         working-directory: kaiju-coast
@@ -133,7 +146,12 @@ jobs:
           test -s build/windows/KaijuCoast.exe
           test -s build/linux/KaijuCoast.x86_64
           test -s build/kaiju-coast.apk
-          python3 -c "import sys; d = open(sys.argv[1], 'rb').read(); sys.exit(0 if 'Kaiju Coast'.encode('utf-16-le') in d else 'The Windows exe has no Kaiju Coast icon or version info: rcedit did not run')" build/windows/KaijuCoast.exe
+          if [ "$RCEDIT_OK" = "1" ]; then
+            # rcedit only warns when it fails, which leaves Godot's icon on the exe: fail loudly instead.
+            python3 -c "import sys; d = open(sys.argv[1], 'rb').read(); sys.exit(0 if 'Kaiju Coast'.encode('utf-16-le') in d else 'The Windows exe has no Kaiju Coast icon or version info: rcedit did not run')" build/windows/KaijuCoast.exe
+          else
+            echo "::warning::wine could not be installed: the Windows exe has Godot's default icon this time"
+          fi
           cp README.md build/windows/README.md
           cp README.md build/linux/README.md
           (cd build/windows && zip -q -r ../kaiju-coast-windows.zip .)

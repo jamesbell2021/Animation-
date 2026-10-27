@@ -337,7 +337,7 @@ func draw() -> void:
 				SPLAT:
 					_blob(p, _s[i], _x[i], c * 0.7)
 				BOOM:
-					_ball(p, _s[i], Mats.WHITE * clampf(f * 1.6, 0.0, 1.0) if f > 0.5 else c)
+					_ball(p, _s[i], Mats.WHITE * clampf(f * 1.6, 0.0, 1.0) if f > 0.75 else c)
 				SMOKE:
 					_circle(p, _s[i], 7, c * 0.45)
 					_circle(p + Vector3(0, _s[i] * 0.5, 0), _s[i] * 0.7, 7, c * 0.35)
