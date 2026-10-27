@@ -5,3 +5,5 @@
 *.jpg -filter -diff -merge binary
 *.ico -filter -diff -merge binary
 *.mp3 -filter -diff -merge binary
+*.gif -filter -diff -merge binary
+*.mp4 -filter -diff -merge binary
