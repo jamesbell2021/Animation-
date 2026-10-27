@@ -25,6 +25,17 @@ var _sky_mat: ShaderMaterial
 var _flash: float = 0.0
 ## Seconds of forced storm weather (the lightning storm ability).
 var storm_boost: float = 0.0
+## "clear", "rain" or "storm": rolled for each wave. `rain` and `storm` ease towards it.
+var weather: String = "clear"
+var rain: float = 0.0
+var storm: float = 0.0
+var _rain_mat: ShaderMaterial
+var _rain_mi: MeshInstance3D
+var _rain_fall: float = 0.0
+var _bolt_t: float = 6.0
+var _thunder: Array[Dictionary] = []    ## {t}: thunder arrives after the flash
+var _fires: Array[Dictionary] = []      ## {p, r, h, t}: burning blocks and rubble
+var _search: Array[Dictionary] = []     ## city searchlights: {base, beam, ph, aim}
 
 
 func _ready() -> void:
@@ -43,6 +54,7 @@ func _ready() -> void:
 	add_child(_city_root)
 	build_city()
 	_make_traffic()
+	_make_rain()
 
 
 func _process(delta: float) -> void:
@@ -51,6 +63,9 @@ func _process(delta: float) -> void:
 	_flash = maxf(0.0, _flash - delta * 4.0)
 	_sky_mat.set_shader_parameter("flash", _flash)
 	storm_boost = maxf(0.0, storm_boost - delta)
+	_update_weather(delta)
+	_update_fires(delta)
+	_update_searchlights(delta)
 	_update_buildings(delta)
 	_update_traffic(delta)
 	_volcano_t -= delta
@@ -62,6 +77,102 @@ func _process(delta: float) -> void:
 func lightning_flash() -> void:
 	_flash = 1.0
 	Game.flash = maxf(Game.flash, 0.12)
+
+
+# ------------------------------------------------------------------ weather --
+
+## Pick the weather for a wave: early waves are clear, boss waves always storm.
+func roll_weather(wave: int) -> void:
+	if wave <= 2:
+		set_weather("clear")
+	elif wave % 5 == 0:
+		set_weather("storm")
+	else:
+		var r: float = randf()
+		set_weather("clear" if r < 0.45 else ("rain" if r < 0.8 else "storm"))
+
+
+func set_weather(w: String) -> void:
+	weather = w
+
+
+func _make_rain() -> void:
+	var fl: FrameLines = FrameLines.new()
+	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+	rng.seed = 99
+	for i: int in range(3200):
+		var p: Vector3 = Vector3(rng.randf() * 360.0, rng.randf() * 260.0, rng.randf() * 360.0)
+		var len: float = rng.randf_range(4.0, 8.0)
+		fl.seg(p, p + Vector3(-0.12, 1.0, 0.05) * len, Color(0, 0, rng.randf() * 0.98 + 0.01, rng.randf_range(0.85, 1.15)))
+	fl.commit()
+	_rain_mat = ShaderMaterial.new()
+	_rain_mat.shader = preload("res://shaders/rain.gdshader")
+	_rain_mat.set_shader_parameter("width", 1.0)
+	_rain_mi = MeshInstance3D.new()
+	_rain_mi.name = "Rain"
+	_rain_mi.mesh = fl.mesh
+	_rain_mi.material_override = _rain_mat
+	_rain_mi.custom_aabb = AABB(Vector3(-1e5, -1e5, -1e5), Vector3(2e5, 2e5, 2e5))
+	_rain_mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_rain_mi.visible = false
+	add_child(_rain_mi)
+
+
+func _update_weather(dt: float) -> void:
+	var w: String = "storm" if storm_boost > 0.0 else weather
+	var tr: float = {"clear": 0.0, "rain": 0.7, "storm": 1.0}[w]
+	var ts: float = {"clear": 0.0, "rain": 0.25, "storm": 1.0}[w]
+	rain = move_toward(rain, tr, dt * 0.2)
+	storm = move_toward(storm, ts, dt * (0.6 if storm_boost > 0.0 else 0.15))
+	_sky_mat.set_shader_parameter("storm", storm)
+	var amp: float = 1.0 + storm * 1.1
+	Game.sea_amp = amp
+	for m: ShaderMaterial in _ocean_mats:
+		m.set_shader_parameter("amp", amp)
+		m.set_shader_parameter("rain", rain)
+		m.set_shader_parameter("flash", _flash)
+	env.fog_density = 0.00042 + rain * 0.00045
+	env.fog_light_color = Color(0.05, 0.02, 0.07).lerp(Color(0.07, 0.07, 0.1), storm)
+	_rain_mi.visible = rain > 0.01
+	if _rain_mi.visible and Game.rig != null:
+		var spd: float = 150.0 + storm * 60.0
+		_rain_fall = fmod(_rain_fall + dt * spd, 26000.0)
+		_rain_mat.set_shader_parameter("fall", _rain_fall)
+		_rain_mat.set_shader_parameter("cam", Game.rig.cam.global_position)
+		_rain_mat.set_shader_parameter("intensity", rain)
+		_rain_mat.set_shader_parameter("wind", Vector2(0.12, -0.05) * (1.0 + storm * 2.0))
+		_rain_mat.set_shader_parameter("flash", _flash)
+	# Lightning over the sea while it storms.
+	if storm > 0.55:
+		_bolt_t -= dt
+		if _bolt_t <= 0.0:
+			_bolt_t = randf_range(3.0, 9.0) / storm
+			_sky_bolt()
+	for i: int in range(_thunder.size() - 1, -1, -1):
+		_thunder[i]["t"] = float(_thunder[i]["t"]) - dt
+		if float(_thunder[i]["t"]) <= 0.0:
+			if Game.sfx != null:
+				Game.sfx.play("thunder", 0.55, randf_range(0.8, 1.05))
+			_thunder.remove_at(i)
+
+
+func _sky_bolt() -> void:
+	var x: float = randf_range(-900, 900)
+	var z: float = randf_range(-1500, -500)
+	var top: Vector3 = Vector3(x + randf_range(-80, 80), 520, z - 150)
+	var bottom: Vector3 = Vector3(x, 0, z)
+	if Game.fx != null:
+		var prev: Vector3 = top
+		for s: int in range(1, 5):
+			var q: Vector3 = top.lerp(bottom, float(s) / 4.0) + Vector3(randf_range(-40, 40), 0, randf_range(-20, 20)) * (0.0 if s == 4 else 1.0)
+			Game.fx.bolt(prev, q, 0.35)
+			if randf() < 0.5 and s < 4:
+				Game.fx.bolt(q, q + Vector3(randf_range(-90, 90), -randf_range(60, 120), randf_range(-30, 30)), 0.25)
+			prev = q
+		Game.fx.ring(Vector3(x, 0.6, z), 6.0, 60.0, 1.0, Mats.BOLT)
+	lightning_flash()
+	var d: float = Vector2(x, z - 100.0).length()
+	_thunder.append({"t": 0.3 + d / 900.0})
 
 
 ## Flood-gates surge: a moving ridge on the sea between x0 and x1 at depth z.
@@ -314,6 +425,8 @@ func build_city() -> void:
 	_city_root.add_child(tower)
 	buildings.append({"x": 60.0, "z": 300.0, "w": 44.0, "d": 44.0, "h": 150.0, "kind": "tower", "fall": 0.0, "falling": false,
 		"dir": 1.0, "seed": 1, "node": tower})
+	_fires.clear()
+	_make_searchlights()
 
 
 func _make_building(b: Dictionary, rng: RandomNumberGenerator) -> Node3D:
@@ -562,7 +675,45 @@ func smash_near(p: Vector3, reach: float) -> bool:
 	if best.is_empty():
 		return false
 	best["falling"] = true
+	# The blocks next door catch fire.
+	for b2: Dictionary in buildings:
+		if b2["falling"] or b2.get("burning", false):
+			continue
+		if Vector2(float(b2["x"]) - float(best["x"]), float(b2["z"]) - float(best["z"])).length() < 48.0 and randf() < 0.45:
+			b2["burning"] = true
+			ignite(Vector3(b2["x"], b2["h"], b2["z"]), float(b2["w"]) * 0.4, randf_range(18.0, 40.0), b2)
 	return true
+
+
+## Start a fire at `p` (a roof or a rubble pile) that burns for `dur` seconds. Rain puts it out
+## sooner. A fire on a standing block drops to the ground with it when the block collapses.
+func ignite(p: Vector3, r: float, dur: float, b: Dictionary = {}) -> void:
+	if _fires.size() >= 40:
+		return
+	_fires.append({"p": p, "r": r, "t": dur, "b": b})
+
+
+func _update_fires(dt: float) -> void:
+	if Game.fx == null:
+		return
+	for i: int in range(_fires.size() - 1, -1, -1):
+		var fi: Dictionary = _fires[i]
+		fi["t"] = float(fi["t"]) - dt * (1.0 + rain * 1.5)
+		var b: Dictionary = fi["b"]
+		if float(fi["t"]) <= 0.0 or (not b.is_empty() and b["falling"]):
+			if not b.is_empty():
+				b["burning"] = false
+			_fires.remove_at(i)
+			continue
+		var p: Vector3 = fi["p"]
+		var r: float = fi["r"]
+		var life: float = minf(1.0, float(fi["t"]) / 6.0)
+		if randf() < dt * 16.0 * life:
+			Game.fx.flame(p + Vector3(randf_range(-r, r), 0.5, randf_range(-r, r)), randf_range(6.0, 12.0) * (0.5 + r / 12.0))
+		if randf() < dt * 0.8:
+			Game.fx.smoke(p + Vector3(randf_range(-r, r) * 0.5, 10, randf_range(-r, r) * 0.5), Vector3(randf_range(-3, 3) + 4.0, randf_range(12, 18), randf_range(-2, 2)), randf_range(4, 7), 3.5)
+		if randf() < dt * 4.0:
+			Game.fx.sparks(p + Vector3(0, 3, 0), 2, Mats.FIRE, 18.0, -14.0)
 
 
 func _update_buildings(dt: float) -> void:
@@ -584,6 +735,7 @@ func _update_buildings(dt: float) -> void:
 		if f >= 1.0:
 			node.visible = false
 			_make_rubble(b)
+			ignite(Vector3(b["x"], 3.0, b["z"]), float(b["w"]) * 0.45, randf_range(20.0, 35.0))
 
 
 func _make_rubble(b: Dictionary) -> void:
@@ -600,6 +752,92 @@ func _make_rubble(b: Dictionary) -> void:
 	mi.material_override = Mats.line(1.6)
 	mi.position = Vector3(b["x"], 2, b["z"])
 	_city_root.add_child(mi)
+
+
+# ------------------------------------------------------------------ searchlights --
+
+## Anti-kaiju searchlights on the tallest roofs. They sweep the sky, lock on to kaiju in the bay
+## and go dark when their building falls.
+func _make_searchlights() -> void:
+	for s: Dictionary in _search:
+		(s["beam"] as Node).queue_free()
+	_search.clear()
+	var bm_shader: Shader = preload("res://shaders/beam.gdshader")
+	var cone: CylinderMesh = CylinderMesh.new()
+	cone.top_radius = 1.2
+	cone.bottom_radius = 20.0
+	cone.height = 1.0
+	cone.cap_top = false
+	cone.cap_bottom = false
+	cone.radial_segments = 14
+	cone.rings = 1
+	var bands: Array[float] = [-320.0, -180.0, -40.0, 170.0, 300.0]
+	for bi: int in range(bands.size()):
+		var best: Dictionary = {}
+		for b: Dictionary in buildings:
+			if b["kind"] != "box" or float(b["z"]) < 170.0 or absf(float(b["x"]) - bands[bi]) > 60.0:
+				continue
+			if best.is_empty() or float(b["h"]) > float(best["h"]):
+				best = b
+		if best.is_empty():
+			continue
+		var h: float = best["h"]
+		var sb: SolidBuilder = SolidBuilder.new()
+		sb.box(Vector3(0, h + 1.5, 0), Vector3(4, 3, 4), Mats.PAPER * 0.6)
+		sb.tube(Vector3(0, h + 3, 0), Vector3(0, h + 6, 0), 2.2, 2.4, 8, Mats.PAPER)
+		sb.glow_ball(Vector3(0, h + 4.5, 0), Vector3(1.8, 1.8, 1.8), Mats.WHITE)
+		var node: Node3D = best["node"]
+		sb.attach(node, Mats.fill(), Mats.line(2.0), Mats.glow())
+		var bm: ShaderMaterial = ShaderMaterial.new()
+		bm.shader = bm_shader
+		bm.set_shader_parameter("strength", 0.09)
+		bm.set_shader_parameter("tint", Vector3(0.8, 0.88, 1.0))
+		var beam: MeshInstance3D = MeshInstance3D.new()
+		beam.name = "Searchlight%d" % bi
+		beam.mesh = cone
+		beam.material_override = bm
+		beam.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		beam.extra_cull_margin = 2000.0
+		add_child(beam)
+		_search.append({"b": best, "base": Vector3(best["x"], h + 6.5, best["z"]), "beam": beam,
+			"ph": float(bi) * 1.7, "dir": Vector3(0, 1, -0.5).normalized()})
+
+
+func _update_searchlights(dt: float) -> void:
+	var targets: Array = []
+	for k: Variant in Game.kaiju:
+		if is_instance_valid(k) and not (k as Kaiju).dying:
+			targets.append(k)
+	for i: int in range(_search.size()):
+		var s: Dictionary = _search[i]
+		var beam: MeshInstance3D = s["beam"]
+		var b: Dictionary = s["b"]
+		if b["falling"]:
+			beam.visible = false
+			continue
+		beam.visible = true
+		var base: Vector3 = s["base"]
+		var want: Vector3
+		var len: float = 1100.0
+		if not targets.is_empty():
+			var k: Kaiju = targets[i % targets.size()]
+			var to: Vector3 = k.aim + Vector3(sin(Game.t * 1.3 + float(s["ph"])) * 6.0, 0, 0) - base
+			len = minf(1400.0, to.length() + 30.0)
+			want = to.normalized()
+		else:
+			var a: float = sin(Game.t * 0.23 + float(s["ph"])) * 0.9
+			var el: float = 0.75 + 0.25 * sin(Game.t * 0.31 + float(s["ph"]) * 2.0)
+			want = Vector3(sin(a) * cos(el), sin(el), -cos(a) * cos(el)).normalized()
+		var d: Vector3 = (s["dir"] as Vector3).slerp(want, minf(1.0, dt * 1.8)).normalized()
+		s["dir"] = d
+		# CylinderMesh is centred on its origin along Y: put it halfway and point -Y away from the lamp.
+		var y_axis: Vector3 = -d
+		var x_axis: Vector3 = y_axis.cross(Vector3.FORWARD).normalized()
+		if x_axis.length_squared() < 0.01:
+			x_axis = Vector3.RIGHT
+		var z_axis: Vector3 = x_axis.cross(y_axis).normalized()
+		var spread: float = len / 900.0
+		beam.global_transform = Transform3D(Basis(x_axis * spread, y_axis * len, z_axis * spread), base + d * len * 0.5)
 
 
 # ------------------------------------------------------------------ traffic --

@@ -628,8 +628,7 @@ func _sever(h: int) -> void:
 	Game.fx.text(p + Vector3(0, 20, 0), "首落とし! HEAD SEVERED", Mats.SHU, 22.0, 2.2, 8.0)
 	Game.sfx.play_at("roar_boss", p, 1.3)
 	Game.fx.shake_at(p, 3.0)
-	if Game.voice != null:
-		Game.voice.say("sever")
+	Game.say("sever")
 	var alive: int = 0
 	for o: Dictionary in _heads:
 		if o["alive"]:
@@ -701,6 +700,7 @@ func update(dt: float) -> void:
 			Game.sfx.play_at("roar_boss" if def["boss"] else "roar", position, 1.0)
 			if not Game.demo:
 				Game.fx.text(position + Vector3(0, 90.0 * float(def["scale"]), 0), "上陸!", Mats.SHU, 22.0, 2.0)
+				Game.say("land")
 		else:
 			dx /= dist
 			dz /= dist

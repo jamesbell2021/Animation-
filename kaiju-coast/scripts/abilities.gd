@@ -149,8 +149,7 @@ func fire(k: String, p: Vector3) -> void:
 			_flood_hit.clear()
 			Game.sfx.play_at("flood", Vector3(p.x, 0, Game.coast_z(p.x)), 1.4)
 			Game.fx.text(Vector3(p.x, 40, 0), "放流!", Mats.CYAN, 26.0, 2.0)
-	if Game.voice != null:
-		Game.voice.say(k)
+	Game.say(k)
 	Game.hud.refresh(true)
 
 

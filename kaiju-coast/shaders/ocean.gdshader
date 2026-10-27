@@ -14,6 +14,8 @@ uniform float flat_far = 0.0;   // 1 on the far horizon plane: no waves, and dis
 uniform vec4 near_rect = vec4(-1600.0, -1700.0, 1600.0, 0.0);
 uniform vec4 surge = vec4(0.0);   // flood gates: front z, x from, x to, height
 uniform float amp = 1.0;          // storm swell
+uniform float rain = 0.0;         // raindrop rings on the water
+uniform float flash = 0.0;        // lightning
 
 varying vec3 wpos;
 varying vec3 wnorm;
@@ -82,5 +84,16 @@ void fragment() {
 	vec3 r = reflect(v, normalize(wnorm));
 	float m = dot(r, normalize(moon_dir));
 	col += vec3(1.4, 0.05, 0.1) * smoothstep(0.9965, 0.9995, m) * (0.5 + crest) * fade;
+	// Rain: short-lived ripple rings in a grid of cells, each cell restarting at its own time.
+	if (rain > 0.01) {
+		vec2 cell = floor(xz / 5.0);
+		float h1 = fract(sin(dot(cell, vec2(12.9898, 78.233))) * 43758.5453);
+		float h2 = fract(h1 * 91.7);
+		float age = fract(t * 1.3 + h1);
+		vec2 c = (cell + 0.25 + vec2(h1, h2) * 0.5) * 5.0;
+		float ring = 1.0 - smoothstep(0.0, 0.25, abs(length(xz - c) - age * 1.8));
+		col += vec3(0.4, 0.6, 0.9) * ring * (1.0 - age) * step(h2, rain) * rain * smoothstep(600.0, 60.0, length(wpos - CAMERA_POSITION_WORLD));
+	}
+	col += vec3(0.25, 0.25, 0.4) * flash * (0.4 + crest) * fade;
 	ALBEDO = col;
 }

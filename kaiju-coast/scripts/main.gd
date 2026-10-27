@@ -55,6 +55,10 @@ func _ready() -> void:
 	Game.player = player
 	add_child(player)
 	player.attach_view_model(rig.cam)
+	var voice: Voice = Voice.new()
+	voice.name = "Voice"
+	Game.voice = voice
+	add_child(voice)
 	var ab: Abilities = Abilities.new()
 	ab.name = "Abilities"
 	Game.abilities = ab
@@ -176,6 +180,7 @@ func start_demo() -> void:
 	Game.state = Game.State.TITLE
 	Game.city = 100.0
 	Game.hp_mul = 1.3
+	Game.world.set_weather("rain")
 	for spec: Array in [[1, "cannon", 2], [3, "rail", 2], [5, "rocket", 2], [9, "tesla", 3], [8, "flak", 2], [11, "cannon", 3], [12, "rocket", 1]]:
 		var t: Turret = build_turret(Game.pads[spec[0]], spec[1])
 		while t.lvl < int(spec[2]):
@@ -217,7 +222,11 @@ func spawn_kaiju(t: String) -> Kaiju:
 		Game.fx.sparks(Vector3(k.position.x, 2, k.position.z), 30, Mats.CYAN, 60.0, 40.0)
 	Game.sfx.play_at("roar_boss" if d["boss"] else "roar", k.position, 1.0)
 	if d["boss"] and not Game.demo:
-		Game.banner.emit("大鬼 襲来", "DAI-ONI IS COMING ASHORE", 3.2)
+		if t == "orochi":
+			Game.banner.emit("八岐大蛇 襲来", "OROCHI RISES FROM THE BAY", 3.2)
+		else:
+			Game.banner.emit("大鬼 襲来", "DAI-ONI IS COMING ASHORE", 3.2)
+		Game.say(t)
 		Game.fx.text(Vector3(k.position.x, 160, k.position.z), "ゴゴゴゴ…", Mats.SHU, 60.0, 3.0)
 	return k
 
@@ -593,6 +602,11 @@ func step(dt: float) -> void:
 	elif Game.state == Game.State.PLAY:
 		Game.update_waves(dt)
 		Game.hurt = maxf(0.0, Game.hurt - dt * 0.6)
+		if Game.city < 35.0 and not Game.city_warned:
+			Game.city_warned = true
+			Game.say("city_low")
+		elif Game.city > 60.0:
+			Game.city_warned = false
 		if Game.city <= 0.0:
 			Game.city = 0.0
 			Game.end_game(false)

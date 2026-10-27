@@ -241,8 +241,7 @@ func _weak_broken(k: Kaiju, p: Vector3, kind: String, by: String) -> void:
 	if by == "p":
 		Game.sfx.play("crit", 1.0)
 	Game.fx.shake_at(p, 1.2)
-	if Game.voice != null:
-		Game.voice.say("weak")
+	Game.say("weak")
 	if k.hp <= 0.0:
 		kill_kaiju(k, Vector3.UP)
 
@@ -260,6 +259,7 @@ func kill_kaiju(k: Kaiju, dir: Vector3) -> void:
 		var r: int = roundi(float(d["reward"]) * (1.0 + 0.03 * float(Game.wave)) * Game.reward_mult())
 		Game.funds += r
 		Game.kills += 1
+		Game.say("boss_kill" if boss else "kill")
 		Game.fx.text(a + Vector3(0, 20, 0), "+¥%d" % r, Mats.GOLD, 9.0, 1.8, 16.0)
 		if k.last_by == "p":
 			Game.fx.text(a + Vector3(0, 34, 0), "撃破!", Mats.SHU, 16.0, 1.6, 10.0)
@@ -325,6 +325,7 @@ func hurt_turret(t: Turret, n: float) -> void:
 		Game.fx.boom(t.pad.pos + Vector3(0, 5, 0), 2.5)
 		Game.sfx.play_at("boom_big", t.pad.pos, 1.0)
 		Game.fx.text(t.pad.pos + Vector3(0, 20, 0), "大破!", Mats.SHU, 10.0, 1.6)
+		Game.say("gun_lost")
 		if Game.player.active and Game.player.seat is Turret and Game.player.seat == t:
 			Game.player.exit_seat()
 			Game.banner.emit("砲台 大破", "YOUR GUN WAS DESTROYED", 2.0)
@@ -347,6 +348,7 @@ func hurt_zep(n: float) -> void:
 		Game.fx.boom(z.position, 4.0)
 		Game.sfx.play_at("boom_big", z.position, 1.2)
 		Game.banner.emit("雷神丸 撃墜", "RAIJIN-MARU IS GOING DOWN", 2.6)
+		Game.say("zep_down")
 		if Game.player.active and Game.player.seat is String:
 			Game.player.exit_seat()
 		Game.hud_dirty.emit()

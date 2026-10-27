@@ -35,6 +35,9 @@ func _ready() -> void:
 	Game.countdown = 999.0
 	Game.wave = 4
 	Game.start_wave()
+	Game.world.set_weather("clear")
+	Game.world.rain = 0.0
+	Game.world.storm = 0.0
 	Game.spawn_q.clear()
 	var specs: Array = [["oni", Vector3(-40, 0, -150)], ["kani", Vector3(120, 0, -240)], ["ryu", Vector3(-200, 0, -300)], ["tengu", Vector3(60, 100, -120)], ["daioni", Vector3(30, 0, -420)], ["orochi", Vector3(230, 0, -330)]]
 	for s: Array in specs:
@@ -121,6 +124,37 @@ func _ready() -> void:
 		Game.main.step(1.0 / 30.0)
 		await get_tree().process_frame
 	await _shot("abilities")
+	# A storm over the burning city.
+	Game.world.set_weather("storm")
+	Game.world.rain = 1.0
+	Game.world.storm = 1.0
+	for i: int in range(5):
+		Game.world.smash_near(Vector3(-60.0 + float(i - 2) * 60.0, 0, 120), 60.0)
+	for i: int in range(90):
+		Game.main.step(1.0 / 30.0)
+		await get_tree().process_frame
+	# Seen from out in the bay, looking back at the city, with the kaiju out of the way.
+	for k3: Kaiju in Game.kaiju:
+		k3.visible = false
+	Game.kaiju.clear()
+	Game.rig.set_mode("free")
+	Game.rig.cam.global_transform = Transform3D(Basis(), Vector3(-100, 45, -110)).looking_at(Vector3(-60, 25, 160), Vector3.UP)
+	for i: int in range(30):
+		Game.main.step(1.0 / 30.0)
+		await get_tree().process_frame
+	Game.hurt = 0.0
+	Game.world._sky_bolt()
+	await get_tree().process_frame
+	await _shot("storm")
+	Game.rig.set_mode("command")
+	Game.player.enter(Game.pads[3].turret)
+	Game.player.yaw = 0.3
+	Game.player.pitch = 0.05
+	for i: int in range(30):
+		Game.main.step(1.0 / 30.0)
+		await get_tree().process_frame
+	await _shot("fps_storm")
+	Game.player.exit_seat()
 	print("showcase done")
 	get_tree().quit()
 

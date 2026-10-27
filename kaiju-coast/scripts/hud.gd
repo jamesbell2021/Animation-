@@ -59,6 +59,8 @@ var diff_buttons: Array[Button] = []
 var _settings_from: String = ""
 var _set_widgets: Dictionary = {}
 var _banner_t: float = 0.0
+var subtitle: Label
+var _sub_t: float = 0.0
 var _sig: String = ""
 var _tick: float = 0.0
 
@@ -192,6 +194,7 @@ func _ready() -> void:
 	_build_panel()
 	_build_acts()
 	_build_banner()
+	_build_subtitle()
 	_build_fps()
 	_build_title()
 	_build_over()
@@ -636,6 +639,30 @@ func _build_banner() -> void:
 	banner_small.label_settings.outline_color = Color(0, 0, 0, 0.9)
 	banner_box.add_child(banner_small)
 	banner_box.modulate.a = 0.0
+
+
+func _build_subtitle() -> void:
+	subtitle = _label("", 22, Color(1.0, 0.95, 0.8))
+	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	subtitle.label_settings.outline_size = 7
+	subtitle.label_settings.outline_color = Color(0, 0, 0, 0.95)
+	subtitle.anchor_left = 0.5
+	subtitle.anchor_right = 0.5
+	subtitle.anchor_top = 1.0
+	subtitle.anchor_bottom = 1.0
+	subtitle.offset_bottom = -150
+	subtitle.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	subtitle.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	subtitle.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(subtitle)
+	subtitle.modulate.a = 0.0
+
+
+## A radio call-out: Japanese line, then the English translation.
+func show_subtitle(jp: String, en: String, duration: float) -> void:
+	subtitle.text = "「%s」  %s" % [jp, en]
+	subtitle.modulate.a = 1.0
+	_sub_t = duration
 
 
 func show_banner(big: String, small: String, duration: float) -> void:
@@ -1127,6 +1154,10 @@ func refresh(force: bool = false) -> void:
 
 
 func _process(delta: float) -> void:
+	if _sub_t > 0.0:
+		_sub_t -= delta
+		if _sub_t <= 0.0:
+			create_tween().tween_property(subtitle, "modulate:a", 0.0, 0.3)
 	if _banner_t > 0.0:
 		_banner_t -= delta
 		if _banner_t <= 0.0:

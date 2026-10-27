@@ -5,7 +5,7 @@ extends Node3D
 ## rings, smoke rings, explosions, firework bursts, beams and lightning, plus floating manga
 ## sound-effect text.
 
-enum { SPARK, BLOOD, GIB, RING, STAIN, SPLAT, BOOM, SMOKE }
+enum { SPARK, BLOOD, GIB, RING, STAIN, SPLAT, BOOM, SMOKE, FLAME }
 var max_particles: int = 3600
 
 var _k: PackedInt32Array = PackedInt32Array()
@@ -134,6 +134,11 @@ func stain(p: Vector3, r: float) -> void:
 
 func smoke(p: Vector3, v: Vector3, size: float, life: float) -> void:
 	_add(SMOKE, p, v, life, Mats.MTN, -1.0, size)
+
+
+## A licking flame tongue that rises and fades from orange to red (burning buildings).
+func flame(p: Vector3, size: float) -> void:
+	_add(FLAME, p, Vector3(randf_range(-2, 2), randf_range(4, 9), randf_range(-2, 2)), randf_range(0.5, 1.0), Mats.GOLD, -6.0, size, randf() * TAU)
 
 
 func boom(p: Vector3, size: float, c: Color = Mats.FIRE) -> void:
@@ -336,6 +341,8 @@ func draw() -> void:
 				SMOKE:
 					_circle(p, _s[i], 7, c * 0.45)
 					_circle(p + Vector3(0, _s[i] * 0.5, 0), _s[i] * 0.7, 7, c * 0.35)
+				FLAME:
+					_flame(p, _s[i], f, _x[i], cam)
 		for fl: Array in _frame_lines:
 			_seg(fl[0], fl[1], fl[2])
 		for b: Dictionary in _beams:
@@ -387,6 +394,24 @@ func _circle(p: Vector3, r: float, n: int, c: Color) -> void:
 		var q: Vector3 = p + Vector3(cos(a) * r, 0, sin(a) * r)
 		_seg(prev, q, c)
 		prev = q
+
+
+func _flame(p: Vector3, s: float, f: float, ph: float, cam: Vector3) -> void:
+	var c: Color = Mats.FIRE.lerp(Mats.SHU, 1.0 - f) * minf(1.0, f * 3.0) * 0.6
+	var to_cam: Vector3 = cam - p
+	to_cam.y = 0.0
+	var side: Vector3 = Vector3(-to_cam.z, 0, to_cam.x).normalized() * s * (0.25 + 0.3 * f)
+	if not side.is_finite():
+		side = Vector3(s * 0.4, 0, 0)
+	var sway: Vector3 = Vector3(sin(Game.t * 9.0 + ph), 0, cos(Game.t * 7.0 + ph)) * s * 0.25
+	var tip: Vector3 = p + Vector3(0, s * (0.9 + f * 0.6), 0) + sway
+	var mid_l: Vector3 = p - side * 0.8 + Vector3(0, s * 0.45, 0) + sway * 0.4
+	var mid_r: Vector3 = p + side * 0.8 + Vector3(0, s * 0.45, 0) + sway * 0.4
+	_seg(p - side, mid_l, c)
+	_seg(mid_l, tip, c)
+	_seg(p + side, mid_r, c)
+	_seg(mid_r, tip, c)
+	_seg(p - side, p + side, c * 0.5)
 
 
 func _blob(p: Vector3, r: float, ph: float, c: Color) -> void:

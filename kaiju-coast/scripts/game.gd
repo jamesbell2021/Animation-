@@ -107,6 +107,9 @@ var armory: Dictionary = {"gun": 0, "rkt": 0}
 var countdown: float = 0.0
 var endless: bool = false
 var hurt: float = 0.0
+var city_warned: bool = false
+## Storm swell: scales the sea's waves (kept in step with the ocean shader's `amp`).
+var sea_amp: float = 1.0
 var slowmo: float = 0.0
 var shake: float = 0.0
 var flash: float = 0.0
@@ -155,7 +158,7 @@ static func depth_at(z: float) -> float:
 
 
 func wave_h(x: float, z: float) -> float:
-	return 1.3 * sin(x * 0.019 + t * 1.1) + 1.1 * sin(z * 0.027 - t * 1.4) + 0.6 * sin((x + z) * 0.05 + t * 2.1)
+	return (1.3 * sin(x * 0.019 + t * 1.1) + 1.1 * sin(z * 0.027 - t * 1.4) + 0.6 * sin((x + z) * 0.05 + t * 2.1)) * sea_amp
 
 
 func surface_y(x: float, z: float) -> float:
@@ -273,6 +276,11 @@ func make_wave(n: int) -> Array[String]:
 	return list
 
 
+func say(key: String) -> void:
+	if voice != null and not demo:
+		voice.say(key)
+
+
 func start_wave() -> void:
 	if state != State.PLAY or phase != "build":
 		return
@@ -285,10 +293,13 @@ func start_wave() -> void:
 	spawn_q = make_wave(wave)
 	hp_mul = (1.0 + 0.15 * float(wave - 1) + 0.022 * float((wave - 1) * (wave - 1))) * [0.78, 1.0, 1.3][difficulty]
 	spawn_t = 0.5
+	world.roll_weather(wave)
 	var boss: bool = wave % 5 == 0
 	var boss_line: String = "WAVE %d · THE EIGHT-HEADED SERPENT RISES" % wave if wave % 10 == 0 else "WAVE %d · A GREAT ONI RISES" % wave
 	banner.emit("第" + jp_num(wave) + "波", boss_line if boss else ("WAVE %d · %d KAIJU" % [wave, spawn_q.size()]), 2.6)
 	sfx.play("gong")
+	if not boss:
+		say("wave")
 	music.set_mode("boss" if boss else "battle")
 	hud_dirty.emit()
 
@@ -298,6 +309,8 @@ func wave_clear() -> void:
 	var bonus: int = 60 + wave * 15
 	funds += bonus
 	banner.emit("撃退", "WAVE %d HELD · +¥%d" % [wave, bonus], 2.6)
+	if not (wave == WIN_WAVE and not endless):
+		say("clear")
 	music.set_mode("calm")
 	countdown = 30.0
 	save_best()
@@ -344,6 +357,10 @@ func new_game() -> void:
 	difficulty = clampi(int(Settings.get_v("difficulty")), 0, 2)
 	funds = [600, 420, 340][difficulty]
 	city = 100.0
+	city_warned = false
+	world.set_weather("clear")
+	if voice != null:
+		voice.reset()
 	wave = 0
 	phase = "build"
 	speed = 1
@@ -359,6 +376,7 @@ func new_game() -> void:
 	music.set_mode("calm")
 	rig.set_mode("command")
 	banner.emit("防衛開始", "BUILD YOUR GUNS · CLICK A RING ON THE SHORE", 3.2)
+	say("deploy")
 	if bool(Settings.get_v("tutorial")):
 		tutorial.start()
 	state_changed.emit()
@@ -372,6 +390,7 @@ func end_game(win: bool) -> void:
 	music.set_mode("title")
 	if not win:
 		sfx.play("gong")
+	say("win" if win else "lose")
 	hud.show_over(win)
 	state_changed.emit()
 

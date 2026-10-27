@@ -232,6 +232,62 @@ func _menus_and_settings() -> void:
 	Settings.set_v("difficulty", 1)
 
 
+## Voice call-outs, weather, fires and searchlights.
+func _atmosphere() -> void:
+	print("-- voices and weather --")
+	var waited: int = 0
+	while not Game.voice.ready_all() and waited < 600:
+		await get_tree().process_frame
+		waited += 1
+	check(Game.voice.ready_all(), "%d voice lines synthesised" % Game.voice.streams.size())
+	Game.new_game()
+	check(Game.voice.last_key == "deploy", "a new game calls out 出撃")
+	check(Game.hud.subtitle.text.contains("出撃"), "with a subtitle")
+	Game.funds = 4000
+	Game.main.select(Game.pads[3])
+	Game.main.act("build", "cannon")
+	Game.main.select(null)
+	Game.wave = 4
+	Game.start_wave()
+	check(Game.world.weather == "storm", "boss waves bring a storm")
+	for i: int in range(40):
+		Game.world._process(0.5)
+	check(Game.world.rain > 0.5 and Game.world.storm > 0.9, "rain and storm build up (%.2f, %.2f)" % [Game.world.rain, Game.world.storm])
+	check(Game.sea_amp > 1.8, "the swell rises (x%.1f)" % Game.sea_amp)
+	var lights: int = 0
+	for n: Node in Game.world.get_children():
+		if n.name.begins_with("Searchlight") and (n as Node3D).visible:
+			lights += 1
+	check(lights >= 4, "%d searchlights" % lights)
+	var boss: Kaiju = null
+	for i2: int in range(30 * 90):
+		Game.main.step(1.0 / 30.0)
+		for k: Kaiju in Game.kaiju:
+			if k.def["boss"]:
+				boss = k
+		if boss != null:
+			break
+	check(boss != null, "the Dai-Oni arrives")
+	check(Game.voice.last_key == "daioni", "with a call-out (%s)" % Game.voice.last_key)
+	var fires_before: int = Game.world._fires.size()
+	var fx_before: int = Game.fx.count()
+	for i3: int in range(6):
+		Game.world.smash_near(Vector3(randf_range(-200, 200), 0, 120), 400.0)
+	for i4: int in range(30 * 4):
+		Game.world._process(1.0 / 30.0)
+		Game.fx.update(1.0 / 30.0)
+	check(Game.world._fires.size() > fires_before, "smashed blocks set their neighbours alight (%d fires)" % Game.world._fires.size())
+	check(Game.fx.count() > fx_before, "fires throw flames and smoke")
+	Game.world.set_weather("clear")
+	for i5: int in range(40):
+		Game.world._process(0.5)
+	check(Game.world.rain < 0.01 and Game.sea_amp < 1.05, "the weather clears")
+	Game.city = 30.0
+	Game.voice._until = 0.0
+	Game.main.step(1.0 / 30.0)
+	check(Game.city_warned, "low city warning")
+
+
 func _pad_press(button: JoyButton) -> void:
 	for pressed: bool in [true, false]:
 		var e: InputEventJoypadButton = InputEventJoypadButton.new()
@@ -327,6 +383,7 @@ func _ready() -> void:
 			s3 += 1
 	check(Game.state == Game.State.OVER, "the city can fall")
 	await _features()
+	await _atmosphere()
 	await _menus_and_settings()
 	Game.main.to_title()
 	check(Game.state == Game.State.TITLE, "back to the title")
