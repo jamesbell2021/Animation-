@@ -375,12 +375,24 @@ func draw() -> void:
 			if b3["kind"] != "beam":
 				continue
 			var bf2: float = float(b3["life"]) / float(b3["max"])
-			var w: float = float(b3["w"]) * (0.4 + bf2 * 0.6)
+			# A beam passing right by the camera (a neighbouring gun, seen from first person) would
+			# fill the screen: thin it and fade it out as it gets close.
+			var near: float = clampf(_seg_dist(cam, b3["a"], b3["b"]) / 14.0, 0.0, 1.0)
+			bf2 *= near
+			if bf2 <= 0.01:
+				continue
+			var w: float = float(b3["w"]) * (0.4 + bf2 * 0.6) * (0.3 + 0.7 * near)
 			_ribbon(b3["a"], b3["b"], w * 2.4, (b3["c"] as Color) * 0.35 * bf2, cam)
 			_ribbon(b3["a"], b3["b"], w, (b3["c"] as Color) * bf2, cam)
 			_ribbon(b3["a"], b3["b"], w * 0.3, Mats.WHITE * bf2, cam)
 		_ribbons.surface_end()
 	_frame_ribbons.clear()
+
+
+static func _seg_dist(p: Vector3, a: Vector3, b: Vector3) -> float:
+	var ab: Vector3 = b - a
+	var t: float = clampf((p - a).dot(ab) / maxf(ab.length_squared(), 1e-6), 0.0, 1.0)
+	return p.distance_to(a + ab * t)
 
 
 func _seg(a: Vector3, b: Vector3, c: Color) -> void:
