@@ -11,11 +11,15 @@ var _pad_mats: Array[ShaderMaterial] = []
 var _range_ring: MeshInstance3D
 var _range_lines: FrameLines = FrameLines.new()
 var _crt: ShaderMaterial
+var _crt_rect: ColorRect
 var _kid: int = 0
 var _drag_start: Vector2 = Vector2.ZERO
 var _dragging: bool = false
 var _press: bool = false
 var hover: Pad = null
+## True after the last input came from a controller (menus keep focus, the panel grabs it).
+var using_pad: bool = false
+var _pad_cycle: int = -1
 
 
 func _ready() -> void:
@@ -70,6 +74,10 @@ func _ready() -> void:
 	_range_ring.mesh = _range_lines.mesh
 	_range_ring.material_override = Mats.line(1.6)
 	add_child(_range_ring)
+	var tut: Tutorial = Tutorial.new()
+	tut.name = "Tutorial"
+	Game.tutorial = tut
+	add_child(tut)
 	var hud: Hud = Hud.new()
 	hud.name = "Hud"
 	Game.hud = hud
@@ -78,13 +86,22 @@ func _ready() -> void:
 	post.layer = 10
 	add_child(post)
 	var crt: ColorRect = ColorRect.new()
+	_crt_rect = crt
 	crt.set_anchors_preset(Control.PRESET_FULL_RECT)
 	crt.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_crt = ShaderMaterial.new()
 	_crt.shader = preload("res://shaders/crt.gdshader")
 	crt.material = _crt
 	post.add_child(crt)
+	Settings.load_all()
+	Settings.apply()
 	start_demo()
+
+
+func set_crt(on: bool) -> void:
+	_crt.set_shader_parameter("scanline_strength", 0.16 if on else 0.0)
+	_crt.set_shader_parameter("aberration", 0.0011 if on else 0.0)
+	_crt.set_shader_parameter("vignette", 0.85 if on else 0.35)
 
 
 func _notification(what: int) -> void:
@@ -328,10 +345,10 @@ func toggle_pause() -> void:
 	if Game.state != Game.State.PLAY:
 		return
 	Game.paused = not Game.paused
-	if Game.paused:
-		Game.banner.emit("一時停止", "PAUSED · P TO RESUME", 1e9)
-	else:
-		Game.hud.show_banner("", "", 0.01)
+	Game.hud.show_pause(Game.paused)
+	if Game.player.active:
+		Game.player.firing = false
+		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if Game.paused else Input.MOUSE_MODE_CAPTURED
 	Game.hud.refresh(true)
 
 
@@ -341,11 +358,8 @@ func toggle_music() -> void:
 
 
 func toggle_fullscreen() -> void:
-	var m: DisplayServer.WindowMode = DisplayServer.window_get_mode()
-	if m == DisplayServer.WINDOW_MODE_FULLSCREEN or m == DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN:
-		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
-	else:
-		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+	Settings.set_v("fullscreen", not bool(Settings.get_v("fullscreen")))
+	Game.hud.refresh_settings()
 
 
 # ------------------------------------------------------------------ input --
@@ -372,7 +386,17 @@ func pick_at(sp: Vector2) -> Variant:
 	return best
 
 
+func _input(event: InputEvent) -> void:
+	if event is InputEventJoypadButton or (event is InputEventJoypadMotion and absf((event as InputEventJoypadMotion).axis_value) > 0.4):
+		using_pad = true
+	elif event is InputEventMouseButton or event is InputEventKey:
+		using_pad = false
+
+
 func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventJoypadButton:
+		_joy(event as InputEventJoypadButton)
+		return
 	if event is InputEventKey:
 		_key(event as InputEventKey)
 		return
@@ -429,6 +453,10 @@ func _key(k: InputEventKey) -> void:
 	if code == KEY_F11 or (code == KEY_ENTER and k.alt_pressed):
 		toggle_fullscreen()
 		return
+	if Game.hud.menu_open():
+		if code == KEY_ESCAPE or code == KEY_P:
+			Game.hud.back()
+		return
 	if Game.state == Game.State.TITLE:
 		if code == KEY_ENTER or code == KEY_SPACE:
 			Game.new_game()
@@ -455,8 +483,10 @@ func _key(k: InputEventKey) -> void:
 				Game.abilities.cancel()
 			elif pl.active:
 				pl.exit_seat()
-			else:
+			elif Game.sel != null:
 				select(null)
+			else:
+				toggle_pause()
 		KEY_7:
 			Game.abilities.request("air")
 		KEY_8:
@@ -519,6 +549,7 @@ func _process(delta: float) -> void:
 		var n: int = ceili(sdt / 0.034)
 		for i: int in range(n):
 			step(sdt / float(n))
+	_pad_sticks(delta)
 	Game.rig.update(delta)
 	Game.combat.draw()
 	if Game.abilities.targeting != "":
@@ -581,6 +612,8 @@ func _update_pads() -> void:
 			col = Mats.JADE * 0.45
 		else:
 			col = Mats.GOLD * (0.55 + 0.25 * sin(Game.t * 4.0 + float(i)))
+		if Game.tutorial.highlight_pad() == i and not sel:
+			col = Color(2.4, 2.1, 1.2) * (0.6 + 0.4 * sin(Game.t * 8.0))
 		m.set_shader_parameter("tint", Vector3(col.r, col.g, col.b))
 		_pad_nodes[i].visible = not (Game.player.active)
 	_range_lines.clear()
@@ -592,3 +625,108 @@ func _update_pads() -> void:
 			var a1: float = TAU * float(i2 + 1) / 64.0
 			_range_lines.seg(t.pad.pos + Vector3(cos(a0) * r, 1.5, sin(a0) * r), t.pad.pos + Vector3(cos(a1) * r, 1.5, sin(a1) * r), Mats.JADE)
 	_range_lines.commit()
+
+
+# ------------------------------------------------------------------ controller --
+
+func _joy(e: InputEventJoypadButton) -> void:
+	if not e.pressed:
+		return
+	if Game.hud.menu_open():
+		if e.button_index == JOY_BUTTON_B or e.button_index == JOY_BUTTON_START:
+			Game.hud.back()
+		return
+	if Game.state == Game.State.TITLE:
+		if e.button_index == JOY_BUTTON_START:
+			Game.new_game()
+		return
+	if Game.state != Game.State.PLAY:
+		return
+	var pl: Player = Game.player
+	match e.button_index:
+		JOY_BUTTON_START:
+			if Game.phase == "build":
+				Game.start_wave()
+			else:
+				toggle_pause()
+		JOY_BUTTON_BACK:
+			toggle_pause()
+		JOY_BUTTON_B:
+			if Game.abilities.targeting != "":
+				Game.abilities.cancel()
+			elif pl.active:
+				pl.exit_seat()
+			else:
+				select(null)
+				get_viewport().gui_release_focus()
+		JOY_BUTTON_Y:
+			if pl.active:
+				pl.swap()
+			else:
+				pl.enter(null)
+		JOY_BUTTON_X:
+			if pl.active:
+				pl.manual_reload()
+			else:
+				select(null if (Game.sel is String and Game.sel == "zep") else "zep")
+		JOY_BUTTON_LEFT_SHOULDER, JOY_BUTTON_RIGHT_SHOULDER:
+			var dir: int = 1 if e.button_index == JOY_BUTTON_RIGHT_SHOULDER else -1
+			if pl.active:
+				pl.next_seat()
+			else:
+				var n: int = Game.pads.size() + 1
+				_pad_cycle = (_pad_cycle + dir + n) % n
+				var target: Variant = "zep" if _pad_cycle == Game.pads.size() else Game.pads[_pad_cycle]
+				select(target)
+				if target is Pad:
+					Game.rig.cmd_x = clampf((target as Pad).pos.x, -320.0, 320.0)
+		JOY_BUTTON_DPAD_LEFT:
+			_pad_ability("air")
+		JOY_BUTTON_DPAD_UP:
+			_pad_ability("storm")
+		JOY_BUTTON_DPAD_RIGHT:
+			_pad_ability("flood")
+		JOY_BUTTON_A:
+			if not pl.active and Game.sel == null:
+				var s: Variant = pick_at(get_viewport().get_visible_rect().size * 0.5)
+				if s == null:
+					s = Game.pads[3]
+				select(s)
+
+
+## Tests: run the tutorial's check once without waiting for a frame.
+func tutorial_tick() -> void:
+	Game.tutorial._process(0.0)
+
+
+## Special attacks from the d-pad: in the command view they land at the centre of the screen.
+func _pad_ability(k: String) -> void:
+	var ab: Abilities = Game.abilities
+	if Game.player.active:
+		ab.request(k)
+		return
+	ab.request(k)
+	if ab.targeting == k:
+		var p: Variant = ab.ground_at(get_viewport().get_visible_rect().size * 0.5)
+		if p is Vector3:
+			ab.fire(k, p)
+		else:
+			ab.cancel()
+
+
+## Left stick pans and zooms the command view (when no menu button has focus).
+func _pad_sticks(delta: float) -> void:
+	if Game.state != Game.State.PLAY or Game.player.active or Game.paused:
+		return
+	if get_viewport().gui_get_focus_owner() != null:
+		return
+	var lx: float = Input.get_joy_axis(0, JOY_AXIS_LEFT_X)
+	var ly: float = Input.get_joy_axis(0, JOY_AXIS_LEFT_Y)
+	var rt: float = Input.get_joy_axis(0, JOY_AXIS_TRIGGER_RIGHT)
+	var lt: float = Input.get_joy_axis(0, JOY_AXIS_TRIGGER_LEFT)
+	if absf(lx) > 0.2:
+		Game.rig.cmd_x = clampf(Game.rig.cmd_x + lx * delta * 300.0 * Game.rig.zoom, -320.0, 320.0)
+	if absf(ly) > 0.2:
+		Game.rig.zoom = clampf(Game.rig.zoom + ly * delta * 0.8, 0.45, 1.6)
+	if rt > 0.3 or lt > 0.3:
+		Game.rig.zoom = clampf(Game.rig.zoom + (lt - rt) * delta * 0.8, 0.45, 1.6)

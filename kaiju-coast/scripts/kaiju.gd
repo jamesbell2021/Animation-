@@ -718,7 +718,7 @@ func update(dt: float) -> void:
 		phase += dt * (1.2 if type == "ryu" else 1.6)
 		yaw = lerp_angle(yaw, sin(Game.t * 0.4 + float(uid)) * 0.5, dt)
 		if not Game.demo:
-			Game.city -= float(def["city"]) * dt
+			Game.city -= float(def["city"]) * dt * Game.city_mult()
 			Game.hurt = minf(1.0, Game.hurt + dt * 0.8)
 		smash_cd -= dt
 		if smash_cd <= 0.0:
@@ -872,7 +872,7 @@ func _update_tengu(dt: float, spd: float) -> void:
 		Game.combat.hurt_zep(6.0 * (1.0 + 0.05 * float(Game.wave)))
 	elif zep.down and not dive and dist < 60.0:
 		if not Game.demo:
-			Game.city -= float(def["city"]) * dt
+			Game.city -= float(def["city"]) * dt * Game.city_mult()
 			Game.hurt = minf(1.0, Game.hurt + dt * 0.5)
 		if atk <= 0.0:
 			atk = 1.2

@@ -174,7 +174,77 @@ func _features() -> void:
 	check(not Game.abilities.is_ready("air"), "abilities go on cooldown")
 
 
+## Difficulty, tutorial, pause and settings.
+func _menus_and_settings() -> void:
+	print("-- menus and settings --")
+	Settings.set_v("difficulty", 0)
+	Settings.set_v("tutorial", true)
+	Game.new_game()
+	check(Game.funds == 600 and Game.difficulty == 0, "easy starts with ¥600")
+	check(Game.tutorial.active and Game.hud.tut_box.visible, "the tutorial starts on a new game")
+	Game.main.select(Game.pads[3])
+	Game.main.tutorial_tick()
+	check(Game.tutorial.step == 1, "tutorial: picking a ring moves it on")
+	Game.main.act("build", "cannon")
+	Game.main.tutorial_tick()
+	check(Game.tutorial.step == 2, "tutorial: building a gun moves it on")
+	Game.start_wave()
+	Game.main.tutorial_tick()
+	check(Game.tutorial.step == 3, "tutorial: starting the wave moves it on")
+	var easy_hp: float = Game.hp_mul
+	Game.tutorial.skip()
+	check(not Game.tutorial.active and not bool(Settings.get_v("tutorial")), "skipping the tutorial remembers it")
+	Settings.set_v("difficulty", 2)
+	Game.new_game()
+	Game.start_wave()
+	check(Game.funds == 340 + 0 and Game.hp_mul > easy_hp, "hard: ¥340 and tougher kaiju")
+	Game.main.toggle_pause()
+	check(Game.paused and Game.hud.pause_menu.visible, "pause opens the menu")
+	var t0: float = Game.t
+	await get_tree().process_frame
+	await get_tree().process_frame
+	check(is_equal_approx(Game.t, t0), "nothing moves while paused")
+	Game.hud.show_settings("pause")
+	check(Game.hud.settings_menu.visible, "settings open from the pause menu")
+	Settings.set_v("quality", 0)
+	check(is_equal_approx(Mats.line_width, 1.3) and Game.fx.max_particles == 1400, "low quality thins lines and caps particles")
+	Settings.set_v("quality", 2)
+	Settings.set_v("sfx_vol", 0.5)
+	check(absf(AudioServer.get_bus_volume_db(AudioServer.get_bus_index("SFX")) - linear_to_db(0.5)) < 0.01, "effects volume drives the SFX bus")
+	Game.hud.back()
+	check(Game.hud.pause_menu.visible and not Game.hud.settings_menu.visible, "back returns to the pause menu")
+	Game.hud.back()
+	check(not Game.paused, "back again resumes")
+	# Controller: RB cycles the selection, Y mans the gun, B leaves.
+	Game.main.select(null)
+	await _pad_press(JOY_BUTTON_RIGHT_SHOULDER)
+	check(Game.sel is Pad, "RB selects a gun ring")
+	Game.main.select(Game.pads[3])
+	Game.main.act("build", "cannon")
+	await _pad_press(JOY_BUTTON_Y)
+	check(Game.player.active, "Y mans the gun")
+	await _pad_press(JOY_BUTTON_B)
+	check(not Game.player.active, "B leaves it")
+	await _pad_press(JOY_BUTTON_BACK)
+	check(Game.paused, "Back pauses")
+	await _pad_press(JOY_BUTTON_B)
+	check(not Game.paused, "B closes the pause menu")
+	Settings.set_v("difficulty", 1)
+
+
+func _pad_press(button: JoyButton) -> void:
+	for pressed: bool in [true, false]:
+		var e: InputEventJoypadButton = InputEventJoypadButton.new()
+		e.button_index = button
+		e.pressed = pressed
+		Input.parse_input_event(e)
+		await get_tree().process_frame
+	await get_tree().process_frame
+
+
 func _ready() -> void:
+	Game.save_path = "user://smoke_test_settings.cfg"
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(Game.save_path))
 	var main: Node = load("res://scenes/main.tscn").instantiate()
 	add_child(main)
 	await get_tree().process_frame
@@ -257,6 +327,7 @@ func _ready() -> void:
 			s3 += 1
 	check(Game.state == Game.State.OVER, "the city can fall")
 	await _features()
+	await _menus_and_settings()
 	Game.main.to_title()
 	check(Game.state == Game.State.TITLE, "back to the title")
 	print("== %s ==" % ("ALL PASS" if _fail == 0 else "%d FAILED" % _fail))

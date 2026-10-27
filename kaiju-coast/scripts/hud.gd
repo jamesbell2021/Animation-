@@ -51,6 +51,13 @@ var b_speed: Button
 var b_pause: Button
 var b_music: Button
 
+var pause_menu: Control
+var settings_menu: Control
+var tut_box: PanelContainer
+var tut_label: Label
+var diff_buttons: Array[Button] = []
+var _settings_from: String = ""
+var _set_widgets: Dictionary = {}
 var _banner_t: float = 0.0
 var _sig: String = ""
 var _tick: float = 0.0
@@ -188,6 +195,9 @@ func _ready() -> void:
 	_build_fps()
 	_build_title()
 	_build_over()
+	_build_tutorial()
+	_build_pause()
+	_build_settings()
 	Game.banner.connect(show_banner)
 	Game.hud_dirty.connect(func() -> void: refresh(true))
 	Game.state_changed.connect(_on_state)
@@ -256,13 +266,16 @@ func _label(text: String, size: int, col: Color, display: bool = false) -> Label
 	return l
 
 
-func _button(text: String, cb: Callable) -> Button:
+func _button(text: String, cb: Callable, focusable: bool = true) -> Button:
 	var b: Button = Button.new()
 	b.text = text
-	b.focus_mode = Control.FOCUS_NONE
+	b.focus_mode = Control.FOCUS_ALL if focusable else Control.FOCUS_NONE
 	b.pressed.connect(func() -> void:
 		Game.sfx.play("click")
-		cb.call())
+		cb.call()
+		# Mouse users never want a button to keep focus (Space would press it again).
+		if is_instance_valid(b) and b.is_inside_tree() and (Game.main == null or not Game.main.using_pad) and not menu_open() and Game.state == Game.State.PLAY:
+			b.release_focus())
 	return b
 
 
@@ -306,18 +319,18 @@ func _build_top() -> void:
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(spacer)
-	b_wave = _button("次の波 NEXT WAVE  [Space]", func() -> void: Game.start_wave())
+	b_wave = _button("次の波 NEXT WAVE  [Space]", func() -> void: Game.start_wave(), false)
 	var ws: StyleBoxFlat = _box(Color(0.3, 0.05, 0.05, 0.85), SHU, 1)
 	b_wave.add_theme_stylebox_override("normal", ws)
 	row.add_child(b_wave)
-	b_speed = _button("×1", func() -> void: Game.main.cycle_speed())
+	b_speed = _button("×1", func() -> void: Game.main.cycle_speed(), false)
 	row.add_child(b_speed)
-	b_pause = _button("一時停止 PAUSE", func() -> void: Game.main.toggle_pause())
+	b_pause = _button("一時停止 PAUSE", func() -> void: Game.main.toggle_pause(), false)
 	row.add_child(b_pause)
-	b_music = _button("♪ ON", func() -> void: Game.main.toggle_music())
+	b_music = _button("♪ ON", func() -> void: Game.main.toggle_music(), false)
 	row.add_child(b_music)
-	var b_full: Button = _button("FULLSCREEN", func() -> void: Game.main.toggle_fullscreen())
-	row.add_child(b_full)
+	var b_menu: Button = _button("設定 MENU", func() -> void: Game.main.toggle_pause(), false)
+	row.add_child(b_menu)
 
 
 func _stat(parent: Control, key: String, col: Color) -> Label:
@@ -702,17 +715,17 @@ func _build_title() -> void:
 	cc.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	title_screen.add_child(cc)
 	var v: VBoxContainer = VBoxContainer.new()
-	v.add_theme_constant_override("separation", 8)
+	v.add_theme_constant_override("separation", 6)
 	v.alignment = BoxContainer.ALIGNMENT_CENTER
 	cc.add_child(v)
-	var logo: Label = _label("怪獣海岸", 120, SHU, true)
+	var logo: Label = _label("怪獣海岸", 100, SHU, true)
 	logo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	logo.label_settings.outline_size = 14
 	logo.label_settings.outline_color = Color(0.05, 0, 0.02)
 	logo.label_settings.shadow_color = Color(1.0, 0.15, 0.1, 0.5)
 	logo.label_settings.shadow_size = 30
 	v.add_child(logo)
-	var en: Label = _label("K A I J U   C O A S T", 36, Color.WHITE, true)
+	var en: Label = _label("K A I J U   C O A S T", 30, Color.WHITE, true)
 	en.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	en.label_settings.shadow_color = Color(SAKURA, 0.6)
 	en.label_settings.shadow_size = 12
@@ -735,7 +748,7 @@ func _build_title() -> void:
 	var hv: VBoxContainer = VBoxContainer.new()
 	hv.add_theme_constant_override("separation", 6)
 	how.add_child(hv)
-	var intro: Label = _label("Giant kaiju are wading in from Oni-ga-shima. Build guns along the seawall and on the sea forts, upgrade them between waves, and fit out the airship Raijin-maru. Then climb into any gun and fire it yourself as a gunner or rocketeer. Hit the glowing eyes and cores for triple damage. Don't let them reach the city.", 13, Color(0.86, 0.82, 0.91))
+	var intro: Label = _label("Giant kaiju are wading in from Oni-ga-shima. Build guns along the seawall and on the sea forts, upgrade them between waves, and fit out the airship Raijin-maru. Then climb into any gun and fire it yourself. Shoot out the glowing eyes and cores. Don't let them reach the city.", 12, Color(0.86, 0.82, 0.91))
 	intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	intro.custom_minimum_size = Vector2(590, 0)
 	hv.add_child(intro)
@@ -745,16 +758,32 @@ func _build_title() -> void:
 	hv.add_child(grid)
 	for row: Array in [["Click a ring", "Build or upgrade a gun"], ["Drag · A/D · wheel", "Pan and zoom the command view"],
 			["F · Z", "Man the selected gun · board the airship"], ["Mouse · click · Q", "Aim · fire · swap machine gun and rockets"],
-			["Tab · Esc", "Jump to the next gun · back to command"], ["Space · T · P · M", "Next wave · speed · pause · music"],
-			["F11", "Fullscreen"]]:
-		grid.add_child(_label(row[0], 13, JADE))
-		grid.add_child(_label(row[1], 13, PAPER))
+			["Tab · Esc", "Jump to the next gun · back to command (Esc: menu)"], ["7 · 8 · 9", "Airstrike · lightning storm · flood gates"],
+			["Space · T · P · M", "Next wave · speed · pause · music"], ["Controller", "Fully supported: see Settings"]]:
+		grid.add_child(_label(row[0], 12, JADE))
+		grid.add_child(_label(row[1], 12, PAPER))
+	var drow: HBoxContainer = HBoxContainer.new()
+	drow.alignment = BoxContainer.ALIGNMENT_CENTER
+	drow.add_theme_constant_override("separation", 8)
+	v.add_child(drow)
+	for d: int in range(3):
+		var db: Button = _button(Settings.DIFFICULTY_NAMES[d], func() -> void:
+			Settings.set_v("difficulty", d)
+			_sync_difficulty())
+		db.toggle_mode = true
+		drow.add_child(db)
+		diff_buttons.append(db)
 	best_label = _label("", 13, DIM)
 	best_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(best_label)
-	var quit: Button = _button("終了 QUIT", func() -> void: get_tree().quit())
-	quit.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	v.add_child(quit)
+	var trow: HBoxContainer = HBoxContainer.new()
+	trow.alignment = BoxContainer.ALIGNMENT_CENTER
+	trow.add_theme_constant_override("separation", 10)
+	v.add_child(trow)
+	trow.add_child(_button("設定 SETTINGS", func() -> void: show_settings("title")))
+	if not OS.has_feature("web"):
+		trow.add_child(_button("終了 QUIT", func() -> void: get_tree().quit()))
+	title_screen.set_meta("focus", deploy)
 
 
 func _build_over() -> void:
@@ -794,6 +823,7 @@ func _build_over() -> void:
 	over_endless.add_theme_font_size_override("font_size", 22)
 	row.add_child(over_endless)
 	row.add_child(_button("TITLE", func() -> void: Game.main.to_title()))
+	over_screen.set_meta("focus", again)
 	over_screen.visible = false
 
 
@@ -805,6 +835,8 @@ func show_over(win: bool) -> void:
 	else:
 		over_stats.text = "You held %d waves. %d kaiju destroyed." % [maxi(0, Game.wave - 1), Game.kills]
 	over_endless.visible = win
+	over_stats.text += "  ·  " + Settings.DIFFICULTY_NAMES[Game.difficulty]
+	(over_screen.get_meta("focus") as Button).call_deferred("grab_focus")
 
 
 func _on_state() -> void:
@@ -815,7 +847,222 @@ func _on_state() -> void:
 	acts.visible = play and not Game.player.active
 	if Game.state == Game.State.TITLE:
 		best_label.text = ("最高記録 BEST: WAVE %d" % Game.best) if Game.best > 0 else ""
+		_sync_difficulty()
+		(title_screen.get_meta("focus") as Button).call_deferred("grab_focus")
+	else:
+		get_viewport().gui_release_focus()
+	pause_menu.visible = false
+	settings_menu.visible = false
 	refresh(true)
+
+
+func _sync_difficulty() -> void:
+	var d: int = int(Settings.get_v("difficulty"))
+	for i: int in range(diff_buttons.size()):
+		diff_buttons[i].set_pressed_no_signal(i == d)
+
+
+# ------------------------------------------------------------------ tutorial, pause, settings --
+
+func _build_tutorial() -> void:
+	tut_box = PanelContainer.new()
+	var st: StyleBoxFlat = _box(Color(0.05, 0.04, 0.09, 0.94), GOLD, 1)
+	st.border_width_left = 4
+	st.content_margin_left = 14
+	st.content_margin_right = 12
+	st.content_margin_top = 10
+	st.content_margin_bottom = 10
+	tut_box.add_theme_stylebox_override("panel", st)
+	tut_box.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	tut_box.anchor_top = 0.0
+	tut_box.offset_top = 74
+	tut_box.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	root.add_child(tut_box)
+	var h: HBoxContainer = HBoxContainer.new()
+	h.add_theme_constant_override("separation", 14)
+	tut_box.add_child(h)
+	h.add_child(_label("指南", 20, GOLD, true))
+	tut_label = _label("", 15, PAPER)
+	tut_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	tut_label.custom_minimum_size = Vector2(560, 0)
+	h.add_child(tut_label)
+	h.add_child(_button("SKIP", func() -> void: Game.tutorial.skip(), false))
+	tut_box.visible = false
+
+
+func show_tutorial(text: String) -> void:
+	tut_label.text = text
+	tut_box.visible = text != ""
+
+
+func _overlay() -> Control:
+	var o: Control = Control.new()
+	o.set_anchors_preset(Control.PRESET_FULL_RECT)
+	o.mouse_filter = Control.MOUSE_FILTER_STOP
+	root.add_child(o)
+	var bg: ColorRect = ColorRect.new()
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.color = Color(0.02, 0.015, 0.04, 0.7)
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	o.add_child(bg)
+	var cc: CenterContainer = CenterContainer.new()
+	cc.set_anchors_preset(Control.PRESET_FULL_RECT)
+	cc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	o.add_child(cc)
+	var p: PanelContainer = PanelContainer.new()
+	p.custom_minimum_size = Vector2(420, 0)
+	var st: StyleBoxFlat = _box(Color(0.04, 0.03, 0.07, 0.97), LINE, 1)
+	st.border_width_top = 3
+	st.border_color = SHU
+	st.content_margin_left = 22
+	st.content_margin_right = 22
+	st.content_margin_top = 18
+	st.content_margin_bottom = 20
+	p.add_theme_stylebox_override("panel", st)
+	cc.add_child(p)
+	var v: VBoxContainer = VBoxContainer.new()
+	v.add_theme_constant_override("separation", 10)
+	p.add_child(v)
+	o.set_meta("box", v)
+	o.visible = false
+	return o
+
+
+func _build_pause() -> void:
+	pause_menu = _overlay()
+	var v: VBoxContainer = pause_menu.get_meta("box")
+	var t: Label = _label("一時停止  PAUSED", 30, SHU, true)
+	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(t)
+	var resume: Button = _button("再開  RESUME", func() -> void: Game.main.toggle_pause())
+	v.add_child(resume)
+	v.add_child(_button("設定  SETTINGS", func() -> void: show_settings("pause")))
+	v.add_child(_button("タイトル  QUIT TO TITLE", func() -> void:
+		Game.paused = false
+		Game.main.to_title()))
+	if not OS.has_feature("web") and not OS.has_feature("mobile"):
+		v.add_child(_button("終了  QUIT GAME", func() -> void: get_tree().quit()))
+	pause_menu.set_meta("focus", resume)
+
+
+func show_pause(on: bool) -> void:
+	pause_menu.visible = on
+	settings_menu.visible = false
+	if on:
+		(pause_menu.get_meta("focus") as Button).call_deferred("grab_focus")
+	else:
+		get_viewport().gui_release_focus()
+
+
+func _build_settings() -> void:
+	settings_menu = _overlay()
+	var v: VBoxContainer = settings_menu.get_meta("box")
+	var t: Label = _label("設定  SETTINGS", 30, SHU, true)
+	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(t)
+	var grid: GridContainer = GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 20)
+	grid.add_theme_constant_override("v_separation", 8)
+	v.add_child(grid)
+	_slider_row(grid, "Mouse sensitivity", "sensitivity", 0.0006, 0.006)
+	_check_row(grid, "Invert Y", "invert_y")
+	_slider_row(grid, "Music volume", "music_vol", 0.0, 1.0)
+	_slider_row(grid, "Effects volume", "sfx_vol", 0.0, 1.0)
+	_slider_row(grid, "Voice volume", "voice_vol", 0.0, 1.0)
+	grid.add_child(_label("Graphics", 15, PAPER))
+	var q: OptionButton = OptionButton.new()
+	for n: String in Settings.QUALITY_NAMES:
+		q.add_item(n)
+	q.item_selected.connect(func(i: int) -> void: Settings.set_v("quality", i))
+	grid.add_child(q)
+	_set_widgets["quality"] = q
+	_check_row(grid, "CRT scanlines", "crt")
+	if not OS.has_feature("mobile"):
+		_check_row(grid, "Fullscreen", "fullscreen")
+	_check_row(grid, "Show the tutorial", "tutorial")
+	v.add_child(_label("Controller: sticks aim and pan, RT fire, LT zoom, A select, B back, Y man a gun / swap,\nX airship / reload, LB RB cycle guns, d-pad special attacks, Start next wave, Back pause.", 11, DIM))
+	var back: Button = _button("戻る  BACK", func() -> void: close_settings())
+	v.add_child(back)
+	settings_menu.set_meta("focus", back)
+
+
+func _slider_row(grid: GridContainer, label: String, key: String, lo: float, hi: float) -> void:
+	grid.add_child(_label(label, 15, PAPER))
+	var s: HSlider = HSlider.new()
+	s.min_value = lo
+	s.max_value = hi
+	s.step = (hi - lo) / 100.0
+	s.custom_minimum_size = Vector2(220, 24)
+	s.value_changed.connect(func(val: float) -> void: Settings.set_v(key, val))
+	grid.add_child(s)
+	_set_widgets[key] = s
+
+
+func _check_row(grid: GridContainer, label: String, key: String) -> void:
+	grid.add_child(_label(label, 15, PAPER))
+	var c: CheckButton = CheckButton.new()
+	c.toggled.connect(func(on: bool) -> void: Settings.set_v(key, on))
+	grid.add_child(c)
+	_set_widgets[key] = c
+
+
+func refresh_settings() -> void:
+	for k: String in _set_widgets:
+		var w: Control = _set_widgets[k]
+		if w is HSlider:
+			(w as HSlider).set_value_no_signal(float(Settings.get_v(k)))
+		elif w is CheckButton:
+			(w as CheckButton).set_pressed_no_signal(bool(Settings.get_v(k)))
+		elif w is OptionButton:
+			(w as OptionButton).select(int(Settings.get_v(k)))
+
+
+func show_settings(from: String) -> void:
+	_settings_from = from
+	refresh_settings()
+	pause_menu.visible = false
+	settings_menu.visible = true
+	(settings_menu.get_meta("focus") as Button).call_deferred("grab_focus")
+
+
+func close_settings() -> void:
+	settings_menu.visible = false
+	if _settings_from == "pause":
+		show_pause(true)
+	elif Game.state == Game.State.TITLE:
+		(title_screen.get_meta("focus") as Button).call_deferred("grab_focus")
+
+
+func menu_open() -> bool:
+	return pause_menu.visible or settings_menu.visible
+
+
+## Back out of whatever menu is open (Esc or the controller's B).
+func back() -> void:
+	if settings_menu.visible:
+		close_settings()
+	elif pause_menu.visible:
+		Game.main.toggle_pause()
+
+
+## Controller: put focus on the first usable button in the side panel.
+func focus_panel() -> void:
+	for c: Node in panel_box.get_children():
+		var b: Button = _first_button(c)
+		if b != null:
+			b.grab_focus()
+			return
+
+
+func _first_button(n: Node) -> Button:
+	if n is Button and not (n as Button).disabled and (n as Button).focus_mode != Control.FOCUS_NONE:
+		return n
+	for c: Node in n.get_children():
+		var b: Button = _first_button(c)
+		if b != null:
+			return b
+	return null
 
 
 # ------------------------------------------------------------------ per frame --
@@ -869,6 +1116,8 @@ func refresh(force: bool = false) -> void:
 		if force or sig != _sig:
 			_sig = sig
 			_rebuild_panel()
+			if Game.main.using_pad:
+				call_deferred("focus_panel")
 	if Game.player.active:
 		var pl: Player = Game.player
 		if pl.weapon == "gun":

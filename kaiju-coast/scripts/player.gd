@@ -24,6 +24,7 @@ var crit_t: float = 0.0
 var look: Kaiju = null
 var look_t: float = 0.0
 var sens: float = 0.0022
+var invert_y: bool = false
 
 var _vm: Node3D
 var _gun_vm: Node3D
@@ -33,7 +34,7 @@ var _rocket_tip: Node3D
 
 
 func _ready() -> void:
-	sens = float(Game.load_setting("sensitivity", 0.0022))
+	pass
 
 
 ## Builds the view model under the camera (called by Main once the camera exists).
@@ -195,7 +196,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		var m: InputEventMouseMotion = event
 		var s: float = sens * fov / 1.15
 		yaw -= m.relative.x * s
-		pitch -= m.relative.y * s
+		pitch -= m.relative.y * s * (-1.0 if invert_y else 1.0)
 	elif event is InputEventMouseButton:
 		var b: InputEventMouseButton = event
 		if Input.mouse_mode != Input.MOUSE_MODE_CAPTURED and b.pressed:
@@ -231,7 +232,7 @@ func update(dt: float) -> void:
 	if absf(jy) < 0.15:
 		jy = 0.0
 	yaw -= (kx * 1.4 + jx * 2.2) * dt * fov
-	pitch += (ky * 1.0 - jy * 1.6) * dt * fov
+	pitch += (ky * 1.0 - jy * 1.6 * (-1.0 if invert_y else 1.0)) * dt * fov
 	var pad_fire: bool = Input.get_joy_axis(0, JOY_AXIS_TRIGGER_RIGHT) > 0.4
 	var pad_zoom: bool = Input.get_joy_axis(0, JOY_AXIS_TRIGGER_LEFT) > 0.4
 	pitch = clampf(pitch, -1.35 if seat is String else -0.35, 1.25)

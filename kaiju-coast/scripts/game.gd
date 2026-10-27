@@ -52,7 +52,7 @@ const KT: Dictionary = {
 		"arm": {"elec": 0.6}, "city": 1.5, "breath": false, "pts": 2, "scale": 1.0, "air": false, "boss": false},
 	"tengu": {"name": "TENGU", "jp": "天狗", "hp": 210.0, "spd": 40.0, "reward": 40, "col": Color(1.0, 0.37, 0.64),
 		"arm": {}, "city": 1.2, "breath": false, "pts": 2, "scale": 1.0, "air": true, "boss": false},
-	"daioni": {"name": "DAI-ONI", "jp": "大鬼", "hp": 4000.0, "spd": 9.0, "reward": 650, "col": Color(1.0, 0.23, 0.19),
+	"daioni": {"name": "DAI-ONI", "jp": "大鬼", "hp": 3600.0, "spd": 9.0, "reward": 650, "col": Color(1.0, 0.23, 0.19),
 		"arm": {"kin": 0.8, "exp": 0.8, "elec": 0.8}, "city": 5.0, "breath": true, "pts": 12, "scale": 1.9, "air": false, "boss": true},
 	"orochi": {"name": "YAMATA-NO-OROCHI", "jp": "八岐大蛇", "hp": 7200.0, "spd": 7.0, "reward": 900, "col": Color(0.95, 0.25, 0.6),
 		"arm": {"kin": 0.85, "elec": 0.75}, "city": 6.0, "breath": true, "pts": 14, "scale": 1.0, "air": false, "boss": true},
@@ -81,6 +81,9 @@ var sfx: Sfx
 var music: Music
 var voice: Node = null
 var abilities: Abilities
+var tutorial: Tutorial
+## 0 easy, 1 normal, 2 hard (chosen on the title screen).
+var difficulty: int = 1
 
 var pads: Array[Pad] = []
 var kaiju: Array[Kaiju] = []
@@ -110,12 +113,13 @@ var flash: float = 0.0
 var sel: Variant = null          ## a Pad, "zep", "armory" or null
 var t: float = 0.0               ## world time (sim seconds)
 
-const SAVE_PATH: String = "user://kaiju_coast.cfg"
+## Tests point this at a scratch file so they never touch your real settings or best wave.
+var save_path: String = "user://kaiju_coast.cfg"
 
 
 func _ready() -> void:
 	var cfg: ConfigFile = ConfigFile.new()
-	if cfg.load(SAVE_PATH) == OK:
+	if cfg.load(save_path) == OK:
 		best = int(cfg.get_value("score", "best_wave", 0))
 
 
@@ -123,21 +127,21 @@ func save_best() -> void:
 	if wave > best:
 		best = wave
 	var cfg: ConfigFile = ConfigFile.new()
-	cfg.load(SAVE_PATH)
+	cfg.load(save_path)
 	cfg.set_value("score", "best_wave", best)
-	cfg.save(SAVE_PATH)
+	cfg.save(save_path)
 
 
 func save_setting(key: String, value: Variant) -> void:
 	var cfg: ConfigFile = ConfigFile.new()
-	cfg.load(SAVE_PATH)
+	cfg.load(save_path)
 	cfg.set_value("settings", key, value)
-	cfg.save(SAVE_PATH)
+	cfg.save(save_path)
 
 
 func load_setting(key: String, default: Variant) -> Variant:
 	var cfg: ConfigFile = ConfigFile.new()
-	if cfg.load(SAVE_PATH) != OK:
+	if cfg.load(save_path) != OK:
 		return default
 	return cfg.get_value("settings", key, default)
 
@@ -279,7 +283,7 @@ func start_wave() -> void:
 	wave += 1
 	phase = "wave"
 	spawn_q = make_wave(wave)
-	hp_mul = 1.0 + 0.15 * float(wave - 1) + 0.022 * float((wave - 1) * (wave - 1))
+	hp_mul = (1.0 + 0.15 * float(wave - 1) + 0.022 * float((wave - 1) * (wave - 1))) * [0.78, 1.0, 1.3][difficulty]
 	spawn_t = 0.5
 	var boss: bool = wave % 5 == 0
 	var boss_line: String = "WAVE %d · THE EIGHT-HEADED SERPENT RISES" % wave if wave % 10 == 0 else "WAVE %d · A GREAT ONI RISES" % wave
@@ -316,6 +320,14 @@ func update_waves(dt: float) -> void:
 			start_wave()
 
 
+func city_mult() -> float:
+	return [0.7, 1.0, 1.25][difficulty]
+
+
+func reward_mult() -> float:
+	return [1.15, 1.0, 0.9][difficulty]
+
+
 func live_kaiju() -> int:
 	var n: int = 0
 	for k: Kaiju in kaiju:
@@ -329,7 +341,8 @@ func new_game() -> void:
 	abilities.reset()
 	demo = false
 	state = State.PLAY
-	funds = 420
+	difficulty = clampi(int(Settings.get_v("difficulty")), 0, 2)
+	funds = [600, 420, 340][difficulty]
 	city = 100.0
 	wave = 0
 	phase = "build"
@@ -346,6 +359,8 @@ func new_game() -> void:
 	music.set_mode("calm")
 	rig.set_mode("command")
 	banner.emit("防衛開始", "BUILD YOUR GUNS · CLICK A RING ON THE SHORE", 3.2)
+	if bool(Settings.get_v("tutorial")):
+		tutorial.start()
 	state_changed.emit()
 	hud_dirty.emit()
 

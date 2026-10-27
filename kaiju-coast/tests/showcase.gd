@@ -10,12 +10,21 @@ func _ready() -> void:
 	for a: String in OS.get_cmdline_user_args():
 		if a.begins_with("--out="):
 			out = a.substr(6)
+	Game.save_path = "user://showcase_settings.cfg"
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(Game.save_path))
 	var main: Node = load("res://scenes/main.tscn").instantiate()
 	add_child(main)
 	for i: int in range(20):
 		await get_tree().process_frame
 	await _shot("title")
+	Game.hud.show_settings("title")
+	await get_tree().process_frame
+	await _shot("settings")
+	Game.hud.close_settings()
 	Game.new_game()
+	await get_tree().create_timer(0.3).timeout
+	await _shot("tutorial")
+	Game.tutorial.skip()
 	Game.funds = 99999
 	for spec: Array in [[3, "cannon", 3], [1, "rocket", 2], [5, "tesla", 2], [4, "rail", 3], [8, "flak", 2], [10, "cannon", 4], [11, "rocket", 2], [12, "cannon", 2], [2, "flak", 1], [9, "tesla", 1]]:
 		Game.main.select(Game.pads[spec[0]])

@@ -6,7 +6,7 @@ extends Node3D
 ## sound-effect text.
 
 enum { SPARK, BLOOD, GIB, RING, STAIN, SPLAT, BOOM, SMOKE }
-const MAXP: int = 3600
+var max_particles: int = 3600
 
 var _k: PackedInt32Array = PackedInt32Array()
 var _p: PackedVector3Array = PackedVector3Array()
@@ -67,7 +67,7 @@ func count() -> int:
 
 
 func _add(kind: int, p: Vector3, v: Vector3, life: float, c: Color, g: float = 0.0, s: float = 1.0, x: float = 0.0) -> void:
-	if _k.size() >= MAXP:
+	if _k.size() >= max_particles:
 		if randf() < 0.7:
 			return
 		_remove(0)

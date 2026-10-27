@@ -257,7 +257,7 @@ func kill_kaiju(k: Kaiju, dir: Vector3) -> void:
 	var a: Vector3 = k.aim
 	var boss: bool = d["boss"]
 	if not Game.demo:
-		var r: int = roundi(float(d["reward"]) * (1.0 + 0.03 * float(Game.wave)))
+		var r: int = roundi(float(d["reward"]) * (1.0 + 0.03 * float(Game.wave)) * Game.reward_mult())
 		Game.funds += r
 		Game.kills += 1
 		Game.fx.text(a + Vector3(0, 20, 0), "+¥%d" % r, Mats.GOLD, 9.0, 1.8, 16.0)
