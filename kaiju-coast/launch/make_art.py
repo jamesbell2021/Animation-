@@ -3,7 +3,7 @@
 
     python3 launch/make_art.py
 
-Writes  launch/out/cover_630x500.png      itch.io cover (the Dai-Oni over the burning city)
+Writes  launch/out/cover_630x500.png      itch.io cover (Yamata-no-Orochi rising in the rain)
         launch/out/banner_960x360.png     page header (kaiju wading in under the blood moon)
         launch/out/screenshots/*.jpg      twelve 1920x1080 stills, in page order
         launch/out/gif_eye_out.gif        shooting out an Onigami's eye
@@ -81,12 +81,12 @@ def fit(src, w, h, focus_x=0.5, focus_y=0.5):
 
 
 def cover():
-    src = frame("rampage", 3.2, os.path.join(OUT, "_cover_src.png"))
-    img = fit(src, 630, 500, 0.5, 0.42)
-    shade(img, 0.85, 0.75)
-    neon_text(img, (315, 26), "怪獣海岸", ImageFont.truetype(BIG, 92), SHU, "ma", 16, 2)
-    neon_text(img, (315, 136), "KAIJU COAST", ImageFont.truetype(BIG, 50), PAPER, "ma", 10, 2)
-    neon_text(img, (315, 470), "TOWER DEFENCE · FIRST PERSON · GIANT MONSTERS", ImageFont.truetype(SMALL, 18), GOLD, "ms", 6)
+    src = frame("orochi", 2.4, os.path.join(OUT, "_cover_src.png"))
+    img = fit(src, 630, 500, 0.47, 0.5)
+    shade(img, 0.0, 0.95)
+    neon_text(img, (315, 318), "怪獣海岸", ImageFont.truetype(BIG, 88), SHU, "ma", 16, 2)
+    neon_text(img, (315, 420), "KAIJU COAST", ImageFont.truetype(BIG, 44), PAPER, "ma", 10, 2)
+    neon_text(img, (315, 488), "TOWER DEFENCE · FIRST PERSON · GIANT MONSTERS", ImageFont.truetype(SMALL, 17), GOLD, "ms", 6)
     img.convert("RGB").save(os.path.join(OUT, "cover_630x500.png"), optimize=True)
     os.remove(src)
 

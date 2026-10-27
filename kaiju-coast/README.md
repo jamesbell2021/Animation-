@@ -52,6 +52,13 @@ Every push that changes `kaiju-coast/` builds fresh Windows, Linux and Android v
 workflow is `.github/workflows/kaiju-coast.yml`. It runs the smoke test first and fails if the
 game is broken.
 
+## Trailer and itch.io page
+
+`launch/out/kaiju_coast_trailer.mp4` is a 75-second trailer filmed inside the game with Godot's
+Movie Maker (`tools/trailer/`), and `launch/itch-page.md` has everything for the itch.io page:
+the description in English and Japanese, tags, settings and uploads, with the cover, banner,
+screenshots and GIFs in `launch/out/`.
+
 ## Open it in Godot
 
 1. Install Godot 4.3 (standard, not .NET).

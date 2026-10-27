@@ -35,16 +35,16 @@ SHU, CYAN, GOLD, SAKURA, WHITE = "0xff3b30", "0x36d7ff", "0xffc44d", "0xff5fa3",
 EDIT = [
     ("card", [("3BL PRESENTS", 56, CYAN)], 1.6, None),
     ("shot", "reveal", 0.0, 6.0),
-    ("card", [("THE SEA IS WALKING", 112, CYAN), ("海が歩き出した", 80, SHU)], 1.9, "voice_wave"),
+    ("card", [("THE SEA IS WALKING", 112, CYAN), ("海が歩き出した", 92, SHU)], 1.9, "voice_wave"),
     ("shot", "wade", 0.2, 4.0),
     ("card", [("BUILD YOUR DEFENCES", 104, GOLD), ("大砲 · 火箭 · 雷神 · 刀 · 花火", 56, WHITE)], 1.8, None),
     ("shot", "build", 0.0, 4.2),
     ("card", [("THEN MAN THE GUNS", 108, SHU), ("YOURSELF", 108, SHU), ("shoot out their eyes · 目潰し", 48, WHITE)], 1.9, None),
     ("shot", "gunner", 0.4, 4.9),
     ("shot", "rockets", 0.2, 4.0),
-    ("card", [("FLY THE AIRSHIP", 112, CYAN), ("雷神丸 RAIJIN-MARU", 64, WHITE)], 1.6, None),
+    ("card", [("FLY THE AIRSHIP", 112, CYAN), ("雷神丸  RAIJIN-MARU", 80, WHITE)], 1.6, None),
     ("shot", "airship", 0.2, 4.4),
-    ("card", [("CALL IN THE STORM", 112, GOLD), ("空爆 · 雷雨 · 放流", 64, WHITE)], 1.6, "voice_storm"),
+    ("card", [("CALL IN THE STORM", 112, GOLD), ("空爆 · 雷雨 · 放流", 92, WHITE)], 1.6, "voice_storm"),
     ("shot", "airstrike", 0.0, 3.6),
     ("shot", "storm", 0.0, 4.2),
     ("shot", "flood", 0.2, 3.6),
@@ -52,7 +52,7 @@ EDIT = [
     ("shot", "rampage", 0.0, 4.8),
     ("card", [("八岐大蛇", 170, SAKURA), ("YAMATA-NO-OROCHI", 60, WHITE)], 2.0, "voice_orochi"),
     ("shot", "orochi", 0.0, 6.8),
-    ("card", [("HOLD THE COAST", 120, GOLD), ("海岸を守れ", 80, SHU)], 1.7, None),
+    ("card", [("HOLD THE COAST", 120, GOLD), ("海岸を守れ", 96, SHU)], 1.7, None),
     ("shot", "finale", 0.0, 4.6),
     ("end", "finale", 4.6, 4.8),
 ]
@@ -94,14 +94,13 @@ def drawtexts(lines, key, start_alpha_at=0.0):
 
 def glow(chain):
     """Adds a neon bloom to whatever the chain draws."""
-    return f"{chain},split[a][b];[b]gblur=sigma=18[g];[a][g]blend=all_mode=screen"
+    return f"{chain},split[a][b];[b]gblur=sigma=14[g];[a][g]blend=all_mode=screen"
 
 
 def video_card(i, lines, dur):
-    # A dark card with faint scanlines, like the game's CRT pass.
+    # A dark card with the lines glowing like the game's neon.
     vf = (f"color=c=0x07060d:s={W}x{H}:r={FPS}:d={dur},format=gbrp,"
           + glow(drawtexts(lines, i))
-          + ",geq=r='r(X,Y)*(0.86+0.14*mod(Y,3))':g='g(X,Y)*(0.86+0.14*mod(Y,3))':b='b(X,Y)*(0.86+0.14*mod(Y,3))'"
           + f",fade=in:st=0:d=0.18,fade=out:st={dur - 0.18:.2f}:d=0.18,format=yuv420p")
     out = os.path.join(WORK, f"seg_{i:02d}.mp4")
     ff("-f", "lavfi", "-i", f"anullsrc=r={RATE}:cl=stereo", "-filter_complex", vf, "-t", f"{dur}",

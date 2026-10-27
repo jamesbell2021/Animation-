@@ -76,7 +76,7 @@ jobs:
       # wine has hung on a slow mirror before, so it's time-boxed: if it fails the build still
       # goes ahead, with Godot's default exe icon and a warning.
       - name: Install wine and rcedit for the Windows icon
-        timeout-minutes: 12
+        timeout-minutes: 15
         continue-on-error: true
         run: |
           sudo dpkg --add-architecture i386

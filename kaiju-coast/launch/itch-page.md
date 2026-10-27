@@ -4,6 +4,17 @@ Paste the blocks below into the itch.io project. The **Description** is English 
 Japanese block under it. The rest of the page settings are at the end, and every image they
 name is in `launch/out/` (made by `launch/make_art.py` from the trailer takes).
 
+To remake the trailer and the art after the game changes:
+
+```
+xvfb-run -a -s "-screen 0 1920x1080x24" tools/trailer/record.sh   # films the 12 shots in the game
+python3 tools/trailer/assemble.py                                  # cuts tools/trailer/out/kaiju_coast_trailer.mp4
+python3 launch/make_art.py                                         # cover, banner, screenshots, GIFs
+```
+
+Suggested YouTube title: *Kaiju Coast – neon tower defence where you man the guns yourself
+(trailer)*. Description: the tagline below, then the itch.io link.
+
 ---
 
 ## Description (English)
@@ -127,7 +138,7 @@ Godot 4で制作。
 | Cover image | `launch/out/cover_630x500.png` |
 | Screenshots | `launch/out/screenshots/01_reveal.jpg` … `12_finale.jpg` (1920×1080, in order) |
 | Animated GIFs (in the description) | `launch/out/gif_eye_out.gif`, `launch/out/gif_airstrike.gif` |
-| Trailer | itch.io only embeds YouTube or Vimeo: upload `kaiju_coast_trailer.mp4` to YouTube first, then paste the link |
+| Trailer | itch.io only embeds YouTube or Vimeo: upload `launch/out/kaiju_coast_trailer.mp4` (75 s, 1080p) to YouTube first, then paste the link. Thumbnail: `launch/out/kaiju_coast_poster.jpg` |
 | Page colours (Edit theme) | background `#07060d`, text `#f0e8d8`, links `#36d7ff`, buttons `#ff3b30`; header image `launch/out/banner_960x360.png` |
 | Community | Comments |
 
