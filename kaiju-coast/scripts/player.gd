@@ -31,6 +31,10 @@ var _gun_vm: Node3D
 var _rkt_vm: Node3D
 var _gun_line: ShaderMaterial
 var _rocket_tip: Node3D
+## Markers at the mouths of the view model's barrels (twin gun) and the launcher tube.
+var _gun_mouths: Array[Node3D] = []
+var _tube_mouth: Node3D
+var _barrel: int = 0
 
 
 func _ready() -> void:
@@ -53,6 +57,11 @@ func attach_view_model(cam: Camera3D) -> void:
 	g.box(Vector3(1.1, -1.05, -2.9), Vector3(0.45, 0.35, 1.4), Mats.JADE)
 	g.tube(Vector3(1.1, -1.5, -1.3), Vector3(1.1, -2.1, -1.1), 0.12, 0.12, 5, Mats.JADE)
 	g.attach(_gun_vm, Mats.fill(), _gun_line)
+	for s2: float in [-0.28, 0.28]:
+		var m: Node3D = Node3D.new()
+		m.position = Vector3(1.1 + s2, -1.05, -5.9)
+		_gun_vm.add_child(m)
+		_gun_mouths.append(m)
 	_rkt_vm = Node3D.new()
 	_vm.add_child(_rkt_vm)
 	var r: SolidBuilder = SolidBuilder.new()
@@ -60,6 +69,9 @@ func attach_view_model(cam: Camera3D) -> void:
 	r.tube(Vector3(1.15, -1.0, -5.6), Vector3(1.15, -1.0, -6.2), 0.4, 0.4, 10, Mats.GOLD)
 	r.box(Vector3(1.15, -1.45, -2.6), Vector3(0.3, 0.5, 0.5), Mats.GOLD)
 	r.attach(_rkt_vm, Mats.fill(), Mats.line(2.4))
+	_tube_mouth = Node3D.new()
+	_tube_mouth.position = Vector3(1.15, -1.0, -6.2)
+	_rkt_vm.add_child(_tube_mouth)
 	_rocket_tip = Node3D.new()
 	_rkt_vm.add_child(_rocket_tip)
 	var tip: SolidBuilder = SolidBuilder.new()
@@ -260,7 +272,9 @@ func update(dt: float) -> void:
 	var cam: Camera3D = Game.rig.cam
 	var b: Basis = cam.global_transform.basis
 	var fwd: Vector3 = -b.z.normalized()
-	var muzzle: Vector3 = cam.global_position + b.x.normalized() * 0.8 - b.y.normalized() * 0.75 + fwd * 4.0
+	# Shots leave from the barrel you can see: the twin gun alternates between its two barrels.
+	_vm.position = Vector3(0.3 + sin(Game.t * 1.7) * 0.02, -0.22 - kick * 0.03, kick * 0.09)
+	var muzzle: Vector3 = (_gun_mouths[_barrel] if weapon == "gun" else _tube_mouth).global_position
 	var far: Vector3 = cam.global_position + fwd * 400.0
 	var mult: float = seat_mult()
 	var shoot: bool = firing or pad_fire or Input.is_physical_key_pressed(KEY_SPACE) and Game.phase == "wave"
@@ -282,7 +296,8 @@ func update(dt: float) -> void:
 			var sp: float = (0.008 + heat * 0.012) * 400.0
 			var d: Vector3 = (far - muzzle + Vector3(randf_range(-sp, sp), randf_range(-sp, sp), randf_range(-sp, sp))).normalized()
 			Game.combat.fire({"kind": "bullet", "pos": muzzle, "vel": d * 1100.0, "dmg": 8.0 * mult * (1.0 + 0.25 * float(Game.armory["gun"])), "dt": "kin", "by": "p", "life": 1.3})
-			Game.fx.muzzle(muzzle, Mats.TRACER, 1.6)
+			Game.fx.muzzle(muzzle, Mats.TRACER, 0.5)
+			_barrel = 1 - _barrel
 			Game.sfx.play("gun", 0.8)
 			Game.shake = maxf(Game.shake, 0.15)
 	else:
@@ -298,7 +313,7 @@ func update(dt: float) -> void:
 			var d2: Vector3 = (far - muzzle).normalized()
 			Game.combat.fire({"kind": "rocket", "pos": muzzle, "vel": d2 * 160.0, "acc": 650.0, "max": 520.0,
 				"dmg": 85.0 * mult * (1.0 + 0.3 * float(Game.armory["rkt"])), "dt": "exp", "splash": 28.0 + 5.0 * float(Game.armory["rkt"]), "by": "p", "life": 4.0})
-			Game.fx.sparks(muzzle, 10, Mats.FIRE, 30.0, 0.0)
+			Game.fx.sparks(muzzle, 10, Mats.FIRE, 12.0, 0.0)
 			Game.sfx.play("rocket", 0.9)
 			Game.shake = maxf(Game.shake, 0.5)
 			if ammo == 0:

@@ -8,7 +8,11 @@ extends Node3D
 static var _cache: Dictionary = {}
 static var _eye_mat: ShaderMaterial
 
+## Rough body radius on the ground, for keeping clear of sea forts, the city and each other.
+const BODY: Dictionary = {"oni": 14.0, "kani": 22.0, "ryu": 16.0, "tengu": 0.0, "daioni": 24.0, "orochi": 44.0}
+const FORT_R: float = 16.0
 var type: String = "oni"
+var _crush_cd: float = 0.0
 var def: Dictionary
 var hp: float = 100.0
 var max_hp: float = 100.0
@@ -26,6 +30,7 @@ var breath_t: float = 0.0
 var breath_target: Variant = null
 var fired: bool = false
 var roar_t: float = 0.0
+var shout_t: float = -10.0               ## when it last shouted in pain (keeps the text readable)
 var smash_cd: float = 2.0
 var orb: float = 0.0
 var atk: float = 1.0
@@ -707,6 +712,13 @@ func update(dt: float) -> void:
 			var wob: float = sin(Game.t * 0.25 + float(uid) * 1.7) * 0.25
 			var wx: float = dx + dz * wob
 			var wz: float = dz - dx * wob
+			# Wade round the sea forts rather than through them.
+			var av: Vector2 = _fort_avoid()
+			var w2: Vector2 = Vector2(wx + av.x, wz + av.y)
+			if w2.length() > 0.05:
+				w2 = w2.normalized()
+				wx = w2.x
+				wz = w2.y
 			vel = Vector3(wx, 0, wz) * spd
 			position.x += vel.x * dt
 			position.z += vel.z * dt
@@ -736,6 +748,14 @@ func update(dt: float) -> void:
 	else:
 		position.y = lerpf(position.y, 2.0 if on_land else -Game.depth_at(position.z), minf(1.0, dt * 2.0))
 	_footsteps(on_land)
+	_keep_clear()
+	Game.world.torii_contact(self)
+	# Stand among the buildings, not inside them: anything underfoot comes down.
+	_crush_cd -= dt
+	if on_land and _crush_cd <= 0.0:
+		_crush_cd = 0.25
+		if Game.world.crush_at(position, float(BODY[type]) * size_jit) > 0:
+			Game.sfx.play_at("crash", position, 0.9)
 	# Trample guns underfoot.
 	var reach: float = (30.0 if type == "kani" else (14.0 if type == "ryu" else 18.0)) * float(def["scale"])
 	for t: Turret in Game.turrets.duplicate():
@@ -880,6 +900,62 @@ func _update_tengu(dt: float, spd: float) -> void:
 
 
 ## Kanizame: dive under the bay towards a sea fort, then burst up beneath it.
+## Sea forts this kaiju should steer round (not the one a sea dragon is coming to coil round).
+func _avoids(p: Pad) -> bool:
+	if not p.fort or burrowing or state == "coil":
+		return false
+	if type == "ryu" and not coil_done and p.turret != null:
+		return false
+	return true
+
+
+func _fort_avoid() -> Vector2:
+	var push: Vector2 = Vector2.ZERO
+	var r: float = FORT_R + float(BODY[type]) * size_jit
+	for p: Pad in Game.pads:
+		if not _avoids(p):
+			continue
+		var off: Vector2 = Vector2(position.x - p.pos.x, position.z - p.pos.z)
+		var d: float = off.length()
+		var zone: float = r * 2.4
+		if d < zone and d > 0.01:
+			var away: Vector2 = off / d
+			# Push out, plus a sideways nudge so it slides round instead of stalling head-on.
+			var side: Vector2 = Vector2(-away.y, away.x) * (1.0 if away.x * vel.z - away.y * vel.x >= 0.0 else -1.0)
+			push += (away * 1.6 + side * 0.8) * (1.0 - d / zone)
+	return push
+
+
+## Hard limits: never inside a sea fort, never inside another kaiju.
+func _keep_clear() -> void:
+	if burrowing:
+		return
+	var me: float = float(BODY[type]) * size_jit
+	for p: Pad in Game.pads:
+		if not _avoids(p):
+			continue
+		var off: Vector2 = Vector2(position.x - p.pos.x, position.z - p.pos.z)
+		var d: float = off.length()
+		var r: float = FORT_R + me
+		if d < r:
+			off = off / d if d > 0.01 else Vector2(1, 0)
+			position.x = p.pos.x + off.x * r
+			position.z = p.pos.z + off.y * r
+	if state == "coil":
+		return
+	for o: Kaiju in Game.kaiju:
+		if o == self or o.dying or o.burrowing or o.def["air"] or o.state == "coil":
+			continue
+		var off2: Vector2 = Vector2(position.x - o.position.x, position.z - o.position.z)
+		var d2: float = off2.length()
+		var r2: float = (me + float(BODY[o.type]) * o.size_jit) * 0.85
+		if d2 < r2:
+			off2 = off2 / d2 if d2 > 0.01 else Vector2(1.0 if uid > o.uid else -1.0, 0)
+			# Each of the pair moves half the overlap.
+			position.x += off2.x * (r2 - d2) * 0.5
+			position.z += off2.y * (r2 - d2) * 0.5
+
+
 func _try_specials() -> void:
 	if type == "kani" and not burrow_done and position.z < -40.0:
 		for t: Turret in Game.turrets:

@@ -232,6 +232,137 @@ func _menus_and_settings() -> void:
 	Settings.set_v("difficulty", 1)
 
 
+## Kaiju don't walk through things, and shots leave from the barrels you can see.
+func _contact() -> void:
+	print("-- contact and barrels --")
+	Game.new_game()
+	Game.tutorial.skip()
+	Game.funds = 99999
+	Game.spawn_q.clear()
+	Game.phase = "wave"
+	# The torii comes down when a kaiju wades into it, and stands again on a new game.
+	var tz: float = World.TORII_AT.z
+	var oni: Kaiju = _spawn("oni", Vector3(World.TORII_AT.x, 0, tz - 60.0))
+	oni.hp = 1e6
+	for i: int in range(30 * 8):
+		Game.main.step(1.0 / 30.0)
+		if not Game.world.torii_up:
+			break
+	check(not Game.world.torii_up, "an Onigami wading into the torii knocks it down")
+	oni.hp = 1.0
+	Game.combat.hurt_kaiju(oni, 50.0, "kin", oni.aim, Vector3.FORWARD, false, "t")
+	_steps(160)
+	Game.new_game()
+	Game.tutorial.skip()
+	check(Game.world.torii_up, "and it's standing again on a new game")
+	Game.funds = 99999
+	Game.spawn_q.clear()
+	Game.phase = "wave"
+	# Kaiju wade round the sea forts and don't stand inside each other.
+	var fort: Pad = Game.pads[10]
+	var k1: Kaiju = _spawn("oni", fort.pos + Vector3(4, 0, -120))
+	k1.target_x = fort.pos.x
+	k1.hp = 1e6
+	var closest: float = 1e9
+	for i2: int in range(30 * 12):
+		Game.main.step(1.0 / 30.0)
+		closest = minf(closest, Vector2(k1.position.x - fort.pos.x, k1.position.z - fort.pos.z).length())
+	check(closest >= Kaiju.FORT_R + Kaiju.BODY["oni"] - 0.5, "an Onigami walked round the empty sea fort (closest %.0f)" % closest)
+	check(k1.position.z > fort.pos.z + 20.0, "and carried on past it")
+	var a: Kaiju = _spawn("oni", Vector3(-150, 0, -200))
+	var b: Kaiju = _spawn("kani", Vector3(-148, 0, -202))
+	a.hp = 1e6
+	b.hp = 1e6
+	_steps(30)
+	var gap: float = Vector2(a.position.x - b.position.x, a.position.z - b.position.z).length()
+	check(gap > (Kaiju.BODY["oni"] + Kaiju.BODY["kani"]) * 0.8, "two kaiju spawned on top of each other spread apart (%.0f)" % gap)
+	# A kaiju standing in the city knocks down the blocks it's standing in.
+	var bld: Dictionary = {}
+	for bb: Dictionary in Game.world.buildings:
+		if bb["kind"] == "box" and not bb["falling"]:
+			bld = bb
+			break
+	check(Game.world.crush_at(Vector3(bld["x"], 0, bld["z"]), 14.0) == 1 or bld["falling"], "a block under a kaiju's feet comes down")
+	# The airship climbs over a Dai-Oni instead of flying through its head.
+	var big: Kaiju = _spawn("daioni", Vector3(Game.zep.position.x, 0, Game.zep.position.z))
+	big.hp = 1e6
+	_steps(30 * 5)
+	var top: float = 0.0
+	for h: Dictionary in big.hits:
+		top = maxf(top, float(h["p"].y) + float(h["r"]))
+	var zx: float = Game.zep.position.x
+	check(Game.zep.alt > 125.0 or Vector2(big.position.x - Game.zep.position.x, big.position.z - Game.zep.position.z).length() > 110.0,
+		"the airship climbs over the Dai-Oni (alt %.0f, kaiju top %.0f)" % [Game.zep.alt, top])
+	for k: Kaiju in Game.kaiju.duplicate():
+		k.hp = 1.0
+		Game.combat.hurt_kaiju(k, 50.0, "kin", k.aim, Vector3.FORWARD, false, "t")
+	_steps(170)
+	# First person: bullets leave from the two barrel mouths in turn, rockets from the tube.
+	Game.main.select(Game.pads[3])
+	Game.main.act("build", "cannon")
+	Game.main.select(null)
+	var target: Kaiju = _spawn("oni", Game.pads[3].pos + Vector3(0, 0, -200))
+	target.hp = 1e6
+	Game.player.enter(Game.pads[3].turret)
+	Game.player.set_weapon("gun")
+	await get_tree().process_frame
+	Game.rig.update(0.0)
+	var mouths: Array = []
+	for m: Node3D in Game.player._gun_mouths:
+		mouths.append(m.global_position)
+	Game.combat.shots.clear()
+	Game.player.firing = true
+	for i3: int in range(6):
+		Game.player.cd = 0.0
+		Game.player.update(1.0 / 30.0)
+	Game.player.firing = false
+	var from_a: int = 0
+	var from_b: int = 0
+	# The barrels sit 0.28 apart in front of the camera: sort each round to the nearer mouth.
+	for s: Combat.Shot in Game.combat.shots:
+		if s.by == "p" and s.kind == "bullet":
+			var da: float = s.origin.distance_to(mouths[0])
+			var db: float = s.origin.distance_to(mouths[1])
+			if minf(da, db) < 0.12:
+				if da < db:
+					from_a += 1
+				else:
+					from_b += 1
+	check(from_a >= 2 and from_b >= 2, "machine-gun rounds leave from both barrel mouths (%d / %d)" % [from_a, from_b])
+	Game.player.set_weapon("rocket")
+	Game.player.ammo = 4
+	Game.player.reload = 0.0
+	Game.combat.shots.clear()
+	Game.player.firing = true
+	Game.player.cd = 0.0
+	Game.player.update(1.0 / 30.0)
+	Game.player.firing = false
+	var tube: Vector3 = Game.player._tube_mouth.global_position
+	var ok_rkt: bool = false
+	for s2: Combat.Shot in Game.combat.shots:
+		ok_rkt = ok_rkt or (s2.kind == "rocket" and s2.origin.distance_to(tube) < 0.3)
+	check(ok_rkt, "rockets leave from the launcher tube")
+	Game.player.exit_seat()
+	# A twin-barrel cannon fires one shell from each barrel.
+	Game.main.select(Game.pads[3])
+	Game.main.act("up", "")
+	Game.main.select(null)
+	var tu: Turret = Game.pads[3].turret
+	Game.combat.shots.clear()
+	tu._fire(target, target.aim, tu.stat())
+	var origins: Array = []
+	for s3: Combat.Shot in Game.combat.shots:
+		var near_mouth: bool = false
+		for mo: Vector3 in tu._mouths:
+			near_mouth = near_mouth or s3.origin.distance_to(tu._gun.global_transform * mo) < 0.5
+		if near_mouth and not origins.has(s3.origin):
+			origins.append(s3.origin)
+	check(tu._mouths.size() == 2 and origins.size() == 2, "a level 2 cannon fires from both of its barrels (%d)" % origins.size())
+	target.hp = 1.0
+	Game.combat.hurt_kaiju(target, 50.0, "kin", target.aim, Vector3.FORWARD, false, "t")
+	_steps(170)
+
+
 ## Voice call-outs, weather, fires and searchlights.
 func _atmosphere() -> void:
 	print("-- voices and weather --")
@@ -448,6 +579,7 @@ func _ready() -> void:
 			s3 += 1
 	check(Game.state == Game.State.OVER, "the city can fall")
 	await _features()
+	await _contact()
 	await _atmosphere()
 	await _touch()
 	await _menus_and_settings()

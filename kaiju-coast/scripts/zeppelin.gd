@@ -18,8 +18,9 @@ var lvl: Dictionary = {"bomb": 0, "armor": 0, "pods": 0}
 var cd: float = 0.0
 var bomb_cd: float = 0.0
 var pod_cd: float = 0.0
-var side: float = 1.0
 var pilot_speed: float = 22.0
+## Cruising height: 125, or higher to clear any kaiju standing under the hull.
+var alt: float = 125.0
 var _rejoin: float = 1.0                ## 0..1 blend back onto the patrol path after you fly it
 var _rejoin_from: Vector3 = Vector3.ZERO
 
@@ -163,17 +164,37 @@ func _fly(dt: float) -> void:
 	var fwd: Vector3 = Vector3(-sin(yaw), 0, -cos(yaw))
 	vel = fwd * pilot_speed
 	position += vel * dt
-	position.y = lerpf(position.y, 125.0 + sin(Game.t * 0.4) * 3.0, dt)
+	position.y = lerpf(position.y, alt + sin(Game.t * 0.4) * 3.0, minf(1.0, dt * 1.5))
 	# When you let go, pick the nearest point of the patrol loop and drift back onto it.
 	ang = atan2((position.z + 80.0) / 105.0, position.x / 230.0)
 	_rejoin = 0.0
 	_rejoin_from = position
 
 
+## Climb over tall kaiju (the Dai-Oni stands nearly as high as the patrol height) and come back
+## down once they're clear. The gondola hangs about 36 below the hull's centre.
+func _update_alt(dt: float) -> void:
+	var want: float = 125.0
+	for k: Kaiju in Game.kaiju:
+		if k.dying or k.def["air"] or Vector2(k.position.x - position.x, k.position.z - position.z).length() > 110.0:
+			continue
+		for h: Dictionary in k.hits:
+			want = maxf(want, float(h["p"].y) + float(h["r"]) + 50.0)
+	alt = move_toward(alt, want, dt * (40.0 if want > alt else 12.0))
+
+
+func _aim_nose_gun(at: Vector3) -> void:
+	var d: Vector3 = at - _gun.global_position
+	if d.length_squared() < 1.0:
+		return
+	d = d.normalized()
+	_gun.global_basis = Basis.looking_at(d, Vector3.FORWARD if absf(d.y) > 0.97 else Vector3.UP)
+
+
 func _place(dt: float) -> void:
 	var nx: float = cos(ang) * 230.0
 	var nz: float = -80.0 + sin(ang) * 105.0
-	var np: Vector3 = Vector3(nx, 125.0 + sin(Game.t * 0.4) * 3.0, nz)
+	var np: Vector3 = Vector3(nx, alt + sin(Game.t * 0.4) * 3.0, nz)
 	if _rejoin < 1.0:
 		_rejoin = minf(1.0, _rejoin + dt / 4.0)
 		np = _rejoin_from.lerp(np, smoothstep(0.0, 1.0, _rejoin))
@@ -219,6 +240,7 @@ func update(dt: float) -> void:
 			Game.banner.emit("雷神丸 再出撃", "RAIJIN-MARU IS BACK IN THE AIR", 2.4)
 			Game.hud_dirty.emit()
 		return
+	_update_alt(dt)
 	if piloted():
 		_fly(dt)
 	else:
@@ -291,11 +313,14 @@ func _weapons(dt: float) -> void:
 				best = k
 		if best != null:
 			cd = 0.55
-			side = -side
-			var m: Vector3 = global_transform * Vector3(side * 10.0, -24, -20)
-			var tt: float = m.distance_to(best.aim) / 600.0
-			var dir: Vector3 = (best.aim + best.vel * tt - m).normalized()
+			# The nose gun under the gondola swings onto the target and fires from its barrel.
+			var tt: float = _gun.global_position.distance_to(best.aim) / 600.0
+			var lead: Vector3 = best.aim + best.vel * tt
+			_aim_nose_gun(lead)
+			var m: Vector3 = _gun.global_transform * Vector3(0, -0.5, -9.5)
+			var dir: Vector3 = (lead - m).normalized()
 			C.fire({"kind": "shell", "pos": m, "vel": dir * 600.0, "dmg": 14.0, "dt": "kin", "by": "z", "life": 1.2})
+			Game.fx.muzzle(m, Mats.TRACER, 3.0)
 			Game.sfx.play_at("cannon", m, 0.6)
 		else:
 			cd = 0.3

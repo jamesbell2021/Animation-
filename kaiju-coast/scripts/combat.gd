@@ -21,9 +21,13 @@ class Shot:
 	var big: bool = false
 
 var shots: Array[Shot] = []
+## Your damage, added up per kaiju and shown as one number every quarter of a second, so a burst
+## of machine-gun fire reads as a rising total instead of a pile of overlapping digits.
+var _dmg: Dictionary = {}        ## Kaiju -> {sum, weak, t, p}
 
 
 func clear() -> void:
+	_dmg.clear()
 	shots.clear()
 
 
@@ -93,6 +97,11 @@ func seg_hit_one(k: Kaiju, a: Vector3, b: Vector3, d: Vector3, a2: float) -> Dic
 
 
 func update(dt: float) -> void:
+	for k: Variant in _dmg.keys():
+		if not is_instance_valid(k):
+			_dmg.erase(k)
+		elif Game.t - float(_dmg[k]["t"]) >= 0.25:
+			_flush_dmg(k)
 	var i: int = shots.size() - 1
 	while i >= 0:
 		var s: Shot = shots[i]
@@ -216,24 +225,42 @@ func hurt_kaiju(k: Kaiju, dmg: float, dt: String, p: Vector3, dir: Vector3, weak
 		k.wounds.append({"local": k.to_local(p), "dir": (-dir + Vector3(0, 0.5, 0)).normalized(), "t": 0.3})
 	if by == "p":
 		Game.player.on_hit(weak)
-		Game.fx.text(p + Vector3(0, 4, 0), ("会心 " if weak else "") + str(roundi(dmg_f)), Mats.GOLD if weak else Mats.WHITE, 7.0 if weak else 4.5, 0.8, 14.0)
+		var acc: Dictionary = _dmg.get(k, {"sum": 0.0, "weak": false, "t": Game.t, "p": p})
+		acc["sum"] = float(acc["sum"]) + dmg_f
+		acc["weak"] = bool(acc["weak"]) or weak
+		acc["p"] = p
+		_dmg[k] = acc
+		if Game.t - float(acc["t"]) >= 0.25:
+			_flush_dmg(k)
 		if weak:
 			Game.sfx.play("crit", 0.8)
 			Game.sfx.play("splat", 0.8)
 	elif dmg_f > 25.0:
 		Game.sfx.play_at("splat", p, 0.7)
-	if randf() < 0.04 + (0.2 if weak else 0.0):
-		Game.fx.text(p + Vector3(0, 10, 0), Fx.PAIN.pick_random(), Mats.SAKURA, 10.0, 1.1)
+	if randf() < 0.04 + (0.2 if weak else 0.0) and Game.t - k.shout_t > 1.2:
+		k.shout_t = Game.t
+		Game.fx.text(p + Vector3(randf_range(-12, 12), 18, 0), Fx.PAIN.pick_random(), Mats.SAKURA, 10.0, 1.1)
 		k.roar_t = 0.6
 	if k.hp <= 0.0:
 		kill_kaiju(k, dir)
 
 
+func _flush_dmg(k: Kaiju) -> void:
+	var acc: Dictionary = _dmg.get(k, {})
+	_dmg.erase(k)
+	if acc.is_empty() or float(acc["sum"]) < 0.5:
+		return
+	var weak: bool = acc["weak"]
+	var p: Vector3 = acc["p"]
+	Game.fx.text(p + Vector3(randf_range(-4, 4), 4, 0), ("会心 " if weak else "") + str(roundi(float(acc["sum"]))),
+		Mats.GOLD if weak else Mats.WHITE, 7.0 if weak else 5.0, 0.8, 14.0)
+
+
 ## A weak point was shot out: bonus damage, a burst of gore, and the kaiju goes berserk.
 func _weak_broken(k: Kaiju, p: Vector3, kind: String, by: String) -> void:
 	k.hp -= k.max_hp * 0.12
-	Game.fx.spray(p, Vector3.UP, 70, 95.0, 6)
-	Game.fx.boom(p, 1.2, Mats.BLOOD)
+	Game.fx.spray(p, Vector3.UP, 70, 95.0, 4)
+	Game.fx.boom(p, 0.45, Mats.BLOOD)
 	var label: String = {"eye": "目潰し! EYE OUT", "core": "核破壊! CORE SMASHED", "pearl": "宝珠破壊! PEARL SHATTERED"}.get(kind, "急所! WEAK POINT")
 	Game.fx.text(p + Vector3(0, 14, 0), label, Mats.GOLD, 14.0, 1.8, 10.0)
 	Game.sfx.play_at("roar_boss" if k.def["boss"] else "roar", p, 1.0)

@@ -36,6 +36,14 @@ var _bolt_t: float = 6.0
 var _thunder: Array[Dictionary] = []    ## {t}: thunder arrives after the flash
 var _fires: Array[Dictionary] = []      ## {p, r, h, t}: burning blocks and rubble
 var _search: Array[Dictionary] = []     ## city searchlights: {base, beam, ph, aim}
+## The torii in the bay. A kaiju that wades into it knocks it flat; it stands again on a new game.
+const TORII_AT: Vector3 = Vector3(-46, -3, -78)
+const TORII_HALF: float = 24.0          ## half the width of the kasagi lintel
+const TORII_TOP: float = 42.0
+var torii_up: bool = true
+var _torii: Node3D
+var _torii_fall: float = -1.0           ## 0..1 while it topples, then counts on as it sinks
+var _torii_dir: float = 1.0
 
 
 func _ready() -> void:
@@ -43,7 +51,7 @@ func _ready() -> void:
 	_make_sea()
 	_make_land()
 	_make_seawall()
-	_make_torii(Vector3(-46, -3, -78))
+	_make_torii(TORII_AT)
 	_make_volcano()
 	_make_fuji()
 	_beacon_mat = Mats.make_glow(4.0)
@@ -64,6 +72,7 @@ func _process(delta: float) -> void:
 	_sky_mat.set_shader_parameter("flash", _flash)
 	storm_boost = maxf(0.0, storm_boost - delta)
 	_update_weather(delta)
+	_update_torii(delta)
 	_update_fires(delta)
 	_update_searchlights(delta)
 	_update_buildings(delta)
@@ -315,8 +324,12 @@ func _make_seawall() -> void:
 
 
 func _make_torii(at: Vector3) -> void:
+	_torii = Node3D.new()
+	_torii.name = "Torii"
+	_torii.position = at
+	_torii.rotation.y = 0.05
+	add_child(_torii)
 	var sb: SolidBuilder = SolidBuilder.new()
-	sb.xf = Transform3D(Basis(Vector3.UP, 0.05), at)
 	var c: Color = Mats.SHU
 	for s: float in [-1.0, 1.0]:
 		sb.tube(Vector3(s * 15, 0, 0), Vector3(s * 15, 38, 0), 1.8, 1.4, 10, c, 2, 4)
@@ -330,7 +343,69 @@ func _make_torii(at: Vector3) -> void:
 	sb.box(Vector3(0, 37, 0), Vector3(34, 1.8, 2.2), c)
 	sb.box(Vector3(0, 29, 0), Vector3(40, 2.2, 1.8), c)
 	sb.box(Vector3(0, 33, -0.4), Vector3(3.2, 6, 1.2), Mats.GOLD)
-	sb.attach(self, Mats.fill(), Mats.line(2.6))
+	sb.attach(_torii, Mats.fill(), Mats.line(2.6))
+
+
+func _reset_torii() -> void:
+	torii_up = true
+	_torii_fall = -1.0
+	_torii.position = TORII_AT
+	_torii.rotation = Vector3(0, 0.05, 0)
+	_torii.visible = true
+
+
+## Called by wading kaiju: if any part of the body is in the gate, it comes down.
+func torii_contact(k: Kaiju) -> void:
+	if not torii_up or absf(k.position.z - TORII_AT.z) > 140.0:
+		return
+	for h: Dictionary in k.hits:
+		var p: Vector3 = h["p"]
+		var r: float = h["r"]
+		if p.y - r > TORII_TOP:
+			continue
+		var dx: float = maxf(0.0, absf(p.x - TORII_AT.x) - TORII_HALF)
+		var dz: float = absf(p.z - TORII_AT.z)
+		if dx < r and dz < r + 2.0:
+			knock_torii(k.vel.z if absf(k.vel.z) > 0.1 else 1.0)
+			return
+
+
+func knock_torii(push_z: float) -> void:
+	if not torii_up:
+		return
+	torii_up = false
+	_torii_fall = 0.0
+	_torii_dir = signf(push_z)
+	var top: Vector3 = TORII_AT + Vector3(0, TORII_TOP, 0)
+	if Game.fx != null:
+		Game.fx.sparks(top, 40, Mats.SHU, 60.0, 50.0)
+		Game.fx.sparks(TORII_AT + Vector3(0, 20, 0), 24, Mats.GOLD, 40.0, 50.0)
+		Game.fx.text(top + Vector3(0, 10, 0), "鳥居が! バキッ!", Mats.SHU, 16.0, 1.6)
+	if Game.sfx != null:
+		Game.sfx.play_at("crash", TORII_AT, 1.0)
+
+
+func _update_torii(dt: float) -> void:
+	if _torii_fall < 0.0 or not _torii.visible:
+		return
+	var was: float = _torii_fall
+	_torii_fall += dt * (0.55 if _torii_fall < 1.0 else 0.12)
+	var f: float = minf(1.0, _torii_fall)
+	# Tips over from its feet, pushed the way the kaiju was walking, with a little twist.
+	_torii.rotation = Vector3(_torii_dir * f * f * 1.5, 0.05 + f * f * 0.25 * _torii_dir, f * f * 0.12)
+	if was < 1.0 and _torii_fall >= 1.0 and Game.fx != null:
+		var hit: Vector3 = TORII_AT + Vector3(0, 0, _torii_dir * 30.0)
+		Game.fx.ring(Vector3(hit.x, 0.6, hit.z), 10.0, 70.0, 1.6, Mats.CYAN)
+		Game.fx.sparks(Vector3(hit.x, 2, hit.z), 70, Mats.CYAN, 70.0, 60.0)
+		Game.fx.text(hit + Vector3(0, 14, 0), "ザブーン!", Mats.CYAN, 14.0, 1.2)
+		Game.fx.shake_at(hit, 1.0)
+		if Game.sfx != null:
+			Game.sfx.play_at("splat", hit, 1.0)
+	if _torii_fall > 1.0:
+		# Wreckage sinks into the bay.
+		_torii.position.y = TORII_AT.y - (_torii_fall - 1.0) * 30.0
+		if _torii_fall > 2.0:
+			_torii.visible = false
 
 
 func _make_volcano() -> void:
@@ -425,6 +500,8 @@ func build_city() -> void:
 	_city_root.add_child(tower)
 	buildings.append({"x": 60.0, "z": 300.0, "w": 44.0, "d": 44.0, "h": 150.0, "kind": "tower", "fall": 0.0, "falling": false,
 		"dir": 1.0, "seed": 1, "node": tower})
+	if _torii != null:
+		_reset_torii()
 	_fires.clear()
 	_make_searchlights()
 
@@ -683,6 +760,23 @@ func smash_near(p: Vector3, reach: float) -> bool:
 			b2["burning"] = true
 			ignite(Vector3(b2["x"], b2["h"], b2["z"]), float(b2["w"]) * 0.4, randf_range(18.0, 40.0), b2)
 	return true
+
+
+## Knock down every standing block whose footprint a kaiju body of radius `r` at `p` overlaps.
+## Returns how many started to fall.
+func crush_at(p: Vector3, r: float) -> int:
+	var n: int = 0
+	for b: Dictionary in buildings:
+		if b["falling"]:
+			continue
+		var hx: float = float(b["w"]) * 0.5
+		var hz: float = float(b["d"]) * 0.5
+		var dx: float = maxf(0.0, absf(p.x - float(b["x"])) - hx)
+		var dz: float = maxf(0.0, absf(p.z - float(b["z"])) - hz)
+		if dx * dx + dz * dz < r * r:
+			b["falling"] = true
+			n += 1
+	return n
 
 
 ## Start a fire at `p` (a roof or a rubble pile) that burns for `dur` seconds. Rain puts it out

@@ -130,10 +130,11 @@ func _alive(k: Variant) -> bool:
 
 # --- Shots -----------------------------------------------------------------------------------
 
-## Kaiju wade in under the blood moon; the camera rises from the surf behind the seawall.
+## Kaiju wade in under the blood moon; the camera rises from the surf as an Onigami wades
+## straight into the torii and knocks it flat.
 func _setup_reveal() -> void:
 	_battle()
-	data["k"] = [_spawn("oni", Vector3(-60, 0, -190)), _spawn("ryu", Vector3(110, 0, -270)),
+	data["k"] = [_spawn("oni", Vector3(World.TORII_AT.x, 0, -165)), _spawn("ryu", Vector3(110, 0, -270)),
 		_spawn("kani", Vector3(-190, 0, -320)), _spawn("daioni", Vector3(30, 0, -450)),
 		_spawn("tengu", Vector3(-40, 110, -240))]
 
@@ -147,10 +148,12 @@ func _shot_reveal(t: float) -> void:
 func _setup_wade() -> void:
 	_battle()
 	data["k"] = _spawn("oni", Vector3(30, 0, -170))
-	(data["k"] as Kaiju).target_x = -40.0
+	(data["k"] as Kaiju).target_x = -10.0
+	Game.zep.ang = 0.0   # the airship off to the east, behind the camera
 
 
 func _shot_wade(t: float) -> void:
+	Game.zep.ang = 0.0
 	var k: Kaiju = data["k"]
 	var f := _ease(t / 4.5)
 	if t > 1.2 and not data.has("roar"):
@@ -158,7 +161,7 @@ func _shot_wade(t: float) -> void:
 		k.roar_t = 2.0
 		Game.sfx.play_at("roar", k.position, 1.2)
 		Game.shake = 2.0
-	_look(Vector3(-60.0 + f * 20.0, 3.0, -95.0), k.position + Vector3(0, 40, 0), 64.0)
+	_look(Vector3(95.0 + f * 15.0, 3.0, -110.0), k.position + Vector3(0, 40, 0), 64.0)
 
 
 ## Guns go up along the seawall.
@@ -210,8 +213,8 @@ func _shot_gunner(t: float) -> void:
 func _setup_rockets() -> void:
 	_battle()
 	var seat: Turret = main.build_turret(Game.pads[5], "rocket")
-	data["k"] = [_spawn("kani", seat.pad.pos + Vector3(30, 0, -150), 600.0), _spawn("tengu", seat.pad.pos + Vector3(-60, 70, -170), 120.0),
-		_spawn("tengu", seat.pad.pos + Vector3(50, 90, -210), 120.0), _spawn("ryu", seat.pad.pos + Vector3(-110, 0, -230))]
+	data["k"] = [_spawn("kani", seat.pad.pos + Vector3(30, 0, -250), 600.0), _spawn("oni", seat.pad.pos + Vector3(-70, 0, -240), 900.0),
+		_spawn("ryu", seat.pad.pos + Vector3(-140, 0, -300))]
 	Game.player.enter(seat)
 	Game.player.swap()
 
@@ -286,14 +289,14 @@ func _shot_storm(t: float) -> void:
 ## The flood gates throw them back out to sea.
 func _setup_flood() -> void:
 	_battle()
-	data["k"] = [_spawn("oni", Vector3(-30, 0, -60)), _spawn("kani", Vector3(40, 0, -50)), _spawn("oni", Vector3(100, 0, -70))]
+	data["k"] = [_spawn("oni", Vector3(10, 0, -45)), _spawn("kani", Vector3(70, 0, -40)), _spawn("oni", Vector3(130, 0, -55))]
 
 
 func _shot_flood(t: float) -> void:
 	if not data.has("fired") and t > 0.2:
 		data["fired"] = true
 		Game.abilities.fire("flood", Vector3(30, 0, -60))
-	_look(Vector3(-190.0, 30.0, 20.0 - t * 4.0), Vector3(40, 15, -90), 55.0)
+	_look(Vector3(-110.0, 24.0, 30.0 - t * 3.0), Vector3(70, 10, -130), 58.0)
 
 
 ## The Dai-Oni reaches the city: blocks fall and burn, searchlights sweep.
@@ -358,6 +361,8 @@ func _setup_finale() -> void:
 
 
 func _shot_finale(t: float) -> void:
+	# The title comes up over the last few seconds: no radio subtitles under it.
+	Game.hud.subtitle.visible = t < 4.0
 	if not data.has("air") and t > 1.0:
 		data["air"] = true
 		Game.abilities.fire("air", Vector3(-150, 0, -200))

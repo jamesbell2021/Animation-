@@ -164,6 +164,10 @@ If it's shot down it falls into the bay and comes back 30 seconds later.
 
 From wave 15 every fifth wave brings both bosses at once.
 
+Kaiju wade round the sea forts (unless they've come for one), shoulder each other aside, and knock
+down any block they step into. The torii in the bay doesn't survive a kaiju walking into it: it
+stays down until the next game. The airship climbs to clear anything tall standing under it.
+
 ## How it's built
 
 All of the game is built in code from `scenes/main.tscn`, which holds a single node.
@@ -199,7 +203,8 @@ godot --headless --path . res://tests/audio_preview.tscn -- --out=/tmp/audio   #
 The smoke test plays real waves without rendering. It builds and upgrades guns, mans a gun
 mid-wave, fights the wave 5 boss and checks the city can fall. It also covers weak points,
 upgrade paths, every kaiju special, the Orochi, flying the airship, the special attacks, the
-voices, the weather, fires, searchlights, the touch controls, difficulty, the tutorial, the pause
+voices, the weather, fires, searchlights, kaiju knocking down the torii and keeping clear of the
+sea forts and each other, shots leaving from the barrels you can see, the touch controls, difficulty, the tutorial, the pause
 and settings menus and the controller. Run the game with `-- --touch` to see the touch controls on
 a PC. Under `--headless`, Godot prints `Parameter "m" is null … mesh_get_surface_count` many
 times. That's harmless noise from its dummy renderer.

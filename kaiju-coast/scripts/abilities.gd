@@ -245,8 +245,9 @@ func _update_flood(dt: float) -> void:
 			Game.combat.hurt_kaiju(k, 70.0, "exp", k.aim, Vector3.FORWARD, false, "a")
 			Game.fx.sparks(Vector3(k.position.x, 6, k.position.z), 50, Mats.CYAN, 90.0, 60.0)
 			Game.fx.text(k.aim + Vector3(0, 12, 0), "ザバーン!", Mats.CYAN, 14.0, 1.2)
-	for i: int in range(8):
-		Game.fx.sparks(Vector3(randf_range(x0, x1), h * randf(), front + randf_range(-4, 4)), 1, Mats.CYAN if randf() < 0.7 else Mats.WHITE, 30.0, 40.0)
+	# Spray thrown up off the crest of the surge.
+	for i: int in range(18):
+		Game.fx.sparks(Vector3(randf_range(x0, x1), h * randf(), front + randf_range(-4, 4)), 1, Mats.CYAN if randf() < 0.7 else Mats.WHITE, 45.0, 40.0)
 	_flood_prev = front
 	if f >= 1.0:
 		_flood_t = -1.0

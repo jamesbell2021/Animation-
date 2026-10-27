@@ -25,6 +25,9 @@ var _gun: Node3D
 var _model: Node3D
 var _line: ShaderMaterial
 var _barrel_len: float = 14.0
+## Barrel mouths in the gun's own space (cannon and flak barrels, rocket tubes), fired in turn.
+var _mouths: Array[Vector3] = []
+var _next_mouth: int = 0
 
 
 func setup(p: Pad, t: String) -> void:
@@ -73,6 +76,9 @@ func rebuild() -> void:
 			_barrel_len = 12.0 + float(l) * 2.0
 			var n: int = [1, 2, 2, 3][l - 1]
 			var bl: float = _barrel_len
+			_mouths.clear()
+			for i2: int in range(n):
+				_mouths.append(Vector3((float(i2) - float(n - 1) / 2.0) * 2.3, 0, -bl))
 			_add(_gun, "cannon_gun%d" % l, func(sb: SolidBuilder) -> void:
 				for i: int in range(n):
 					var ox: float = (float(i) - float(n - 1) / 2.0) * 2.3
@@ -85,6 +91,11 @@ func rebuild() -> void:
 			_gun.position = Vector3(0, 9, 0)
 			_barrel_len = 7.0
 			var g: int = 3 if l >= 3 else 2
+			_mouths.clear()
+			for i2: int in range(g):
+				for j2: int in range(g):
+					_mouths.append(Vector3((float(i2) - float(g - 1) / 2.0) * 3.2, (float(j2) - float(g - 1) / 2.0) * 2.7, -6.2))
+			_mouths.shuffle()
 			_add(_gun, "rocket_gun%d" % g, func(sb: SolidBuilder) -> void:
 				sb.box(Vector3(0, 0, 0), Vector3(float(g) * 3.4 + 2.0, float(g) * 2.8 + 1.6, 12), Mats.JADE)
 				for i: int in range(g):
@@ -123,6 +134,9 @@ func rebuild() -> void:
 			_gun.position = Vector3(0, 6.5, 0)
 			_barrel_len = 10.0
 			var nb: int = 6 if l >= 3 else 4
+			_mouths.clear()
+			for i2: int in range(nb):
+				_mouths.append(Vector3((float(i2 % (nb / 2)) - float(nb / 2 - 1) / 2.0) * 1.9, 0.8 if i2 < nb / 2 else -0.8, -10.0))
 			_add(_gun, "flak_gun%d" % nb, func(sb: SolidBuilder) -> void:
 				sb.box(Vector3(0, 0, 0), Vector3(float(nb / 2) * 1.9 + 2.0, 3.6, 3.0), Mats.JADE)
 				for i: int in range(nb):
@@ -172,6 +186,14 @@ func muzzle() -> Vector3:
 	if _barrel_len <= 0.0:
 		return global_position + Vector3(0, 22.0 + float(lvl) * 3.0, 0)
 	return _gun.global_transform * Vector3(0, 0, -_barrel_len)
+
+
+## The next barrel mouth in turn (the centreline for guns with one barrel or none).
+func next_muzzle() -> Vector3:
+	if _mouths.is_empty():
+		return muzzle()
+	_next_mouth = (_next_mouth + 1) % _mouths.size()
+	return _gun.global_transform * _mouths[_next_mouth]
 
 
 func top() -> Vector3:
@@ -256,7 +278,6 @@ func update(dt: float) -> void:
 
 func _fire(k: Kaiju, a: Vector3, st: Dictionary) -> void:
 	var m: Vector3 = muzzle()
-	var dir: Vector3 = (a - m).normalized()
 	var C: Combat = Game.combat
 	match type:
 		"cannon":
@@ -265,21 +286,28 @@ func _fire(k: Kaiju, a: Vector3, st: Dictionary) -> void:
 			if pellets > 1:
 				for i: int in range(pellets):
 					var j2: Vector3 = Vector3(randf_range(-30, 30), randf_range(-14, 14), randf_range(-30, 30))
-					C.fire({"kind": "shell", "pos": m, "vel": dir * float(st["spd"]) + j2, "dmg": float(st["dmg"]) / float(pellets) * 1.5,
+					var mp: Vector3 = next_muzzle()
+					C.fire({"kind": "shell", "pos": mp, "vel": (a - mp).normalized() * float(st["spd"]) + j2, "dmg": float(st["dmg"]) / float(pellets) * 1.5,
 						"dt": "kin", "by": "t", "life": 1.2})
 			else:
 				if branch == "b":
 					n = 1
 				for i: int in range(n):
 					var j: Vector3 = Vector3(randf_range(-6, 6), randf_range(-4, 4), randf_range(-6, 6))
-					C.fire({"kind": "shell", "pos": m, "vel": dir * float(st["spd"]) + j, "dmg": float(st["dmg"]) / float(n) * (1.35 if n > 1 else 1.0),
+					var mp2: Vector3 = next_muzzle()
+					C.fire({"kind": "shell", "pos": mp2, "vel": (a - mp2).normalized() * float(st["spd"]) + j, "dmg": float(st["dmg"]) / float(n) * (1.35 if n > 1 else 1.0),
 						"dt": st["dt"], "by": "t", "life": 1.6})
-			Game.fx.sparks(m, 6, Mats.TRACER, 40.0, 40.0)
-			Game.fx.muzzle(m, Mats.TRACER, 4.0)
+			for mo: Vector3 in _mouths:
+				var wp: Vector3 = _gun.global_transform * mo
+				Game.fx.sparks(wp, 3, Mats.TRACER, 40.0, 40.0)
+				Game.fx.muzzle(wp, Mats.TRACER, 4.0)
 			Game.sfx.play_at("cannon", m, 0.8)
 		"rocket":
 			for i: int in range(int(st["salvo"])):
-				C.fire({"kind": "rocket", "pos": m + Vector3(0, 2, 0), "vel": Vector3(dir.x * 60.0 + randf_range(-20, 20), 50.0 + randf_range(0, 25), dir.z * 60.0 + randf_range(-20, 20)),
+				var tube: Vector3 = next_muzzle()
+				var out: Vector3 = (_gun.global_transform.basis * Vector3(0, 0, -1)).normalized()
+				Game.fx.sparks(tube, 4, Mats.FIRE, 25.0, 10.0)
+				C.fire({"kind": "rocket", "pos": tube, "vel": out * 70.0 + Vector3(randf_range(-12, 12), 35.0 + randf_range(0, 20), randf_range(-12, 12)),
 					"acc": 420.0, "max": 330.0, "homing": k, "dmg": st["dmg"], "dt": "exp", "splash": st["splash"], "by": "t", "life": 5.0,
 					"cluster": st["cluster"]})
 			Game.sfx.play_at("rocket", m, 0.8)
@@ -319,8 +347,10 @@ func _fire(k: Kaiju, a: Vector3, st: Dictionary) -> void:
 				_double_t = 0.25
 				_double_target = k
 		"flak":
-			var life: float = m.distance_to(a) / float(st["spd"]) + 0.05
-			C.fire({"kind": "flak", "pos": m, "vel": dir * float(st["spd"]) + Vector3(randf_range(-10, 10), randf_range(-10, 10), randf_range(-10, 10)),
+			var fm: Vector3 = next_muzzle()
+			var life: float = fm.distance_to(a) / float(st["spd"]) + 0.05
+			Game.fx.muzzle(fm, Mats.SAKURA, 2.0)
+			C.fire({"kind": "flak", "pos": fm, "vel": (a - fm).normalized() * float(st["spd"]) + Vector3(randf_range(-10, 10), randf_range(-10, 10), randf_range(-10, 10)),
 				"dmg": st["dmg"], "dt": "kin", "splash": st["splash"], "by": "t", "life": life * (1.6 if st["homing"] else 1.0),
 				"homing": k if st["homing"] else null, "big": branch == "a"})
 			Game.sfx.play_at("flak", m, 0.7)

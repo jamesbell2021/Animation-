@@ -83,7 +83,9 @@ void fragment() {
 	vec3 v = normalize(wpos - CAMERA_POSITION_WORLD);
 	vec3 r = reflect(v, normalize(wnorm));
 	float m = dot(r, normalize(moon_dir));
-	col += vec3(1.4, 0.05, 0.1) * smoothstep(0.9965, 0.9995, m) * (0.5 + crest) * fade;
+	// Faded out near the camera, where a single glint would fill a whole wave face.
+	float glint_far = smoothstep(90.0, 260.0, length(wpos - CAMERA_POSITION_WORLD));
+	col += vec3(1.4, 0.05, 0.1) * smoothstep(0.9965, 0.9995, m) * (0.5 + crest) * fade * glint_far;
 	// Rain: short-lived ripple rings in a grid of cells, each cell restarting at its own time.
 	if (rain > 0.01) {
 		vec2 cell = floor(xz / 5.0);
