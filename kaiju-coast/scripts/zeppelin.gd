@@ -23,7 +23,7 @@ var side: float = 1.0
 var _body: Node3D
 var _line: ShaderMaterial
 var _props: Array[Node3D] = []
-var _carp: ImmediateMesh
+var _carp: FrameLines = FrameLines.new()
 var _light: MeshInstance3D
 var _gun: Node3D
 
@@ -86,9 +86,8 @@ func _ready() -> void:
 	gb.tube(Vector3(0, -0.5, -1), Vector3(0, -0.5, -9), 0.5, 0.4, 5, Mats.JADE)
 	gb.attach(_gun, Mats.fill(), Mats.line(2.6))
 	# Carp streamers, rebuilt every frame.
-	_carp = ImmediateMesh.new()
 	var cm: MeshInstance3D = MeshInstance3D.new()
-	cm.mesh = _carp
+	cm.mesh = _carp.mesh
 	cm.material_override = Mats.line(2.6)
 	_body.add_child(cm)
 	# Searchlight cone.
@@ -162,7 +161,7 @@ func update(dt: float) -> void:
 				fall = 1.0
 				Game.fx.boom(Vector3(position.x, 2, position.z), 5.0, Mats.FIRE)
 				Game.fx.ring(Vector3(position.x, 0.6, position.z), 20.0, 70.0, 3.0, Mats.CYAN)
-				Game.sfx.play("boom_big", 1.0)
+				Game.sfx.play_at("boom_big", position, 1.2)
 		visible = fall < 1.0
 		_body.rotation = Vector3(-fall * 0.6, 0, roll)
 		rotation.y = yaw
@@ -209,8 +208,7 @@ func _sweep_light() -> void:
 
 
 func _draw_carp() -> void:
-	_carp.clear_surfaces()
-	_carp.surface_begin(Mesh.PRIMITIVE_LINES)
+	_carp.clear()
 	var cols: Array[Color] = [Mats.SHU, Mats.BOLT, Mats.GOLD]
 	for k: int in range(3):
 		var prev_c: Vector3 = Vector3.ZERO
@@ -223,20 +221,14 @@ func _draw_carp() -> void:
 			for s: int in range(8):
 				var a0: float = TAU * float(s) / 8.0
 				var a1: float = TAU * float(s + 1) / 8.0
-				_carp.surface_set_color(cols[k])
-				_carp.surface_add_vertex(c + Vector3(cos(a0), sin(a0), 0) * r)
-				_carp.surface_set_color(cols[k])
-				_carp.surface_add_vertex(c + Vector3(cos(a1), sin(a1), 0) * r)
+				_carp.seg(c + Vector3(cos(a0), sin(a0), 0) * r, c + Vector3(cos(a1), sin(a1), 0) * r, cols[k])
 			if i > 0:
 				for s2: int in [0, 2, 4, 6]:
 					var a2: float = TAU * float(s2) / 8.0
-					_carp.surface_set_color(cols[k] * 0.7)
-					_carp.surface_add_vertex(prev_c + Vector3(cos(a2), sin(a2), 0) * prev_r)
-					_carp.surface_set_color(cols[k] * 0.7)
-					_carp.surface_add_vertex(c + Vector3(cos(a2), sin(a2), 0) * r)
+					_carp.seg(prev_c + Vector3(cos(a2), sin(a2), 0) * prev_r, c + Vector3(cos(a2), sin(a2), 0) * r, cols[k] * 0.7)
 			prev_c = c
 			prev_r = r
-	_carp.surface_end()
+	_carp.commit()
 
 
 func _weapons(dt: float) -> void:
@@ -260,7 +252,7 @@ func _weapons(dt: float) -> void:
 			var tt: float = m.distance_to(best.aim) / 600.0
 			var dir: Vector3 = (best.aim + best.vel * tt - m).normalized()
 			C.fire({"kind": "shell", "pos": m, "vel": dir * 600.0, "dmg": 14.0, "dt": "kin", "by": "z", "life": 1.2})
-			Game.sfx.play("cannon", 0.4)
+			Game.sfx.play_at("cannon", m, 0.6)
 		else:
 			cd = 0.3
 	if int(lvl["pods"]) > 0:
@@ -281,7 +273,7 @@ func _weapons(dt: float) -> void:
 					var out: Vector3 = global_transform.basis.x.normalized() * s
 					C.fire({"kind": "prkt", "pos": global_transform * Vector3(s * 28, -8, 0), "vel": out * 40.0 + Vector3(0, -10, 0), "acc": 380.0, "max": 360.0,
 						"homing": tgt, "dmg": 30.0 + 18.0 * float(lvl["pods"]), "dt": "exp", "splash": 18.0, "by": "z", "life": 6.0})
-				Game.sfx.play("rocket", 0.5)
+				Game.sfx.play_at("rocket", position, 0.6)
 			else:
 				pod_cd = 0.5
 	if int(lvl["bomb"]) > 0:

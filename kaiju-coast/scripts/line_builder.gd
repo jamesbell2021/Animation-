@@ -1,7 +1,11 @@
 class_name LineBuilder
 extends RefCounted
-## Collects coloured line segments and bakes them into an ArrayMesh (PRIMITIVE_LINES).
-## Every glowing edge in the game is drawn through this (the same approach as Rust & Iron).
+## Collects coloured line segments and bakes them into an ArrayMesh. Every glowing edge in the game
+## is drawn through this. Each segment becomes a strip of two triangles that neon_line.gdshader
+## widens in screen space (Godot's own line primitive is always one pixel wide).
+
+const SIDES: PackedFloat32Array = [1.0, -1.0, 1.0, 1.0, 1.0, -1.0]
+const AT_A: Array[bool] = [true, false, false, true, false, true]
 
 var verts: PackedVector3Array = PackedVector3Array()
 var colors: PackedColorArray = PackedColorArray()
@@ -46,10 +50,38 @@ func box(center: Vector3, size: Vector3, color: Color) -> void:
 func build_mesh() -> ArrayMesh:
 	if verts.is_empty():
 		return null
+	var n: int = verts.size() / 2
+	var v: PackedVector3Array = PackedVector3Array()
+	var c: PackedColorArray = PackedColorArray()
+	var uv: PackedVector2Array = PackedVector2Array()
+	var uv2: PackedVector2Array = PackedVector2Array()
+	v.resize(n * 6)
+	c.resize(n * 6)
+	uv.resize(n * 6)
+	uv2.resize(n * 6)
+	for i: int in range(n):
+		var a: Vector3 = verts[i * 2]
+		var b: Vector3 = verts[i * 2 + 1]
+		var ca: Color = colors[i * 2]
+		var cb: Color = colors[i * 2 + 1]
+		# Corners: a on side +1, b on side -1 (same edge), b on +1, a on -1 (the other edge).
+		var k: int = i * 6
+		for j: int in range(6):
+			var at_a: bool = AT_A[j]
+			var side: float = SIDES[j]
+			var p: Vector3 = a if at_a else b
+			var o: Vector3 = b if at_a else a
+			v[k + j] = p
+			c[k + j] = ca if at_a else cb
+			uv[k + j] = Vector2(o.x, o.y)
+			uv2[k + j] = Vector2(o.z, side)
 	var mesh: ArrayMesh = ArrayMesh.new()
 	var arrays: Array = []
 	arrays.resize(Mesh.ARRAY_MAX)
-	arrays[Mesh.ARRAY_VERTEX] = verts
-	arrays[Mesh.ARRAY_COLOR] = colors
-	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_LINES, arrays)
+	arrays[Mesh.ARRAY_VERTEX] = v
+	arrays[Mesh.ARRAY_COLOR] = c
+	arrays[Mesh.ARRAY_TEX_UV] = uv
+	arrays[Mesh.ARRAY_TEX_UV2] = uv2
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 	return mesh
+

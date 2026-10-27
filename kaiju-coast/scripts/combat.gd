@@ -84,7 +84,7 @@ func seg_hit_one(k: Kaiju, a: Vector3, b: Vector3, d: Vector3, a2: float) -> Dic
 			continue
 		var tt: float = t - (0.002 if s["weak"] else 0.0)
 		if best.is_empty() or tt < float(best["tt"]):
-			best = {"k": k, "t": t, "tt": tt, "p": a + d * t, "weak": s["weak"]}
+			best = {"k": k, "t": t, "tt": tt, "p": a + d * t, "weak": s["weak"], "idx": s["idx"]}
 	return best
 
 
@@ -111,7 +111,7 @@ func update(dt: float) -> void:
 			Game.fx.sparks(old, 1, Mats.FIRE, 8.0, 0.0)
 		var hit: Dictionary = seg_hit(old, s.pos)
 		if not hit.is_empty():
-			impact(s, hit["p"], hit["k"], hit["weak"])
+			impact(s, hit["p"], hit["k"], hit["weak"], hit["idx"])
 			shots.remove_at(i)
 			i -= 1
 			continue
@@ -156,10 +156,10 @@ func draw() -> void:
 				fx.frame_ribbon(s.pos, s.pos - s.vel * 0.025 * tail, Mats.TRACER, 0.8)
 
 
-func impact(s: Shot, p: Vector3, k: Kaiju, weak: bool) -> void:
+func impact(s: Shot, p: Vector3, k: Kaiju, weak: bool, idx: int = -1) -> void:
 	var dir: Vector3 = s.vel.normalized()
 	if k != null:
-		hurt_kaiju(k, s.dmg, s.dt, p, dir, weak, s.by)
+		hurt_kaiju(k, s.dmg, s.dt, p, dir, weak, s.by, idx)
 	if s.splash > 0.0:
 		for o: Kaiju in Game.kaiju.duplicate():
 			if o == k or o.dying:
@@ -172,11 +172,11 @@ func impact(s: Shot, p: Vector3, k: Kaiju, weak: bool) -> void:
 	match s.kind:
 		"flak":
 			Game.fx.hanabi(p, 1.0)
-			Game.sfx.play("hanabi", 0.7)
+			Game.sfx.play_at("hanabi", p, 0.8)
 		"rocket", "bomb", "prkt":
 			var size: float = 3.0 if s.kind == "bomb" else (2.0 if s.kind == "prkt" else 1.4)
 			Game.fx.boom(p, size)
-			Game.sfx.play("boom_big" if s.kind == "bomb" else "boom", 0.8)
+			Game.sfx.play_at("boom_big" if s.kind == "bomb" else "boom", p, 1.0)
 			if randf() < 0.35:
 				Game.fx.text(p + Vector3(0, 8, 0), Fx.ONO.pick_random(), Mats.FIRE, 14.0 if s.kind == "bomb" else 9.0, 1.0)
 		_:
@@ -186,15 +186,24 @@ func impact(s: Shot, p: Vector3, k: Kaiju, weak: bool) -> void:
 				Game.fx.sparks(Vector3(p.x, 1, p.z), 5, Mats.CYAN, 22.0, 70.0)
 
 
-func hurt_kaiju(k: Kaiju, dmg: float, dt: String, p: Vector3, dir: Vector3, weak: bool, by: String) -> void:
+func hurt_kaiju(k: Kaiju, dmg: float, dt: String, p: Vector3, dir: Vector3, weak: bool, by: String, idx: int = -1, crit_mult: float = 0.0) -> void:
 	if k.dying:
 		return
 	var mult: float = 1.0 if dt == "rail" else float(k.def["arm"].get(dt, 1.0))
-	var crit: float = (3.0 if by == "p" else 1.5) if weak else 1.0
+	var crit: float = 1.0
+	if weak:
+		crit = crit_mult if crit_mult > 0.0 else (3.0 if by == "p" else 1.5)
 	var dmg_f: float = dmg * mult * crit
 	k.hp -= dmg_f
 	k.flash_t = 0.05
 	k.last_by = by
+	k.add_stagger(dmg_f)
+	if weak and idx >= 0:
+		var kind: String = k.weak_kind(idx)
+		if k.weak_hit(idx, dmg_f):
+			_weak_broken(k, p, kind, by)
+	elif idx >= 0:
+		k.recoil = maxf(k.recoil, 0.08)
 	var n: int = clampi(roundi(dmg_f / 7.0), 2, 26) * (2 if weak else 1)
 	Game.fx.spray(p, dir, n, 55.0 if weak else 32.0, 1 if dmg_f > 60.0 else 0)
 	if (dmg_f >= 35.0 or weak) and k.wounds.size() < 7:
@@ -206,7 +215,7 @@ func hurt_kaiju(k: Kaiju, dmg: float, dt: String, p: Vector3, dir: Vector3, weak
 			Game.sfx.play("crit", 0.8)
 			Game.sfx.play("splat", 0.8)
 	elif dmg_f > 25.0:
-		Game.sfx.play("splat", 0.5)
+		Game.sfx.play_at("splat", p, 0.7)
 	if randf() < 0.04 + (0.2 if weak else 0.0):
 		Game.fx.text(p + Vector3(0, 10, 0), Fx.PAIN.pick_random(), Mats.SAKURA, 10.0, 1.1)
 		k.roar_t = 0.6
@@ -214,7 +223,27 @@ func hurt_kaiju(k: Kaiju, dmg: float, dt: String, p: Vector3, dir: Vector3, weak
 		kill_kaiju(k, dir)
 
 
+## A weak point was shot out: bonus damage, a burst of gore, and the kaiju goes berserk.
+func _weak_broken(k: Kaiju, p: Vector3, kind: String, by: String) -> void:
+	k.hp -= k.max_hp * 0.12
+	Game.fx.spray(p, Vector3.UP, 70, 95.0, 6)
+	Game.fx.boom(p, 1.2, Mats.BLOOD)
+	var label: String = {"eye": "目潰し! EYE OUT", "core": "核破壊! CORE SMASHED", "pearl": "宝珠破壊! PEARL SHATTERED"}.get(kind, "急所! WEAK POINT")
+	Game.fx.text(p + Vector3(0, 14, 0), label, Mats.GOLD, 14.0, 1.8, 10.0)
+	Game.sfx.play_at("roar_boss" if k.def["boss"] else "roar", p, 1.0)
+	Game.sfx.play_at("splat", p, 1.0)
+	if by == "p":
+		Game.sfx.play("crit", 1.0)
+	Game.fx.shake_at(p, 1.2)
+	if Game.voice != null:
+		Game.voice.say("weak")
+	if k.hp <= 0.0:
+		kill_kaiju(k, Vector3.UP)
+
+
 func kill_kaiju(k: Kaiju, dir: Vector3) -> void:
+	if k.dying:
+		return
 	var d: Dictionary = k.def
 	k.dying = true
 	k.die_t = 0.0
@@ -234,8 +263,9 @@ func kill_kaiju(k: Kaiju, dir: Vector3) -> void:
 	Game.fx.boom(a, 5.0 if boss else 3.0)
 	for w: Dictionary in k.wounds:
 		w["t"] = 0.0
-	Game.sfx.play("roar_boss" if boss else "roar", 0.8)
-	Game.sfx.play("boom_big", 1.0)
+	Game.sfx.play_at("roar_boss" if boss else "roar", a, 1.0)
+	Game.sfx.play_at("boom_big", a, 1.0)
+	k._death_step = 0
 	if boss:
 		Game.slowmo = 1.6
 		Game.flash = 0.8
@@ -259,7 +289,7 @@ func rail_hit(a: Vector3, b: Vector3, dmg: float, by: String) -> void:
 			break
 		var hk: Kaiju = best["k"]
 		done.append(hk)
-		hurt_kaiju(hk, dmg, "rail", best["p"], d.normalized(), best["weak"], by)
+		hurt_kaiju(hk, dmg, "rail", best["p"], d.normalized(), best["weak"], by, best["idx"])
 		Game.fx.spray(best["p"], d.normalized(), 18, 70.0, 2)
 
 
@@ -271,7 +301,7 @@ func hurt_turret(t: Turret, n: float) -> void:
 		Game.fx.sparks(t.pad.pos + Vector3(0, 6, 0), 2, Mats.FIRE, 30.0)
 	if t.hp <= 0.0:
 		Game.fx.boom(t.pad.pos + Vector3(0, 5, 0), 2.5)
-		Game.sfx.play("boom_big", 0.9)
+		Game.sfx.play_at("boom_big", t.pad.pos, 1.0)
 		Game.fx.text(t.pad.pos + Vector3(0, 20, 0), "大破!", Mats.SHU, 10.0, 1.6)
 		if Game.player.active and Game.player.seat is Turret and Game.player.seat == t:
 			Game.player.exit_seat()
@@ -293,7 +323,7 @@ func hurt_zep(n: float) -> void:
 		z.fall = 0.0
 		z.splashed = false
 		Game.fx.boom(z.position, 4.0)
-		Game.sfx.play("boom_big", 1.2)
+		Game.sfx.play_at("boom_big", z.position, 1.2)
 		Game.banner.emit("雷神丸 撃墜", "RAIJIN-MARU IS GOING DOWN", 2.6)
 		if Game.player.active and Game.player.seat is String:
 			Game.player.exit_seat()

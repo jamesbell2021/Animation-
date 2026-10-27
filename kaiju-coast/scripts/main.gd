@@ -9,7 +9,7 @@ var turret_root: Node3D
 var _pad_nodes: Array[MeshInstance3D] = []
 var _pad_mats: Array[ShaderMaterial] = []
 var _range_ring: MeshInstance3D
-var _range_mesh: ImmediateMesh
+var _range_lines: FrameLines = FrameLines.new()
 var _crt: ShaderMaterial
 var _kid: int = 0
 var _drag_start: Vector2 = Vector2.ZERO
@@ -20,6 +20,7 @@ var hover: Pad = null
 
 func _ready() -> void:
 	Game.main = self
+	Sfx.make_buses()
 	Game.make_pads()
 	var world: World = World.new()
 	world.name = "World"
@@ -61,9 +62,8 @@ func _ready() -> void:
 	kaiju_root.name = "Kaiju"
 	add_child(kaiju_root)
 	_make_pads()
-	_range_mesh = ImmediateMesh.new()
 	_range_ring = MeshInstance3D.new()
-	_range_ring.mesh = _range_mesh
+	_range_ring.mesh = _range_lines.mesh
 	_range_ring.material_override = Mats.line(1.6)
 	add_child(_range_ring)
 	var hud: Hud = Hud.new()
@@ -193,7 +193,7 @@ func spawn_kaiju(t: String) -> Kaiju:
 	if not d["air"]:
 		Game.fx.ring(Vector3(k.position.x, 0.6, k.position.z), 10.0, 40.0, 2.5, Mats.CYAN)
 		Game.fx.sparks(Vector3(k.position.x, 2, k.position.z), 30, Mats.CYAN, 60.0, 40.0)
-	Game.sfx.play("roar_boss" if d["boss"] else "roar", 0.5 if d["boss"] else 0.2)
+	Game.sfx.play_at("roar_boss" if d["boss"] else "roar", k.position, 1.0)
 	if d["boss"] and not Game.demo:
 		Game.banner.emit("大鬼 襲来", "DAI-ONI IS COMING ASHORE", 3.2)
 		Game.fx.text(Vector3(k.position.x, 160, k.position.z), "ゴゴゴゴ…", Mats.SHU, 60.0, 3.0)
@@ -549,18 +549,12 @@ func _update_pads() -> void:
 			col = Mats.GOLD * (0.55 + 0.25 * sin(Game.t * 4.0 + float(i)))
 		m.set_shader_parameter("tint", Vector3(col.r, col.g, col.b))
 		_pad_nodes[i].visible = not (Game.player.active)
-	_range_mesh.clear_surfaces()
+	_range_lines.clear()
 	if Game.sel is Pad and (Game.sel as Pad).turret != null and not Game.player.active:
 		var t: Turret = (Game.sel as Pad).turret
 		var r: float = float(t.stat()["range"])
-		_range_mesh.surface_begin(Mesh.PRIMITIVE_LINES)
-		for i2: int in range(64):
-			if i2 % 2 == 1:
-				continue
+		for i2: int in range(0, 64, 2):
 			var a0: float = TAU * float(i2) / 64.0
 			var a1: float = TAU * float(i2 + 1) / 64.0
-			_range_mesh.surface_set_color(Mats.JADE)
-			_range_mesh.surface_add_vertex(t.pad.pos + Vector3(cos(a0) * r, 1.5, sin(a0) * r))
-			_range_mesh.surface_set_color(Mats.JADE)
-			_range_mesh.surface_add_vertex(t.pad.pos + Vector3(cos(a1) * r, 1.5, sin(a1) * r))
-		_range_mesh.surface_end()
+			_range_lines.seg(t.pad.pos + Vector3(cos(a0) * r, 1.5, sin(a0) * r), t.pad.pos + Vector3(cos(a1) * r, 1.5, sin(a1) * r), Mats.JADE)
+	_range_lines.commit()

@@ -31,7 +31,7 @@ func _ready() -> void:
 	_make_torii(Vector3(-46, -3, -78))
 	_make_volcano()
 	_make_fuji()
-	_beacon_mat = Mats.make_line(4.0)
+	_beacon_mat = Mats.make_glow(4.0)
 	_beacon_mat.set_shader_parameter("pulse", 0.9)
 	_beacon_mat.set_shader_parameter("pulse_speed", 3.0)
 	_city_root = Node3D.new()

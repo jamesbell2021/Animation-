@@ -21,7 +21,7 @@ var _c: PackedColorArray = PackedColorArray()
 var _beams: Array[Dictionary] = []
 var _texts: Array[Dictionary] = []
 var _label_pool: Array[Label3D] = []
-var _lines: ImmediateMesh
+var _lines: FrameLines = FrameLines.new()
 var _ribbons: ImmediateMesh
 ## Extra lines for this frame only (shots, sparks around guns), added by other systems.
 var _frame_lines: Array = []
@@ -32,10 +32,9 @@ const PAIN: Array[String] = ["ギャアア!", "グワァ!", "ガアア!", "ギ�
 
 
 func _ready() -> void:
-	_lines = ImmediateMesh.new()
 	var mi: MeshInstance3D = MeshInstance3D.new()
-	mi.mesh = _lines
-	mi.material_override = Mats.fx()
+	mi.mesh = _lines.mesh
+	mi.material_override = Mats.fx_lines()
 	mi.extra_cull_margin = 16384.0
 	add_child(mi)
 	_ribbons = ImmediateMesh.new()
@@ -310,11 +309,10 @@ func update(dt: float) -> void:
 
 func draw() -> void:
 	var cam: Vector3 = Game.rig.cam.global_position if Game.rig != null else Vector3.ZERO
-	_lines.clear_surfaces()
+	_lines.clear()
 	var n: int = _k.size()
 	var any: bool = n > 0 or not _frame_lines.is_empty() or not _beams.is_empty()
 	if any:
-		_lines.surface_begin(Mesh.PRIMITIVE_LINES)
 		for i: int in range(n):
 			var f: float = _life[i] / _max[i]
 			var c: Color = _c[i] * clampf(f * 1.6, 0.0, 1.0)
@@ -354,7 +352,7 @@ func draw() -> void:
 					prev = q
 			elif b["kind"] == "line":
 				_seg(b["a"], b["b"], (b["c"] as Color) * bf)
-		_lines.surface_end()
+	_lines.commit()
 	_frame_lines.clear()
 	_ribbons.clear_surfaces()
 	var has_rib: bool = not _frame_ribbons.is_empty()
@@ -379,10 +377,7 @@ func draw() -> void:
 
 
 func _seg(a: Vector3, b: Vector3, c: Color) -> void:
-	_lines.surface_set_color(c)
-	_lines.surface_add_vertex(a)
-	_lines.surface_set_color(c)
-	_lines.surface_add_vertex(b)
+	_lines.seg(a, b, c)
 
 
 func _circle(p: Vector3, r: float, n: int, c: Color) -> void:

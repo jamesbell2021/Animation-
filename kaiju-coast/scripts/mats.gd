@@ -24,6 +24,9 @@ const AMBER: Color = Color(1.0, 0.68, 0.32)
 const WARM: Color = Color(1.0, 0.9, 0.75)
 
 static var _cache: Dictionary = {}
+## Line width in pixels at 720p (scaled with resolution). Set by the graphics quality setting.
+static var line_width: float = 1.7
+static var _line_refs: Array[WeakRef] = []
 
 
 static func line(energy: float = 2.4) -> ShaderMaterial:
@@ -33,11 +36,33 @@ static func line(energy: float = 2.4) -> ShaderMaterial:
 	return _cache[key]
 
 
+## Thick neon lines (meshes from LineBuilder).
 static func make_line(energy: float = 2.4) -> ShaderMaterial:
 	var m: ShaderMaterial = ShaderMaterial.new()
 	m.shader = preload("res://shaders/neon_line.gdshader")
 	m.set_shader_parameter("energy", energy)
+	m.set_shader_parameter("width", line_width)
+	_line_refs.append(weakref(m))
 	return m
+
+
+## Glowing filled triangles (eyes, lanterns, cores, spines).
+static func make_glow(energy: float = 3.2) -> ShaderMaterial:
+	var m: ShaderMaterial = ShaderMaterial.new()
+	m.shader = preload("res://shaders/neon_glow.gdshader")
+	m.set_shader_parameter("energy", energy)
+	return m
+
+
+static func set_line_width(w: float) -> void:
+	line_width = w
+	var alive: Array[WeakRef] = []
+	for r: WeakRef in _line_refs:
+		var m: ShaderMaterial = r.get_ref()
+		if m != null:
+			m.set_shader_parameter("width", w)
+			alive.append(r)
+	_line_refs = alive
 
 
 static func fill() -> ShaderMaterial:
@@ -56,7 +81,7 @@ static func make_fill(tint_amount: float = 0.07) -> ShaderMaterial:
 ## Bright unshaded solids (eyes, lanterns, cores).
 static func glow() -> ShaderMaterial:
 	if not _cache.has("glow"):
-		_cache["glow"] = make_line(3.2)
+		_cache["glow"] = make_glow(3.2)
 	return _cache["glow"]
 
 
@@ -84,6 +109,16 @@ static func windows(kind: String = "windows") -> ShaderMaterial:
 			m.set_shader_parameter("flicker", 0.05)
 	_cache[kind] = m
 	return m
+
+
+static func fx_lines() -> ShaderMaterial:
+	if not _cache.has("fx_lines"):
+		var m: ShaderMaterial = ShaderMaterial.new()
+		m.shader = preload("res://shaders/fx_line.gdshader")
+		m.set_shader_parameter("width", line_width)
+		_line_refs.append(weakref(m))
+		_cache["fx_lines"] = m
+	return _cache["fx_lines"]
 
 
 static func fx() -> ShaderMaterial:

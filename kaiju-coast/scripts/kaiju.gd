@@ -37,6 +37,10 @@ var splashed: bool = false
 var last_step: float = 0.0
 var last_by: String = ""
 var flash_t: float = 0.0
+var stagger: float = 0.0                 ## 0..1, builds up under heavy fire: slows, rocks the body
+var recoil: float = 0.0                  ## head snap when a weak point is hit
+var enraged: bool = false                ## a weak point was destroyed: faster and angrier
+var _death_step: int = 0
 var wounds: Array[Dictionary] = []
 var spheres: Array[Dictionary] = []      ## {node, off, r, weak}
 var hits: Array[Dictionary] = []         ## world space, refreshed each frame: {p, r, weak}
@@ -65,9 +69,9 @@ func setup(t: String, hp_mul: float, id: int) -> void:
 	size_jit = 1.0 if def["boss"] else randf_range(0.92, 1.1)
 	_fill = Mats.make_fill(0.1)
 	_line = Mats.make_line(2.7)
-	_spine = Mats.make_line(3.2)
+	_spine = Mats.make_glow(3.2)
 	if _eye_mat == null:
-		_eye_mat = Mats.make_line(4.5)
+		_eye_mat = Mats.make_glow(4.5)
 		_eye_mat.set_shader_parameter("pulse", 0.25)
 		_eye_mat.set_shader_parameter("pulse_speed", 9.0)
 	var col: Color = def["col"]
@@ -118,7 +122,16 @@ func _part_g(parent: Node3D, key: String, glow_mat: Material, build: Callable) -
 
 
 func _hit(node: Node3D, off: Vector3, r: float, weak: bool = false) -> void:
-	spheres.append({"node": node, "off": off, "r": r, "weak": weak})
+	spheres.append({"node": node, "off": off, "r": r, "weak": weak, "whp": 0.0, "eye": null, "kind": ""})
+
+
+## A weak point with its own glowing mesh and hit points: shoot it out and it goes dark and bleeds.
+func _weak(parent: Node3D, kind: String, off: Vector3, glow_r: Vector3, col: Color, hit_r: float, hp_frac: float) -> void:
+	var n: Node3D = Node3D.new()
+	n.position = off
+	parent.add_child(n)
+	_part(n, "weak_" + kind, func(sb: SolidBuilder) -> void: sb.glow_ball(Vector3.ZERO, glow_r, col, 4))
+	spheres.append({"node": n, "off": Vector3.ZERO, "r": hit_r, "weak": true, "whp": max_hp * hp_frac, "eye": n, "kind": kind})
 
 
 # ------------------------------------------------------------------ builds --
@@ -159,10 +172,9 @@ func _build_oni(c: Color, boss: bool) -> void:
 			sb.glow_tri(Vector3(-1.6, y - 2.5, 9.2), Vector3(1.6, y - 2.5, 9.2), Vector3(0, y + 1.0, 9.2 + h), Mats.CYAN))
 	_hit(torso, Vector3.ZERO, 15.0)
 	if boss:
-		_part(torso, "core", func(sb: SolidBuilder) -> void:
-			sb.glow_ball(Vector3(0, 4, -10.6), Vector3(3.4, 3.4, 1.6), Mats.WHITE, 6)
+		_part(torso, "core_ring", func(sb: SolidBuilder) -> void:
 			sb.lines.circle(Vector3(0, 4, -11.2), 6.0, Vector3.RIGHT, Vector3.UP, Mats.GOLD, 16))
-		_hit(torso, Vector3(0, 4, -10.5), 5.0, true)
+		_weak(torso, "core", Vector3(0, 4, -10.6), Vector3(3.4, 3.4, 1.6), Mats.WHITE, 5.0, 0.2)
 	for s2: float in [-1.0, 1.0]:
 		var side2: String = "L" if s2 < 0.0 else "R"
 		var sh: Node3D = _joint("arm" + side2, torso, Vector3(s2 * 12, 10, -3))
@@ -198,11 +210,8 @@ func _build_oni(c: Color, boss: bool) -> void:
 				var a2: float = float(i2 - 3) * 0.32
 				var hh: float = 9.0 + float(3 - absi(i2 - 3)) * 2.5
 				sb.cone(Vector3(sin(a2) * 6.0, 6, 1.0 + cos(a2) * 2.0), Vector3(sin(a2) * 9.0, 6.0 + hh, cos(a2) * 3.0 + 1.0), 1.2, 4, Mats.GOLD))
-	_part(head, "eyes", func(sb: SolidBuilder) -> void:
-		for s4: float in [-1.0, 1.0]:
-			sb.glow_ball(Vector3(s4 * 4.2, 3, -9.2), Vector3(1.6, 1.3, 0.8), Mats.WHITE, 4))
 	for s5: float in [-1.0, 1.0]:
-		_hit(head, Vector3(s5 * 4.2, 3, -9), 2.6, true)
+		_weak(head, "eye", Vector3(s5 * 4.2, 3, -9.2), Vector3(1.6, 1.3, 0.8), Mats.WHITE, 2.6, 0.12)
 	_hit(head, Vector3(0, 0, -2), 8.0)
 	var jaw: Node3D = _joint("jaw", head, Vector3(0, -2, -2))
 	_part(jaw, "jaw", func(sb: SolidBuilder) -> void:
@@ -254,11 +263,8 @@ func _build_kani(c: Color) -> void:
 		sb.plate(PackedVector3Array([Vector3(0, 4.5, 1), Vector3(0, 13, 8), Vector3(0, 5, 9)]), c)
 		for s2: float in [-1.0, 1.0]:
 			sb.tube(Vector3(s2 * 6, 0, -2), Vector3(s2 * 6, 6, -2), 0.6, 0.5, 4, c))
-	_part(head, "eyes", func(sb: SolidBuilder) -> void:
-		for s3: float in [-1.0, 1.0]:
-			sb.glow_ball(Vector3(s3 * 6, 6.6, -2), Vector3(1.4, 1.4, 1.4), Mats.WHITE, 4))
 	for s4: float in [-1.0, 1.0]:
-		_hit(head, Vector3(s4 * 6, 6.6, -2), 2.6, true)
+		_weak(head, "eye", Vector3(s4 * 6, 6.6, -2), Vector3(1.4, 1.4, 1.4), Mats.WHITE, 2.6, 0.12)
 	mouth = _joint("mouth", head, Vector3(0, 0, -7))
 
 
@@ -294,14 +300,11 @@ func _build_ryu(c: Color) -> void:
 				var p: Vector3 = Vector3(s * (3.5 + float(j) * 3.0), -1.0 - float(j) * 1.2 + sin(float(j)) * 1.4, -15.0 + float(j) * 2.5)
 				sb.edge(prev, p, Mats.WHITE)
 				prev = p)
-	_part(head, "eyes", func(sb: SolidBuilder) -> void:
-		for s2: float in [-1.0, 1.0]:
-			sb.glow_ball(Vector3(s2 * 3.5, 3, -6.2), Vector3(1.3, 1.1, 0.9), Mats.WHITE, 4)
-		sb.glow_ball(Vector3(0, -6, -9), Vector3(2.2, 2.2, 2.2), Color(0.7, 1.0, 1.0), 5)
+	_part(head, "pearl_ring", func(sb: SolidBuilder) -> void:
 		sb.lines.circle(Vector3(0, -6, -9), 3.0, Vector3.RIGHT, Vector3.BACK, Mats.CYAN, 10))
 	for s3: float in [-1.0, 1.0]:
-		_hit(head, Vector3(s3 * 3.5, 3, -6), 2.4, true)
-	_hit(head, Vector3(0, -6, -9), 2.6, true)
+		_weak(head, "eye", Vector3(s3 * 3.5, 3, -6.2), Vector3(1.3, 1.1, 0.9), Mats.WHITE, 2.4, 0.12)
+	_weak(head, "pearl", Vector3(0, -6, -9), Vector3(2.2, 2.2, 2.2), Color(0.7, 1.0, 1.0), 2.6, 0.15)
 	_hit(head, Vector3.ZERO, 7.0)
 	mouth = _joint("mouth", head, Vector3(0, -1, -16))
 
@@ -329,11 +332,8 @@ func _build_tengu(c: Color) -> void:
 		for i: int in range(6):
 			var a: float = PI * float(i) / 6.0
 			sb.edge(Vector3(cos(a) * 3, 3.0 + sin(a) * 1.5, 0), Vector3(cos(a) * 7, 4.0 + sin(a) * 4.0, 6), Mats.WHITE))
-	_part(head, "eyes", func(sb: SolidBuilder) -> void:
-		for s2: float in [-1.0, 1.0]:
-			sb.glow_ball(Vector3(s2 * 2, 1.4, -3.6), Vector3(1, 0.8, 0.6), Mats.GOLD, 4))
 	for s3: float in [-1.0, 1.0]:
-		_hit(head, Vector3(s3 * 2, 1.4, -3.6), 1.6, true)
+		_weak(head, "eye", Vector3(s3 * 2, 1.4, -3.6), Vector3(1, 0.8, 0.6), Mats.GOLD, 1.6, 0.15)
 	_hit(head, Vector3.ZERO, 4.5)
 	mouth = _joint("mouth", head, Vector3(0, -1, -15))
 
@@ -355,9 +355,11 @@ func pose(dt: float) -> void:
 				_j["arm" + side].rotation = Vector3(sw * 0.5 * s + 0.5, 0, s * 0.25)
 			for i: int in range(9):
 				_j["tail%d" % i].rotation = Vector3(0.04, sin(ph * 0.5 + float(i) * 0.45) * 0.13, 0)
-			_j["torso"].rotation.x = -0.28
+			_j["torso"].rotation.x = -0.28 + stagger * 0.4
+			_j["body"].position.x = sin(Game.t * 37.0) * stagger * 1.2
 			var breathing: bool = breath_t > 0.0
-			_j["head"].rotation.x = 0.28 + sin(ph * 0.5) * 0.08 + (0.25 if breathing else 0.0)
+			_j["head"].rotation.x = 0.28 + sin(ph * 0.5) * 0.08 + (0.25 if breathing else 0.0) + recoil * 1.4
+			_j["head"].rotation.z = sin(Game.t * 31.0) * recoil * 0.5
 			var jaw: float = 0.5 if (breathing or roar_t > 0.0) else 0.1 + absf(sin(Game.t * 1.3)) * 0.1
 			_j["jaw"].rotation.x = -jaw
 			_spine.set_shader_parameter("tint", Vector3(3, 3, 3) if breathing else Vector3(1, 1, 1))
@@ -365,6 +367,9 @@ func pose(dt: float) -> void:
 			_spine.set_shader_parameter("pulse_speed", 40.0)
 		"kani":
 			_j["body"].position.y = 4.0 + absf(sin(ph * 2.0)) * 1.2
+			_j["body"].rotation.x = -stagger * 0.3
+			_j["body"].rotation.z = sin(Game.t * 33.0) * stagger * 0.08
+			_j["head"].rotation.x = recoil * 1.0
 			for s2: float in [-1.0, 1.0]:
 				for i2: int in range(3):
 					_j["leg%d%d" % [int(s2), i2]].rotation.y = sin(ph * 2.0 + float(i2) * 2.1 + (PI if s2 > 0.0 else 0.0)) * 0.35
@@ -392,22 +397,30 @@ func pose(dt: float) -> void:
 				seg.position = p
 				seg.basis = Basis.looking_at(d / len, Vector3.UP).scaled(Vector3(1, 1, len / 8.0))
 			_j["head"].position = hp_
-			_j["head"].rotation.x = 0.15 + rear * 0.3
+			_j["head"].rotation.x = 0.15 + rear * 0.3 + recoil * 1.2
+			_j["head"].rotation.z = sin(Game.t * 29.0) * (recoil + stagger * 0.4) * 0.5
 		"tengu":
 			var fl: float = sin(ph * 3.0)
 			for s5: float in [-1.0, 1.0]:
 				_j["wing%d" % int(s5)].rotation.z = s5 * fl * 0.65
+			_j["head"].rotation.x = recoil * 1.0
 	# Root: heading, sinking and toppling when dying.
 	var rot: Vector3 = Vector3(0, yaw, 0)
 	if type == "tengu":
-		rot.z = bank
+		rot.z = bank + sin(Game.t * 30.0) * stagger * 0.5
 	if dying:
 		if def["air"]:
 			rot.z += die_t * 3.0
 			rot.x = -die_t * 0.6
+		elif die_t < 0.9:
+			rot.z = sin(die_t * 22.0) * 0.08
 		else:
-			rot.z = minf(1.3, die_t * 0.45) * fall_dir
+			var f: float = smoothstep(0.9, 2.6, die_t)
+			rot.z = f * 1.35 * fall_dir
+			rot.x = -f * 0.2
 	rotation = rot
+	var rage: Vector3 = Vector3(1.5, 0.75, 0.75) if enraged and not dying else Vector3.ONE
+	_line.set_shader_parameter("tint", rage)
 	var flash: float = clampf(flash_t * 12.0, 0.0, 1.0)
 	_fill.set_shader_parameter("flash", flash)
 	_line.set_shader_parameter("flash", flash)
@@ -420,10 +433,13 @@ func refresh_hits() -> void:
 	var best: Dictionary = {}
 	var top: Dictionary = {}
 	var s0: float = scale.x
-	for s: Dictionary in spheres:
+	for i: int in range(spheres.size()):
+		var s: Dictionary = spheres[i]
 		var node: Node3D = s["node"]
+		if not node.is_visible_in_tree():
+			continue
 		var p: Vector3 = node.global_transform * (s["off"] as Vector3)
-		var h: Dictionary = {"p": p, "r": float(s["r"]) * s0, "weak": s["weak"]}
+		var h: Dictionary = {"p": p, "r": float(s["r"]) * s0, "weak": s["weak"], "idx": i}
 		hits.append(h)
 		if not h["weak"] and p.y + float(h["r"]) > 0.0 and (best.is_empty() or float(h["r"]) > float(best["r"])):
 			best = h
@@ -439,6 +455,35 @@ func refresh_hits() -> void:
 		exposed = aim.y + float(best["r"]) * 0.5 > 0.0
 
 
+## Damage to weak point `idx`. Returns true if this hit destroyed it.
+func weak_hit(idx: int, dmg: float) -> bool:
+	recoil = 0.35
+	if idx < 0 or idx >= spheres.size():
+		return false
+	var s: Dictionary = spheres[idx]
+	if not s["weak"]:
+		return false
+	s["whp"] = float(s["whp"]) - dmg
+	if float(s["whp"]) > 0.0:
+		return false
+	s["weak"] = false
+	var node: Node3D = s["eye"]
+	var p: Vector3 = node.global_position
+	node.visible = false
+	wounds.append({"local": to_local(p), "dir": ((p - global_position).normalized() + Vector3(0, 0.8, 0)).normalized(), "t": 0.0})
+	enraged = true
+	stagger = 1.0
+	return true
+
+
+func weak_kind(idx: int) -> String:
+	return String(spheres[idx]["kind"]) if idx >= 0 and idx < spheres.size() else ""
+
+
+func add_stagger(dmg: float) -> void:
+	stagger = minf(1.0, stagger + dmg / (max_hp * 0.09))
+
+
 func mouth_pos() -> Vector3:
 	return mouth.global_position if mouth != null else aim
 
@@ -447,6 +492,8 @@ func mouth_pos() -> Vector3:
 
 func update(dt: float) -> void:
 	roar_t -= dt
+	stagger = maxf(0.0, stagger - dt * 0.9)
+	recoil = maxf(0.0, recoil - dt * 2.0)
 	if slow > 0.0:
 		slow -= dt
 	for w: Dictionary in wounds:
@@ -458,7 +505,7 @@ func update(dt: float) -> void:
 	if dying:
 		_update_dying(dt)
 		return
-	var spd: float = float(def["spd"]) * (0.55 if slow > 0.0 else 1.0)
+	var spd: float = float(def["spd"]) * (0.55 if slow > 0.0 else 1.0) * (1.0 - 0.65 * stagger) * (1.25 if enraged else 1.0)
 	if def["air"]:
 		_update_tengu(dt, spd)
 		return
@@ -471,7 +518,7 @@ func update(dt: float) -> void:
 		if dist < 4.0:
 			state = "rampage"
 			roar_t = 2.0
-			Game.sfx.play("roar_boss" if def["boss"] else "roar", 0.9)
+			Game.sfx.play_at("roar_boss" if def["boss"] else "roar", position, 1.0)
 			if not Game.demo:
 				Game.fx.text(position + Vector3(0, 90.0 * float(def["scale"]), 0), "上陸!", Mats.SHU, 22.0, 2.0)
 		else:
@@ -497,7 +544,7 @@ func update(dt: float) -> void:
 		if smash_cd <= 0.0:
 			smash_cd = randf_range(1.0, 2.2)
 			if not Game.demo and Game.world.smash_near(position, 120.0 * float(def["scale"])):
-				Game.sfx.play("crash", 0.8)
+				Game.sfx.play_at("crash", position, 1.0)
 			if randf() < 0.3:
 				Game.fx.text(position + Vector3(randf_range(-20, 20), 60.0 * float(def["scale"]), 10), ["ズシン!", "ドシン!", "ガシャーン!"].pick_random(), Mats.GOLD, 14.0, 1.2)
 	# Wading deeper out at sea, standing on the beach.
@@ -527,10 +574,8 @@ func _footsteps(on_land: bool) -> void:
 			if not on_land and position.z > -700.0:
 				Game.fx.ring(Vector3(fp.x, 0.6, fp.z), 4.0 * sc, 22.0, 1.5, Mats.CYAN)
 				Game.fx.sparks(Vector3(fp.x, 1, fp.z), 8, Mats.CYAN, 40.0, 60.0)
-			if position.z > -500.0:
-				var near: float = clampf(1.0 - Game.rig.cam.global_position.distance_to(position) / 900.0, 0.0, 1.0)
-				if near > 0.2:
-					Game.sfx.play("stomp", near * sc)
+			if position.z > -600.0:
+				Game.sfx.play_at("stomp", fp, sc)
 				Game.fx.shake_at(fp, 0.5 * sc)
 	elif type == "kani" and not on_land and randf() < 0.1:
 		Game.fx.ring(position + Vector3(randf_range(-20, 20), 0.6, randf_range(-10, 10)), 3.0, 18.0, 1.2, Mats.CYAN)
@@ -554,7 +599,7 @@ func _update_breath(dt: float) -> void:
 		if breath_t < 0.8 and alive:
 			if not fired:
 				fired = true
-				Game.sfx.play("beam", 0.9)
+				Game.sfx.play_at("beam", mouth_pos(), 1.0)
 			var tp: Vector3 = Game.zep.global_position + Vector3(0, -10, 0) if at_zep else (tgt as Turret).pad.pos + Vector3(0, 6, 0)
 			var j: Vector3 = Vector3(randf_range(-3, 3), randf_range(-3, 3), randf_range(-3, 3))
 			Game.fx.beam(mouth_pos(), tp + j, Mats.SHU if boss else Mats.CYAN, 5.0 if boss else 3.0, 0.06)
@@ -588,7 +633,7 @@ func _update_breath(dt: float) -> void:
 	fired = false
 	roar_t = 1.9
 	breath_cd = randf_range(9, 13) * (0.6 if boss else 1.0)
-	Game.sfx.play("roar_boss" if boss else "roar", 0.6)
+	Game.sfx.play_at("roar_boss" if boss else "roar", position, 0.8)
 
 
 func _update_tengu(dt: float, spd: float) -> void:
@@ -625,24 +670,54 @@ func _update_tengu(dt: float, spd: float) -> void:
 
 func _update_dying(dt: float) -> void:
 	die_t += dt
-	var air: bool = def["air"]
-	if not air:
-		position.y -= dt * die_t * 6.0
-		if die_t > 1.2 and not splashed:
-			splashed = true
-			if position.z < Game.coast_z(position.x):
-				Game.fx.ring(Vector3(position.x, 0.6, position.z), 15.0, 60.0, 2.5, Mats.CYAN)
-				Game.fx.stain(Vector3(position.x, 0.4, position.z), 16.0)
-				Game.fx.sparks(Vector3(position.x, 2, position.z), 60, Mats.CYAN, 90.0, 50.0)
-			else:
-				Game.fx.sparks(Vector3(position.x, 3, position.z), 40, Mats.GOLD, 60.0, 50.0)
-			Game.sfx.play("stomp", 1.4)
-			Game.fx.shake_at(position, 4.0)
-	else:
+	if def["air"]:
+		# Spiral down trailing fire and blood, then burst on the water.
 		position += Vector3(vel.x * 0.5, -(20.0 + die_t * 50.0), vel.z * 0.5) * dt
+		Game.fx.sparks(position, 2, Mats.FIRE, 20.0, -10.0)
+		if randf() < 0.5:
+			Game.fx.smoke(position, Vector3(randf_range(-3, 3), 6, randf_range(-3, 3)), 3.0, 2.0)
 		if position.y < 0.0 and not splashed:
 			splashed = true
+			Game.fx.boom(Vector3(position.x, 1, position.z), 2.5, Mats.FIRE)
 			Game.fx.ring(Vector3(position.x, 0.6, position.z), 6.0, 40.0, 2.0, Mats.CYAN)
-			Game.fx.spray(Vector3(position.x, 1, position.z), Vector3.UP, 30, 50.0, 4)
-	if die_t > 3.8 or (air and position.y < -20.0):
+			Game.fx.spray(Vector3(position.x, 1, position.z), Vector3.UP, 40, 60.0, 5)
+			Game.fx.stain(Vector3(position.x, 0.4, position.z), 10.0)
+		if position.y < -20.0:
+			dead = true
+		return
+	# Thrash and bleed, topple, chain explosions, slam into the sea or the street, then sink.
+	var sc: float = float(def["scale"])
+	if die_t < 0.9 and randf() < 0.5:
+		Game.fx.spray(aim + Vector3(randf_range(-4, 4), 0, randf_range(-4, 4)) * sc, Vector3.UP, 6, 60.0, 0)
+	var steps: Array[float] = [1.4, 1.9, 2.3, 2.6]
+	while _death_step < steps.size() and die_t >= steps[_death_step]:
+		var step: int = _death_step
+		_death_step += 1
+		if step == 2:
+			var onland: bool = position.z > Game.coast_z(position.x)
+			var side: Vector3 = global_transform.basis.x.normalized() * fall_dir * -40.0 * sc
+			var hit: Vector3 = Vector3(position.x + side.x, 1.0, position.z + side.z)
+			if not onland:
+				Game.fx.ring(hit, 15.0 * sc, 70.0, 2.8, Mats.CYAN)
+				Game.fx.ring(hit, 8.0 * sc, 40.0, 3.2, Mats.WHITE)
+				Game.fx.stain(Vector3(hit.x, 0.4, hit.z), 30.0 * sc)
+				Game.fx.sparks(hit, 80, Mats.CYAN, 110.0, 50.0)
+			else:
+				Game.fx.sparks(hit, 50, Mats.GOLD, 70.0, 50.0)
+				for i: int in range(6):
+					Game.fx.smoke(hit + Vector3(randf_range(-20, 20), 2, randf_range(-20, 20)), Vector3(0, randf_range(5, 12), 0), randf_range(8, 16), 3.5)
+			Game.fx.spray(hit + Vector3(0, 6, 0), Vector3.UP, 50, 80.0, 6)
+			Game.sfx.play_at("stomp", hit, 1.6)
+			Game.sfx.play_at("boom_big", hit, 0.8)
+			Game.fx.shake_at(hit, 4.0 * sc)
+		elif not hits.is_empty():
+			var h: Dictionary = hits.pick_random()
+			Game.fx.boom(h["p"], 2.0 * sc, Mats.FIRE)
+			Game.fx.spray(h["p"], Vector3.UP, 30, 70.0, 3)
+			Game.sfx.play_at("boom", h["p"], 0.9)
+	if die_t > 2.6:
+		position.y -= dt * (die_t - 2.6) * 12.0
+	else:
+		position.y -= dt * 1.5
+	if die_t > 4.8:
 		dead = true

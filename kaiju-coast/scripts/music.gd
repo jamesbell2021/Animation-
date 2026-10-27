@@ -26,6 +26,8 @@ func _ready() -> void:
 	enabled = bool(Game.load_setting("music", true))
 	_a = AudioStreamPlayer.new()
 	_b = AudioStreamPlayer.new()
+	_a.bus = "Music"
+	_b.bus = "Music"
 	add_child(_a)
 	add_child(_b)
 	_cur = _a

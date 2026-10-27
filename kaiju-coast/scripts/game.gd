@@ -63,6 +63,7 @@ var player: Player
 var zep: Zeppelin
 var sfx: Sfx
 var music: Music
+var voice: Node = null
 
 var pads: Array[Pad] = []
 var kaiju: Array[Kaiju] = []

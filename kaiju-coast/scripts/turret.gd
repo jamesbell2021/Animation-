@@ -248,12 +248,12 @@ func _fire(k: Kaiju, a: Vector3, st: Dictionary) -> void:
 					"dt": "kin", "by": "t", "life": 1.6})
 			Game.fx.sparks(m, 6, Mats.TRACER, 40.0, 40.0)
 			Game.fx.muzzle(m, Mats.TRACER, 4.0)
-			Game.sfx.play("cannon", 0.7)
+			Game.sfx.play_at("cannon", m, 0.8)
 		"rocket":
 			for i: int in range(int(st["salvo"])):
 				C.fire({"kind": "rocket", "pos": m + Vector3(0, 2, 0), "vel": Vector3(dir.x * 60.0 + randf_range(-20, 20), 50.0 + randf_range(0, 25), dir.z * 60.0 + randf_range(-20, 20)),
 					"acc": 420.0, "max": 330.0, "homing": k, "dmg": st["dmg"], "dt": "exp", "splash": st["splash"], "by": "t", "life": 5.0})
-			Game.sfx.play("rocket", 0.7)
+			Game.sfx.play_at("rocket", m, 0.8)
 		"tesla":
 			var from: Vector3 = top()
 			var done: Array[Kaiju] = []
@@ -278,16 +278,16 @@ func _fire(k: Kaiju, a: Vector3, st: Dictionary) -> void:
 						nd = dd
 						nx = o
 				cur = nx
-			Game.sfx.play("zap", 0.8)
+			Game.sfx.play_at("zap", top(), 0.9)
 		"rail":
 			var end: Vector3 = m + dir * float(st["range"]) * 1.2
 			C.rail_hit(m, end, st["dmg"], "t")
 			Game.fx.beam(m, end, Mats.BOLT, 1.6, 0.35)
 			Game.fx.sparks(m, 14, Mats.WHITE, 70.0, 40.0)
-			Game.sfx.play("rail", 0.8)
+			Game.sfx.play_at("rail", m, 1.0)
 			Game.fx.shake_at(m, 0.6)
 		"flak":
 			var life: float = m.distance_to(a) / float(st["spd"]) + 0.05
 			C.fire({"kind": "flak", "pos": m, "vel": dir * float(st["spd"]) + Vector3(randf_range(-10, 10), randf_range(-10, 10), randf_range(-10, 10)),
 				"dmg": st["dmg"], "dt": "kin", "splash": st["splash"], "by": "t", "life": life})
-			Game.sfx.play("flak", 0.6)
+			Game.sfx.play_at("flak", m, 0.7)

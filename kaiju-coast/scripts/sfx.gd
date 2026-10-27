@@ -3,7 +3,8 @@ extends Node
 ## Sound effects, synthesised once at startup (the same recipes as the web version) and played
 ## through a small pool of players. Each sound is rate-limited so a battle doesn't turn to mush.
 
-const POOL: int = 24
+const POOL: int = 16
+const POOL3D: int = 28
 const GAPS: Dictionary = {
 	"cannon": 0.06, "gun": 0.045, "rocket": 0.08, "boom": 0.05, "boom_big": 0.12, "zap": 0.08, "rail": 0.1,
 	"flak": 0.07, "hanabi": 0.06, "splat": 0.07, "crit": 0.09, "roar": 0.5, "roar_boss": 0.8, "beam": 0.3,
@@ -12,7 +13,9 @@ const GAPS: Dictionary = {
 
 var streams: Dictionary = {}
 var _players: Array[AudioStreamPlayer] = []
+var _players3d: Array[AudioStreamPlayer3D] = []
 var _next: int = 0
+var _next3d: int = 0
 var _last: Dictionary = {}
 var _clock: float = 0.0
 var ready_done: bool = false
@@ -21,9 +24,19 @@ var ready_done: bool = false
 func _ready() -> void:
 	for i: int in range(POOL):
 		var p: AudioStreamPlayer = AudioStreamPlayer.new()
-		p.bus = "Master"
+		p.bus = "SFX"
 		add_child(p)
 		_players.append(p)
+	for i2: int in range(POOL3D):
+		var p3: AudioStreamPlayer3D = AudioStreamPlayer3D.new()
+		p3.bus = "SFX"
+		p3.unit_size = 140.0
+		p3.max_distance = 4000.0
+		p3.attenuation_model = AudioStreamPlayer3D.ATTENUATION_INVERSE_DISTANCE
+		p3.doppler_tracking = AudioStreamPlayer3D.DOPPLER_TRACKING_DISABLED
+		p3.max_db = 6.0
+		add_child(p3)
+		_players3d.append(p3)
 	_render()
 
 
@@ -45,6 +58,41 @@ func play(name: String, vol: float = 1.0, pitch: float = 1.0) -> void:
 	p.volume_db = linear_to_db(clampf(vol, 0.0, 1.5) * 0.8)
 	p.pitch_scale = pitch * randf_range(0.95, 1.05)
 	p.play()
+
+
+## A sound placed in the world: it pans and fades with distance from the camera.
+func play_at(name: String, pos: Vector3, vol: float = 1.0, pitch: float = 1.0) -> void:
+	if not streams.has(name) or vol <= 0.01:
+		return
+	var gap: float = float(GAPS.get(name, 0.0)) * 0.5
+	var key: String = name + "@3d"
+	if gap > 0.0 and _last.has(key) and _clock - float(_last[key]) < gap:
+		return
+	_last[key] = _clock
+	var p: AudioStreamPlayer3D = _players3d[_next3d]
+	_next3d = (_next3d + 1) % POOL3D
+	p.stream = streams[name]
+	p.global_position = pos
+	p.volume_db = linear_to_db(clampf(vol, 0.0, 2.0)) + 4.0
+	p.pitch_scale = pitch * randf_range(0.95, 1.05)
+	p.play()
+
+
+## Creates the Music, SFX and Voice buses (all into Master) so each has its own volume.
+static func make_buses() -> void:
+	for bus: String in ["Music", "SFX", "Voice"]:
+		if AudioServer.get_bus_index(bus) == -1:
+			AudioServer.add_bus()
+			var i: int = AudioServer.bus_count - 1
+			AudioServer.set_bus_name(i, bus)
+			AudioServer.set_bus_send(i, "Master")
+
+
+static func set_bus_volume(bus: String, linear: float) -> void:
+	var i: int = AudioServer.get_bus_index(bus)
+	if i >= 0:
+		AudioServer.set_bus_volume_db(i, linear_to_db(maxf(linear, 0.0001)))
+		AudioServer.set_bus_mute(i, linear <= 0.001)
 
 
 func _render() -> void:
