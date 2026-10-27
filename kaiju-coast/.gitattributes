@@ -1,0 +1,7 @@
+# This Godot project stays out of Git LFS (used by the repo's Unreal assets) so a plain clone or
+# GitHub ZIP download contains the real fonts, icon and screenshots and runs as-is.
+*.ttf -filter -diff -merge binary
+*.png -filter -diff -merge binary
+*.jpg -filter -diff -merge binary
+*.ico -filter -diff -merge binary
+*.mp3 -filter -diff -merge binary

@@ -1,0 +1,93 @@
+# Tests and builds Kaiju Coast for Windows and Linux whenever the game changes.
+#
+# Download the builds from the run's "Artifacts" section (Actions tab -> latest
+# "Kaiju Coast builds" run): kaiju-coast-windows (a zip with KaijuCoast.exe) and
+# kaiju-coast-linux.
+name: Kaiju Coast builds
+
+on:
+  push:
+    branches:
+      - "**"
+    paths:
+      - "kaiju-coast/**"
+      - ".github/workflows/kaiju-coast.yml"
+  workflow_dispatch:
+
+env:
+  GODOT_VERSION: "4.3"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Godot and the export templates
+        run: |
+          base=https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable
+          wget -q "$base/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          unzip -q "Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          mv "Godot_v${GODOT_VERSION}-stable_linux.x86_64" godot
+          wget -q "$base/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
+          templates=~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
+          mkdir -p "$templates"
+          unzip -q -j "Godot_v${GODOT_VERSION}-stable_export_templates.tpz" \
+            "templates/windows_release_x86_64.exe" "templates/windows_debug_x86_64.exe" \
+            "templates/linux_release.x86_64" "templates/linux_debug.x86_64" \
+            "templates/version.txt" -d "$templates"
+          rm "Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
+
+      # rcedit (through wine) stamps the game's icon and version into the Windows .exe.
+      - name: Install wine and rcedit for the Windows icon
+        run: |
+          sudo dpkg --add-architecture i386
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq wine wine64 > /dev/null
+          wget -q https://github.com/electron/rcedit/releases/download/v2.0.0/rcedit-x64.exe -O "$RUNNER_TEMP/rcedit-x64.exe"
+          echo "WINEDEBUG=-all" >> "$GITHUB_ENV"
+          echo "WINEDLLOVERRIDES=mscoree,mshtml=" >> "$GITHUB_ENV"
+          WINEDEBUG=-all WINEDLLOVERRIDES="mscoree,mshtml=" wineboot --init || echo "::warning::wineboot exited $?"
+          mkdir -p ~/.config/godot
+          cat > ~/.config/godot/editor_settings-${GODOT_VERSION}.tres <<EOF2
+          [gd_resource type="EditorSettings" format=3]
+
+          [resource]
+          export/windows/rcedit = "$RUNNER_TEMP/rcedit-x64.exe"
+          export/windows/wine = "/usr/bin/wine"
+          EOF2
+
+      - name: Import and run the smoke test
+        working-directory: kaiju-coast
+        run: |
+          ../godot --headless --import --path . || true
+          ../godot --headless --path . res://tests/smoke_test.tscn 2>&1 | grep -v 'Parameter "m" is null\|mesh_get_surface_count'
+          exit ${PIPESTATUS[0]}
+
+      - name: Export Windows and Linux
+        working-directory: kaiju-coast
+        run: |
+          mkdir -p build/windows build/linux
+          ../godot --headless --path . --export-release "Windows Desktop" build/windows/KaijuCoast.exe
+          ../godot --headless --path . --export-release "Linux" build/linux/KaijuCoast.x86_64
+          test -s build/windows/KaijuCoast.exe
+          test -s build/linux/KaijuCoast.x86_64
+          python3 -c "import sys; d = open(sys.argv[1], 'rb').read(); sys.exit(0 if 'Kaiju Coast'.encode('utf-16-le') in d else 'The Windows exe has no Kaiju Coast icon or version info: rcedit did not run')" build/windows/KaijuCoast.exe
+          cp README.md build/windows/README.md
+          cp README.md build/linux/README.md
+          (cd build/windows && zip -q -r ../kaiju-coast-windows.zip .)
+          (cd build/linux && zip -q -r ../kaiju-coast-linux.zip .)
+          ls -la build
+
+      - name: Check the Linux build starts
+        working-directory: kaiju-coast
+        run: timeout 120 build/linux/KaijuCoast.x86_64 --headless --quit-after 120
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kaiju-coast-windows
+          path: kaiju-coast/build/kaiju-coast-windows.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kaiju-coast-linux
+          path: kaiju-coast/build/kaiju-coast-linux.zip
