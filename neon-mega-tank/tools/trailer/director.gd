@@ -61,9 +61,7 @@ func _initialize() -> void:
 	g.round_seed = SEED
 	g.joined_devices.clear()
 	if shot == "demomenu":
-		# The free demo's title menu.
-		g.demo = true
-		g.demo_left = g.DEMO_SECONDS
+		# The free demo's title menu (record.sh launches this shot with --demo, which G reads).
 		g.menu_done = false
 	change_scene_to_file("res://scenes/main.tscn")
 
@@ -547,6 +545,7 @@ func _setup_lockon() -> void:
 		if e is EnemyTank:
 			e.max_hp = 50.0
 			e.hp = 50.0
+		e._cooldown = 999.0  # hold their fire: hit flashes would hide the turret's flicks
 		targets.append(e)
 	data["targets"] = targets
 	main.cinematic = func(_d: float) -> void: _iso(16.5, tank.global_position + Vector3(0, 1.0, 0))
@@ -629,7 +628,9 @@ func _setup_barrier() -> void:
 	data["truck"] = truck
 	data["men"] = []
 	for off in [Vector3(2.6, 0, 1.5), Vector3(-2.4, 0, 2.2), Vector3(1.5, 0, -2.6)]:
-		data["men"].append(_spawn("rifle", _free_near(at + off, 0.8)))
+		var man := _spawn("rifle", _free_near(at + off, 0.8))
+		man._cooldown = 999.0
+		data["men"].append(man)
 	data["at"] = at
 	main.cinematic = func(_d: float) -> void: _iso(14.5, c.lerp(at, 0.55) + Vector3(0, 1.5, 0))
 

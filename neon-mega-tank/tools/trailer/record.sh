@@ -22,6 +22,7 @@ SHOTS=${*:-reveal crew collapse shootdown combat shouts drones phones boss final
 for shot in $SHOTS; do
 	extra=""
 	[ "$shot" = phones ] && extra="--touch"
+	[ "$shot" = demomenu ] && extra="--demo"
 	echo "== filming $shot"
 	"$GODOT" --path . --resolution 1920x1080 --write-movie "$TAKES/$shot.avi" --fixed-fps 30 --quit-after 600 \
 		-s tools/trailer/director.gd -- "$shot" $extra
