@@ -4,6 +4,7 @@
 # and a display: on a headless Linux box use  xvfb-run -a -s "-screen 0 1920x1080x24" ./record.sh
 #   ./record.sh                 film every shot
 #   ./record.sh boss finale     film only these
+#   ./record.sh update          film the update 1.1 trailer's shots
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 GODOT=${GODOT:-godot}
@@ -14,7 +15,10 @@ trap 'rm -f override.cfg' EXIT
 
 "$GODOT" --headless --path . -s tools/trailer/export_audio.gd -- "$TAKES"
 
+# "./record.sh update" films the shots of the update 1.1 trailer (assemble.py update).
+UPDATE_SHOTS="reveal shield gauge lockon hornets mortars barrier gunship collapse storm demomenu finale"
 SHOTS=${*:-reveal crew collapse shootdown combat shouts drones phones boss finale}
+[ "$SHOTS" = update ] && SHOTS=$UPDATE_SHOTS
 for shot in $SHOTS; do
 	extra=""
 	[ "$shot" = phones ] && extra="--touch"
