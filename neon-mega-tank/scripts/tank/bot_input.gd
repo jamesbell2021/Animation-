@@ -18,6 +18,11 @@ var _unstick_t := 0.0
 var _wander := Vector3.ZERO
 var _aim_error := 0.0
 var _aim_error_t := 0.0
+## Repair gauge: how close to the zone centre this bot waits for before tapping (fraction of the
+## zone's half width; above 1 it will miss), re-rolled after every tap.
+var _tap_window := 0.6
+var _tap_cool := 0.0
+var _shield_hold := 0.0
 
 
 func _init(slot: int) -> void:
@@ -25,10 +30,16 @@ func _init(slot: int) -> void:
 
 
 func poll() -> void:
+	_think()
+	aim = move
+
+
+func _think() -> void:
 	move = Vector2.ZERO
 	action_held = false
 	action_pressed = false
 	interact_pressed = false
+	press_needle = -1.0
 	if crew == null or crew.tank == null or crew.tank.dead:
 		return
 	var tank := crew.tank
@@ -91,7 +102,7 @@ func _operate(id: String, tank: MegaTank) -> void:
 		"mg":
 			_machine_gun(tank)
 		"repair":
-			action_held = tank.hp < MegaTank.MAX_HP
+			_repair(tank)
 
 
 # --- Station behaviour -----------------------------------------------------------------------
@@ -121,6 +132,14 @@ func _drive(tank: MegaTank) -> void:
 		if _wander == Vector3.ZERO or pos.distance_to(_wander) < 6.0:
 			_wander = Vector3(roundf(randf_range(-2, 2)) * City.PERIOD, 0, roundf(randf_range(-2, 2)) * City.PERIOD)
 		dir = (_wander - pos).normalized()
+	# Get out from under a mortar round that is about to land.
+	for node in tank.get_tree().get_nodes_in_group("mortar_marks"):
+		var m: MortarShell = node
+		var away := pos - m.to
+		away.y = 0.0
+		if away.length() < 6.0 and m.time_left() < 1.6:
+			dir = (away.normalized() + dir * 0.3).normalized()
+			break
 	# Stay inside the arena.
 	var lim := City.HALF - 10.0
 	if absf(pos.x) > lim or absf(pos.z) > lim:
@@ -162,13 +181,64 @@ func _avoid(tank: MegaTank, dir: Vector3) -> Vector3:
 	return dir
 
 
+## Plays the repair gauge like a person: waits for the needle to reach the zone and taps, with
+## a bit of human sloppiness. Holds ACTION for the shield when something is about to hit.
+func _repair(tank: MegaTank) -> void:
+	var dt := 1.0 / 60.0
+	if _incoming_threat(tank):
+		_shield_hold = 0.4
+	else:
+		_shield_hold -= dt
+	if tank.shield_up:
+		action_held = _shield_hold > 0.0 and tank.shield > 4.0
+		return
+	if _shield_hold > 0.0 and tank.shield >= 30.0 and tank.shield_lock <= 0.0:
+		action_held = true
+		return
+	_tap_cool -= dt
+	if _tap_cool > 0.0 or tank.rep_stun > 0.0:
+		return
+	if tank.hp >= MegaTank.MAX_HP and tank.shield >= MegaTank.SHIELD_MAX:
+		return
+	var d := absf(tank.needle_now() - tank.zone_center) / maxf(tank.zone_half, 0.01)
+	if d <= _tap_window:
+		action_pressed = true
+		action_held = true
+		_tap_cool = randf_range(0.15, 0.3)
+		var roll := randf()
+		_tap_window = 0.3 if roll < 0.25 else (0.85 if roll < 0.9 else 1.3)
+
+
+## Something that will hurt the tank in the next moment: shells or rockets closing in, a buggy
+## or hornet right next to it, a mortar round about to land on it.
+func _incoming_threat(tank: MegaTank) -> bool:
+	var pos := tank.global_position
+	for node in tank.get_tree().get_nodes_in_group("enemy_shots"):
+		var p: Projectile = node
+		if p.dead or p.kind == "enemy_bullet":
+			continue
+		var to := pos - p.global_position
+		to.y = 0.0
+		if to.length() < 11.0 and to.dot(p.velocity) > 0.0:
+			return true
+	for node in tank.get_tree().get_nodes_in_group("mortar_marks"):
+		var m: MortarShell = node
+		if m.time_left() < 0.9 and Vector2(m.to.x - pos.x, m.to.z - pos.z).length() < 7.0:
+			return true
+	for node in tank.get_tree().get_nodes_in_group("enemies"):
+		if node is Buggy or node is Hornet:
+			if (node as Node3D).global_position.distance_to(pos) < 9.0:
+				return true
+	return false
+
+
 func _cannon(tank: MegaTank) -> void:
 	var pos := tank.global_position
-	var target := _nearest_enemy(pos, 34.0, true)
+	var target := _nearest_enemy(pos, 40.0, true)
 	if target == null:
 		return
 	var to := target.global_position - pos
-	var lead := target.velocity * (to.length() / 36.0)
+	var lead := target.velocity * (to.length() / MegaTank.SHELL_SPEED)
 	var aim := (to + lead)
 	aim.y = 0.0
 	aim = aim.normalized().rotated(Vector3.UP, _aim_error)
@@ -189,6 +259,16 @@ func _machine_gun(tank: MegaTank) -> void:
 			best = d
 			target_pos = (r as Node3D).global_position
 			urgent = true
+	if not urgent:
+		# Hornets diving in come next: one round each.
+		for node in tank.get_tree().get_nodes_in_group("enemies"):
+			if node is Hornet:
+				var hp := (node as Node3D).global_position
+				var d := hp.distance_to(muzzle)
+				if d < best:
+					best = d
+					target_pos = hp + (node as Enemy).velocity * 0.15
+					urgent = true
 	if not urgent:
 		var e := _nearest_enemy(muzzle, 26.0, false)
 		if e:
@@ -212,7 +292,10 @@ func _nearest_enemy(from: Vector3, max_dist: float, prefer_tanks: bool) -> Enemy
 	for node in crew.get_tree().get_nodes_in_group("enemies"):
 		var e: Enemy = node
 		var d := e.global_position.distance_to(from)
-		var score := d * (0.6 if prefer_tanks and e is EnemyTank else 1.0)
+		var big := e is EnemyTank or e is MortarTeam or e is ShieldTruck or e is Gunship or e is BossTank
+		var score := d * (0.6 if prefer_tanks and big else 1.0)
+		if prefer_tanks and e is Hornet:
+			score *= 2.0  # leave the swarms to the machine gun
 		if d < max_dist and score < best_score:
 			best = e
 			best_score = score

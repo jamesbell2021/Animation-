@@ -44,6 +44,8 @@ var _time := 0.0
 var _leaving := false
 var _wave_clock := 0.0
 var _bot_t := 0.0
+var _gate_msg_t := 0.0
+var _demo_over := false
 
 
 func _ready() -> void:
@@ -58,6 +60,9 @@ func _ready() -> void:
 	G.fx_root = Node3D.new()
 	G.fx_root.name = "Fx"
 	add_child(G.fx_root)
+	G.debris_field = DebrisField.new()
+	G.debris_field.name = "Debris"
+	add_child(G.debris_field)
 	var city := City.new()
 	city.name = "City"
 	add_child(city)
@@ -393,6 +398,12 @@ func stick_to_world(v: Vector2) -> Vector3:
 	return _screen_right * v.x - _screen_up * v.y
 
 
+## LAN client: the puppet enemy with this network id (or null).
+func puppet_by_id(id: int) -> Enemy:
+	var e: Enemy = _puppets.get(id)
+	return e if is_instance_valid(e) else null
+
+
 ## Inverse of stick_to_world, used by the AI crew to "push" the stick toward a world direction.
 func world_to_stick(w: Vector3) -> Vector2:
 	return Vector2(w.dot(_screen_right), -w.dot(_screen_up))
@@ -455,11 +466,18 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _lobby() -> void:
-	var pulse := 2.0 + sin(_time * 4.0) * 1.2
+	var used_up := G.demo and G.demo_left <= 0.0
+	var pulse := 0.4 if used_up else 2.0 + sin(_time * 4.0) * 1.2
 	for m in _gate_meshes:
 		G.set_neon(m, Color(1.0, 0.3, 0.85), pulse)
 	if G.tank.global_position.distance_to(GATE_POS) < 4.5:
-		start_game()
+		if used_up:
+			if _gate_msg_t <= 0.0:
+				_gate_msg_t = 3.0
+				_banner("DEMO OVER", [["the demo's 10 minutes of battle are used up"], ["get the full game: %s", G.STORE_URL]], 3.0)
+		else:
+			start_game()
+	_gate_msg_t -= get_process_delta_time()
 
 
 func start_game() -> void:
@@ -476,6 +494,11 @@ func start_game() -> void:
 func _playing(delta: float) -> void:
 	survival_time += delta
 	_wave_clock += delta
+	if G.demo:
+		G.demo_left = maxf(0.0, G.demo_left - delta)
+		if G.demo_left <= 0.0:
+			_end_demo()
+			return
 	G.difficulty = minf(3.0, 1.0 + 0.07 * maxf(wave - 1, 0) + survival_time / 900.0)
 	if _wave_break > 0.0:
 		_wave_break -= delta
@@ -504,15 +527,10 @@ func _start_wave(reinforcements := false) -> void:
 	_wave_clock = 0.0
 	G.difficulty = minf(3.0, 1.0 + 0.07 * (wave - 1) + survival_time / 900.0)
 	# Wave size follows the number of crew (players plus AI), so a full crew faces more.
-	var crew_scale := 0.8 + 0.15 * maxi(players.size(), 1)
+	var counts := wave_counts(wave, players.size())
+	var theme: String = counts.get("theme", "")
+	counts.erase("theme")
 	var boss_wave := wave % BOSS_EVERY == 0
-	var rifles := int(round((2.0 + wave * 1.1) * crew_scale * (0.5 if boss_wave else 1.0)))
-	var rpgs := int(round((wave - 1) * 0.7 * crew_scale))
-	var tanks := 0 if boss_wave else int(floor((wave - 1) * 0.35 * crew_scale))
-	var heavies := 0 if boss_wave else maxi(0, (wave - 4) / 3)
-	var drones := maxi(0, int((wave - 2) * 0.6 * crew_scale))
-	var buggies := maxi(0, int((wave - 3) * 0.5 * crew_scale))
-	var counts := {"rifle": rifles, "rpg": rpgs, "tank": tanks, "heavy": heavies, "drone": drones, "buggy": buggies}
 	for kind in counts:
 		for i in counts[kind]:
 			spawn_queue.append(kind)
@@ -523,8 +541,14 @@ func _start_wave(reinforcements := false) -> void:
 	_spawn_timer = 0.0
 	# Text specs (see G.tx) so every phone shows the banner in its own language.
 	var title: Variant = ["増援！  REINFORCEMENTS - WAVE %d" if reinforcements else "敵襲来！  WAVE %d", wave]
-	var detail: Variant = ["%s%s", ["%d INFANTRY   %d RPG   %d TANKS", rifles, rpgs, tanks + heavies],
-		["   %d DRONES   %d BUGGIES", drones, buggies] if drones + buggies > 0 else [""]]
+	var detail: Variant = _wave_detail(counts)
+	match theme:
+		"drones":
+			title = ["ドローン嵐！  DRONE STORM - WAVE %d", wave]
+		"armour":
+			title = ["装甲部隊！  ARMOUR COLUMN - WAVE %d", wave]
+		"mortars":
+			title = ["迫撃砲！  MORTAR BARRAGE - WAVE %d", wave]
 	if boss_wave:
 		title = ["ボス出現！  BOSS - WAVE %d", wave]
 		detail = "鬼戦車 ONI SENSHA - the demon tank approaches"
@@ -533,10 +557,83 @@ func _start_wave(reinforcements := false) -> void:
 	G.announce("boss" if boss_wave else ("reinforce" if reinforcements else "wave"))
 
 
+## What a wave sends in, by enemy type. Grows with the wave number and with the crew size
+## (players plus AI). Every third wave from wave 6 has a theme. "hornets" is a swarm of five.
+static func wave_counts(w: int, crew: int) -> Dictionary:
+	var crew_scale := 0.8 + 0.15 * maxi(crew, 1)
+	var boss_wave := w % BOSS_EVERY == 0
+	var rifles := int(round((2.0 + w * 1.1) * crew_scale * (0.5 if boss_wave else 1.0)))
+	var rpgs := int(round((w - 1) * 0.7 * crew_scale))
+	var tanks := 0 if boss_wave else int(floor((w - 1) * 0.3 * crew_scale))
+	var heavies := 0 if boss_wave else maxi(0, (w - 4) / 3)
+	var drones := maxi(0, int((w - 2) * 0.5 * crew_scale))
+	var buggies := maxi(0, int((w - 3) * 0.45 * crew_scale))
+	var swarms := 0 if w < 2 else 1 + int((w - 2) * 0.25 * crew_scale)
+	var mortars := 0 if w < 3 else 1 + int((w - 3) * 0.25 * crew_scale)
+	var trucks := 0 if boss_wave or w < 4 else 1 + (w - 4) / 5
+	var gunships := 0 if boss_wave or w < 6 else 1 + (w - 6) / 4
+	if boss_wave:
+		mortars /= 2
+		swarms = maxi(1, swarms / 2)
+	var theme := ""
+	if not boss_wave and w >= 6 and w % 3 == 0:
+		theme = ["drones", "armour", "mortars"][(w / 3) % 3]
+		match theme:
+			"drones":
+				drones = drones * 2 + 2
+				swarms += 2
+				rifles /= 2
+				tanks = 0
+			"armour":
+				tanks += 2
+				heavies += 1
+				trucks += 1
+				rifles /= 2
+			"mortars":
+				mortars += 3
+				rpgs += 2
+				buggies = 0
+	return {"rifle": rifles, "rpg": rpgs, "tank": tanks, "heavy": heavies, "drone": drones,
+		"buggy": buggies, "hornets": swarms, "mortar": mortars, "truck": trucks, "gunship": gunships,
+		"theme": theme}
+
+
+## Banner text for a wave's line-up: two lines, only the enemy types that are coming.
+func _wave_detail(counts: Dictionary) -> Variant:
+	var first: Variant = ["%d INFANTRY   %d RPG   %d TANKS", counts["rifle"], counts["rpg"], counts["tank"] + counts["heavy"]]
+	var names := [["drone", "%d DRONES"], ["buggy", "%d BUGGIES"], ["hornets", "%d HORNET SWARMS"],
+		["mortar", "%d MORTARS"], ["truck", "%d BARRIER TRUCKS"], ["gunship", "%d GUNSHIPS"]]
+	var parts := []
+	for n in names:
+		if counts[n[0]] > 0:
+			parts.append([n[1], counts[n[0]]])
+	if parts.is_empty():
+		return first
+	var fmt := "   ".join(PackedStringArray(_repeat("%s", parts.size())))
+	var second: Array = [fmt]
+	second.append_array(parts)
+	return [first, second]
+
+
+static func _repeat(text: String, count: int) -> Array:
+	var out := []
+	for i in count:
+		out.append(text)
+	return out
+
+
 ## Builds an enemy of the given type (also used for puppets on LAN clients).
 func _create_enemy(kind: String) -> Enemy:
 	var e: Enemy
 	match kind:
+		"hornet":
+			e = Hornet.new()
+		"mortar":
+			e = MortarTeam.new()
+		"truck":
+			e = ShieldTruck.new()
+		"gunship":
+			e = Gunship.new()
 		"tank":
 			e = EnemyTank.new()
 		"heavy":
@@ -561,12 +658,20 @@ func _create_enemy(kind: String) -> Enemy:
 
 func _spawn_next() -> void:
 	var kind: String = spawn_queue.back()
-	var big := kind in ["tank", "heavy", "boss"]
+	var big := kind in ["tank", "heavy", "boss", "truck", "gunship"]
 	var pos: Variant = _find_spawn_point(4.5 if kind == "boss" else (3.0 if big else 1.0))
 	if pos == null:
 		_spawn_timer = 0.3
 		return
 	spawn_queue.pop_back()
+	if kind == "hornets":
+		# A swarm: five hornets in a loose cluster.
+		for i in 5:
+			var off := Vector3(randf_range(-3.0, 3.0), 0.0, randf_range(-3.0, 3.0))
+			spawn_quick("hornet", (pos as Vector3) + off)
+		G.sfx("wave", -12.0, 2.2)
+		_spawn_timer = 0.8
+		return
 	var e := _create_enemy(kind)
 	e.position = pos
 	_enemies_root.add_child(e)
@@ -614,8 +719,34 @@ func _is_free(p: Vector3, radius: float) -> bool:
 	return get_world_3d().direct_space_state.intersect_shape(q, 1).is_empty()
 
 
+## Demo build: the 10 minutes of battle are up. The fighting stops and the store link shows.
+func _end_demo() -> void:
+	if _demo_over:
+		return
+	_demo_over = true
+	_set_state(State.GAMEOVER)
+	_gameover_timer = 2.5
+	spawn_queue.clear()
+	G.tank.invulnerable = true
+	for node in get_tree().get_nodes_in_group("enemies"):
+		var e: Enemy = node
+		G.explode(e.global_position, 2.5, 0.0, G.Team.PLAYER, e.color)
+		e.score_value = 0
+		e.die()
+	new_record = G.submit_run(survival_time, wave, G.score)
+	G.announce("clear")
+	var lines := [
+		["survived %s   wave %d   score %d", G.format_time(survival_time), wave, G.score],
+		["the full game is endless - get it on itch.io"],
+		[G.STORE_URL],
+		[""],
+		["press ACTION for the menu"],
+	]
+	_banner("デモ終了  DEMO OVER - THANKS FOR PLAYING!", lines, 999.0)
+
+
 func _on_tank_destroyed() -> void:
-	if Net.is_client():
+	if Net.is_client() or _demo_over:
 		return
 	_set_state(State.GAMEOVER)
 	_gameover_timer = 2.5
@@ -637,6 +768,12 @@ func _gameover(delta: float) -> void:
 		return
 	for crew in players:
 		if crew.input.action_pressed:
+			if _demo_over:
+				# Back to the title menu, where the store button is.
+				Net.leave()
+				G.menu_done = false
+				_restart_local()
+				return
 			_restart()
 			return
 
@@ -768,7 +905,24 @@ func apply_events(batch: Array) -> void:
 		var a: Array = ev[1]
 		match ev[0]:
 			"block":
-				G.city.destroy_by_id(a[0])
+				G.city.destroy_by_id(a[0], a[1])
+			"fall":
+				G.city.fall_by_id(a[0], a[1])
+			"popup":
+				G.popup(a[0], a[1], a[2], a[3])
+			"shield_hit":
+				G.tank.shield_hit_fx(a[0])
+			"dome_hit":
+				var truck := puppet_by_id(a[0]) as ShieldTruck
+				if truck:
+					truck.dome_hit_fx(a[1])
+			"mortar":
+				var shell := MortarShell.new()
+				shell.setup(a[0], a[1], a[2], a[3])
+				shell.visual_only = true
+				G.fx_root.add_child(shell)
+			"rumble":
+				G.rumble_remote(a[0], a[1])
 			"explode":
 				G.explode(a[0], a[1], 0.0, G.Team.PLAYER, a[2])
 			"ring":
@@ -776,7 +930,7 @@ func apply_events(batch: Array) -> void:
 			"sparks":
 				G.sparks(a[0], a[1], a[2], a[3], a[4], a[5], a[6])
 			"debris":
-				G.debris(a[0], a[1], a[2])
+				G.debris(a[0], a[1], a[2], a[3], a[4])
 			"sfx":
 				G.sfx(a[0], a[1], a[2])
 			"shout":

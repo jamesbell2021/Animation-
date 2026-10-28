@@ -5,9 +5,14 @@
 Co-op for 1–4 players, made in **Godot 4.3**. The whole crew shares one giant neon tank.
 Like *Lovers in a Dangerous Spacetime*, every crew member runs around the open deck and jumps
 between stations. It's an endless survival game: how long can you last against escalating waves
-of infantry, RPG troopers, drones, kamikaze buggies, enemy tanks and the 鬼戦車 *Oni Sensha* boss?
-Each run takes place in a newly generated neon city where every building, barrier, crate and
-tree can be destroyed.
+of infantry, RPG troopers, drones, hornet swarms, mortar teams, barrier trucks, gunships,
+kamikaze buggies, enemy tanks and the 鬼戦車 *Oni Sensha* boss? Each run takes place in a newly
+generated neon city where every building, barrier, crate and tree can be destroyed, and whole
+buildings come crashing down.
+
+**New in 1.1:** a snappier cannon with aim assist and a landing reticle, a timing mini-game and
+an energy shield on the REPAIR station, four new enemies and themed waves, buildings that
+collapse into tumbling rubble, and a free demo build with 10 minutes of battle.
 
 Play it three ways:
 
@@ -54,7 +59,8 @@ the AI crew, and if a phone disconnects, a bot takes over its seat. A host can a
 gamepads or keyboards connected; those players join the same crew.
 
 **Touch controls:** drag anywhere on the left half of the screen to move or aim. **BOARD** gets
-on or off the station you're standing on, and **ACTION** fires, repairs or patches breaches.
+on or off the station you're standing on, and **ACTION** fires, repairs or patches breaches. On
+REPAIR, tap ACTION for the timing game and hold it for the shield.
 The phone's back gesture returns to the lobby or the menu.
 
 **If phones can't find each other:** some guest, hotel and school networks block devices from
@@ -83,9 +89,24 @@ Add `-- --touch` to the launch arguments to try the phone interface on a desktop
 | Station | Stick | ACTION |
 |---|---|---|
 | **DRIVE** | Tank turns to face the stick, then drives. Point it backwards to reverse. | – |
-| **CANNON** | Aims the twin-barrel turret. The turret holds its aim while the tank turns. | Fire explosive shells that blow apart terrain |
-| **MG** | Aims the machine gun | Hold to fire. Overheats. Can shoot RPG rockets out of the air |
-| **REPAIR** | – | Hold to repair the hull |
+| **CANNON** | The turret swings to the stick's direction in a fraction of a second (a gamepad's right stick aims too) and holds its aim while the tank turns. Aim assist locks onto the enemy nearest the aim line and keeps tracking it after you let go; a reticle shows where the shell will land. | Fire explosive shells that blow apart terrain. Press during a swing and it fires as soon as it lines up |
+| **MG** | Aims the machine gun (right stick too) | Hold to fire. Overheats. Can shoot RPG and gunship rockets out of the air, and one round kills a hornet |
+| **REPAIR** | – | **Tap** when the needle is in the green to weld the hull; **hold** for an energy shield (see below) |
+
+### The REPAIR station: welding and the shield
+
+A gauge next to the tank shows a needle sweeping across a bar. **Tap ACTION while the needle is in
+the green zone** to weld the hull: the bright middle is a **PERFECT** weld (12 hull), the rest
+of the green is **GOOD** (6). Every hit builds a combo that adds up to 64% more per weld, makes
+the needle faster and the zone narrower. A tap outside the green is a **MISS**: the combo drops
+and the gauge locks for a moment. Welds at full hull still charge the shield.
+
+**Hold ACTION to raise an energy shield** over the whole tank. While it's up, shells, rockets,
+bullets, mortar rounds, buggy blasts and hornets all splash off it, and nothing punches a breach.
+It drains its charge while up and every hit it takes costs a little more; it recharges slowly
+while down, and PERFECT welds top it up (+12, GOOD +5). If it runs dry it breaks and stays down
+for 2½ seconds, and you have to let go of ACTION before you can raise it again. Holding never
+costs you the combo: a press that turns into a hold doesn't count as a miss.
 
 **Breaches:** heavy hits punch burning holes into the deck. Each breach drains the hull, and a
 breach next to a station **jams** it. Walk to the breach and hold ACTION to patch it.
@@ -93,8 +114,11 @@ breach next to a station **jams** it. Walk to the breach and hold ACTION to patc
 **Ramming:** the tank crushes infantry, barriers, crates and trees, and slowly bulldozes
 buildings. Ramming a kamikaze buggy sets it off, though.
 
-**Destruction:** buildings are stacks of cubes. Knock out a lower cube and everything above
-it collapses.
+**Destruction:** buildings are stacks of cubes. Knock out a lower cube and everything above it
+drops as whole cubes that tip, smash into the street and shatter into neon chunks that bounce
+and settle as rubble, with dust and window glass (**TOWER DOWN!**). Falling cubes batter the
+cubes beside them and squash enemies underneath. Once half of a building's base is gone, the
+whole building gives way, column after column (**BUILDING DOWN!**).
 
 ### Enemies
 
@@ -106,13 +130,21 @@ it collapses.
 | Drone | 4 | Flies over buildings and strafes the tank. Shoot at its glowing shadow on the ground |
 | Kamikaze buggy | 5 | Races in with a beeping light and blows up next to the tank. Shoot it early |
 | Heavy tank | 7 | Slower, much tougher, fires three-shell salvos |
+| Hornet swarm | 2 | Five tiny drones that weave in fast and burst against the tank. One MG round each; they pop harmlessly on the shield |
+| Mortar team | 3 | Sets up behind buildings (it doesn't need to see you) and lobs rounds high over the rooftops. A red ring closes in where each will land: drive out of it or raise the shield. The tank crushes them |
+| 結界車 Barrier truck | 4 | Throws a red energy dome over itself and the enemies near it. Shots from outside splash off until the dome overloads (it comes back after 6 seconds); shots from inside go straight through, so drive in |
+| Gunship | 6 | Attack helicopter: circles at range, rakes the hull with its nose gun and fires four-rocket salvos after painting the tank with a laser. Tough. Shoot its big ground shadow |
 | 鬼戦車 Oni Sensha (boss) | every 5th wave | Twin cannon salvos, two MG turrets, launches drones, bulldozes buildings. It has its own health bar |
+
+From wave 6, every third wave has a theme: **ドローン嵐 DRONE STORM** (double drones, more
+hornets), **装甲部隊 ARMOUR COLUMN** (extra tanks and a barrier truck) or **迫撃砲 MORTAR
+BARRAGE**.
 
 **Survival:** the clock runs from deployment until the tank dies. Waves grow and enemy health
 and damage rise over time. Clearing a wave patches the hull by 40. If a wave drags on,
 reinforcements arrive anyway (except during a boss fight). Your best time, wave and score are
-saved on each device. In testing, three AI crew with an idle fourth player lasted about
-2½–3½ minutes and took the first boss to between 3% and 32% health, so there's a time to beat.
+saved on each device. In testing (version 1.1), a crew of four AI lasted 4½–5 minutes and
+reached waves 8–9, so there's a time to beat.
 
 ### Controls
 
@@ -121,11 +153,27 @@ saved on each device. In testing, three AI crew with an idle fourth player laste
 | Phone | Drag on the left half | BOARD button | ACTION button |
 | Keyboard 1 | WASD | E | Space |
 | Keyboard 2 | Arrow keys | Shift or `/` | Enter |
-| Gamepad | Left stick / D-pad | B, X or Y | A, RB or RT |
+| Gamepad | Left stick / D-pad (right stick aims the guns) | B, X or Y | A, RB or RT |
 
 F1 toggles the CRT filter (off by default on phones), F2 or gamepad BACK toggles the AI crew, M
 toggles music, F11 toggles fullscreen, and ESC (or the phone's back gesture) goes back from a
 game to the lobby and from the lobby to the menu.
+
+## The demo version
+
+The demo is the same game with **10 minutes of battle per launch**: the clock on the HUD counts
+down only while you're fighting, and when it runs out the enemies are cleared, the tank can't be
+hurt, and a **DEMO OVER** screen links to the full game. The title menu gets a **GET THE FULL
+GAME** button that opens the itch.io page. Restarting the app gives another 10 minutes.
+
+It's switched on by the export feature `demo`: the presets **Android Demo**, **Windows Desktop
+Demo** and **Linux Demo** in `export_presets.cfg` set it (the Android demo has its own package
+name, `com.neonmegatank.demo`, so it installs beside the full game). Run `godot --path . -- --demo`
+to try it from the editor. The length is `G.DEMO_SECONDS` and the store link `G.STORE_URL` in
+`scripts/game.gd`.
+
+On itch.io, upload the demo builds to the same game page and tick **This file is a demo and can
+be downloaded for free** on each of them.
 
 ## Build the APK yourself
 
@@ -144,10 +192,12 @@ base64-encoded debug keystore (alias `androiddebugkey`, password `android`) as t
 
 ## Release builds and the itch.io launch
 
-`.github/workflows/neon-mega-tank-apk.yml` builds **Android, Windows and Linux** on every push
+`.github/workflows/neon-mega-tank-apk.yml` builds **Android, Windows and Linux**, full and demo, on every push
 and can upload them to itch.io (push a tag like `nmt-v1.0.0`, or run the workflow by hand with
 *Push the builds to itch.io* ticked; needs the `BUTLER_API_KEY` secret). The APK is
-release-signed when the `ANDROID_RELEASE_KEYSTORE_BASE64`, `_USER` and `_PASS` secrets are set;
+release-signed when the `ANDROID_RELEASE_KEYSTORE_BASE64`, `_USER` and `_PASS` secrets are set
+(the demo APK too); the demo builds go to the `windows-demo`, `linux-demo` and `android-demo`
+itch.io channels;
 without them it's a debug build. Bump `version/code` and `version/name` in `export_presets.cfg`
 before each release.
 
@@ -173,6 +223,22 @@ xvfb-run -a -s "-screen 0 1920x1080x24" tools/trailer/record.sh   # or just ./re
 python3 tools/trailer/assemble.py   # -> tools/trailer/out/neon_mega_tank_trailer.mp4 and a poster
 ```
 
+## Tests
+
+`tools/tests/` plays scripted scenarios inside the real game, headless, and prints PASS/FAIL:
+
+```
+tools/tests/run_tests.sh                  # everything, a few minutes (GODOT=/path/to/godot)
+tools/tests/run_tests.sh cannon repair    # just these
+```
+
+`cannon` (turret speed, buffered fire, aim assist), `repair` (gauge timing, combo, miss, hold to
+shield), `shield` (what it blocks, breaking, lockout), `collapse` (falling cubes, rubble, crushed
+enemies), `enemies` (each new enemy does its job), `demo`, `waves` (prints every wave's line-up),
+`lan` (a host and a phone client in two processes) and `battle` (four AI crew play a whole game
+and report how long they lasted). `shot` scenarios save real-renderer screenshots; see the end of
+`scenarios.gd`.
+
 ## How it works
 
 ```
@@ -183,14 +249,15 @@ scripts/main.gd           game flow: menu, joining, lobby gate, waves, camera, r
 scripts/player_input.gd   per-device input (shared keyboard + gamepads, no InputMap)
 scripts/sfx_bank.gd       layered sound effects synthesised at startup
 scripts/audio/            chiptune composer, Japanese formant voice synth, voice lines
-scripts/tank/             mega tank + stations, crew members, AI crew (bot_input.gd), breaches
-scripts/enemies/          soldiers, enemy and heavy tanks, drones, buggies, the boss
-scripts/world/            seeded procedural city and destructible blocks
-scripts/combat/           projectiles (shells, bullets, rockets)
+scripts/tank/             mega tank + stations (repair gauge, shield), crew, AI crew (bot_input.gd), breaches
+scripts/enemies/          soldiers, tanks, drones, hornets, mortar teams, barrier trucks, gunships, buggies, the boss
+scripts/world/            seeded procedural city, destructible blocks, debris_field.gd (chunks and rubble)
+scripts/combat/           projectiles (shells, bullets, rockets) and mortar rounds
 scripts/ui/               HUD, title menu, touch controls
 scripts/i18n/             Japanese translation (English text -> 日本語)
 studio/                   3BL_Indie splash (first autoload) and credits screen, shared with the other games
-shaders/                  neon wireframe (+ MultiMesh variant), ground grid, FX, CRT
+shaders/                  neon wireframe (+ MultiMesh variant), ground grid, FX, CRT, energy shield
+tools/tests/              headless test scenarios (run_tests.sh)
 fonts/                    DotGothic16 pixel font for the Japanese text (SIL OFL, see OFL.txt)
 icons/                    app icon (drawn by launch/make_art.py)
 launch/                   launch kit: covers, store page text, posts, checklist (ignored by Godot)
@@ -242,6 +309,8 @@ wireframe, so the tank never disappears behind them.
 ### Tuning
 
 Most balance numbers are constants at the top of each script. Examples are `MegaTank.MAX_HP`,
-`CANNON_RELOAD`, `REPAIR_RATE` and `BREACH_DRAIN`. Wave size and difficulty growth are set in
-`Main._start_wave()`, projectile damage in `Projectile.KINDS`, and AI crew priorities in
-`Main._assign_bots()`.
+`CANNON_RELOAD`, `TURRET_MAX_RATE`, `HEAL_PERFECT`, `NEEDLE_SPEED`, `SHIELD_DRAIN` and
+`BREACH_DRAIN`. Wave line-ups and themes are set in `Main.wave_counts()`, difficulty growth in
+`Main._playing()`, projectile damage in `Projectile.KINDS`, and AI crew priorities in
+`Main._assign_bots()`. The aim assist cone is in `MegaTank._assist_target()`; the debris budget
+(`MAX_PIECES`, `MAX_PIECES_MOBILE`) is in `DebrisField`.

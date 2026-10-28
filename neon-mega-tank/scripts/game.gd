@@ -45,10 +45,20 @@ var city: City
 var fx_root: Node3D
 var score := 0
 var shake := 0.0
+## Demo build (export feature "demo", or "-- --demo" on the command line): battle time is
+## limited to DEMO_SECONDS per launch of the game.
+var demo := false
+var demo_left := 0.0
+const DEMO_SECONDS := 600.0
+const STORE_URL := "https://gamesdevnisite.itch.io/neon-mega-tank"
+## Flying chunks and rubble from destroyed blocks (one MultiMesh for the whole city).
+var debris_field: DebrisField
 
 var edge_material: ShaderMaterial
 var on_top_material: ShaderMaterial
 var additive_material: ShaderMaterial
+## Same as additive_material but faint, for dust clouds (bloom would turn them white).
+var dust_material: ShaderMaterial
 ## Font for HUD and 3D labels: monospace in English, the pixel Japanese font in Japanese.
 var ui_font: Font
 ## "en" or "ja". Starts from the device's language; the title menu's button switches it.
@@ -82,6 +92,8 @@ func _ready() -> void:
 	on_top_material = _shader_material("res://shaders/neon_on_top.gdshader")
 	on_top_material.render_priority = 10
 	additive_material = _shader_material("res://shaders/fx_additive.gdshader")
+	dust_material = _shader_material("res://shaders/fx_additive.gdshader")
+	dust_material.set_shader_parameter("energy", 0.55)
 	_ring_shader = load("res://shaders/ring.gdshader")
 	_scorch_shader = load("res://shaders/scorch.gdshader")
 	_plane = PlaneMesh.new()
@@ -115,6 +127,8 @@ func _ready() -> void:
 	_music_player = AudioStreamPlayer.new()
 	_music_player.volume_db = -11.0
 	add_child(_music_player)
+	demo = OS.has_feature("demo") or OS.get_cmdline_user_args().has("--demo")
+	demo_left = DEMO_SECONDS
 	load_records()
 	_apply_language()
 	# Music and voices are synthesised in the background so the game starts instantly.
@@ -434,6 +448,8 @@ func explode(pos: Vector3, radius: float, damage: float, team: int,
 			if c == null or seen.has(c) or not c.has_method("take_damage"):
 				continue
 			seen[c] = true
+			if c is Enemy and _dome_protects((c as Node3D).global_position, pos):
+				continue
 			var d := (c as Node3D).global_position.distance_to(pos)
 			c.take_damage(damage * clampf(1.0 - d / (radius * 1.6), 0.35, 1.0), pos, team)
 	net_mute += 1
@@ -445,6 +461,14 @@ func explode(pos: Vector3, radius: float, damage: float, team: int,
 	add_shake(0.2 + radius * 0.1)
 	sfx("explosion", -4.0 + radius, 1.3 - radius * 0.08)
 	net_mute -= 1
+
+
+## Is an enemy at `target` inside a barrier dome that a blast at `blast` can't get through?
+func _dome_protects(target: Vector3, blast: Vector3) -> bool:
+	for node in get_tree().get_nodes_in_group("enemy_domes"):
+		if (node as ShieldTruck).protects(target, blast):
+			return true
+	return false
 
 
 func ring(pos: Vector3, color: Color, radius: float, time: float, height := 0.2) -> void:
@@ -497,13 +521,104 @@ func sparks(pos: Vector3, color: Color, amount: int, speed: float, life := 0.6,
 	get_tree().create_timer(life + 0.4).timeout.connect(p.queue_free)
 
 
-## Chunky pieces flying off a destroyed block.
-func debris(pos: Vector3, color: Color, size: Vector3) -> void:
-	_net("debris", [pos, color, size])
+## Chunky pieces flying off a destroyed block: tumbling neon fragments that bounce and settle
+## as rubble, a burst of glowing grit, glass from lit windows and a puff of dust.
+## `push` nudges the pieces away from whatever broke it (e.g. the shell's direction).
+func debris(pos: Vector3, color: Color, size: Vector3, push := Vector3.ZERO, windows := false) -> void:
+	_net("debris", [pos, color, size, push, windows])
 	net_mute += 1
-	sparks(pos, color, 9, 7.0, 1.0, clampf(size.x * 0.25, 0.12, 0.55), -20.0)
-	sparks(pos, Color(1, 1, 1), 4, 4.0, 0.35, 0.1, 0.0)
+	var big := size.x >= 1.5
+	if debris_field:
+		debris_field.burst(pos, color, size, push, 7 if big else 3)
+	sparks(pos, color, 12 if big else 7, 8.0, 0.9, clampf(size.x * 0.12, 0.08, 0.25), -20.0)
+	if windows:
+		sparks(pos, Color(0.45, 0.65, 0.8), 6, 9.0, 0.5, 0.07, -24.0)
+	if big:
+		dust(Vector3(pos.x, 0.0, pos.z), color, size.x * 1.3)
 	net_mute -= 1
+
+
+## A low, slow cloud of dust where something heavy came down.
+func dust(pos: Vector3, color: Color, radius: float) -> void:
+	if fx_root == null:
+		return
+	ring(pos, color.lerp(Color(0.6, 0.6, 0.7), 0.6).darkened(0.5), radius * 1.6, 0.8, 0.15)
+	var p := CPUParticles3D.new()
+	p.one_shot = true
+	p.amount = 10 if is_mobile() else 18
+	p.lifetime = 1.6
+	p.explosiveness = 0.9
+	p.mesh = box_mesh(Vector3.ONE * 0.5)
+	p.material_override = dust_material
+	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+	p.emission_sphere_radius = radius * 0.5
+	p.direction = Vector3.UP
+	p.spread = 70.0
+	p.initial_velocity_min = 0.8
+	p.initial_velocity_max = 2.6
+	p.gravity = Vector3(0, 0.6, 0)
+	p.damping_min = 1.0
+	p.damping_max = 2.0
+	p.scale_amount_min = 0.6
+	p.scale_amount_max = 1.8
+	var ramp := Gradient.new()
+	ramp.set_color(0, Color(1, 1, 1, 0.5))
+	ramp.set_color(1, Color(1, 1, 1, 0.0))
+	p.color_ramp = ramp
+	p.color = color.lerp(Color(0.55, 0.55, 0.65), 0.55)
+	fx_root.add_child(p)
+	p.global_position = pos + Vector3(0, 0.6, 0)
+	p.emitting = true
+	get_tree().create_timer(p.lifetime + 0.4).timeout.connect(p.queue_free)
+
+
+## A word that pops up over the battlefield ("PERFECT!", "TOWER DOWN!"); text spec, see tx().
+func popup(pos: Vector3, spec: Variant, color: Color, size := 1.0) -> void:
+	if fx_root == null:
+		return
+	_net("popup", [pos, spec, color, size])
+	var l := Label3D.new()
+	l.text = tx(spec)
+	l.font = jp_font
+	l.font_size = int(64 * size)
+	l.outline_size = 16
+	l.pixel_size = 0.014
+	l.modulate = color
+	l.outline_modulate = Color(0, 0, 0, 0.85)
+	l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	l.no_depth_test = true
+	l.render_priority = 31
+	l.outline_render_priority = 30
+	fx_root.add_child(l)
+	l.global_position = pos
+	l.scale = Vector3.ONE * 0.4
+	var tw := l.create_tween().set_parallel()
+	tw.tween_property(l, "scale", Vector3.ONE, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(l, "position:y", pos.y + 1.6, 0.9).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+	tw.tween_property(l, "modulate:a", 0.0, 0.35).set_delay(0.55)
+	tw.tween_property(l, "outline_modulate:a", 0.0, 0.35).set_delay(0.55)
+	tw.chain().tween_callback(l.queue_free)
+
+
+## Controller rumble (and a buzz on phones) for the player behind this input.
+func rumble(input: PlayerInput, weak: float, strong: float, duration: float) -> void:
+	if input == null:
+		return
+	var dev := input.device
+	if dev >= 0 and dev < Net.REMOTE_BASE:
+		Input.start_joy_vibration(dev, weak, strong, duration)
+	elif dev == TouchInput.TOUCH_DEVICE:
+		Input.start_joy_vibration(0, weak, strong, duration)
+		if OS.has_feature("mobile"):
+			Input.vibrate_handheld(int(duration * 1000.0))
+	elif dev >= Net.REMOTE_BASE:
+		Net.send_event("rumble", [dev, duration])
+
+
+## Client: the host asked this phone to buzz.
+func rumble_remote(dev: int, duration: float) -> void:
+	if dev == Net.my_device() and OS.has_feature("mobile"):
+		Input.vibrate_handheld(int(duration * 1000.0))
 
 
 func scorch(pos: Vector3, radius: float) -> void:

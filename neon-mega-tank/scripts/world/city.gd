@@ -1,7 +1,8 @@
 class_name City
 extends Node3D
 ## Procedural neon city on a road grid. Buildings are stacks of 2 m cubes, so everything can be
-## shot apart; knocking out a cube makes the cubes above it collapse.
+## shot apart; knocking out a cube makes the cubes above it drop and shatter, falling cubes batter
+## the cubes next to them, and once half of a building's base is gone the rest of it comes down.
 ## Generation is seeded so LAN clients build exactly the same city as the host; blocks are
 ## numbered in creation order so destruction can be replicated by id.
 
@@ -19,6 +20,10 @@ const CRATE_COLOR := Color(1.0, 0.7, 0.15)
 const TREE_COLOR := Color(0.3, 1.0, 0.5)
 
 var columns := {}
+## Which building each column belongs to, and per building: its column keys, how many of its
+## base cubes are gone, and whether it has already come down.
+var _building_of := {}
+var _buildings: Array[Dictionary] = []
 var blocks: Array[Block] = []
 ## Ids of destroyed blocks, sent to clients that join mid-round.
 var destroyed_ids: Array[int] = []
@@ -118,14 +123,27 @@ func _hide(b: Block) -> void:
 
 
 ## Client side: the host destroyed this block.
-func destroy_by_id(block_id: int) -> void:
+func destroy_by_id(block_id: int, push := Vector3.ZERO) -> void:
 	if block_id < 0 or block_id >= blocks.size():
 		return
 	var b := blocks[block_id]
 	if is_instance_valid(b) and not b.dead:
 		b.dead = true
-		G.debris(b.global_position, b.color, b.size)
+		G.debris(b.global_position, b.color, b.size, push, b.has_windows)
 		_hide(b)
+		b.queue_free()
+
+
+## Client side: the host says this building cube lost its support and is falling.
+func fall_by_id(block_id: int, push: Vector3) -> void:
+	if block_id < 0 or block_id >= blocks.size():
+		return
+	var b := blocks[block_id]
+	if is_instance_valid(b) and not b.dead:
+		b.dead = true
+		_hide(b)
+		if G.debris_field:
+			G.debris_field.fall(b.global_position, b.color, b.size, push, false, b.has_windows)
 		b.queue_free()
 
 
@@ -144,43 +162,110 @@ func destroy_block(b: Block) -> void:
 	if b.dead:
 		return
 	b.dead = true
+	var push := b.push_dir()
 	G.net_mute += 1
-	G.debris(b.global_position, b.color, b.size)
+	G.debris(b.global_position, b.color, b.size, push, b.has_windows)
 	G.net_mute -= 1
 	G.add_score(1)
 	_hide(b)
-	_replicate_destroy(b)
+	_replicate_destroy(b, push)
 	if b.level >= 0 and columns.has(b.column_key):
+		# Everything stacked above drops as whole cubes and shatters where it lands.
 		var column: Array = columns[b.column_key]
-		var delay := 0.0
+		var fell := 0
+		var top := b.global_position
 		for k in range(b.level + 1, column.size()):
 			var above: Block = column[k]
 			if is_instance_valid(above) and not above.dead:
-				above.dead = true
-				delay += 0.09
-				get_tree().create_timer(delay).timeout.connect(_collapse.bind(above))
+				fell += 1
+				top = above.global_position
+				_fall(above, push)
 		column.resize(b.level)
-		if delay > 0.0:
+		if fell > 0:
 			G.sfx("crumble", -2.0)
+		if fell >= 2:
+			var bonus := fell * 15
+			G.add_score(bonus)
+			G.add_shake(0.25)
+			G.popup(top + Vector3(0, 2.0, 0), ["TOWER DOWN! +%d", bonus], b.color.lerp(Color.WHITE, 0.3), 1.1)
+		if b.level == 0:
+			_base_lost(b.column_key, push)
 	b.queue_free()
 
 
-func _collapse(b: Block) -> void:
-	if not is_instance_valid(b):
+## A building lost one of its base cubes. At half its base, the rest gives way: column after
+## column drops, nearest to the damage first.
+func _base_lost(key: Vector2i, push: Vector3) -> void:
+	if not _building_of.has(key):
 		return
-	G.net_mute += 1
-	G.debris(b.global_position, b.color, b.size)
-	G.net_mute -= 1
-	G.add_shake(0.05)
-	G.add_score(1)
+	var info: Dictionary = _buildings[_building_of[key]]
+	info["down"] += 1
+	var keys: Array = info["keys"]
+	if info["fallen"] or info["down"] * 2 < keys.size():
+		return
+	info["fallen"] = true
+	var cubes := 0
+	var top := Vector3.ZERO
+	var color := Color.WHITE
+	for k: Vector2i in keys:
+		var col: Array = columns.get(k, [])
+		var live := 0
+		for blk in col:
+			if is_instance_valid(blk) and not (blk as Block).dead:
+				live += 1
+				top = (blk as Block).global_position
+				color = (blk as Block).color
+		if live == 0:
+			continue
+		cubes += live
+		var wait := 0.15 + Vector2(k - key).length() * 0.14
+		get_tree().create_timer(wait).timeout.connect(_drop_column.bind(k, push))
+	if cubes > 0:
+		var bonus := cubes * 10
+		G.add_score(bonus)
+		G.sfx("crumble", 0.0, 0.7)
+		G.popup(top + Vector3(0, 5.5, 0), ["BUILDING DOWN! +%d", bonus], color.lerp(Color.WHITE, 0.4), 1.3)
+
+
+## Every cube left in a column drops (the base crumbles where it stands).
+func _drop_column(key: Vector2i, push: Vector3) -> void:
+	var col: Array = columns.get(key, [])
+	for blk in col:
+		if is_instance_valid(blk) and not (blk as Block).dead:
+			_fall(blk, push)
+	columns[key] = []
+	G.add_shake(0.15)
+
+
+## A falling cube hit the street: it batters the cubes around where it landed. Host only.
+func impact(pos: Vector3, radius: float, damage: float) -> void:
+	var q := PhysicsShapeQueryParameters3D.new()
+	var sphere := SphereShape3D.new()
+	sphere.radius = radius
+	q.shape = sphere
+	q.transform = Transform3D(Basis(), Vector3(pos.x, 1.0, pos.z))
+	q.collision_mask = G.LAYER_TERRAIN
+	for hit in get_world_3d().direct_space_state.intersect_shape(q, 32):
+		var blk := hit["collider"] as Block
+		if blk and not blk.dead:
+			blk.take_damage(damage, pos, G.Team.PLAYER)
+
+
+## A cube whose support is gone: it falls as one piece (DebrisField) and breaks on the street.
+func _fall(b: Block, push: Vector3) -> void:
+	b.dead = true
 	_hide(b)
-	_replicate_destroy(b)
+	if G.debris_field:
+		G.debris_field.fall(b.global_position, b.color, b.size, push, true, b.has_windows)
+	Net.send_event("fall", [b.id, push], true)
+	G.add_score(1)
+	_replicate_destroy(b, Vector3.ZERO)
 	b.queue_free()
 
 
-func _replicate_destroy(b: Block) -> void:
+func _replicate_destroy(b: Block, push: Vector3) -> void:
 	destroyed_ids.append(b.id)
-	Net.send_event("block", [b.id], true)
+	Net.send_event("block", [b.id, push], true)
 
 
 func _make_block(block_size: Vector3, pos: Vector3, color: Color, max_hp: float,
@@ -214,6 +299,8 @@ func _gen_buildings(ox: float, oz: float) -> void:
 			continue
 		var h := rng.randi_range(1, 3) + (rng.randi_range(1, 3) if rng.randf() < 0.35 else 0)
 		var color: Color = PALETTE[rng.randi() % PALETTE.size()]
+		var bid := _buildings.size()
+		_buildings.append({"keys": [], "down": 0, "fallen": false})
 		for i in w:
 			for j in d:
 				used[Vector2i(cx + i, cz + j)] = true
@@ -228,6 +315,8 @@ func _gen_buildings(ox: float, oz: float) -> void:
 					b.level = k
 					column.append(b)
 				columns[key] = column
+				_building_of[key] = bid
+				_buildings[bid]["keys"].append(key)
 		placed += 1
 
 

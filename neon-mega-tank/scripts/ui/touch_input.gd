@@ -21,12 +21,16 @@ func poll() -> void:
 	var m := t.move if t else Vector2.ZERO
 	var act := t != null and t.action_held
 	var inter := t != null and t.interact_held
+	var a := m
 	for f in [_fallback_pad, _fallback_keys]:
 		if f.move != Vector2.ZERO:
 			m = f.move
+		if f.aim != Vector2.ZERO:
+			a = f.aim
 		act = act or f.action_held
 		inter = inter or f.interact_pressed
 	move = m.limit_length(1.0)
+	aim = a.limit_length(1.0)
 	action_pressed = act and not action_held
 	interact_pressed = inter and not _interact_prev_t
 	_interact_prev_t = inter

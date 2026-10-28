@@ -32,6 +32,11 @@ func _ready() -> void:
 
 	column.add_child(_label("NEON MEGA TANK", 88, Color(1.0, 0.3, 0.85)))
 	column.add_child(_label("ネオン・メガ・タンク　～ 生き残れ！ ～", 38, Color(0.3, 0.9, 1.0)))
+	if G.demo:
+		var left := G.t("DEMO  -  %s OF BATTLE LEFT") % G.format_time(ceilf(G.demo_left))
+		if G.demo_left <= 0.0:
+			left = G.t("DEMO  -  battle time used up: thanks for playing!")
+		column.add_child(_label(left, 32, Color(1.0, 0.88, 0.2)))
 	var spacer := Control.new()
 	spacer.custom_minimum_size = Vector2(0, 16)
 	column.add_child(spacer)
@@ -48,16 +53,28 @@ func _ready() -> void:
 	# The subtitle is always in the other language, so whoever needs the switch can read it.
 	var japanese := G.language == "ja"
 	var lang := _button("%s:  %s" % [G.t("LANGUAGE"), "日本語" if japanese else "ENGLISH"],
-		"Switch to English" if japanese else "日本語に切り替える", Color(1.0, 0.3, 0.85))
+		"Switch to English" if japanese else "日本語に切り替える", Color(1.0, 0.3, 0.85), 330)
 	lang.pressed.connect(_toggle_language)
-	var credits := _button(G.t("CREDITS"), "", Color(0.75, 0.55, 1.0))
+	var credits := _button(G.t("CREDITS"), "", Color(0.75, 0.55, 1.0), 200)
 	credits.pressed.connect(func() -> void: _show_credits(credits))
-	for b in [play, host, join, lang, credits]:
-		_main_box.add_child(b)
+	var buttons: Array[Control] = [play, host, join]
+	if G.demo:
+		var buy := _button(G.t("GET THE FULL GAME"), G.t("endless waves on itch.io - opens your browser"), Color(1.0, 0.88, 0.2))
+		buy.pressed.connect(func() -> void: OS.shell_open(G.STORE_URL))
+		buttons.insert(1, buy)
+	# Language, credits and quit share one row so the menu fits a landscape phone.
+	var small := HBoxContainer.new()
+	small.add_theme_constant_override("separation", 14)
+	small.alignment = BoxContainer.ALIGNMENT_CENTER
+	small.add_child(lang)
+	small.add_child(credits)
 	if not OS.has_feature("mobile"):
-		var quit := _button(G.t("QUIT"), "", Color(1.0, 0.3, 0.3))
+		var quit := _button(G.t("QUIT"), "", Color(1.0, 0.3, 0.3), 162)
 		quit.pressed.connect(func() -> void: get_tree().quit())
-		_main_box.add_child(quit)
+		small.add_child(quit)
+	buttons.append(small)
+	for b in buttons:
+		_main_box.add_child(b)
 
 	_join_box = VBoxContainer.new()
 	_join_box.add_theme_constant_override("separation", 12)
@@ -174,7 +191,7 @@ func _label(text: String, size: int, color: Color) -> Label:
 func _button(title: String, subtitle: String, color: Color, width := 720) -> Button:
 	var b := Button.new()
 	b.text = title + ("\n" + subtitle if subtitle != "" else "")
-	b.custom_minimum_size = Vector2(width, 110 if subtitle != "" else 84)
+	b.custom_minimum_size = Vector2(width, 100 if subtitle != "" else 84)
 	b.add_theme_font_override("font", G.jp_font)
 	b.add_theme_font_size_override("font_size", 34 if subtitle == "" else 30)
 	b.add_theme_color_override("font_color", color)

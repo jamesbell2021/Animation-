@@ -39,6 +39,8 @@ func setup(projectile_kind: String, projectile_team: int, vel: Vector3, tint: Co
 	G.neon_box(self, stats["size"], Vector3.ZERO, color, stats["energy"])
 	if kind == "rocket":
 		add_to_group("rockets")
+	if team == G.Team.ENEMY:
+		add_to_group("enemy_shots")
 	if kind in ["shell", "rocket", "enemy_shell"]:
 		_add_trail()
 
@@ -74,6 +76,8 @@ func _physics_process(delta: float) -> void:
 		return
 	if team == G.Team.PLAYER and kind == "bullet" and _hits_rocket(from, to):
 		return
+	if _blocked(from, to):
+		return
 	var mask := G.LAYER_TERRAIN | (G.LAYER_ENEMY if team == G.Team.PLAYER else G.LAYER_PLAYER)
 	var hit := get_world_3d().direct_space_state.intersect_ray(
 			PhysicsRayQueryParameters3D.create(from, to, mask))
@@ -99,8 +103,35 @@ func _hits_rocket(from: Vector3, to: Vector3) -> bool:
 	return false
 
 
+## Energy shields: the mega tank's (stops enemy fire) and barrier trucks' domes (stop ours).
+## Returns true if this projectile was stopped. Visual-only copies just vanish.
+func _blocked(from: Vector3, to: Vector3) -> bool:
+	if team == G.Team.ENEMY:
+		var tank := G.tank
+		if tank == null or not tank.shield_covers(to):
+			return false
+		if not visual_only:
+			tank.shield_block(to, damage + blast_damage)
+			_end_remote()
+		dead = true
+		queue_free()
+		return true
+	for node in get_tree().get_nodes_in_group("enemy_domes"):
+		var truck: ShieldTruck = node
+		if truck.blocks(from, to):
+			if not visual_only:
+				truck.absorb(damage + blast_damage, to)
+				_end_remote()
+			dead = true
+			queue_free()
+			return true
+	return false
+
+
 ## Client: fly until something solid is reached; the host reports the real outcome.
 func _fly_visual(from: Vector3, to: Vector3, delta: float) -> void:
+	if _blocked(from, to):
+		return
 	var mask := G.LAYER_TERRAIN | (G.LAYER_ENEMY if team == G.Team.PLAYER else G.LAYER_PLAYER)
 	var hit := get_world_3d().direct_space_state.intersect_ray(
 			PhysicsRayQueryParameters3D.create(from, to, mask))

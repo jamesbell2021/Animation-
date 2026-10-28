@@ -15,7 +15,7 @@ enum Mode { OFFLINE, HOST, CLIENT }
 
 const PORT := 47470
 const DISCOVERY_PORT := 47471
-const MAGIC := "NEONMEGATANK2"  # bump when the network messages change
+const MAGIC := "NEONMEGATANK3"  # bump when the network messages change
 const SNAPSHOT_RATE := 20.0
 const INPUT_RATE := 30.0
 ## Remote players use device ids from here up (device = REMOTE_BASE + peer id).
@@ -43,6 +43,8 @@ var _action_seq := 0
 var _interact_seq := 0
 var _prev_action := false
 var _prev_interact := false
+## Where the repair needle was on this phone when ACTION last went down.
+var _press_needle := -1.0
 var _awaiting_welcome := false
 var _welcome_t := 0.0
 
@@ -242,11 +244,13 @@ func _snapshot(data: Array) -> void:
 
 
 @rpc("any_peer", "call_remote", "unreliable_ordered")
-func _remote_input(move: Vector2, action: bool, action_seq: int, interact_seq: int) -> void:
+func _remote_input(move: Vector2, aim: Vector2, action: bool, action_seq: int, interact_seq: int,
+		needle: float) -> void:
 	if mode != Mode.HOST:
 		return
 	remote_inputs[multiplayer.get_remote_sender_id()] = {
-		"move": move.limit_length(1.0), "action": action, "action_seq": action_seq, "interact_seq": interact_seq}
+		"move": move.limit_length(1.0), "aim": aim.limit_length(1.0), "action": action,
+		"action_seq": action_seq, "interact_seq": interact_seq, "needle": needle}
 
 
 func _process(delta: float) -> void:
@@ -278,15 +282,18 @@ func _send_input(delta: float) -> void:
 	var inp := _client_main.local_input
 	inp.poll()
 	# Presses are counted so a dropped packet never loses a button press.
-	if inp.action_held and not _prev_action:
+	var pressed_now := inp.action_held and not _prev_action
+	if pressed_now:
 		_action_seq += 1
+		# Judge repair taps by the needle this phone was showing, not where it is on the host.
+		_press_needle = G.tank.needle_now() if G.tank else -1.0
 	if inp.interact_pressed:
 		_interact_seq += 1
 	_prev_action = inp.action_held
 	_input_t -= delta
-	if _input_t <= 0.0 or inp.interact_pressed:
+	if _input_t <= 0.0 or inp.interact_pressed or pressed_now:
 		_input_t = 1.0 / INPUT_RATE
-		_remote_input.rpc_id(1, inp.move, inp.action_held, _action_seq, _interact_seq)
+		_remote_input.rpc_id(1, inp.move, inp.aim, inp.action_held, _action_seq, _interact_seq, _press_needle)
 
 
 func _broadcast() -> void:

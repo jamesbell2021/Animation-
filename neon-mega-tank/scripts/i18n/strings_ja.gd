@@ -113,4 +113,53 @@ const TEXT := {
 	"★ 新記録！ NEW RECORD! ★": "★ 新記録！ ★",
 	"best %s  (wave %d)": "ベスト %s（ウェーブ %d）",
 	"press ACTION to redeploy": "ACTIONで再出撃",
+
+	# Repair gauge, shield and popups
+	"TAP in the green   HOLD = shield": "緑でタップ　長押し＝シールド",
+	"SHIELD": "シールド",
+	"SHIELD UP": "シールド展開",
+	"RECHARGING": "充電中",
+	"UP ": "展開 ",
+	"CANNON %s   MG %s   SHIELD %s   BREACHES %d": "主砲 %s   機銃 %s   シールド %s   損傷 %d",
+	"REPAIR - SHIELD UP": "修理 - シールド展開",
+	"REPAIR  COMBO x%d": "修理  コンボ x%d",
+	"COMBO x%d": "コンボ x%d",
+	"PERFECT! +%d": "パーフェクト！ +%d",
+	"PERFECT! +SHIELD": "パーフェクト！ +シールド",
+	"GOOD +%d": "グッド +%d",
+	"GOOD": "グッド",
+	"MISS": "ミス",
+	"SHIELD DOWN": "シールド消失",
+	"TOWER DOWN! +%d": "タワー崩落！ +%d",
+	"BUILDING DOWN! +%d": "ビル倒壊！ +%d",
+	"SQUASHED!": "ぺしゃんこ！",
+	"BARRIER DOWN!": "結界破壊！",
+	"GAMEPAD   L-STICK move   R-STICK aim guns   B / X / Y board/leave   A or RT action":
+		"ゲームパッド   左スティック 移動   右スティック 照準   B / X / Y 乗り降り   A か RT アクション",
+	"REPAIR: tap ACTION when the needle is in the green - hold ACTION for an energy shield":
+		"修理：針が緑に入ったらアクション　長押しでエネルギーシールド",
+
+	# New waves and enemies
+	"ドローン嵐！  DRONE STORM - WAVE %d": "ドローン嵐！  ウェーブ %d",
+	"装甲部隊！  ARMOUR COLUMN - WAVE %d": "装甲部隊！  ウェーブ %d",
+	"迫撃砲！  MORTAR BARRAGE - WAVE %d": "迫撃砲！  ウェーブ %d",
+	"%d DRONES": "ドローン %d",
+	"%d BUGGIES": "自爆バギー %d",
+	"%d HORNET SWARMS": "ホーネット群 %d",
+	"%d MORTARS": "迫撃砲 %d",
+	"%d BARRIER TRUCKS": "結界車 %d",
+	"%d GUNSHIPS": "攻撃ヘリ %d",
+
+	# Demo
+	"DEMO  %s LEFT": "体験版  残り %s",
+	"DEMO OVER": "体験版終了",
+	"the demo's 10 minutes of battle are used up": "体験版の戦闘時間（10分）を使い切りました",
+	"get the full game: %s": "製品版はこちら：%s",
+	"デモ終了  DEMO OVER - THANKS FOR PLAYING!": "体験版終了 - 遊んでくれてありがとう！",
+	"the full game is endless - get it on itch.io": "製品版はエンドレス - itch.ioで入手",
+	"press ACTION for the menu": "ACTIONでメニューへ",
+	"DEMO  -  %s OF BATTLE LEFT": "体験版  -  戦闘時間 残り %s",
+	"DEMO  -  battle time used up: thanks for playing!": "体験版  -  戦闘時間終了：遊んでくれてありがとう！",
+	"GET THE FULL GAME": "製品版を入手",
+	"endless waves on itch.io - opens your browser": "itch.ioでエンドレスに - ブラウザが開きます",
 }

@@ -18,6 +18,7 @@ var crt: ColorRect
 var indicators: ThreatIndicators
 var boss_label: Label
 var touch: TouchControls
+var gauge: RepairGauge
 var _root: Control
 ## Hides the gameplay overlay (used when filming the trailer).
 var hidden_for_film := false
@@ -63,6 +64,102 @@ class ThreatIndicators extends Control:
 				at + dir * size * 1.4, at + side * size - dir * size * 0.5, at - side * size - dir * size * 0.5]), col)
 
 
+class RepairGauge extends Control:
+	## The REPAIR station's timing game, drawn just above the reactor on every screen: a needle
+	## sweeps across the bar; tap ACTION while it is in the green (bright middle = PERFECT).
+	## Underneath, the shield charge that holding ACTION spends.
+	const W := 330.0
+	const H := 34.0
+	var camera: Camera3D
+	var _t := 0.0
+	var _seen_seq := 0
+	var _flash := 0.0
+	var _flash_col := Color.WHITE
+	var _combo_pop := 0.0
+	var _last_combo := 0
+
+	func _process(delta: float) -> void:
+		_t += delta
+		_flash = maxf(0.0, _flash - delta * 3.0)
+		_combo_pop = maxf(0.0, _combo_pop - delta * 4.0)
+		queue_redraw()
+
+	func _draw() -> void:
+		var tank := G.tank
+		if tank == null or tank.dead or camera == null or not is_instance_valid(tank.reactor):
+			return
+		var st: MegaTank.Station = tank.stations["repair"]
+		if st.occupant == null:
+			return
+		var col: Color = st.occupant.color
+		if tank.grade_seq != _seen_seq:
+			_seen_seq = tank.grade_seq
+			_flash = 1.0
+			match tank.last_grade:
+				"perfect":
+					_flash_col = Color(0.5, 1.0, 0.6)
+				"good":
+					_flash_col = Color(0.5, 0.9, 1.0)
+				_:
+					_flash_col = Color(1.0, 0.3, 0.2)
+		if tank.combo > _last_combo:
+			_combo_pop = 1.0
+		_last_combo = tank.combo
+		# Beside the tank (right of it on screen), clear of the crew panel and the touch buttons.
+		var anchor := camera.unproject_position(tank.global_position + Vector3(0, 1.4, 0))
+		var view := get_viewport_rect().size
+		var x0 := clampf(anchor.x + 170.0, 16.0, view.x - W - 70.0)
+		var y0 := clampf(anchor.y - 80.0, 260.0, view.y - 330.0)
+		var font := G.jp_font
+		# Panel
+		draw_rect(Rect2(x0 - 10, y0 - 34, W + 20, H + 100), Color(0.0, 0.01, 0.03, 0.72))
+		var title := G.t("REPAIR") if not st.jammed else G.t("JAMMED")
+		draw_string(font, Vector2(x0, y0 - 10), title, HORIZONTAL_ALIGNMENT_LEFT, -1, 22, col)
+		var hint := G.t("TAP in the green   HOLD = shield")
+		draw_string(font, Vector2(x0, y0 + H + 58), hint, HORIZONTAL_ALIGNMENT_CENTER, W, 17, Color(0.75, 0.85, 1.0, 0.8))
+		# Bar, zone and perfect strip
+		draw_rect(Rect2(x0, y0, W, H), Color(0.05, 0.08, 0.12, 0.9))
+		var zc := tank.zone_center
+		var zh := tank.zone_half
+		var pf := zh * MegaTank.PERFECT_FRACTION
+		var near := maxf(0.0, 1.0 - absf(tank.needle_now() - zc) / maxf(zh, 0.01))
+		draw_rect(Rect2(x0 + (zc - zh) * W, y0, zh * 2.0 * W, H), Color(0.25, 1.0, 0.45, 0.35 + 0.3 * near))
+		draw_rect(Rect2(x0 + (zc - pf) * W, y0, pf * 2.0 * W, H), Color(0.7, 1.0, 0.8, 0.75 + 0.25 * near))
+		for i in range(1, 10):
+			var tx := x0 + W * i / 10.0
+			draw_line(Vector2(tx, y0 + H - 6), Vector2(tx, y0 + H), Color(1, 1, 1, 0.25), 1.0)
+		var border := col.lerp(_flash_col, _flash)
+		draw_rect(Rect2(x0, y0, W, H), border, false, 3.0 + 3.0 * _flash)
+		# Needle
+		var nx := x0 + tank.needle_now() * W
+		var ncol := Color.WHITE if tank.rep_stun <= 0.0 else Color(1.0, 0.25, 0.15)
+		draw_line(Vector2(nx, y0 - 8), Vector2(nx, y0 + H + 8), Color(ncol, 0.35), 11.0)
+		draw_line(Vector2(nx, y0 - 8), Vector2(nx, y0 + H + 8), ncol, 4.0)
+		# Combo
+		if tank.combo >= 2:
+			var size := int(26 + 14 * _combo_pop)
+			draw_string(font, Vector2(x0 + W + 14, y0 + H - 4), "x%d" % tank.combo, HORIZONTAL_ALIGNMENT_LEFT,
+					-1, size, Color(1.0, 0.9, 0.3))
+		# Shield charge
+		var sy := y0 + H + 14
+		var frac := clampf(tank.shield / MegaTank.SHIELD_MAX, 0.0, 1.0)
+		var scol := Color(0.4, 0.9, 1.0)
+		var label := G.t("SHIELD")
+		if tank.shield_up:
+			scol = scol.lerp(Color.WHITE, 0.4 + 0.3 * sin(_t * 18.0))
+			label = G.t("SHIELD UP")
+		elif tank.shield_lock > 0.0:
+			scol = Color(1.0, 0.3, 0.2)
+			label = G.t("RECHARGING")
+		elif tank.shield < MegaTank.SHIELD_MIN:
+			scol = Color(0.4, 0.6, 0.8)
+		draw_string(font, Vector2(x0, sy + 15), label, HORIZONTAL_ALIGNMENT_LEFT, 120, 17, scol)
+		draw_rect(Rect2(x0 + 120, sy + 2, W - 120, 14), Color(0.05, 0.08, 0.12, 0.9))
+		draw_rect(Rect2(x0 + 120, sy + 2, (W - 120) * frac, 14), Color(scol, 0.85))
+		var min_x := x0 + 120 + (W - 120) * MegaTank.SHIELD_MIN / MegaTank.SHIELD_MAX
+		draw_line(Vector2(min_x, sy), Vector2(min_x, sy + 18), Color(1, 1, 1, 0.5), 2.0)
+
+
 func _ready() -> void:
 	layer = 10
 	var root := Control.new()
@@ -75,6 +172,11 @@ func _ready() -> void:
 	indicators.set_anchors_preset(Control.PRESET_FULL_RECT)
 	indicators.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(indicators)
+
+	gauge = RepairGauge.new()
+	gauge.set_anchors_preset(Control.PRESET_FULL_RECT)
+	gauge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(gauge)
 
 	var panel := PanelContainer.new()
 	panel.position = Vector2(28, 22)
@@ -132,13 +234,17 @@ func _ready() -> void:
 	help_label.text = G.tx([
 		["KEYBOARD 1   WASD move   E board/leave station   SPACE action"],
 		["KEYBOARD 2   ARROWS move   R-SHIFT or / board/leave   ENTER action"],
-		["GAMEPAD   L-STICK move   B / X / Y board/leave   A or RT action"],
+		["GAMEPAD   L-STICK move   R-STICK aim guns   B / X / Y board/leave   A or RT action"],
+		["REPAIR: tap ACTION when the needle is in the green - hold ACTION for an energy shield"],
 		["F2 / BACK  AI crew on-off   M music   F1 CRT   F11 fullscreen   ESC quit / lobby"]])
+	_anchor_help(5)
 
 	if G.is_mobile():
 		help_label.text = G.tx([
 			["LEFT SIDE drag to move   ACTION fire / repair / patch breaches"],
+			["REPAIR: tap ACTION when the needle is in the green - hold ACTION for an energy shield"],
 			["BOARD get on or off the station you stand on   phone BACK  menu"]])
+		_anchor_help(3)
 
 	boss_label = _label(30, Color(0.95, 0.15, 0.35), G.jp_font)
 	boss_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -164,6 +270,13 @@ func _ready() -> void:
 	crt_layer.add_child(crt)
 	# The CRT pass costs a full-screen copy; phones start without it (F1 toggles on desktop).
 	crt.visible = not G.is_mobile()
+
+
+func _anchor_help(lines: int) -> void:
+	help_label.offset_left = -470.0
+	help_label.offset_right = 470.0
+	help_label.offset_top = -40.0 - lines * 28.0
+	help_label.offset_bottom = -28.0
 
 
 func _panel_style() -> StyleBoxFlat:
@@ -256,6 +369,8 @@ func refresh(main: Main, delta: float) -> void:
 	if boss_label.visible:
 		boss_label.text = G.t("鬼戦車 ONI SENSHA  %s") % _bar(boss.hp / maxf(boss.max_hp, 1.0), 18)
 	indicators.camera = main.camera
+	gauge.camera = main.camera
+	gauge.visible = main.state != Main.State.GAMEOVER
 	for i in 4:
 		var cells: Array = roster[i]
 		var col: Color = G.PLAYER_COLORS[i]
@@ -281,8 +396,9 @@ func refresh(main: Main, delta: float) -> void:
 	var heat := _bar(tank.mg_heat / 100.0, 6)
 	var cannon := G.t("READY ") if tank.cannon_cd <= 0.0 else _bar(1.0 - tank.cannon_cd / MegaTank.CANNON_RELOAD, 6)
 	var mg := (G.t("OVERHEAT ") if tank.mg_overheated else G.t("HEAT ")) + heat
+	var shield := (G.t("UP ") if tank.shield_up else "") + _bar(tank.shield / MegaTank.SHIELD_MAX, 6)
 	var breaches := tank.breaches.size()
-	weapons_label.text = G.t("CANNON %s   MG %s   BREACHES %d") % [cannon, mg, breaches]
+	weapons_label.text = G.t("CANNON %s   MG %s   SHIELD %s   BREACHES %d") % [cannon, mg, shield, breaches]
 	_tint(weapons_label, Color(1.0, 0.35, 0.25) if breaches > 0 and fmod(_time, 0.6) < 0.3 else Color(0.7, 0.9, 1.0))
 
 	var enemies := get_tree().get_nodes_in_group("enemies").size() + main.spawn_queue.size()
@@ -293,6 +409,8 @@ func refresh(main: Main, delta: float) -> void:
 		_:
 			wave_label.text = G.t("TIME %s   WAVE %02d   HOSTILES %02d   SCORE %06d") % [
 				G.format_time(main.survival_time), main.wave, enemies, G.score]
+	if G.demo:
+		wave_label.text += "\n" + G.t("DEMO  %s LEFT") % G.format_time(ceilf(G.demo_left))
 
 	help_label.visible = main.state == Main.State.LOBBY
 	_place_title(main.state == Main.State.LOBBY)
