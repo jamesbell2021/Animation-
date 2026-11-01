@@ -137,7 +137,9 @@ func _rig_eye(key: String, color: Color, size: float = 0.3, energy: float = 9.0)
 	var holder := Node3D.new()
 	holder.add_child(e)
 	Look.glint(holder, Vector3(0.0, 0.0, -0.02), color, size)
-	rig.attach_at("head", holder, at)
+	# The crab and the squid have no head bone: their eyes ride the body (bone 0).
+	var bone := "head" if rig.skeleton.find_bone("head") >= 0 else rig.skeleton.get_bone_name(0)
+	rig.attach_at(bone, holder, at)
 
 ## Walk cycle for humanoids: stride (radians of phase per metre), leg and arm swing,
 ## a forward hunch and arms held out in front.
