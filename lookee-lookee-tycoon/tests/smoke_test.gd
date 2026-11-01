@@ -54,9 +54,19 @@ func open_bust(beach: Node, v: Vendor, cop_node: Police) -> Node:
 	if beach.chase_active:
 		beach._end_chase(true)
 	v.release()
-	if not v.stall.is_open():
+	# Get the stall open, whatever the vendor was doing (an earlier step can leave them
+	# mid-pack or off the sand, depending on timing).
+	for attempt in 8:
+		if v.stall.is_open() and v.state != Vendor.State.PACKING:
+			break
+		if v.state in [Vendor.State.SETUP, Vendor.State.PACKING]:
+			await wait(0.5)
+			continue
+		if not beach.can_set_up_at(v.position):
+			v.position = beach.clamp_to_sand(Vector2(1600, 620))
+			v.stop()
 		v.command_toggle_stall()
-		await wait(1.0)
+		await wait(Vendor.SETUP_TIME + 0.3)
 	await clear_overlays()
 	cop_node.state = Police.State.PATROL
 	cop_node.position = v.stall.position + Vector2(30, 40)
