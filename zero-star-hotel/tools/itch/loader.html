@@ -1,0 +1,421 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Zero Star Hotel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@600;800&display=swap">
+<style>
+  [hidden] { display: none !important; }
+  body { margin: 0; }
+  /* One sunset-on-the-Costa look (the game's own palette, deliberately single-theme), full-screen canvas with a loader on top. */
+  :root {
+    --sky: #8e6bb3;
+    --dusk: #ff9e5e;
+    --sea: #1e9bd7;
+    --sand: #e8c98a;
+    --lemon: #ffd23f;
+    --lime: #7cc242;
+    --ink: #2b1d16;
+    --paper: #fffaf0;
+    --danger: #e53935;
+    --face: "Open Sans", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    color-scheme: light;
+  }
+  html, body { height: 100%; }
+  body {
+    background: var(--sea);
+    color: var(--ink);
+    font-family: var(--face);
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+  #canvas {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    touch-action: none;
+    outline: none;
+    background: var(--sea);
+  }
+  #loader {
+    position: fixed;
+    inset: 0;
+    z-index: 5;
+    display: grid;
+    place-items: center;
+    overflow-y: auto;
+    padding-block: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-bottom, 0px));
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    background:
+      linear-gradient(to bottom,
+        var(--sky) 0 22%,
+        var(--dusk) 48% 62%,
+        var(--sea) 62% 74%,
+        var(--sand) 74% 100%);
+  }
+  .sun {
+    position: absolute;
+    top: 46%;
+    left: 12%;
+    width: clamp(56px, 12vmin, 120px);
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: #ffd166;
+    box-shadow: 0 0 0 14px rgba(255, 209, 102, 0.35);
+  }
+  .card {
+    position: relative;
+    display: grid;
+    justify-items: center;
+    gap: 14px;
+    width: min(100%, 560px);
+    text-align: center;
+  }
+  h1 {
+    margin: 0;
+    font-weight: 800;
+    font-size: clamp(2.1rem, 8vmin, 4.4rem);
+    line-height: 0.95;
+    letter-spacing: 0.01em;
+    color: var(--lemon);
+    -webkit-text-stroke: 0.14em var(--ink);
+    paint-order: stroke fill;
+    text-shadow: 0 0.08em 0 rgba(0, 0, 0, 0.25);
+    text-wrap: balance;
+  }
+  .tagline {
+    margin: 0;
+    font-weight: 800;
+    font-size: clamp(1rem, 3vmin, 1.3rem);
+    color: var(--paper);
+    -webkit-text-stroke: 0.22em var(--ink);
+    paint-order: stroke fill;
+  }
+  .stage {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 6px;
+  }
+  .vendor {
+    width: clamp(110px, 24vmin, 180px);
+    height: auto;
+    max-width: 100%;
+  }
+  .bubble {
+    position: relative;
+    align-self: flex-start;
+    margin-top: 8px;
+    padding: 8px 14px;
+    border: 3px solid var(--ink);
+    border-radius: 16px;
+    background: var(--lemon);
+    font-weight: 800;
+    font-size: clamp(0.95rem, 2.6vmin, 1.15rem);
+    white-space: nowrap;
+  }
+  .bubble::after {
+    content: "";
+    position: absolute;
+    left: -12px;
+    bottom: 10px;
+    border: 7px solid transparent;
+    border-right: 10px solid var(--ink);
+  }
+  .meter {
+    width: min(100%, 420px);
+    display: grid;
+    gap: 6px;
+  }
+  .bar {
+    height: 22px;
+    border: 3px solid var(--ink);
+    border-radius: 12px;
+    background: rgba(255, 250, 240, 0.85);
+    overflow: hidden;
+  }
+  .fill {
+    height: 100%;
+    width: 0%;
+    background: var(--lemon);
+    transition: width 0.15s linear;
+  }
+  .status {
+    margin: 0;
+    font-weight: 600;
+    font-size: 0.95rem;
+    font-variant-numeric: tabular-nums;
+  }
+  .buttons {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+  }
+  button {
+    font: 800 1.15rem/1 var(--face);
+    color: var(--paper);
+    padding: 16px 28px;
+    min-height: 64px;
+    border: 4px solid var(--ink);
+    border-bottom-width: 8px;
+    border-radius: 18px;
+    background: var(--lime);
+    cursor: pointer;
+    -webkit-text-stroke: 0.18em var(--ink);
+    paint-order: stroke fill;
+  }
+  button.big { font-size: 1.7rem; min-width: 220px; }
+  button.secondary { background: var(--sea); }
+  button:active { border-bottom-width: 4px; transform: translateY(4px); }
+  button:focus-visible { outline: 4px solid var(--paper); outline-offset: 3px; }
+  .note {
+    margin: 0;
+    max-width: 44ch;
+    font-weight: 600;
+    font-size: 0.85rem;
+    line-height: 1.4;
+  }
+  .error {
+    margin: 0;
+    max-width: 46ch;
+    padding: 12px 16px;
+    border: 3px solid var(--ink);
+    border-radius: 14px;
+    background: #ffd0c4;
+    font-weight: 600;
+    line-height: 1.4;
+  }
+  .soundcheck { display: grid; justify-items: center; gap: 6px; }
+  button.test {
+    font-size: 0.95rem;
+    min-height: 44px;
+    padding: 8px 18px;
+    border-width: 3px;
+    border-bottom-width: 5px;
+    background: var(--paper);
+    color: var(--ink);
+    -webkit-text-stroke: 0;
+  }
+  .test-result { margin: 0; max-width: 46ch; font-weight: 600; font-size: 0.85rem; line-height: 1.4; }
+  @media (prefers-reduced-motion: no-preference) {
+    .vendor { animation: bob 1.2s ease-in-out infinite; }
+    @keyframes bob { 50% { transform: translateY(-6px) rotate(-2deg); } }
+  }
+</style>
+
+</head>
+<body>
+<canvas id="canvas" tabindex="0">Your browser can't show the game.</canvas>
+
+<div id="loader">
+  <div class="sun"></div>
+  <div class="card">
+    <h1>Zero Star Hotel</h1>
+    <p class="tagline">From health hazard to three stars</p>
+    <div class="stage">
+      <img class="vendor" src="manager.png" alt="The hotel manager in a red cap and flowery shirt">
+      <div class="bubble" id="bubble">OI OI! Welcome!</div>
+    </div>
+    <div class="meter" id="meter">
+      <div class="bar"><div class="fill" id="fill"></div></div>
+      <p class="status" id="status">Unlocking the front door…</p>
+    </div>
+    <div class="buttons" id="buttons" hidden>
+      <button class="big" id="play" type="button">PLAY</button>
+      <button class="secondary" id="play-full" type="button" hidden>Play full screen</button>
+    </div>
+    <p class="error" id="error" hidden></p>
+    <div class="soundcheck">
+      <button class="test" id="test-sound" type="button">Test sound</button>
+      <p class="test-result" id="test-result" aria-live="polite"></p>
+    </div>
+    <p class="note">Tap trouble bubbles to send the manager, tap cockroaches to squash them, tap rooms to sort them out, drag to look around. On a phone, turn it sideways. Your progress is saved in this browser.</p>
+  </div>
+</div>
+
+<script>
+  // Sound: Safari (and phones generally) only let a page start audio while it is handling a
+  // tap. Godot makes its AudioContext a moment after PLAY is tapped, too late, so it would
+  // stay muted. Instead PLAY creates and unlocks the context inside the tap, and Godot is
+  // handed that same context. Any later tap or key also wakes audio the browser has paused
+  // (phones do this when the screen locks).
+  const RealAudioContext = window.AudioContext || window.webkitAudioContext;
+  const audioContexts = [];
+  let unlockedCtx = null;
+
+  // iPhones mute web audio when the ring/silent switch is on silent, but not media playback.
+  // Declaring a "playback" audio session (iOS 17+) and playing a silent looping track inside
+  // the tap moves the page into the media category, so the game is heard either way.
+  const SILENT_WAV = 'data:audio/wav;base64,UklGRsQPAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YaAPAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA';
+  let silentTrack = null;
+
+  function startSilentTrack() {
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}
+    if (!silentTrack) {
+      silentTrack = document.createElement('audio');
+      silentTrack.src = SILENT_WAV;
+      silentTrack.loop = true;
+      silentTrack.setAttribute('playsinline', '');
+      silentTrack.setAttribute('aria-hidden', 'true');
+      silentTrack.volume = 0.01;
+    }
+    const p = silentTrack.play();
+    if (p && p.catch) p.catch(() => {});
+  }
+
+  document.addEventListener('visibilitychange', () => {
+    if (!silentTrack) return;
+    if (document.hidden) silentTrack.pause();
+    else startSilentTrack();
+  });
+
+  function unlockAudio() {
+    startSilentTrack();
+    if (!RealAudioContext || unlockedCtx) return;
+    try {
+      unlockedCtx = new RealAudioContext({ sampleRate: 44100 });  // the game's mix rate
+    } catch (e) {
+      try { unlockedCtx = new RealAudioContext(); } catch (e2) { return; }
+    }
+    audioContexts.push(unlockedCtx);
+    const silence = unlockedCtx.createBufferSource();
+    silence.buffer = unlockedCtx.createBuffer(1, 1, unlockedCtx.sampleRate);
+    silence.connect(unlockedCtx.destination);
+    silence.start(0);
+    unlockedCtx.resume().catch(() => {});
+  }
+
+  if (RealAudioContext) {
+    const SharedAudioContext = function (options) {
+      if (unlockedCtx && !unlockedCtx.handedOut) {
+        unlockedCtx.handedOut = true;
+        return unlockedCtx;
+      }
+      const ctx = new RealAudioContext(options);
+      audioContexts.push(ctx);
+      return ctx;
+    };
+    SharedAudioContext.prototype = RealAudioContext.prototype;
+    window.AudioContext = SharedAudioContext;
+    if (window.webkitAudioContext) window.webkitAudioContext = SharedAudioContext;
+  }
+
+  for (const type of ['pointerdown', 'touchend', 'keydown', 'click']) {
+    window.addEventListener(type, () => {
+      if (silentTrack && silentTrack.paused && !document.hidden) startSilentTrack();
+      for (const ctx of audioContexts) {
+        if (ctx.state !== 'running' && ctx.state !== 'closed') ctx.resume().catch(() => {});
+      }
+    }, { capture: true, passive: true });
+  }
+
+  const els = {
+    loader: document.getElementById('loader'),
+    meter: document.getElementById('meter'),
+    fill: document.getElementById('fill'),
+    status: document.getElementById('status'),
+    buttons: document.getElementById('buttons'),
+    play: document.getElementById('play'),
+    playFull: document.getElementById('play-full'),
+    error: document.getElementById('error'),
+    bubble: document.getElementById('bubble'),
+    canvas: document.getElementById('canvas'),
+  };
+
+  // A two-note beep through the same audio context the game will use, so a player can tell
+  // whether sound is blocked by the phone or browser before the game even starts.
+  function testSound() {
+    const out = document.getElementById('test-result');
+    unlockAudio();
+    const ctx = unlockedCtx;
+    if (!ctx) {
+      out.textContent = "This browser has no web audio, so the game can't play sound here.";
+      return;
+    }
+    const t = ctx.currentTime + 0.02;
+    for (const [freq, at] of [[660, 0], [880, 0.18]]) {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'square';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.0001, t + at);
+      gain.gain.exponentialRampToValueAtTime(0.25, t + at + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + at + 0.16);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(t + at);
+      osc.stop(t + at + 0.18);
+    }
+    setTimeout(() => {
+      out.textContent = ctx.state === 'running'
+        ? 'Beep sent. If you heard it, the game will have sound. If not, turn the volume up, flip the silent switch off,, or try another browser.'
+        : `Sound is blocked here (audio is "${ctx.state}"). Try another browser.`;
+    }, 350);
+  }
+
+  function showProgress(done, total) {
+    const pct = Math.min(100, (done / total) * 100);
+    els.fill.style.width = pct.toFixed(1) + '%';
+    els.status.textContent = `Mopping the lobby… ${(done / 1048576).toFixed(1)} of ${(total / 1048576).toFixed(1)} MB`;
+  }
+
+  function showError(message) {
+    console.error(message);
+    els.meter.hidden = true;
+    els.buttons.hidden = true;
+    els.error.hidden = false;
+    els.error.textContent = message;
+    els.bubble.textContent = 'Zero stars for that!';
+  }
+</script>
+<script src="index.js"></script>
+<script>
+  const GODOT_CONFIG = __GODOT_CONFIG__;
+  let engine = null;
+
+  function startGame(fullscreen) {
+    unlockAudio();  // must happen inside the tap
+    els.buttons.hidden = true;
+    els.status.textContent = 'Checking in…';
+    els.meter.hidden = false;
+    if (fullscreen && document.documentElement.requestFullscreen) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    }
+    engine.startGame().then(() => {
+      els.loader.hidden = true;
+      els.canvas.focus();
+    }, (err) => showError(err && err.message ? err.message : String(err)));
+  }
+
+  (function boot() {
+    if (typeof Engine === 'undefined') {
+      showError("The game engine didn't load. Reload the page to try again.");
+      return;
+    }
+    const missing = Engine.getMissingFeatures({ threads: false });
+    if (missing.length) {
+      showError("This browser can't run the game. It needs: " + missing.join(', ') + '. Try an up-to-date Chrome, Edge, Firefox or Safari.');
+      return;
+    }
+    engine = new Engine(Object.assign({}, GODOT_CONFIG, { onProgress: (cur, total) => { if (total > 0) showProgress(cur, total); } }));
+    // Download and compile the engine and the game first, then wait for a tap
+    // (browsers only allow sound after one).
+    Promise.all([engine.init(GODOT_CONFIG.executable), engine.preloadFile('index.pck')]).then(() => {
+      els.meter.hidden = true;
+      els.buttons.hidden = false;
+      els.bubble.textContent = 'Ready! Mind the pool.';
+      els.playFull.hidden = !document.documentElement.requestFullscreen;
+      els.play.focus();
+    }, (err) => showError(err && err.message ? err.message : String(err)));
+    els.play.addEventListener('click', () => startGame(false));
+    document.getElementById('test-sound').addEventListener('click', testSound);
+    els.playFull.addEventListener('click', () => startGame(true));
+  }());
+</script>
+</body>
+</html>
