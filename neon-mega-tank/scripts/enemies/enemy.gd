@@ -9,6 +9,8 @@ var hp := 10.0
 var max_hp := 10.0
 var dead := false
 var score_value := 10
+## Chance to shout a death line (small fry like hornets mostly die quietly).
+var shout_chance := 0.75
 var color := G.ENEMY_COLOR
 var meshes: Array[MeshInstance3D] = []
 var net_id := 0
@@ -101,7 +103,7 @@ func die() -> void:
 	dead = true
 	remove_from_group("enemies")
 	G.add_score(score_value)
-	if randf() < 0.75:
+	if randf() < shout_chance:
 		G.shout(global_position, death_lines().pick_random(), color)
 	G.sparks(global_position + Vector3(0, 1, 0), color, 16, 7.0, 0.8)
 	G.ring(global_position, color, 1.6, 0.35)

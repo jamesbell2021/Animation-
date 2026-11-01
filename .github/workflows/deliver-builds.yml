@@ -1,0 +1,65 @@
+# Hands a finished run's build artifacts to a Claude cloud session, which can't reach GitHub's
+# artifact storage. The session gives you an age public key (age1...); this workflow encrypts
+# the artifacts to that key and pushes them to the branch "deliveries". The repository is
+# public, but the files there can only be opened with the session's private key, so paid builds
+# stay private. The session deletes the branch once it has the files.
+#
+# Run by hand: Actions -> Deliver builds (encrypted) -> Run workflow.
+name: Deliver builds (encrypted)
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: "ID of the run whose artifacts to deliver (the number at the end of its URL)"
+        required: true
+      recipient:
+        description: "age public key to encrypt to (starts with age1)"
+        required: true
+      artifacts:
+        description: "Artifact names, separated by spaces"
+        required: true
+        default: "neon-mega-tank-apk neon-mega-tank-demo-apk"
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  deliver:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install age
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq age > /dev/null
+
+      - uses: actions/download-artifact@v4
+        with:
+          run-id: ${{ inputs.run_id }}
+          github-token: ${{ github.token }}
+          path: dist
+
+      - name: Encrypt and push to the deliveries branch
+        env:
+          RECIPIENT: ${{ inputs.recipient }}
+          NAMES: ${{ inputs.artifacts }}
+          RUN_ID: ${{ inputs.run_id }}
+          TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          case "$RECIPIENT" in
+            age1*) ;;
+            *) echo "::error::recipient must be an age public key (age1...)"; exit 1 ;;
+          esac
+          mkdir out
+          for name in $NAMES; do
+            test -d "dist/$name" || { echo "::error::run $RUN_ID has no artifact called $name"; exit 1; }
+            tar -C dist -cf - "$name" | age -r "$RECIPIENT" -o "out/$name.tar.age"
+          done
+          ls -la out
+          cd out
+          git init -q -b deliveries
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -q -m "Encrypted artifacts from run $RUN_ID"
+          git push -q -f "https://x-access-token:${TOKEN}@github.com/${REPO}.git" deliveries
