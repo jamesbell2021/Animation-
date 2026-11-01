@@ -324,6 +324,10 @@ func on_dawn() -> void:
 	collision_mask = 2 | 4
 	super.on_dawn()
 
+## Half the time, the glowing stuff it's full of.
+func salvage() -> Array:
+	return [["bio", 1, 0.5]]
+
 func _die() -> void:
 	if last_hit == "beam":
 		# Burnt up: a hiss of steam and a wet pop.

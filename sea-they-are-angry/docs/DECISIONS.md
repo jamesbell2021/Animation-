@@ -762,3 +762,28 @@ This is step 1 of five: the place, the crossing, the camera and the helpers. Nex
   - **Burning creatures:** a blaze of three standing flames while they're alight. It shows on LAN clients too (a flag in each creature's snapshot).
   - **Petrol bombs' pools:** seven standing flames over the spill, dying down with it.
 - **Untouched:** the lamp's beam burn and the campfire keep their own soft look, since they're not the flamer's fire.
+
+## Finishing the first release: v0.1.0 (owner's request: "what else do we need? do it all")
+
+The missing pieces of plan 2 (`docs/prompts/02_first_release_phases_A-G.md`), after everything the owner asked for along the way:
+
+- **Music** (Phase E/F's music hooks):
+  - **Made like the art:** a score composed and rendered by a script (`art/source/music/build_music.py`: numpy synthesis, ffmpeg to OGG Vorbis) rather than at start-up, since music is too long to synthesise on load.
+  - **The style:** North Sea folk in the modes, for a band of tin whistle, clarsach, fiddle, reed drone, string pad, bodhran, low bowed string and glass harmonics, in a stone room's reverb.
+  - **The pieces:** title, day, night, finale (the last night), chapter end and game over. The four that loop do so seamlessly: the reverb tail wraps round, and the drone crossfades into itself.
+  - **Playing it:** `Audio.music()` crossfades on the Music bus. Day by day; it ebbs away under the dusk foghorn; night (or the finale on the last night); day again at dawn; game over once when the light is lost; the chapter-end piece as the boat sails. The old night drone gave way to the night music.
+  - **Not done:** music for the Eel (plan 2 asks for it). The night piece and the Eel's own sounds carry it.
+- **The sea's mood and the danger pulse** (Phase E6):
+  - **Mood:** the HUD's line under the night gives Anger in the plan's words: quiet (0 to 2), restless (3 to 5), angry (6 to 8), wants the light (9 to 10).
+  - **Danger:** a red glow in from the screen's edges beats like a pulse while the lamp is guttering or dark, or the lighthouse is under 30%.
+- **How to Play** (Phase E1/E2's Controls): a paged screen from the title and the pause menu. Its keys are read from Settings, so a rebinding shows. The title's menu was tightened again to fit it at 720p.
+- **Salvage** (Phase A5's loot):
+  - **What drops:** creatures leave salvage where they fall (`scenes/systems/salvage.gd`). A squid: bio half the time. A beaten crab: 2 scrap (it used to go straight into the store). A Smotherer: scrap sometimes. A Bloated killed rather than burst: kelp sometimes. The Eel driven off: 3 bio and 2 scrap at the lighthouse's foot (also used to go straight into the store).
+  - **Picking it up:** it glints and bobs, drifts to a keeper within 2.4 m, and is picked up within 1.1 m. Anything dropped in the water washes up on the nearest firm ground. At dusk the sea takes back what's left.
+  - **On the LAN:** it comes with the host's state.
+- **The debug overlay** (Phase G1): F10 and the testing keys, in debug builds only (`OS.is_debug_build()`), so never in an exported release.
+- **Not done from plan 2:**
+  - **`Balance`:** the one-file store of every number (Phase A1). The numbers stay as named constants in each system's script, which is where every later feature put them. Gathering them now would touch every file for no player-facing change, so it waits for a balancing pass that needs it.
+  - **Mid-run joining (Phase D5):** it doesn't fit the LAN lobby's model.
+- **v0.1.0:** `application/config/version`, shown on the title. Release notes in `docs/RELEASE_NOTES_v0.1.0.md`, and the commit is tagged `sea-v0.1.0` (prefixed, since the repository holds other games). `export_presets.cfg` is now in git (it holds no secrets), so the Linux and Windows builds can be made from a fresh clone.
+- **Tests:** `slice_music.gd`, `slice_hud.gd` (the mood, the danger pulse and the overlay), `slice_salvage.gd`.

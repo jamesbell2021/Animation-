@@ -188,7 +188,12 @@ func can_ragdoll() -> bool:
 func _die() -> void:
 	if is_bursting():
 		return
+	_killed = true
 	change_state(&"Bloat")
+
+## Killed (not burst at a wall of its own accord): it may leave a hank of the kelp it's
+## wrapped in.
+var _killed := false
 
 func on_dawn() -> void:
 	if is_bursting():
@@ -247,4 +252,6 @@ func _enter_Burst() -> void:
 		Audio.sfx("pop", c + Vector3(0.0, 1.0, 0.0), 5.0, 0.08)
 		FX.steam_burst(get_parent(), c + Vector3(0.0, 1.0, 0.0))
 	Events.enemy_killed.emit(self)
+	if _killed and not puppet and randf() < 0.35:
+		Salvage.drop(get_parent(), c, "seaweed", 1)
 	queue_free()

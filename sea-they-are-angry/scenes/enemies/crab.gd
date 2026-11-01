@@ -384,8 +384,9 @@ func _die() -> void:
 	FX.splinters(get_parent(), global_position + Vector3(0.0, 0.6, 0.0))
 	FX.emitter(get_parent(), global_position + Vector3(0.0, 0.5, 0.0), FX._puff_mesh_ref(), Color(0.5, 0.3, 0.25, 0.7), 12, 1.0, Vector3.UP, 80.0, 1.5, 3.0, 6.0, 0.3, 0.6)
 	Audio.sfx("crab_slam", global_position, -4.0, 0.2)
-	if last_hit == "hook" or last_hit == "fall":
-		# Scrap grown into its shell, there for the taking.
-		Stock.add("scrap", 2)
-		Events.message.emit("+2 scrap from the crab's shell")
 	super._die()
+
+## Scrap grown into its shell, left where it fell for the taking, if it was beaten (a
+## crab burnt to nothing leaves nothing).
+func salvage() -> Array:
+	return [["scrap", 2, 1.0]] if last_hit != "beam" else []

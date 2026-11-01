@@ -63,6 +63,8 @@ var _fx: Array = []
 var _next_id := 1
 var _structs: Array = []
 var _scav: Dictionary = {}
+## Salvage dropped by creatures: the host numbers it; a client keeps copies by number.
+var _salv: Dictionary = {}
 var _pending_begin: Dictionary = {}
 var _last_snap: Dictionary = {}
 var _last_state: Dictionary = {}
@@ -141,6 +143,7 @@ func leave() -> void:
 	_inputs.clear()
 	_presses.clear()
 	_scav.clear()
+	_salv.clear()
 	_structs.clear()
 	_pending_begin = {}
 	if _udp != null:
@@ -278,6 +281,7 @@ func game_started(main: Node) -> void:
 		if not (s is SandbagWall):
 			_structs.append(s)
 	_scav.clear()
+	_salv.clear()
 	_next_id = 1
 	for n in get_tree().get_nodes_in_group("interactable"):
 		if n is ScavengePoint:
@@ -549,7 +553,15 @@ func _build_state() -> Dictionary:
 	var nests := []
 	for n in get_tree().get_nodes_in_group("gull_nests"):
 		nests.append(n.eggs)
-	return {"run": SaveSys.snapshot(), "st": st, "tr": traps, "sc": sc, "nests": nests,
+	var sv := []
+	for n in get_tree().get_nodes_in_group("salvage"):
+		if n.is_queued_for_deletion():
+			continue
+		if not n.has_meta("net_id"):
+			_next_id += 1
+			n.set_meta("net_id", _next_id)
+		sv.append([int(n.get_meta("net_id")), n.kind, n.amount, n.global_position])
+	return {"run": SaveSys.snapshot(), "st": st, "tr": traps, "sc": sc, "nests": nests, "sv": sv,
 		"gen": [gen.fuel, gen.running], "stove": _main.camp.stove.burn, "rs": Run.researching}
 
 @rpc("authority", "reliable")
@@ -574,6 +586,7 @@ func _state(d: Dictionary) -> void:
 	if gen.size() == 2:
 		_main.camp.generator.net_apply(float(gen[0]), bool(gen[1]))
 	_main.camp.stove.burn = float(d.get("stove", 0.0))
+	_apply_salvage(d.get("sv", []))
 	var eggs: Array = d.get("nests", [])
 	var nests := get_tree().get_nodes_in_group("gull_nests")
 	for i in mini(eggs.size(), nests.size()):
@@ -581,6 +594,28 @@ func _state(d: Dictionary) -> void:
 	for n in get_tree().get_nodes_in_group("interactable"):
 		if n.has_method("refresh") and (n is CampPlot or n is GardenPlot):
 			n.refresh()
+
+func _apply_salvage(list: Array) -> void:
+	var seen := {}
+	for row in list:
+		var id := int(row[0])
+		seen[id] = true
+		var s: Node = _salv.get(id)
+		if s == null or not is_instance_valid(s):
+			s = Salvage.new()
+			s.kind = String(row[1])
+			s.amount = int(row[2])
+			s.puppet = true
+			s.position = row[3]
+			_main.add_child(s)
+			_salv[id] = s
+		else:
+			s.global_position = row[3]
+	for id in _salv.keys():
+		if not seen.has(id):
+			if is_instance_valid(_salv[id]):
+				_salv[id].queue_free()
+			_salv.erase(id)
 
 func _apply_scav(list: Array) -> void:
 	var seen := {}

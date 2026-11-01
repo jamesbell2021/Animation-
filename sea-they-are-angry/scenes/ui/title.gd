@@ -30,7 +30,7 @@ func _ready() -> void:
 	var box := VBoxContainer.new()
 	box.position = Vector2(90, 70)
 	box.custom_minimum_size = Vector2(470, 0)
-	box.add_theme_constant_override("separation", 6)
+	box.add_theme_constant_override("separation", 3)
 	root.add_child(box)
 	var title := _label(box, "Sea They\nAre Angry", 74, GOLD)
 	Fonts.use_title(title)
@@ -52,6 +52,7 @@ func _ready() -> void:
 	_sea_btn.gui_input.connect(_on_sea_input)
 	_sea_note = _label(box, "", 16, Color(0.75, 0.8, 0.85))
 	_button(box, "Play on the LAN", _on_lan)
+	_button(box, "How to Play", _on_how)
 	_button(box, "Settings", _on_settings)
 	_button(box, "Credits", _on_credits)
 	_button(box, "Quit", _on_quit)
@@ -73,6 +74,13 @@ func _ready() -> void:
 	_hint = _label(root, "", 15, Color(0.8, 0.84, 0.9, 0.8))
 	var hint := _hint
 	_update_hint()
+	var ver := _label(root, "v%s" % ProjectSettings.get_setting("application/config/version", ""), 14, Color(0.8, 0.84, 0.9, 0.6))
+	ver.anchor_left = 1.0
+	ver.anchor_right = 1.0
+	ver.anchor_top = 1.0
+	ver.anchor_bottom = 1.0
+	ver.offset_left = -90.0
+	ver.offset_top = -36.0
 	hint.anchor_top = 1.0
 	hint.anchor_bottom = 1.0
 	hint.offset_left = 90.0
@@ -96,7 +104,7 @@ func _button(parent: Node, text: String, cb: Callable) -> Button:
 	b.text = text
 	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	b.flat = true
-	b.add_theme_font_size_override("font_size", 31)
+	b.add_theme_font_size_override("font_size", 29)
 	Fonts.use_title(b)
 	b.add_theme_color_override("font_color", PALE)
 	b.add_theme_color_override("font_focus_color", GOLD)
@@ -161,6 +169,11 @@ func _on_lan() -> void:
 	var lan := preload("res://scenes/ui/lan_lobby.gd").new()
 	add_child(lan)
 	lan.closed.connect(func() -> void: _first.grab_focus())
+
+func _on_how() -> void:
+	var page := preload("res://scenes/ui/how_to_play.gd").new()
+	add_child(page)
+	page.closed.connect(func() -> void: _first.grab_focus())
 
 func _on_settings() -> void:
 	var menu := preload("res://scenes/ui/settings_menu.gd").new()

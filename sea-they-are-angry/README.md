@@ -1,5 +1,7 @@
 # Sea They Are Angry
 
+**Version 0.1.0: Chapter One.** See [docs/RELEASE_NOTES_v0.1.0.md](docs/RELEASE_NOTES_v0.1.0.md).
+
 A lighthouse keeper on a tiny North Sea rock, late 1980s. By day you gather driftwood, scrap, kelp and bioluminescent matter from the shoreline, mend the fences, plant the garden, set traps and refuel the lamp. At dusk the fog and the storm roll in. At night things walk up out of the water toward the light. The lamp's beam slows them; your boathook does the rest. If the lamp goes dark, the run is over. Hold it until the relief boat comes (10 nights on the normal sea, 8 on a calm one, 12 on a raging one) and the keepers sail away: the end of Chapter One. Or stay on the rock for endless nights.
 
 Across a rope bridge from the lighthouse lies the holm, a low islet of sandstone shelves and turf with an old wartime camp on it: fenced with barbed wire, a guard tower and searchlight at each corner, Nissen huts, vegetable beds and a greenhouse. Out past them to the north-east is Gull Rock, a little stack of rock where the gulls nest; the keepers row out to it from the east beach's jetty to take their eggs. There are always three keepers: any that people don't play are helpers run by the computer, one keeping the light and one the camp. Losing the lighthouse ends the run. Losing the camp doesn't, but it makes everything harder: from night 2 some of each night's creatures land on the holm instead and tear through the wire at the generator, the huts and the greenhouse, and whatever's wrecked stops working until it's mended.
@@ -78,6 +80,15 @@ Keepers face the way they walk and turn to their aim to swing. Each carries a pa
   Tab or the mouse wheel changes what's in hand (1 to 5 picks it; [ and ] or the d-pad for the other keepers).
 - Helper keepers (`scenes/player/keeper_ai.gd`) fill the places people don't take, so there are always three. The lighthouse's helper gathers and mends by day and works the lamp at night (or holds the ledge if someone else has it); the camp's warden does its rounds by day and walks the wire at night. Both fight what comes close, revive downed keepers, and walk the keepers' map (`KeeperNav`: the ledge, the ladders, the bridge, the camp). The creatures still scale with the number of people playing.
   - **Their weapons:** the lighthouse's helper takes the shotgun off the shed wall when nobody has it and fires it at whatever comes close (a person can take it back at the workbench). Once a person has a longbow, the workbench can make one for a helper too, who shoots at what's past the boathook's reach. Helpers leave the flamer and the petrol bombs alone.
+- **Music** (`audio/music_*.ogg`, made by `art/source/music/build_music.py`):
+  - **What plays when:** the title's slow air; a gentle day piece; a tense night piece; a driving reel on the last night; a piece for sailing home; a falling phrase when the light is lost.
+  - **How it changes:** it crossfades with the day and night, and its level is the Music slider in Settings.
+- **How to Play** (title and pause menu): the keys as set, the gamepad layout, and a page each on the day, the night, the camp and Gull Rock, and playing together.
+- **The HUD:**
+  - **The sea's mood:** a line says how angry the sea is.
+  - **Danger:** the screen's edge pulses red while the lamp is guttering or the lighthouse is badly hurt.
+- **Salvage:** creatures leave bio, scrap or kelp where they fall (a beaten crab its shell's scrap, the Eel a haul at the lighthouse's foot). It's picked up by walking over it, and the sea takes back what's left at dusk.
+- **Debug builds:** F10 shows the numbers behind a run. F5 skips a phase, F6 fuels the lamp, F7 stocks the store, F8 hits the lighthouse, F9 brings the Eel, and F11 angers the sea. None of it is in an exported release.
 - **The wind turbine** (`scenes/structures/wind_turbine.gd`): an early-1980s Danish-style machine on a lattice tower on the holm's north-west knoll, its three blades turning into the wind. It runs strings of lights round the inside of the camp's wire, on from dusk to dawn.
   - **Attacks:** creatures raiding the holm go for it. Every blow makes the lights blink, and badly damaged it smokes and they flicker.
   - **Wrecked:** a blade hangs off and the compound goes dark until someone mends it with scrap at its cabinet.

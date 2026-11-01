@@ -486,9 +486,12 @@ func _die() -> void:
 	# Driven off: it lets go early, and the sea calms a little.
 	released_early = true
 	Anger.add(-1)
-	Stock.add("bio", 3)
-	Stock.add("scrap", 2)
-	Events.message.emit("The Eel lets go!  +3 bio, +2 scrap washed up in its wake")
+	# What it was carrying washes up at the lighthouse's foot.
+	var foot: Vector3 = lighthouse.global_position + Vector3(0.0, 0.0, 3.2) if lighthouse != null else global_position
+	for i in 3:
+		Salvage.drop(get_parent(), foot + Vector3(randf_range(-1.5, 1.5), 0.0, randf_range(-0.6, 0.6)), "bio", 1)
+	Salvage.drop(get_parent(), foot + Vector3(1.0, 0.0, 0.4), "scrap", 2)
+	Events.message.emit("The Eel lets go!  It leaves bio and scrap at the lighthouse's foot")
 	Events.enemy_killed.emit(self)
 	Audio.sfx("eel_hiss", _head.global_position, 2.0, 0.05)
 	change_state(&"Release")

@@ -341,6 +341,10 @@ func _physics_process(delta: float) -> void:
 	if state == &"Approach":
 		_visual.rotation.x = move_toward(_visual.rotation.x, 0.35 if lit else 0.0, delta * 3.0)
 
+## Sometimes a twist of old metal caught in it.
+func salvage() -> Array:
+	return [["scrap", 1, 0.4]]
+
 func _die() -> void:
 	_let_go_of_lamp()
 	FX.burst(get_parent(), global_position + Vector3(0.0, 0.9, 0.0))

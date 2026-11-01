@@ -153,6 +153,11 @@ func _ready() -> void:
 	hud.camp = camp
 	add_child(hud)
 	add_child(PauseScript.new())
+	# Debug builds only (never an exported release): F10 and the testing keys.
+	if OS.is_debug_build():
+		var dbg := preload("res://scenes/ui/debug_overlay.gd").new()
+		dbg.main = self
+		add_child(dbg)
 
 	Cycle.phase_changed.connect(_on_phase_changed)
 	Events.run_ended.connect(_on_run_ended)
@@ -178,6 +183,7 @@ func _ready() -> void:
 func _show_title() -> void:
 	Run.active = false
 	hud.visible = false
+	Audio.music("title", 2.0)
 	_apply_lighting(Cycle.Phase.DUSK, 0.0)
 	atmosphere.apply(Cycle.Phase.NIGHT, 0.0)
 	_title_cam = Camera3D.new()
@@ -363,6 +369,7 @@ func _rescue_step(delta: float) -> void:
 		_sail()
 
 func _sail() -> void:
+	Audio.music("chapter_end", 3.0)
 	boat.depart()
 	boat.departed.connect(_chapter_end)
 	Net.relay_rescue("depart", [])

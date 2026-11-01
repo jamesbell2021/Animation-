@@ -188,13 +188,17 @@ func loop_volume(key: String, volume_db: float) -> void:
 func _on_phase(p: int) -> void:
 	match p:
 		Cycle.Phase.DUSK:
-			# Two long blasts: fog is coming in.
+			# Two long blasts: fog is coming in. The day's music ebbs away under them.
 			horn([3.0, 3.0], -3.0)
+			if Run.active:
+				music("", 8.0)
 		Cycle.Phase.NIGHT:
 			sfx("night_sting", Vector3.INF, -6.0, 0.0)
-			loop("drone", true, -14.0, 6.0)
-		Cycle.Phase.DAWN:
-			loop("drone", false, -14.0, 8.0)
+			if Run.active:
+				music("finale" if Rescue.is_last_night() else "night", 4.0)
+		Cycle.Phase.DAWN, Cycle.Phase.DAY:
+			if Run.active and _music_key != "chapter_end":
+				music("day", 8.0)
 
 func _on_lamp_state(s: int) -> void:
 	match s:
@@ -207,6 +211,8 @@ func _on_lamp_state(s: int) -> void:
 
 func _on_run_ended(_reason: String, _night: int) -> void:
 	loop("drone", false, -14.0, 3.0)
+	# Only a lost light ends a run this way (the chapter's end has its own music, main.gd).
+	music("game_over", 1.0)
 
 # ---- building the sounds ----
 
@@ -964,4 +970,55 @@ func _s_turbine() -> PackedFloat32Array:
 	var hum := _tone(n, 96.0, 96.0, 1)
 	_mix(out, hum, 0.05)
 	return _seamless(out, 0.2)
+
+# ---- music ----
+
+## The score (audio/music_*.ogg, made by art/source/music/build_music.py): the piece's
+## level, and whether it loops.
+const MUSIC := {
+	"title": [-6.0, true], "day": [-11.0, true], "night": [-8.0, true], "finale": [-6.0, true],
+	"chapter_end": [-4.0, false], "game_over": [-4.0, false],
+}
+
+var _music: Array[AudioStreamPlayer] = []
+var _music_on := 0
+var _music_key := ""
+
+## Crossfade to a piece over `fade` seconds ("" for silence). Asking for what's already
+## playing does nothing.
+func music(key: String, fade: float = 3.0) -> void:
+	if key == _music_key:
+		return
+	_music_key = key
+	if _music.is_empty():
+		for i in 2:
+			var p := AudioStreamPlayer.new()
+			p.bus = "Music"
+			p.process_mode = Node.PROCESS_MODE_ALWAYS
+			add_child(p)
+			_music.append(p)
+	var old := _music[_music_on]
+	if old.playing:
+		var tw := create_tween()
+		tw.tween_property(old, "volume_db", -60.0, fade)
+		tw.tween_callback(old.stop)
+	if key == "" or not MUSIC.has(key):
+		return
+	var path := "res://audio/music_%s.ogg" % key
+	if not ResourceLoader.exists(path):
+		return
+	var stream = load(path)
+	if stream is AudioStreamOggVorbis:
+		(stream as AudioStreamOggVorbis).loop = bool(MUSIC[key][1])
+	_music_on = 1 - _music_on
+	var p := _music[_music_on]
+	p.stream = stream
+	p.volume_db = -60.0
+	p.play()
+	var t2 := create_tween()
+	t2.tween_property(p, "volume_db", float(MUSIC[key][0]), maxf(fade, 0.05))
+
+## What's playing ("" for nothing).
+func music_now() -> String:
+	return _music_key
 

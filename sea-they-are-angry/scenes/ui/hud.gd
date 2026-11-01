@@ -45,6 +45,7 @@ func _ready() -> void:
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(root)
+	_build_danger(root)
 
 	var panel := VBoxContainer.new()
 	panel.position = Vector2(20, 16)
@@ -52,6 +53,9 @@ func _ready() -> void:
 	panel.add_theme_constant_override("separation", 4)
 	root.add_child(panel)
 	_phase_label = _label(panel, FONT + 6)
+	# How the sea feels tonight: the hidden Anger, in words.
+	_mood_label = _label(panel, FONT - 1)
+	_mood_label.add_theme_color_override("font_color", Color(0.72, 0.8, 0.86))
 	_stock_label = _label(panel, FONT)
 	_player_label = _label(panel, FONT)
 	_lh_label = _label(panel, FONT)
@@ -130,6 +134,64 @@ func _ready() -> void:
 	Events.run_ended.connect(_on_run_ended)
 	Cycle.phase_changed.connect(_on_phase_changed)
 
+## The sea's mood, by Anger: what the keepers feel, not a number.
+const MOODS := [[2, "The sea is quiet."], [5, "The sea is restless."], [8, "The sea is angry."], [10, "The sea wants the light."]]
+const MOOD_COLORS := [Color(0.72, 0.8, 0.86), Color(0.85, 0.82, 0.62), Color(1.0, 0.6, 0.4), Color(1.0, 0.36, 0.3)]
+
+var _mood_label: Label
+var _danger: ColorRect
+var _danger_mat: ShaderMaterial
+var _danger_t := 0.0
+
+static func mood(anger: int) -> int:
+	for i in MOODS.size():
+		if anger <= int(MOODS[i][0]):
+			return i
+	return MOODS.size() - 1
+
+## Whether the light is in danger: the lamp guttering or dark, or the lighthouse below 30%.
+func in_danger() -> bool:
+	if not Run.active:
+		return false
+	if lamp != null and is_instance_valid(lamp) and (lamp.state == Lamp.State.GUTTERING or lamp.state == Lamp.State.DARK):
+		return true
+	return lighthouse != null and is_instance_valid(lighthouse) and lighthouse.health_ratio() < 0.3
+
+func _build_danger(root: Control) -> void:
+	# A red glow in from the screen's edges, pulsing like a heartbeat.
+	_danger = ColorRect.new()
+	_danger.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_danger.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var sh := Shader.new()
+	sh.code = """shader_type canvas_item;
+uniform float strength = 0.0;
+void fragment() {
+	vec2 d = UV - vec2(0.5);
+	float edge = smoothstep(0.32, 0.75, length(d * vec2(1.0, 1.15)));
+	COLOR = vec4(0.75, 0.02, 0.02, edge * strength);
+}
+"""
+	_danger_mat = ShaderMaterial.new()
+	_danger_mat.shader = sh
+	_danger.material = _danger_mat
+	_danger.visible = false
+	root.add_child(_danger)
+	root.move_child(_danger, 0)
+
+func _process_danger(delta: float) -> void:
+	if _danger == null:
+		return
+	var on := in_danger()
+	_danger.visible = on
+	if not on:
+		_danger_t = 0.0
+		return
+	# About once a second: a beat and a softer one, like a pulse.
+	_danger_t += delta
+	var ph := fmod(_danger_t, 1.0)
+	var beat := exp(-ph * 9.0) + 0.5 * exp(-maxf(0.0, ph - 0.22) * 11.0) * float(ph > 0.22)
+	_danger_mat.set_shader_parameter("strength", 0.15 + 0.5 * beat)
+
 func _label(parent: Node, size: int) -> Label:
 	var l := Label.new()
 	l.add_theme_font_size_override("font_size", size)
@@ -188,6 +250,10 @@ func _build_game_over(root: Control) -> void:
 	_over_btn = btn
 
 func _process(delta: float) -> void:
+	_process_danger(delta)
+	var m := mood(Anger.value)
+	_mood_label.text = MOODS[m][1]
+	_mood_label.add_theme_color_override("font_color", MOOD_COLORS[m])
 	_phase_label.text = "Night %d — %s  (%s)" % [Run.night, Cycle.phase_name(), _mmss(Cycle.time_left)]
 	if Cycle.phase == Cycle.Phase.DUSK or Cycle.phase == Cycle.Phase.NIGHT:
 		_phase_label.text += "  · " + Weather.tonight_name()

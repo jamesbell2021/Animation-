@@ -899,6 +899,18 @@ func _on_hit() -> void:
 	pass
 
 func _die() -> void:
+	_drop_salvage()
 	Events.enemy_killed.emit(self)
 	if not _ragdoll_corpse(Vector3(0.0, 20.0, 0.0)):
 		queue_free()
+
+## Virtual: what it leaves where it falls, as [kind, amount, chance] (Salvage).
+func salvage() -> Array:
+	return []
+
+func _drop_salvage() -> void:
+	if puppet or not is_inside_tree():
+		return
+	for d in salvage():
+		if randf() < float(d[2]):
+			Salvage.drop(get_parent(), global_position, String(d[0]), int(d[1]))
