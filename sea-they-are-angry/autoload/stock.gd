@@ -56,8 +56,14 @@ func spend(cost: Dictionary) -> bool:
 	changed.emit()
 	return true
 
+## What players call each kind (the store's own names aren't all theirs).
+const WORDS := {"seaweed": "kelp", "dirty_fuel": "dirty fuel"}
+
+static func word(k: String) -> String:
+	return WORDS.get(k, k)
+
 static func cost_str(c: Dictionary) -> String:
 	var parts := []
 	for k in c:
-		parts.append("%d %s" % [c[k], k])
+		parts.append("%d %s" % [c[k], word(k)])
 	return ", ".join(parts)

@@ -119,16 +119,17 @@ func _run() -> void:
 	check(player.global_position.distance_to(at) < 0.05, "the keeper stands still in the menu")
 	menu.choose(1)
 	check(player.max_hp == 110 and player.hp == 110 and Stock.get_amount("food") == 0, "eating: full health and +10 max (%d/%d)" % [player.hp, player.max_hp])
-	menu.choose(2)
-	check(player.flares() == 2 and Stock.get_amount("scrap") == 6, "a flare loaded for 1 scrap")
+	# (2 is the kelp broth, checked in slice_helpers.)
 	menu.choose(3)
+	check(player.flares() == 2 and Stock.get_amount("scrap") == 6, "a flare loaded for 1 scrap")
+	menu.choose(4)
 	check(Stock.get_amount("dirty_fuel") == 2 and Stock.get_amount("oil") == 0, "oil and driftwood mixed into 2 dirty fuel")
 	var range0: float = lamp.current_range()
-	menu.choose(4)
+	menu.choose(5)
 	check(Run.upgrades["lighthouse"] == 2 and lh.max_hp == 400 and lh.hp == 400, "lighthouse upgraded: tower 400")
 	check(is_equal_approx(lamp.current_range(), range0 + 3.0) and Lamp.focus_mult == 1.5, "beam 3 m longer, focus burns 1.5x")
 	check(lh._fittings[2][0].visible and not lh._fittings[3][0].visible, "brass hoops on the tower")
-	menu.choose(5)
+	menu.choose(6)
 	var open := 0
 	for s in get_nodes_in_group("trap_slots"):
 		# The holm's defence posts are open from the start, upgrade or not.
@@ -140,7 +141,7 @@ func _run() -> void:
 		if s is Fence and s.max_hp != 200:
 			fence_ok = false
 	check(fence_ok, "fences 200")
-	menu.choose(6)
+	menu.choose(7)
 	check(Run.upgrades["garden"] == 2 and garden.open_plots() == 4, "garden upgraded: 4 beds")
 	check(is_instance_valid(menu) and ChoiceMenu.current == menu, "the menu stays open between picks")
 	menu.close()
@@ -275,7 +276,7 @@ func _run() -> void:
 	var kind := Weather.tonight()
 	Cycle._enter(Cycle.Phase.DUSK)
 	await frames(2)
-	check(main.hud._phase_label.text.contains("· " + Weather.KIND_NAMES[kind]), "the HUD names tonight's weather: " + main.hud._phase_label.text)
+	check(main.hud._sub_label.text.contains(Weather.KIND_NAMES[kind]), "the HUD names tonight's weather: " + main.hud._sub_label.text)
 	check(is_equal_approx(main.atmosphere.weather._target, Weather.KIND_LEVELS[kind][Cycle.Phase.DUSK]), "the storm builds to tonight's level")
 
 	print("RESULT: ", "PASS" if fails == 0 else "FAIL (%d)" % fails)

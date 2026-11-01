@@ -39,6 +39,8 @@ const BOW_RANGE := 11.0
 const BOW_DRAW := 0.8
 ## Cartridges it leaves in the box for the people when it takes the shotgun.
 const SHELLS_SPARE := 2
+## Kelp it keeps back for the garden's beds when it boils a broth.
+const KELP_KEEP := 3
 
 var keeper: Player
 var role := "light"
@@ -153,6 +155,11 @@ func _day_light() -> void:
 		_set_task("refuel", lamp.lighthouse, KeeperNav.door_point())
 		return
 	if _fetch_salvage(0):
+		return
+	# Nothing to eat in the store: boil what the beds can spare (eggs, kelp past a few).
+	var cot := _cottage()
+	if cot != null and Stock.get_amount("food") == 0 and (Stock.can_afford(Cottage.EGGS_MEAL) or Stock.get_amount("seaweed") >= KELP_KEEP + 3):
+		_set_task("cook", cot, (cot as Node3D).global_position)
 		return
 	var bed := _garden_to_work()
 	if bed != null:
@@ -287,6 +294,15 @@ func _act(delta: float) -> void:
 		"plot":
 			if _task_target != null and is_instance_valid(_task_target) and Geo.flat_dist(keeper.global_position, (_task_target as Node3D).global_position) < 1.9:
 				_task_target.interact(keeper)
+				_task = ""
+				_route.clear()
+		"cook":
+			var cot := _task_target as Cottage
+			if cot != null and cot.surface_distance(keeper.global_position) <= Player.INTERACT_RANGE:
+				if Stock.can_afford(Cottage.EGGS_MEAL):
+					cot.boil_eggs()
+				elif Stock.get_amount("seaweed") >= KELP_KEEP + 3:
+					cot.kelp_broth()
 				_task = ""
 				_route.clear()
 		"eat":

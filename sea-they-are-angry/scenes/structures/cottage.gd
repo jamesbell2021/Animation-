@@ -20,6 +20,9 @@ const MIX_COST := {"oil": 1, "driftwood": 1}
 const MIX_YIELD := 2
 ## Gull eggs from Gull Rock, boiled: this many make a meal for the store.
 const EGGS_MEAL := {"eggs": 3}
+## Kelp broth: a thin meal for the store from the kelp the beds don't need. Dear next to
+## the garden (a kelp there grows a meal by dawn), so it's for a full store of kelp.
+const BROTH := {"seaweed": 3}
 
 var _wall_mat: StandardMaterial3D
 var _window_mat: StandardMaterial3D
@@ -223,6 +226,8 @@ func menu_rows(p: Player) -> Array:
 	if Stock.get_amount("eggs") > 0:
 		rows.append({"text": "Boil gull eggs (%s): a meal into the store   %d eggs" % [Stock.cost_str(EGGS_MEAL), Stock.get_amount("eggs")],
 			"enabled": Stock.can_afford(EGGS_MEAL), "do": boil_eggs})
+	rows.append({"text": "Boil a kelp broth (%s): a thin meal into the store   %d kelp" % [Stock.cost_str(BROTH), Stock.get_amount("seaweed")],
+		"enabled": Stock.can_afford(BROTH), "do": kelp_broth})
 	rows.append({"text": "Load a flare (%s)   %d / %d" % [Stock.cost_str(FLARE_COST), p.flares(), Player.FLARES_MAX],
 		"enabled": p.flares() < Player.FLARES_MAX and Stock.can_afford(FLARE_COST), "do": load_flare.bind(p)})
 	rows.append({"text": "Mix dirty fuel (1 oil, 1 driftwood: %d cans)" % MIX_YIELD, "enabled": Stock.can_afford(MIX_COST), "do": mix_fuel})
@@ -251,6 +256,12 @@ func boil_eggs() -> void:
 		Stock.add("food", 1)
 		Audio.sfx("refuel", global_position, -8.0, 0.1)
 		Events.message.emit("Gull eggs on to boil: +1 food in the store.")
+
+func kelp_broth() -> void:
+	if Stock.spend(BROTH):
+		Stock.add("food", 1)
+		Audio.sfx("refuel", global_position, -8.0, 0.1)
+		Events.message.emit("Kelp broth on the stove: +1 food in the store.")
 
 func load_flare(p: Player) -> void:
 	if p.flares() < Player.FLARES_MAX and Stock.spend(FLARE_COST):

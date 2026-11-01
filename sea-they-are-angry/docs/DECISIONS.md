@@ -788,3 +788,16 @@ The missing pieces of plan 2 (`docs/prompts/02_first_release_phases_A-G.md`), af
   - **Mid-run joining (Phase D5):** it doesn't fit the LAN lobby's model.
 - **v0.1.0:** `application/config/version`, shown on the title. Release notes in `docs/RELEASE_NOTES_v0.1.0.md`, and the commit is tagged `sea-v0.1.0` (prefixed, since the repository holds other games). `export_presets.cfg` is now in git (it holds no secrets), so the Linux and Windows builds can be made from a fresh clone.
 - **Tests:** `slice_music.gd`, `slice_hud.gd` (the mood, the danger pulse and the overlay), `slice_salvage.gd`.
+
+## 2026-11-01: the HUD redone, kelp broth, players' words in prices
+
+- **The HUD** was a wall of small text. In a rendered run the three keepers' numbers ran together across the split screen, and the jobs list ran off the right edge. The lamp's fuel bar drew no fill, so it read as empty.
+  - **Top left:** a card with the day or night and its clock, then the weather, sea and boat line, the sea's mood, and bars for the lighthouse and the lamp's fuel. Under those, the lamp's state and the camp's line.
+  - **Bottom left:** a card per keeper in their colour, with health, fed and warm as bars (red when low, blue when cold), their flares, and what's in their hands.
+  - **Top right:** the store as coloured chips. The everyday five always show; the rest only when there's some.
+  - **Right:** the jobs list in a panel that wraps inside the screen. The keys follow Settings, and show only while the jobs list is up.
+  - **The night's log** sits on a dark card.
+- **Kelp broth at the cottage:** 3 kelp make a meal for the store. It's dearer than the garden (one kelp grows a meal by dawn), so it's for spare kelp, and it fills the empty food store the playtests showed. A helper boils eggs or a broth when the store has no food, keeping 3 kelp back for the beds.
+- **Prices say kelp and dirty fuel**, not the store's names "seaweed" and "dirty_fuel" (`Stock.word`).
+- **`tools/tour.gd`:** renders a run that the computer plays, frame by frame with the HUD, for reviewing how the game looks and reads.
+

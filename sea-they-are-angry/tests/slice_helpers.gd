@@ -163,5 +163,26 @@ func _go() -> void:
 		await physics_frame
 	check(gone and Stk.get_amount("scrap") == 2 and Stk.get_amount("seaweed") == 1, "by day the helper picks up the salvage lying about (2 scrap, 1 kelp)")
 
+	# Nothing in the store to eat and kelp to spare: the helper boils a broth at the cottage.
+	var cot = null
+	for s in get_nodes_in_group("structures"):
+		if s is Cottage:
+			cot = s
+	var broth := false
+	for r in cot.menu_rows(p):
+		broth = broth or (r["text"].begins_with("Boil a kelp broth (3 kelp)") and not r["enabled"])
+	check(broth, "the cottage offers a kelp broth (3 kelp); not with 1 kelp")
+	for i in Run.crops.size():
+		Run.crops[i] = GardenPlot.PLANTED
+	Stk.set_amount("food", 0)
+	Stk.set_amount("seaweed", 8)
+	var cooked := false
+	for i in 1800:
+		if Stk.get_amount("food") > 0:
+			cooked = true
+			break
+		await physics_frame
+	check(cooked and Stk.get_amount("seaweed") <= 5, "no food in the store: %s boils a kelp broth (+1 food, kelp %d)" % [h.keeper_name(), Stk.get_amount("seaweed")])
+
 	print("\n%s" % ("ALL PASS" if fails == 0 else "%d FAILED" % fails))
 	quit(1 if fails > 0 else 0)

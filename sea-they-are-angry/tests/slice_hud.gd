@@ -44,6 +44,21 @@ func _go() -> void:
 	check(words == ["The sea is quiet.", "The sea is restless.", "The sea is angry.", "The sea wants the light."], "the sea's mood follows its anger")
 	Ang.value = 0
 	await process_frame
+
+	# The layout: a card per keeper with bars, the store in words players use, and the
+	# jobs list inside the screen.
+	root.get_node("Stock").set_amount("seaweed", 7)
+	root.get_node("Stock").set_amount("arrows", 0)
+	await process_frame
+	await process_frame
+	check(hud._cards.size() == main.players.size() and hud._cards[0]["bars"]["hp"].value == main.player.hp, "a card for each keeper (%d), health as a bar" % hud._cards.size())
+	check(hud._stock_label.text.contains("Kelp 7") and not hud._stock_label.text.contains("Arrows"), "the store: " + hud._stock_label.text)
+	var vp: Vector2 = hud._jobs_panel.get_viewport_rect().size
+	var jr: Rect2 = hud._jobs_panel.get_global_rect()
+	check(hud._jobs_panel.visible and jr.position.x >= 0.0 and jr.end.x <= vp.x + 0.5, "the jobs list sits inside the screen (%.0f..%.0f of %.0f)" % [jr.position.x, jr.end.x, vp.x])
+	var cr: Rect2 = hud._cards[0]["panel"].get_global_rect()
+	check(cr.end.y <= vp.y + 0.5 and cr.position.y > vp.y * 0.6, "the keepers' cards sit at the bottom (%.0f..%.0f)" % [cr.position.y, cr.end.y])
+	check(hud._phase_label.text.begins_with("Day 1"), "the heading: " + hud._phase_label.text)
 	check(not hud._danger.visible, "all well: no danger pulse")
 	main.lighthouse.hp = int(main.lighthouse.max_hp * 0.2)
 	await process_frame

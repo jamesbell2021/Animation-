@@ -179,7 +179,7 @@ func _stock_line() -> String:
 	for k in ["driftwood", "scrap", "bio", "seaweed", "food", "eggs", "oil", "dirty_fuel"]:
 		var v := Stock.get_amount(k)
 		if v > 0:
-			parts.append("%s %d" % [k.replace("_", " "), v])
+			parts.append("%s %d" % [Stock.word(k), v])
 	return ", ".join(parts) if not parts.is_empty() else "nothing in store"
 
 func _pick(cb: Callable) -> void:

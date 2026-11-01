@@ -295,8 +295,7 @@ func begin_run(continue_save: bool, n: int) -> void:
 		hud.report("The first day.", [
 			"Keep the light burning until the relief boat comes for you: %d nights." % Rescue.night(),
 			"The jobs on the right show you round: the beaches, the camp over the bridge, the shed.",
-			"At dusk they come ashore and climb the ledge. Work the lamp (R at the door); Q focuses",
-			"the beam to burn them, and on the ledge a blow aimed outward knocks them over the edge.",
+			"At dusk they come ashore and climb the ledge. Work the lamp ([R] at the door); [Q] focuses the beam to burn them, and on the ledge a blow aimed outward knocks them over the edge.",
 		], FIRST_DAY_TIP_TIME)
 	_apply_lighting(Cycle.Phase.DAY, 0.0)
 	atmosphere.apply(Cycle.Phase.DAY, 0.0)
