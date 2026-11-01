@@ -74,7 +74,11 @@ func surface_distance(p: Vector3) -> float:
 	return Vector2(dx, dz).length()
 
 func repair_cost() -> Dictionary:
-	return {"scrap": 1, "driftwood": 1}
+	return scrap_or_wood()
+
+## Wrecked to running in two mends.
+func repair_amount() -> int:
+	return 60
 
 ## Something it powers, drawing this much fuel a second (0 stops the draw).
 func set_draw(who: Object, per_s: float) -> void:

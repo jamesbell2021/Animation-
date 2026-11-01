@@ -40,11 +40,12 @@ func smoke_point() -> Vector3:
 	return Vector3(0.0, size.y * 0.9, 0.0)
 
 # Timber and tin patched with driftwood: scrap is scarce, and the wire wants it.
+# One driftwood mends 70, so a wrecked hut is up again for three or four.
 func repair_cost() -> Dictionary:
-	return {"driftwood": 2}
+	return {"driftwood": 1}
 
 func repair_amount() -> int:
-	return 60
+	return 70
 
 func display_name() -> String:
 	return {"quarters": "the quarters", "mess": "the mess hut", "greenhouse": "the greenhouse"}.get(id, id)

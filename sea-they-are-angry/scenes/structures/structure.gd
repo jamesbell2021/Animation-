@@ -71,6 +71,11 @@ func health_ratio() -> float:
 func repair_cost() -> Dictionary:
 	return {"driftwood": 1}
 
+## A camp mend: a scrap if there's any in the store, else a driftwood (the camp has to
+## be kept going on what the beaches bring, and scrap is scarce).
+static func scrap_or_wood() -> Dictionary:
+	return {"scrap": 1} if Stock.get_amount("scrap") > 0 else {"driftwood": 1}
+
 ## Health restored per repair. Homestead buildings and fences mend faster than the
 ## lighthouse: a day's driftwood should go a long way toward putting a raid right.
 const MEND_HOMESTEAD := 50

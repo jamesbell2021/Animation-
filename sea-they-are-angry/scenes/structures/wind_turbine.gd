@@ -69,7 +69,11 @@ func display_name() -> String:
 	return "the wind turbine"
 
 func repair_cost() -> Dictionary:
-	return {"scrap": 2}
+	return scrap_or_wood()
+
+## Wrecked to turning in two mends.
+func repair_amount() -> int:
+	return 80
 
 func smoke_point() -> Vector3:
 	return Vector3(0.0, HUB_H + 0.2, 0.4)

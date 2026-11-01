@@ -518,6 +518,7 @@ This is step 1 of five: the place, the crossing, the camera and the helpers. Nex
 - **The buildings (`scenes/structures/camp_building.gd`):**
   - **Health:** the quarters and the mess have 220 each and the greenhouse 150. The generator keeps its 120 and is now measured to its walls, so creatures can reach it and keepers can mend it from outside.
   - **Mending:** two driftwood mend 60. Scrap is scarce and the wire wants it.
+  - **Cheaper since 2026-11-01:** the bot playtests on every sea had the camp wrecked from about night 4 and never put right, with scrap at 0 every morning and kelp piling up. The owner chose cheaper camp repairs. Now a driftwood mends a hut by 70. The wire, the generator and the wind turbine each take a scrap, or a driftwood when the store has no scrap. A mend does 60 for the wire and the generator, 80 for the turbine, so either is back from wrecked in two mends. Before, the generator wanted 5 scrap and 5 driftwood, and the turbine 14 scrap.
   - **Battered:** they lean and smoke.
   - **Wrecked:** a building sinks to a ruin, and what's in it stops working until it's mended:
     - **The quarters:** the stove goes out and can't be lit.

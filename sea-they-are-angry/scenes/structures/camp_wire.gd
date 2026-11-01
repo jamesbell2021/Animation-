@@ -48,7 +48,7 @@ func smoke_point() -> Vector3:
 	return Vector3.INF
 
 func repair_cost() -> Dictionary:
-	return {"scrap": 1}
+	return scrap_or_wood()
 
 func repair_amount() -> int:
 	return 60

@@ -173,6 +173,18 @@ func _go() -> void:
 	w.interact(p)
 	w.interact(p)
 	check(not w.is_destroyed() and w.hp == 120 and Stk.get_amount("scrap") == s0 - 2, "two scrap mend a run of wire")
+	# Cheap to keep going: a wrecked generator up again in two mends, driftwood standing
+	# in when there's no scrap; a hut mends 70 for a driftwood.
+	camp.generator.take_damage(999)
+	Stk.set_amount("scrap", 1)
+	Stk.set_amount("driftwood", 3)
+	check(camp.generator.repair_cost() == {"scrap": 1}, "the generator takes a scrap while there's scrap")
+	check(camp.generator.interact(p) and Stk.get_amount("scrap") == 0 and camp.generator.repair_cost() == {"driftwood": 1}, "then a driftwood")
+	camp.generator.interact(p)
+	check(camp.generator.hp == camp.generator.max_hp and Stk.get_amount("driftwood") == 2, "wrecked to whole in two mends (a scrap, a driftwood)")
+	b["quarters"].take_damage(999)
+	b["quarters"].interact(p)
+	check(b["quarters"].hp == 70 and Stk.get_amount("driftwood") == 1, "a driftwood mends a hut by 70")
 	b["quarters"].repair(999)
 	check(camp.stove.interact(p), "mend the quarters and the stove lights again")
 
