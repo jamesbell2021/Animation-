@@ -37,6 +37,7 @@ func _go() -> void:
 	cyc._enter(phase)
 	cyc.running = false
 	main._apply_lighting(phase, 0.0)
+	main.atmosphere.apply(phase, 0.0)
 	var lamp = main.lighthouse.lamp
 	if phase == 1 or phase == 2:
 		lamp._set_state(1)

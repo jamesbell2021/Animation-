@@ -27,7 +27,12 @@ var sea_mat: ShaderMaterial
 var _ring: Node3D
 var _bank_mat: FogMaterial
 var _mist_mat: FogMaterial
-var _mist_particles: GPUParticles3D
+## The mist sheets: [mesh, material, share of the density].
+var _sheets: Array = []
+## How thick the mist sheets are in each phase (day, dusk, night, dawn): morning mist
+## lies a while after the night and burns off.
+const SHEETS := [0.0, 0.55, 0.75, 0.4]
+var _sheet_density := 0.0
 var _vignette: ShaderMaterial
 var weather: Weather
 var _buoy: Node3D
@@ -92,10 +97,24 @@ func _build_fog() -> void:
 	mist.material = _mist_mat
 	mist.position = Vector3(0.0, Terrain.PLATEAU_HEIGHT + 0.4, 0.0)
 	add_child(mist)
-	_mist_particles = FX.emitter(self, Vector3(0.0, Terrain.PLATEAU_HEIGHT + 0.5, 0.0), FX._puff_mesh_ref(), Color(0.55, 0.6, 0.66, 0.16),
-		90, 11.0, Vector3(1.0, 0.05, 0.3).normalized(), 25.0, 0.25, 0.6, 0.0, 3.0, 5.5, false, true, 0.0, Vector3(16.0, 0.3, 16.0))
-	if _mist_particles:
-		_mist_particles.emitting = false
+	# Drifting sheets of mist over the sea and across the rock's top, lit by the scene so
+	# the beam shows in them. (Puffs of particles read as discs from the keepers' camera.)
+	for layer in [[Terrain.SEA_LEVEL + 0.9, 1.0, 0.05, 0.0, 90.0], [Terrain.PLATEAU_HEIGHT + 0.7, 0.55, 0.07, 31.0, 40.0], [Terrain.PLATEAU_HEIGHT + 2.2, 0.35, 0.04, 57.0, 60.0]]:
+		var sheet := MeshInstance3D.new()
+		var pm := PlaneMesh.new()
+		pm.size = Vector2(layer[4] * 2.0, layer[4] * 2.0)
+		sheet.mesh = pm
+		sheet.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		var sm := ShaderMaterial.new()
+		sm.shader = load("res://shaders/mist_sheet.gdshader")
+		sm.set_shader_parameter("scale", layer[2])
+		sm.set_shader_parameter("seed", layer[3])
+		sm.set_shader_parameter("reach", layer[4])
+		sheet.material_override = sm
+		sheet.position = Vector3(0.0, layer[0], 0.0)
+		sheet.visible = false
+		add_child(sheet)
+		_sheets.append([sheet, sm, float(layer[1])])
 
 func _build_vignette() -> void:
 	var layer := CanvasLayer.new()
@@ -197,12 +216,23 @@ func apply(p: int, duration: float) -> void:
 		tw.tween_property(self, "_glow", m["glow"], duration)
 		tw.tween_property(_bank_mat, "emission", m["fog_e"], duration)
 		tw.tween_property(_mist_mat, "emission", Color(m["fog_e"]) * 0.6, duration)
-	if _mist_particles:
-		_mist_particles.emitting = p == Cycle.Phase.DUSK or p == Cycle.Phase.NIGHT
+	var sheet: float = SHEETS[p]
+	if Weather.tonight() == Weather.Kind.CLEAR and (p == Cycle.Phase.DUSK or p == Cycle.Phase.NIGHT):
+		sheet *= 0.6
+	if duration <= 0.0:
+		_set_sheets(sheet)
+	else:
+		create_tween().tween_method(_set_sheets, _sheet_density, sheet, duration)
 	var buoy_light: OmniLight3D = _buoy.get_node("BuoyLight")
 	buoy_light.light_energy = 1.2 if p == Cycle.Phase.DUSK or p == Cycle.Phase.NIGHT else 0.0
 	if weather:
 		weather.apply(p, duration)
+
+func _set_sheets(d: float) -> void:
+	_sheet_density = d
+	for sh in _sheets:
+		sh[1].set_shader_parameter("density", d * float(sh[2]))
+		sh[0].visible = d > 0.005
 
 func _on_phase(p: int) -> void:
 	match p:

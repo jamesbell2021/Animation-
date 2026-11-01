@@ -92,8 +92,11 @@ void fragment() {
 	float band = 1.0 - smoothstep(0.0, foam_width * (1.0 + storm * 3.0), abs(sd - edge));
 	float speck = noise(world_pos.xz * 2.2 + vec2(TIME * 0.3, -TIME * 0.2));
 	float foam = band * smoothstep(0.35, 0.75, speck + band * 0.35);
-	// Sparse whitecaps out at sea.
-	float caps = smoothstep(0.91 - storm * 0.1, 0.99, noise(world_pos.xz * 0.6 + vec2(TIME * (0.15 + storm * 0.5), TIME * (0.11 + storm * 0.3)))) * depth * (0.5 + storm * 0.15);
+	// Whitecaps out at sea: stretched along the wind, broken up into lace, faint on a
+	// calm sea and growing with the storm. (Hard, opaque blobs read as litter from above.)
+	vec2 cp = vec2(world_pos.x * 0.32 + world_pos.z * 0.1, world_pos.z * 0.85) + vec2(TIME * (0.15 + storm * 0.5), TIME * (0.11 + storm * 0.3));
+	float lace = smoothstep(0.3, 0.8, noise(world_pos.xz * 3.1 + vec2(TIME * 0.4, 0.0)));
+	float caps = smoothstep(0.86 - storm * 0.12, 1.0, noise(cp)) * lace * depth * (0.16 + storm * 0.55);
 	// Streaks of spume blown across the water.
 	caps += smoothstep(0.7, 0.95, noise(vec2(world_pos.x * 0.25 + world_pos.z * 0.6, world_pos.z * 2.5) + vec2(TIME * 0.8, 0.0))) * storm * 0.12 * depth;
 	col = mix(col, foam_color, clamp(foam + caps, 0.0, 1.0));

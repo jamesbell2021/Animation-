@@ -498,8 +498,9 @@ func _process(delta: float) -> void:
 		_update_lamp_label()
 		var on_light: bool = player != null and player.manning != null
 		_beam_label.visible = player != null and (player.operating or on_light)
-		var focused: bool = (player.manning.mode if on_light else lamp.mode) == Lamp.Mode.FOCUSED
-		_beam_label.text = Settings.keys_in("%s: %s   [Q] switch" % ["Searchlight" if on_light else "Beam", "FOCUSED" if focused else "WIDE"], player.idx)
+		if _beam_label.visible:
+			var focused: bool = (player.manning.mode if on_light else lamp.mode) == Lamp.Mode.FOCUSED
+			_beam_label.text = Settings.keys_in("%s: %s   [Q] switch" % ["Searchlight" if on_light else "Beam", "FOCUSED" if focused else "WIDE"], player.idx)
 	if camp and is_instance_valid(camp) and camp.generator != null:
 		var g := camp.generator
 		var lit := 0
