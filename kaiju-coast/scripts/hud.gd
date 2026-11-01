@@ -61,6 +61,7 @@ var _set_widgets: Dictionary = {}
 var _banner_t: float = 0.0
 var subtitle: Label
 var touch: TouchControls
+var fps_label: Label
 ## Trailer filming: hide the menus and bars, keep the crosshair, banners and subtitles.
 var film: bool = false
 var _sub_t: float = 0.0
@@ -206,6 +207,15 @@ func _ready() -> void:
 	_build_settings()
 	touch = TouchControls.new()
 	root.add_child(touch)
+	fps_label = _label("", 12, JADE)
+	fps_label.anchor_left = 1.0
+	fps_label.anchor_right = 1.0
+	fps_label.offset_left = -110
+	fps_label.offset_top = 52
+	fps_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	fps_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	fps_label.visible = bool(Settings.get_v("show_fps"))
+	root.add_child(fps_label)
 	Game.banner.connect(show_banner)
 	Game.hud_dirty.connect(func() -> void: refresh(true))
 	Game.state_changed.connect(_on_state)
@@ -1019,6 +1029,8 @@ func _build_settings() -> void:
 	_check_row(grid, "CRT scanlines", "crt")
 	if not OS.has_feature("mobile"):
 		_check_row(grid, "Fullscreen", "fullscreen")
+		_check_row(grid, "V-sync", "vsync")
+	_check_row(grid, "Show FPS", "show_fps")
 	_check_row(grid, "Show the tutorial", "tutorial")
 	v.add_child(_label("Controller: sticks aim and pan, RT fire, LT zoom, A select, B back, Y man a gun / swap,\nX airship / reload, LB RB cycle guns, d-pad special attacks, Start next wave, Back pause.", 11, DIM))
 	var back: Button = _button("戻る  BACK", func() -> void: close_settings())
@@ -1178,6 +1190,8 @@ func _process(delta: float) -> void:
 	if _tick <= 0.0:
 		_tick = 0.2
 		refresh()
+		if fps_label.visible:
+			fps_label.text = "%d FPS" % Engine.get_frames_per_second()
 	if film:
 		for c: Control in [top, panel, acts, abil_bar, fps_box, title_screen, over_screen, tut_box, target_hint, banner_box]:
 			c.visible = false

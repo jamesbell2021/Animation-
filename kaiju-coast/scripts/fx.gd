@@ -7,6 +7,9 @@ extends Node3D
 
 enum { SPARK, BLOOD, GIB, RING, STAIN, SPLAT, BOOM, SMOKE, FLAME }
 var max_particles: int = 3600
+## Smoke puffs are the costliest particle to draw: past this many, new ones are skipped.
+var max_smoke: int = 420
+var _smoke_n: int = 0
 
 var _k: PackedInt32Array = PackedInt32Array()
 var _p: PackedVector3Array = PackedVector3Array()
@@ -47,6 +50,7 @@ func _ready() -> void:
 
 func clear() -> void:
 	_k.clear()
+	_smoke_n = 0
 	_p.clear()
 	_v.clear()
 	_life.clear()
@@ -67,6 +71,10 @@ func count() -> int:
 
 
 func _add(kind: int, p: Vector3, v: Vector3, life: float, c: Color, g: float = 0.0, s: float = 1.0, x: float = 0.0) -> void:
+	if kind == SMOKE:
+		if _smoke_n >= max_smoke:
+			return
+		_smoke_n += 1
 	if _k.size() >= max_particles:
 		if randf() < 0.7:
 			return
@@ -83,6 +91,8 @@ func _add(kind: int, p: Vector3, v: Vector3, life: float, c: Color, g: float = 0
 
 
 func _remove(i: int) -> void:
+	if _k[i] == SMOKE:
+		_smoke_n -= 1
 	var last: int = _k.size() - 1
 	if i != last:
 		_k[i] = _k[last]
@@ -314,19 +324,25 @@ func update(dt: float) -> void:
 
 func draw() -> void:
 	var cam: Vector3 = Game.rig.cam.global_position if Game.rig != null else Vector3.ZERO
+	var fwd: Vector3 = -Game.rig.cam.global_transform.basis.z if Game.rig != null else Vector3.FORWARD
 	_lines.clear()
 	var n: int = _k.size()
 	var any: bool = n > 0 or not _frame_lines.is_empty() or not _beams.is_empty()
 	if any:
 		for i: int in range(n):
+			var p: Vector3 = _p[i]
+			# Behind the camera (first person, or the edge of the command view): nothing to draw.
+			var rel: Vector3 = p - cam
+			var ahead: float = rel.dot(fwd)
+			if ahead < -40.0:
+				continue
 			var f: float = _life[i] / _max[i]
 			var c: Color = _c[i] * clampf(f * 1.6, 0.0, 1.0)
-			var p: Vector3 = _p[i]
 			match _k[i]:
 				SPARK:
-					_seg(p, p - _v[i] * 0.03, c)
+					_lines.seg(p, p - _v[i] * 0.03, c)
 				BLOOD:
-					_seg(p, p - _v[i] * (0.045 * _s[i]), c)
+					_lines.seg(p, p - _v[i] * (0.045 * _s[i]), c)
 				GIB:
 					_gib(p, _s[i], _x[i], c)
 				RING:
@@ -339,12 +355,12 @@ func draw() -> void:
 				BOOM:
 					_ball(p, _s[i], Mats.WHITE * clampf(f * 1.6, 0.0, 1.0) if f > 0.75 else c)
 				SMOKE:
-					_circle(p, _s[i], 7, c * 0.45)
-					_circle(p + Vector3(0, _s[i] * 0.5, 0), _s[i] * 0.7, 7, c * 0.35)
+					# One ring, with fewer sides the further away it is.
+					_circle(p + Vector3(0, _s[i] * 0.25, 0), _s[i] * 0.85, 6 if ahead < 500.0 else 4, c * 0.45)
 				FLAME:
 					_flame(p, _s[i], f, _x[i], cam)
 		for fl: Array in _frame_lines:
-			_seg(fl[0], fl[1], fl[2])
+			_lines.seg(fl[0], fl[1], fl[2])
 		for b: Dictionary in _beams:
 			var bf: float = float(b["life"]) / float(b["max"])
 			if b["kind"] == "bolt":
@@ -355,10 +371,10 @@ func draw() -> void:
 					var t: float = float(s) / 8.0
 					var jit: float = 0.0 if s == 8 else 5.0 * (1.0 - absf(t - 0.5))
 					var q: Vector3 = a.lerp(e, t) + Vector3(randf_range(-jit, jit), randf_range(-jit, jit), randf_range(-jit, jit))
-					_seg(prev, q, (Mats.WHITE if s % 3 == 0 else Mats.BOLT) * (0.6 + bf))
+					_lines.seg(prev, q, (Mats.WHITE if s % 3 == 0 else Mats.BOLT) * (0.6 + bf))
 					prev = q
 			elif b["kind"] == "line":
-				_seg(b["a"], b["b"], (b["c"] as Color) * bf)
+				_lines.seg(b["a"], b["b"], (b["c"] as Color) * bf)
 	_lines.commit()
 	_frame_lines.clear()
 	_ribbons.clear_surfaces()
@@ -395,16 +411,12 @@ static func _seg_dist(p: Vector3, a: Vector3, b: Vector3) -> float:
 	return p.distance_to(a + ab * t)
 
 
-func _seg(a: Vector3, b: Vector3, c: Color) -> void:
-	_lines.seg(a, b, c)
-
-
 func _circle(p: Vector3, r: float, n: int, c: Color) -> void:
 	var prev: Vector3 = p + Vector3(r, 0, 0)
 	for i: int in range(1, n + 1):
 		var a: float = TAU * float(i) / float(n)
 		var q: Vector3 = p + Vector3(cos(a) * r, 0, sin(a) * r)
-		_seg(prev, q, c)
+		_lines.seg(prev, q, c)
 		prev = q
 
 
@@ -419,35 +431,35 @@ func _flame(p: Vector3, s: float, f: float, ph: float, cam: Vector3) -> void:
 	var tip: Vector3 = p + Vector3(0, s * (0.9 + f * 0.6), 0) + sway
 	var mid_l: Vector3 = p - side * 0.8 + Vector3(0, s * 0.45, 0) + sway * 0.4
 	var mid_r: Vector3 = p + side * 0.8 + Vector3(0, s * 0.45, 0) + sway * 0.4
-	_seg(p - side, mid_l, c)
-	_seg(mid_l, tip, c)
-	_seg(p + side, mid_r, c)
-	_seg(mid_r, tip, c)
-	_seg(p - side, p + side, c * 0.5)
+	_lines.seg(p - side, mid_l, c)
+	_lines.seg(mid_l, tip, c)
+	_lines.seg(p + side, mid_r, c)
+	_lines.seg(mid_r, tip, c)
+	_lines.seg(p - side, p + side, c * 0.5)
 
 
 func _blob(p: Vector3, r: float, ph: float, c: Color) -> void:
 	var prev: Vector3 = Vector3.ZERO
-	for i: int in range(10):
-		var a: float = TAU * float(i) / 9.0
+	for i: int in range(7):
+		var a: float = TAU * float(i) / 6.0
 		var rr: float = r * (1.0 + 0.35 * sin(a * 3.0 + ph * 5.0))
 		var q: Vector3 = p + Vector3(cos(a + ph) * rr, 0, sin(a + ph) * rr)
 		if i > 0:
-			_seg(prev, q, c)
+			_lines.seg(prev, q, c)
 		prev = q
 
 
 func _ball(p: Vector3, r: float, c: Color) -> void:
 	for k: int in range(3):
 		var y: float = (float(k) - 1.0) * r * 0.6
-		_circle(p + Vector3(0, y, 0), r * (0.8 if k != 1 else 1.0), 10, c)
-	for m: int in range(4):
-		var a: float = PI * float(m) / 4.0
+		_circle(p + Vector3(0, y, 0), r * (0.8 if k != 1 else 1.0), 8, c)
+	for m: int in range(3):
+		var a: float = PI * float(m) / 3.0
 		var prev: Vector3 = p + Vector3(0, -r, 0)
-		for i: int in range(1, 7):
-			var th: float = PI * float(i) / 6.0
+		for i: int in range(1, 6):
+			var th: float = PI * float(i) / 5.0
 			var q: Vector3 = p + Vector3(sin(th) * cos(a), -cos(th), sin(th) * sin(a)) * r
-			_seg(prev, q, c)
+			_lines.seg(prev, q, c)
 			prev = q
 
 
@@ -457,12 +469,12 @@ func _gib(p: Vector3, s: float, r: float, c: Color) -> void:
 	var t1: Vector3 = p + b * Vector3(-1, -0.5, -0.6)
 	var t2: Vector3 = p + b * Vector3(1, -0.5, -0.6)
 	var t3: Vector3 = p + b * Vector3(0, -0.5, 1)
-	_seg(t0, t1, c)
-	_seg(t0, t2, c)
-	_seg(t0, t3, Mats.GORE)
-	_seg(t1, t2, c)
-	_seg(t2, t3, Mats.GORE)
-	_seg(t3, t1, c)
+	_lines.seg(t0, t1, c)
+	_lines.seg(t0, t2, c)
+	_lines.seg(t0, t3, Mats.GORE)
+	_lines.seg(t1, t2, c)
+	_lines.seg(t2, t3, Mats.GORE)
+	_lines.seg(t3, t1, c)
 
 
 func _ribbon(a: Vector3, b: Vector3, w: float, c: Color, cam: Vector3) -> void:

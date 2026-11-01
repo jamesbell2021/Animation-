@@ -1,0 +1,48 @@
+KAIJU COAST  怪獣海岸   version 1.0.0
+==========================================
+
+Hold a neon Japanese bay against giant kaiju, then climb into the guns and fight them yourself.
+
+STARTING THE GAME
+  Windows:  double-click KaijuCoast.exe. If SmartScreen warns you (the game isn't code-signed),
+            choose "More info", then "Run anyway".
+  Linux:    run ./KaijuCoast.x86_64 (if it won't start, make it executable first:
+            chmod +x KaijuCoast.x86_64).
+  The first launch takes a few extra seconds while the soundtrack is put together.
+  Needs a graphics card with OpenGL 3.3, which almost every PC from the last ten years has.
+
+HOW TO PLAY
+  * Click a glowing ring on the seawall or a sea fort to build a gun there.
+    Click a built gun to upgrade, repair, sell or man it.
+    At level 3 every gun picks one of two upgrade paths.
+  * Press Space (or the red button) for the next wave. Calling it early earns a bonus.
+  * Press F to man a gun, or Z to board the airship, and fight in first person.
+    Shoot the glowing eyes for triple damage. In the airship, WASD flies it.
+  * Special attacks: 7 airstrike, 8 lightning storm (from wave 3), 9 flood gates (from wave 5).
+  * Hold all 15 waves to win, then carry on in endless mode.
+
+COMMAND VIEW                            FIRST PERSON
+  Click          select / build           Mouse / arrows   aim
+  Drag, A D W S  pan and zoom             Left click       fire
+  Mouse wheel    zoom                     Right click      zoom
+  1-5            build on the ring        Q or wheel       machine gun / rocket launcher
+  U  R  X        upgrade, repair, sell    R                reload rockets
+  B              armory                   WASD             fly the airship
+  Space          next wave                Tab / E          next gun
+  T  P  M        speed, pause, music      Esc / F          back to the command view
+  F11 or Alt+Enter  fullscreen            Esc              menu
+
+  Any gamepad works too: the controls are listed under Settings.
+
+SETTINGS (title screen, or Esc during a game)
+  Mouse sensitivity, invert Y, music / effects / voice volume, graphics quality, fullscreen,
+  v-sync, the CRT scanlines, an FPS counter, and the tutorial.
+  If the game runs slowly, set Graphics to MEDIUM or LOW: they draw fewer particles and less
+  rain and bloom.
+
+Saved settings and your best wave live in:
+  Windows:  %APPDATA%\Godot\app_userdata\Kaiju Coast\
+  Linux:    ~/.local/share/godot/app_userdata/Kaiju Coast/
+
+Made by 3BL with Godot 4. The music, voices and sound effects are all synthesised in code.
+Fonts: Dela Gothic One and DotGothic16 (SIL Open Font License, see FONT_LICENCES.txt).

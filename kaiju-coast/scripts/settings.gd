@@ -5,6 +5,7 @@ extends RefCounted
 const DEFAULTS: Dictionary = {
 	"sensitivity": 0.0022, "invert_y": false, "music_vol": 0.8, "sfx_vol": 1.0, "voice_vol": 1.0,
 	"quality": 2, "fullscreen": false, "crt": true, "tutorial": true, "difficulty": 1,
+	"vsync": true, "show_fps": false,
 }
 const QUALITY_NAMES: Array[String] = ["LOW", "MEDIUM", "HIGH"]
 const DIFFICULTY_NAMES: Array[String] = ["やさしい EASY", "ふつう NORMAL", "むずかしい HARD"]
@@ -45,8 +46,13 @@ static func apply() -> void:
 		Game.main.set_crt(bool(get_v("crt")))
 	if Game.fx != null:
 		Game.fx.max_particles = [1400, 2600, 3600][q]
+		Game.fx.max_smoke = [160, 280, 420][q]
 	if Game.world != null and Game.world.env != null:
-		Game.world.env.glow_intensity = [0.9, 1.1, 1.25][q]
+		Game.world.set_quality(q)
+	if DisplayServer.get_name() != "headless":
+		DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ENABLED if bool(get_v("vsync")) else DisplayServer.VSYNC_DISABLED)
+	if Game.hud != null:
+		Game.hud.fps_label.visible = bool(get_v("show_fps"))
 	var fs: bool = bool(get_v("fullscreen"))
 	var mode: DisplayServer.WindowMode = DisplayServer.window_get_mode()
 	var is_fs: bool = mode == DisplayServer.WINDOW_MODE_FULLSCREEN or mode == DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN

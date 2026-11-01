@@ -38,19 +38,16 @@ subtitles.
   run and download **kaiju-coast-windows** from its *Artifacts*. Unzip it and double-click
   `KaijuCoast.exe`. Windows SmartScreen may warn because the game isn't code-signed: choose
   **More info → Run anyway**.
-* **Android:** download **kaiju-coast-apk** from the same run, copy `kaiju-coast.apk` to the phone
-  and open it (allow installs from that app when Android asks). Without the release key secrets
-  the APK is signed with a throwaway debug key, so uninstall the old one before installing a new
-  build.
 * **Linux:** **kaiju-coast-linux**.
 * **itch.io:** builds go to `gamesdevnisite/kaiju-coast` when you push a tag like `kc-v1.0.0`, or
   run the workflow by hand with *Push the builds to itch.io* ticked. It needs the
-  `BUTLER_API_KEY` secret, and the `ANDROID_RELEASE_KEYSTORE_*` secrets for the Android upload
-  (the same secrets the other games here use).
+  `BUTLER_API_KEY` secret.
+* **Android:** not part of the 1.0 release. The game still has an Android export preset and touch
+  controls: run the workflow by hand with *Also build the Android APK* ticked to get one.
 
-Every push that changes `kaiju-coast/` builds fresh Windows, Linux and Android versions. The
-workflow is `.github/workflows/kaiju-coast.yml`. It runs the smoke test first and fails if the
-game is broken.
+Every push that changes `kaiju-coast/` builds fresh Windows and Linux versions, each zipped with
+`HOW_TO_PLAY.txt` and the font licences. The workflow is `.github/workflows/kaiju-coast.yml`. It
+runs the smoke test first and fails if the game is broken.
 
 ## Trailer and itch.io page
 
@@ -135,8 +132,8 @@ flies the airship.
 <p><img src="docs/touch.jpg" width="60%" alt="The touch controls in first person"></p>
 
 **Settings** (title screen or pause menu): mouse sensitivity and invert Y, music, effects and voice
-volume, graphics quality (Low suits phones and old PCs), fullscreen, the CRT filter, and the
-tutorial.
+volume, graphics quality (LOW and MEDIUM draw fewer particles, less smoke and rain, and fewer bloom
+passes, for older PCs), fullscreen, v-sync, an FPS counter, the CRT filter, and the tutorial.
 
 ## Guns
 
@@ -196,6 +193,7 @@ shader.
 
 ```
 godot --headless --path . res://tests/smoke_test.tscn      # exit code 0 = all pass
+godot --path . res://tests/bench.tscn -- [--fps]             # times a worst-case battle, section by section
 godot --path . res://tests/showcase.tscn -- --out=/tmp/shots   # renders the screenshots above
 godot --headless --path . res://tests/audio_preview.tscn -- --out=/tmp/audio   # music, effects and voice lines as WAV
 ```

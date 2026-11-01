@@ -13,6 +13,7 @@ uniform vec3 cam = vec3(0.0);
 uniform float fall = 0.0;          // metres fallen so far (accumulated on the CPU)
 uniform vec2 wind = vec2(0.0);     // sideways drift per metre fallen
 uniform float intensity = 0.0;
+uniform float density = 1.0;       // share of the streaks drawn at all (graphics quality)
 uniform float flash = 0.0;
 uniform vec3 tint : source_color = vec3(0.45, 0.55, 0.8);
 
@@ -30,7 +31,7 @@ void vertex() {
 	b += shift;
 	vec3 rel = abs(w - cam) / box;
 	float edge = 1.0 - smoothstep(0.32, 0.5, max(max(rel.x, rel.z), rel.y));
-	vis = intensity * edge * step(COLOR.b, intensity) * step(0.0, w.y);
+	vis = intensity * edge * step(COLOR.b, intensity * density) * step(0.0, w.y);
 	POSITION = thick_line_vertex(PROJECTION_MATRIX * VIEW_MATRIX, a, b.xy, vec2(b.z, UV2.y), VIEWPORT_SIZE);
 }
 

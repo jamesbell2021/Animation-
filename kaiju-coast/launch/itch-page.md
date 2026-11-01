@@ -58,20 +58,22 @@ subtitles. All of the music, voices and sound effects are synthesised in code.
 
 ### Platforms
 
-* **Windows** and **Linux**: mouse and keyboard, or any gamepad.
-* **Android** (phones and tablets): touch controls. Tap to build, pinch to zoom, drag to aim.
+* **Windows** and **Linux** (64-bit): mouse and keyboard, or any gamepad. Needs OpenGL 3.3, which
+  almost every PC from the last ten years has. Three graphics settings (LOW, MEDIUM, HIGH) for
+  older machines, with an FPS counter to check.
 
 ### Controls
 
 | | Command view | First person |
 |---|---|---|
-| Mouse / touch | Click or tap a ring to build; drag to pan | Aim; click or hold 撃 to fire |
+| Mouse | Click a ring to build; drag to pan; wheel to zoom | Aim; left click fire; right click zoom |
 | Keyboard | 1–5 build · U upgrade · Space next wave · F man a gun · Z board the airship | Q swap weapon · R reload · WASD fly the airship · Esc leave |
 | Specials | 7 airstrike · 8 lightning storm · 9 flood gates | the same, aimed where you look |
 | Gamepad | LB/RB pick a ring · A select · Y man the gun · D-pad specials | right stick aim · RT fire · LT zoom · B leave |
 
 Three difficulties, a guided first wave, 15 waves to win and endless mode after that. Settings
-for sensitivity, invert Y, volumes, graphics quality, fullscreen and the CRT filter.
+for sensitivity, invert Y, volumes, graphics quality, fullscreen, v-sync, an FPS counter and the
+CRT filter.
 
 Made with Godot 4 by 3BL.
 
@@ -108,7 +110,7 @@ Made with Godot 4 by 3BL.
 効果音、字幕つきの日本語の無線（出撃！ 敵襲来！ 大鬼だ！）。音楽、音声、効果音はすべて
 プログラムで合成しています。
 
-**対応機種：** Windows、Linux（マウスとキーボード、ゲームパッド）、Android（タッチ操作）。
+**対応機種：** Windows、Linux（64ビット。マウスとキーボード、ゲームパッド）。
 難易度は3段階。チュートリアルつき。15波を守り抜けばクリア、その後はエンドレスモード。
 
 Godot 4で制作。
@@ -130,7 +132,7 @@ Godot 4で制作。
 | Made with | Godot |
 | Average session | About half an hour |
 | Languages | English (menus carry Japanese labels; the voices are Japanese with English subtitles) |
-| Inputs | Keyboard, Mouse, Gamepad (any), Touchscreen |
+| Inputs | Keyboard, Mouse, Gamepad (any) |
 | Player count | Singleplayer |
 | Accessibility | Subtitles, Configurable controls (sensitivity, invert Y), High-contrast |
 | Content | Cartoon blood (blood spray and gore on giant monsters) |
@@ -148,8 +150,11 @@ Godot 4で制作。
 |---|---|---|
 | `kaiju-coast-windows.zip` | Windows | from the CI run's `kaiju-coast-windows` artifact |
 | `kaiju-coast-linux.zip` | Linux | artifact `kaiju-coast-linux` |
-| `kaiju-coast.apk` | Android | artifact `kaiju-coast-apk` (release-signed once the `ANDROID_RELEASE_KEYSTORE_*` secrets are set) |
+
+Each zip holds the game (one file), `HOW_TO_PLAY.txt` and the font licences. Tick **Windows** on
+the first upload and **Linux** on the second; mark both as "executable".
 
 Or let the workflow upload them: with the `BUTLER_API_KEY` secret set, push a tag like
 `kc-v1.0.0` (or run **Kaiju Coast builds** by hand with "Push the builds to itch.io" ticked). It
-uses the channels `windows`, `linux` and `android`, and itch.io creates them on the first push.
+uses the channels `windows` and `linux`, and itch.io creates them on the first push. There is no
+Android build in this release.

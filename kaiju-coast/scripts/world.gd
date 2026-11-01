@@ -83,6 +83,15 @@ func _process(delta: float) -> void:
 		Game.fx.smoke(Vector3(330 + randf_range(-30, 30), 160, -1480 + randf_range(-20, 20)), Vector3(randf_range(-4, 4), randf_range(14, 24), 0), randf_range(14, 26), 7.0)
 
 
+## Graphics quality: LOW drops the two widest bloom passes and thins the rain, MEDIUM drops one.
+func set_quality(q: int) -> void:
+	env.glow_intensity = [0.9, 1.1, 1.25][q]
+	env.set_glow_level(4, [0.0, 0.7, 0.7][q])
+	env.set_glow_level(5, [0.0, 0.0, 0.4][q])
+	if _rain_mat != null:
+		_rain_mat.set_shader_parameter("density", [0.4, 0.7, 1.0][q])
+
+
 func lightning_flash() -> void:
 	_flash = 1.0
 	Game.flash = maxf(Game.flash, 0.12)

@@ -114,7 +114,7 @@ def video_shot(i, take, start, dur, end_card=False):
     if end_card:
         # Darken the footage and bring the title up over it.
         lines = [("怪獣海岸", 170, SHU), ("KAIJU COAST", 96, WHITE), (" ", 16, WHITE),
-                 ("PLAY IT ON ITCH.IO", 64, GOLD), ("WINDOWS · ANDROID · LINUX", 40, WHITE),
+                 ("PLAY IT ON ITCH.IO", 64, GOLD), ("WINDOWS · LINUX", 40, WHITE),
                  ("gamesdevnisite.itch.io/kaiju-coast", 40, CYAN)]
         vf = (f"scale={W}:{H},fps={FPS},eq=brightness=-0.3:saturation=0.75,"
               f"drawbox=x=0:y=ih*0.2:w=iw:h=ih*0.6:color=black@0.62:t=fill,format=gbrp,"
