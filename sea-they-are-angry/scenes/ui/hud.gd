@@ -199,6 +199,8 @@ func _process(delta: float) -> void:
 	var stock := "Driftwood %d · Scrap %d · Bio %d · Kelp %d · Food %d" % [Stock.get_amount("driftwood"), Stock.get_amount("scrap"), Stock.get_amount("bio"), Stock.get_amount("seaweed"), Stock.get_amount("food")]
 	if Stock.get_amount("oil") > 0:
 		stock += " · Oil %d" % Stock.get_amount("oil")
+	if Stock.get_amount("eggs") > 0:
+		stock += " · Gull eggs %d" % Stock.get_amount("eggs")
 	if Stock.get_amount("dirty_fuel") > 0:
 		stock += " · Dirty fuel %d" % Stock.get_amount("dirty_fuel")
 	stock += " · Seeds %d" % Stock.get_amount("seeds")

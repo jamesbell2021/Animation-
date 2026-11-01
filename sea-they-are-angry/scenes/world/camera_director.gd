@@ -19,6 +19,9 @@ extends Node
 const OFFSET := Vector3(0.0, 38.0, 26.0)
 const MAIN_FOCUS := Vector3(0.0, 3.0, 1.0)
 const HOLM_FOCUS := Vector3(Terrain.HOLM_C.x + 0.5, Terrain.HOLM_HEIGHT, Terrain.HOLM_C.y + 1.0)
+const ISLET_FOCUS := Vector3(Terrain.ISLET_C.x, Terrain.ISLET_HEIGHT, Terrain.ISLET_C.y + 1.5)
+## Gull Rock is small: its view comes in closer.
+const ISLET_ZOOM := 0.62
 ## Views this far apart (m) split the screen; closer than JOIN_BELOW they join again.
 const SPLIT_FROM := 9.0
 const JOIN_BELOW := 4.0
@@ -84,12 +87,30 @@ func _ready() -> void:
 ## Where a keeper standing at p should be framed from: their island, or between the two
 ## on the bridge.
 static func focus_for(p: Vector3) -> Vector3:
+	if Terrain.island_of(p.x, p.z) == 2:
+		return ISLET_FOCUS
 	var t := 0.0
 	if Terrain.on_bridge(p.x, p.z):
 		t = clampf(Terrain.bridge_coords(p.x, p.z).x, 0.0, 1.0)
 	elif Terrain.on_holm(p.x, p.z):
 		t = 1.0
 	return MAIN_FOCUS.lerp(HOLM_FOCUS, smoothstep(0.0, 1.0, t))
+
+## A keeper's framing: their island's, or for one in the rowing boat, slid along from
+## the main island's to Gull Rock's as it crosses.
+static func focus_for_keeper(k: Node3D) -> Vector3:
+	var boat = k.get("riding")
+	if boat != null and is_instance_valid(boat):
+		return MAIN_FOCUS.lerp(ISLET_FOCUS, smoothstep(0.1, 0.9, boat.progress()))
+	return focus_for(k.global_position)
+
+static func zoom_for_keeper(k: Node3D) -> float:
+	var boat = k.get("riding")
+	if boat != null and is_instance_valid(boat):
+		return lerpf(1.0, ISLET_ZOOM, smoothstep(0.35, 0.95, boat.progress()))
+	return ISLET_ZOOM if Terrain.island_of(k.global_position.x, k.global_position.z) == 2 else 1.0
+
+var _zooms := {}
 
 func _people() -> Array:
 	var out := []
@@ -117,14 +138,18 @@ func _process(delta: float) -> void:
 	if people.is_empty():
 		return
 	for p in people:
-		var want := focus_for(p.global_position)
+		var want := focus_for_keeper(p)
+		var zoom := zoom_for_keeper(p)
 		if not _foci.has(p):
 			_foci[p] = want
+			_zooms[p] = zoom
 		else:
 			_foci[p] = (_foci[p] as Vector3).lerp(want, 1.0 - exp(-delta * FOLLOW))
+			_zooms[p] = lerpf(float(_zooms[p]), zoom, 1.0 - exp(-delta * FOLLOW))
 	for k in _foci.keys():
 		if not is_instance_valid(k) or not people.has(k):
 			_foci.erase(k)
+			_zooms.erase(k)
 	var groups := _group(people)
 	var want_split := 1.0 if groups.size() > 1 else 0.0
 	if groups.size() > 1:
@@ -183,6 +208,15 @@ func _min_idx(g: Array) -> int:
 		m = mini(m, int(p.get("idx")))
 	return m
 
+func _group_zoom(g: Array) -> float:
+	var s := 0.0
+	var n := 0
+	for p in g:
+		if _zooms.has(p):
+			s += float(_zooms[p])
+			n += 1
+	return s / float(n) if n > 0 else 1.0
+
 func _group_focus(g: Array) -> Vector3:
 	var s := Vector3.ZERO
 	var n := 0
@@ -203,7 +237,7 @@ func _place(_delta: float) -> void:
 	mean /= float(maxi(n, 1))
 	var size := get_viewport().get_visible_rect().size
 	if n <= 1 or _split <= 0.0:
-		_pose(main_camera, foci[0] if n == 1 else mean, Vector2.ZERO, 1.0)
+		_pose(main_camera, foci[0] if n == 1 else mean, Vector2.ZERO, _group_zoom(_groups[0]) if n == 1 else 1.0)
 		_overlay.visible = false
 		for sv in _subs:
 			sv.render_target_update_mode = SubViewport.UPDATE_DISABLED
@@ -231,7 +265,7 @@ func _place(_delta: float) -> void:
 			cam.fov = main_camera.fov
 			cam.near = main_camera.near
 			cam.far = main_camera.far
-		_pose(cam, f, off, pull)
+		_pose(cam, f, off, pull * lerpf(1.0, _group_zoom(_groups[i]), k))
 	_overlay.visible = true
 	_mat.set_shader_parameter("count", n)
 	_mat.set_shader_parameter("size", size)

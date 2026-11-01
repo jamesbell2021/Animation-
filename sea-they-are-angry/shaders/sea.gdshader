@@ -18,6 +18,13 @@ uniform float holm_shore = 1.1;
 uniform sampler2D holm_shore_tex : filter_linear, repeat_disable;
 uniform vec4 holm_shore_rect = vec4(24.0, -30.0, 56.0, 62.0);
 uniform float use_holm_tex = 0.0;
+// Gull Rock's waterline, baked the same way (Terrain.islet_shore_texture).
+uniform sampler2D islet_shore_tex : filter_linear, repeat_disable;
+uniform vec4 islet_shore_rect = vec4(8.0, -56.0, 32.0, 32.0);
+// The rowing boat (RowingBoat): its place (x, z), the cos and sin of its heading, and
+// its half length and half beam. The sea isn't drawn inside its hull, so it stays dry.
+uniform vec4 boat_at = vec4(0.0, 0.0, 1.0, 0.0);
+uniform vec2 boat_half = vec2(0.0, 0.0);
 uniform float foam_width = 0.4;
 uniform float swell = 0.09;
 // 0 by day, 1 at night: faint bioluminescent specks in the swell.
@@ -37,7 +44,7 @@ float noise(vec2 p) {
 	return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x), u.y);
 }
 
-// How far out from the nearest shore (the main island's ring, or the holm's): negative ashore.
+// How far out from the nearest shore (the main island's ring, the holm's, or Gull Rock's): negative ashore.
 float shore_dist(vec2 p) {
 	float main_d = length(p) - shore_radius;
 	vec2 q = abs(p - holm_c) - (holm_half - vec2(holm_round));
@@ -47,7 +54,10 @@ float shore_dist(vec2 p) {
 		vec2 outside = max(max(-uv, uv - vec2(1.0)), vec2(0.0)) * holm_shore_rect.zw;
 		holm_d = texture(holm_shore_tex, clamp(uv, vec2(0.0), vec2(1.0))).r + length(outside);
 	}
-	return min(main_d, holm_d);
+	vec2 iuv = (p - islet_shore_rect.xy) / islet_shore_rect.zw;
+	vec2 iout = max(max(-iuv, iuv - vec2(1.0)), vec2(0.0)) * islet_shore_rect.zw;
+	float islet_d = texture(islet_shore_tex, clamp(iuv, vec2(0.0), vec2(1.0))).r + length(iout);
+	return min(min(main_d, holm_d), islet_d);
 }
 
 void vertex() {
@@ -63,6 +73,16 @@ void vertex() {
 }
 
 void fragment() {
+	if (boat_half.x > 0.0) {
+		vec2 d = world_pos.xz - boat_at.xy;
+		float lx = d.x * boat_at.z - d.y * boat_at.w;
+		float lz = d.x * boat_at.w + d.y * boat_at.z;
+		float u = lz / boat_half.x;
+		// Inside its planking at the waterline (the hull's own shape, a little in).
+		if (abs(u) < 0.9 && abs(lx) < boat_half.y * pow(max(0.0, 1.0 - pow(abs(u), 2.2)), 0.62) * 0.74) {
+			discard;
+		}
+	}
 	float sd = shore_dist(world_pos.xz);
 	float depth = smoothstep(0.0, 9.0, sd);
 	vec3 col = mix(shallow_color, deep_color, depth) * (1.0 - storm * 0.35);

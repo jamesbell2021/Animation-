@@ -28,6 +28,15 @@ const DRONE_DEATH := [
 	["tsu-i-ra-ku", "墜落！", "tsuiraku!"],
 ]
 
+const HELI_DEATH := [
+	["me-e-de-e", "メーデー！", "mayday!"],
+	["tsu-i-ra-ku", "墜落！", "tsuiraku!"],
+]
+
+const TRUCK_DEATH := [
+	["ke-Q-ka-i-ga", "結界が！", "kekkai ga!"],
+]
+
 const BOSS_DEATH := [
 	["ba-ka-na-a-a", "ばかなあああ！", "bakanaaa!"],
 ]
@@ -45,7 +54,7 @@ const ANNOUNCER := {
 
 static func all_romaji() -> Array[String]:
 	var out: Array[String] = []
-	for line in SOLDIER_DEATH + TANK_DEATH + DRONE_DEATH + BOSS_DEATH:
+	for line in SOLDIER_DEATH + TANK_DEATH + DRONE_DEATH + HELI_DEATH + TRUCK_DEATH + BOSS_DEATH:
 		out.append(line[0])
 	for key in ANNOUNCER:
 		out.append(ANNOUNCER[key][0])

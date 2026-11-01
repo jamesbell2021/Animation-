@@ -18,6 +18,8 @@ const MEAL_MAX_HP := 10
 const FLARE_COST := {"scrap": 1}
 const MIX_COST := {"oil": 1, "driftwood": 1}
 const MIX_YIELD := 2
+## Gull eggs from Gull Rock, boiled: this many make a meal for the store.
+const EGGS_MEAL := {"eggs": 3}
 
 var _wall_mat: StandardMaterial3D
 var _window_mat: StandardMaterial3D
@@ -218,6 +220,9 @@ func menu_rows(p: Player) -> Array:
 	if gain > 0:
 		meal += ", +%d max health" % gain
 	rows.append({"text": meal, "enabled": Stock.can_afford(MEAL) and (p.hp < p.max_hp or gain > 0 or p.hunger < 90.0), "do": eat.bind(p)})
+	if Stock.get_amount("eggs") > 0:
+		rows.append({"text": "Boil gull eggs (%s): a meal into the store   %d eggs" % [Stock.cost_str(EGGS_MEAL), Stock.get_amount("eggs")],
+			"enabled": Stock.can_afford(EGGS_MEAL), "do": boil_eggs})
 	rows.append({"text": "Load a flare (%s)   %d / %d" % [Stock.cost_str(FLARE_COST), p.flares(), Player.FLARES_MAX],
 		"enabled": p.flares() < Player.FLARES_MAX and Stock.can_afford(FLARE_COST), "do": load_flare.bind(p)})
 	rows.append({"text": "Mix dirty fuel (1 oil, 1 driftwood: %d cans)" % MIX_YIELD, "enabled": Stock.can_afford(MIX_COST), "do": mix_fuel})
@@ -240,6 +245,12 @@ func eat(p: Player) -> void:
 	p.eat_meal()
 	Audio.sfx("gather", global_position, 0.0, 0.0)
 	Events.message.emit("A hot meal: %s is at full strength  (%d)" % [p.keeper_name(), p.max_hp])
+
+func boil_eggs() -> void:
+	if Stock.spend(EGGS_MEAL):
+		Stock.add("food", 1)
+		Audio.sfx("refuel", global_position, -8.0, 0.1)
+		Events.message.emit("Gull eggs on to boil: +1 food in the store.")
 
 func load_flare(p: Player) -> void:
 	if p.flares() < Player.FLARES_MAX and Stock.spend(FLARE_COST):

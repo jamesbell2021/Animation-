@@ -36,8 +36,11 @@ var storm := 0.0
 ## The wind over the island right now (m/s, horizontal): a breeze on a calm night, a
 ## gale in a storm, gusting. Smoke and anything else that drifts reads it.
 static var wind_now := Vector3(0.7, 0.0, 0.18)
+## How stormy it is right now, 0 to 1 (the gulls and the rowing boat read it).
+static var storm_now := 0.0
 const WIND_DIR := Vector3(0.96, 0.0, 0.26)
 var vignette: ShaderMaterial
+var _wind_t := 0.0
 var _target := 0.0
 var _rain: GPUParticles3D
 var _rain_pm: ParticleProcessMaterial
@@ -210,8 +213,14 @@ func _place_watchers() -> void:
 
 func _process(delta: float) -> void:
 	storm = move_toward(storm, _target, delta / RAMP)
+	storm_now = storm
 	_gust = maxf(0.0, _gust - delta * 0.6)
-	wind_now = WIND_DIR * (0.7 + storm * 5.0 + _gust * 3.5)
+	# The wind never quite settles: it freshens and eases over half a minute or so, and
+	# veers and backs a few tens of degrees either side of its quarter over minutes.
+	_wind_t += delta
+	var veer := sin(_wind_t * 0.031) * 0.38 + sin(_wind_t * 0.0127 + 1.3) * 0.22
+	var breathe := 1.0 + 0.35 * sin(_wind_t * 0.23) * (0.6 + 0.4 * sin(_wind_t * 0.071 + 0.5))
+	wind_now = WIND_DIR.rotated(Vector3.UP, veer) * ((0.7 + storm * 5.0) * breathe + _gust * 3.5)
 	_apply_storm()
 	if storm < 0.05:
 		return

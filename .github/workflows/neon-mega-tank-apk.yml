@@ -1,5 +1,6 @@
 # Builds Neon Mega Tank for Android, Windows and Linux whenever the game changes, and
-# (optionally) pushes the builds to itch.io.
+# (optionally) pushes the builds to itch.io. Each platform is built twice: the full game and the
+# free demo (10 minutes of battle per launch; the "demo" export feature switches it on).
 #
 # Download builds from the run's "Artifacts" section (Actions tab -> latest run).
 #
@@ -119,25 +120,37 @@ jobs:
       - name: Export all platforms
         working-directory: neon-mega-tank
         run: |
-          mkdir -p build/windows build/linux
+          mkdir -p build/windows build/linux build/demo build/demo-windows build/demo-linux
           ../godot --headless --import --path . || true
           ../godot --headless --path . --export-$ANDROID_MODE "Android" build/neon-mega-tank.apk
           ../godot --headless --path . --export-release "Windows Desktop" build/windows/NeonMegaTank.exe
           ../godot --headless --path . --export-release "Linux" build/linux/NeonMegaTank.x86_64
-          test -s build/neon-mega-tank.apk
-          test -s build/windows/NeonMegaTank.exe
-          test -s build/linux/NeonMegaTank.x86_64
+          ../godot --headless --path . --export-$ANDROID_MODE "Android Demo" build/demo/neon-mega-tank-demo.apk
+          ../godot --headless --path . --export-release "Windows Desktop Demo" build/demo-windows/NeonMegaTankDemo.exe
+          ../godot --headless --path . --export-release "Linux Demo" build/demo-linux/NeonMegaTankDemo.x86_64
+          for f in build/neon-mega-tank.apk build/windows/NeonMegaTank.exe build/linux/NeonMegaTank.x86_64 \
+              build/demo/neon-mega-tank-demo.apk build/demo-windows/NeonMegaTankDemo.exe build/demo-linux/NeonMegaTankDemo.x86_64; do
+            test -s "$f"
+          done
           # rcedit only warns when it fails, which leaves Godot's icon on the exe: fail loudly instead.
-          python3 -c "import sys; d = open(sys.argv[1], 'rb').read(); sys.exit(0 if 'Neon Mega Tank'.encode('utf-16-le') in d else 'The Windows exe has no Neon Mega Tank icon or version info: rcedit did not run')" build/windows/NeonMegaTank.exe
-          cp README.md build/windows/README.md
-          cp README.md build/linux/README.md
+          for exe in build/windows/NeonMegaTank.exe build/demo-windows/NeonMegaTankDemo.exe; do
+            python3 -c "import sys; d = open(sys.argv[1], 'rb').read(); sys.exit(0 if 'Neon Mega Tank'.encode('utf-16-le') in d else 'The Windows exe has no Neon Mega Tank icon or version info: rcedit did not run')" "$exe"
+          done
+          for dir in windows linux demo-windows demo-linux; do cp README.md build/$dir/README.md; done
           (cd build/windows && zip -q -r ../neon-mega-tank-windows.zip .)
           (cd build/linux && zip -q -r ../neon-mega-tank-linux.zip .)
+          (cd build/demo-windows && zip -q -r ../neon-mega-tank-demo-windows.zip .)
+          (cd build/demo-linux && zip -q -r ../neon-mega-tank-demo-linux.zip .)
           ls -la build
 
-      - name: Check the Linux build starts
+      - name: Check the Linux builds start (and the demo is a demo)
         working-directory: neon-mega-tank
-        run: timeout 120 build/linux/NeonMegaTank.x86_64 --headless --quit-after 60
+        run: |
+          timeout 120 build/linux/NeonMegaTank.x86_64 --headless --quit-after 60
+          timeout 120 build/demo-linux/NeonMegaTankDemo.x86_64 --headless --quit-after 60
+          printf 'extends SceneTree\nfunc _initialize() -> void:\n\tprint("DEMO=%%s" %% OS.has_feature("demo"))\n\tquit()\n' > "$RUNNER_TEMP/demo_check.gd"
+          timeout 60 build/linux/NeonMegaTank.x86_64 --headless -s "$RUNNER_TEMP/demo_check.gd" | grep -q "DEMO=false"
+          timeout 60 build/demo-linux/NeonMegaTankDemo.x86_64 --headless -s "$RUNNER_TEMP/demo_check.gd" | grep -q "DEMO=true"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -151,6 +164,18 @@ jobs:
         with:
           name: neon-mega-tank-linux
           path: neon-mega-tank/build/neon-mega-tank-linux.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: neon-mega-tank-demo-apk
+          path: neon-mega-tank/build/demo/neon-mega-tank-demo.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: neon-mega-tank-demo-windows
+          path: neon-mega-tank/build/neon-mega-tank-demo-windows.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: neon-mega-tank-demo-linux
+          path: neon-mega-tank/build/neon-mega-tank-demo-linux.zip
 
   # Uploads the builds to itch.io. Each platform goes to its own channel, which itch.io shows
   # as separate downloads. Runs only when asked: a tag like nmt-v1.0.0, or "Run workflow" with
@@ -194,8 +219,12 @@ jobs:
           version=$(grep -o 'version/name="[^"]*"' src/neon-mega-tank/export_presets.cfg | head -1 | cut -d'"' -f2)
           ./butler push dist/neon-mega-tank-windows/neon-mega-tank-windows.zip "$ITCH_PROJECT:windows" --userversion "${version:-dev}"
           ./butler push dist/neon-mega-tank-linux/neon-mega-tank-linux.zip "$ITCH_PROJECT:linux" --userversion "${version:-dev}"
+          # Demo channels: tick "This file is a demo" on these uploads once in the itch.io dashboard.
+          ./butler push dist/neon-mega-tank-demo-windows/neon-mega-tank-demo-windows.zip "$ITCH_PROJECT:windows-demo" --userversion "${version:-dev}"
+          ./butler push dist/neon-mega-tank-demo-linux/neon-mega-tank-demo-linux.zip "$ITCH_PROJECT:linux-demo" --userversion "${version:-dev}"
           if [ "$RELEASE_SIGNED" = "true" ]; then
             ./butler push dist/neon-mega-tank-apk/neon-mega-tank.apk "$ITCH_PROJECT:android" --userversion "${version:-dev}"
+            ./butler push dist/neon-mega-tank-demo-apk/neon-mega-tank-demo.apk "$ITCH_PROJECT:android-demo" --userversion "${version:-dev}"
           else
             echo "::warning::Android APK not pushed: it is a debug build (add the ANDROID_RELEASE_KEYSTORE_* secrets)"
           fi

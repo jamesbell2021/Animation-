@@ -8,7 +8,12 @@ with the game's own sound effects and announcer lines mixed on top.
 
     python3 tools/trailer/assemble.py          ->  tools/trailer/out/neon_mega_tank_trailer.mp4
                                                    tools/trailer/out/neon_mega_tank_poster.jpg
-Needs ffmpeg.
+    python3 tools/trailer/assemble.py update   ->  the update 1.1 trailer (shield, repair gauge,
+                                                   snap-aim cannon, new enemies, collapsing
+                                                   buildings) ending on the free demo:
+                                                   tools/trailer/out/neon_mega_tank_update_trailer.mp4
+                                                   tools/trailer/out/neon_mega_tank_update_poster.jpg
+Needs ffmpeg. Film the update shots first with "record.sh update".
 """
 import os
 import shutil
@@ -27,8 +32,9 @@ RATE = 48000
 
 PINK, CYAN, YELLOW, GREEN, WHITE = "0xff4fd8", "0x33d6ff", "0xffe03a", "0x40ff70", "0xe8f4ff"
 
-# (kind, ...): ("card", lines, seconds, voice) / ("shot", take, start, seconds) /
-# ("end", take, start, seconds). A card line is (text, size, colour).
+# (kind, ...): ("card", lines, seconds, voice) / ("shot", take, start, seconds[, caption]) /
+# ("end", take, start, seconds). A card line is (text, size, colour); a caption is a list of
+# lines drawn in the lower third of the shot.
 EDIT = [
     ("card", [("3BL PRESENTS", 60, CYAN)], 1.6, None),
     ("shot", "reveal", 0.0, 5.6),
@@ -53,6 +59,37 @@ EDIT = [
 ]
 # The battle theme comes in on the first card after the reveal.
 MUSIC_SWITCH_INDEX = 2
+END_LINES = [("NEON MEGA TANK", 150, PINK), ("ネオン・メガ・タンク", 70, CYAN), (" ", 20, WHITE),
+             ("OUT NOW ON ITCH.IO", 64, YELLOW), ("ANDROID  ·  WINDOWS  ·  LINUX  ·  日本語対応", 38, WHITE),
+             ("gamesdevni.site", 40, WHITE)]
+
+# Update 1.1: what's new, then the free demo.
+UPDATE_EDIT = [
+    ("card", [("NEON MEGA TANK", 120, PINK), ("UPDATE 1.1", 96, YELLOW)], 1.8, None),
+    ("shot", "reveal", 1.6, 3.2),
+    ("card", [("NEW!", 72, YELLOW), ("ENERGY SHIELD", 120, CYAN), ("hold ACTION on the repair station", 40, WHITE)], 1.8, None),
+    ("shot", "shield", 0.4, 4.4),
+    ("card", [("TIMED REPAIRS", 120, GREEN), ("PERFECT!  COMBO!", 80, YELLOW)], 1.5, None),
+    ("shot", "gauge", 0.3, 4.6),
+    ("card", [("SNAP-AIM CANNON", 116, PINK), ("LOCK ON.  FIRE.", 80, WHITE)], 1.5, None),
+    ("shot", "lockon", 0.0, 5.6),
+    ("card", [("4 NEW ENEMIES", 130, YELLOW)], 1.3, "voice_wave"),
+    ("shot", "hornets", 0.2, 3.3, [("HORNET SWARMS", 64, YELLOW)]),
+    ("shot", "mortars", 0.3, 3.4, [("MORTAR TEAMS", 64, YELLOW), ("get out of the red ring!", 36, WHITE)]),
+    ("shot", "barrier", 0.2, 4.6, [("結界車  BARRIER TRUCKS", 64, YELLOW), ("break the dome", 36, WHITE)]),
+    ("shot", "gunship", 0.6, 3.8, [("GUNSHIPS", 64, YELLOW)]),
+    ("card", [("BRING THE", 110, CYAN), ("HOUSE DOWN", 120, PINK)], 1.4, None),
+    ("shot", "collapse", 0.2, 4.6),
+    ("shot", "storm", 0.0, 4.6, [("THEMED WAVES", 56, YELLOW)]),
+    ("card", [("FREE DEMO", 170, YELLOW), ("OUT NOW", 110, PINK),
+              ("10 minutes of battle  ·  Android  ·  Windows  ·  Linux", 40, WHITE)], 2.4, None),
+    ("shot", "demomenu", 0.4, 3.0),
+    ("end", "finale", 1.0, 5.2),
+]
+UPDATE_END_LINES = [("NEON MEGA TANK", 150, PINK), ("UPDATE 1.1  +  FREE DEMO", 64, YELLOW), (" ", 16, WHITE),
+                    ("PLAY THE DEMO FREE ON ITCH.IO", 58, CYAN),
+                    ("gamesdevnisite.itch.io/neon-mega-tank", 40, WHITE),
+                    ("ANDROID  ·  WINDOWS  ·  LINUX  ·  日本語対応", 36, WHITE)]
 
 
 def run(cmd):
@@ -99,14 +136,29 @@ def video_card(i, lines, dur):
     return out
 
 
-def video_shot(i, take, start, dur, end_card=False):
+def caption(lines, key):
+    """Lower-third caption over a shot: a dark band with neon lines sliding in."""
+    total = sum(size * 1.2 for _, size, _ in lines)
+    y = H - 110 - total
+    parts = [f"drawbox=x=0:y={y - 24:.0f}:w=iw:h={total + 48:.0f}:color=black@0.55:t=fill"]
+    for i, (text, size, colour) in enumerate(lines):
+        tf = text_file(text, f"cap{key}_{i}")
+        parts.append(
+            f"drawtext=fontfile='{FONT}':textfile='{tf}':fontsize={size}:fontcolor={colour}"
+            f":borderw=3:bordercolor=black@0.8:shadowx=0:shadowy=0"
+            f":x='90-max(0,(0.25-t))*1600':y={y:.0f}:alpha='min(1,t*5)'")
+        y += size * 1.2
+    return ",".join(parts)
+
+
+def video_shot(i, take, start, dur, end_card=False, cap=None, end_lines=None):
     src = os.path.join(TAKES, take + ".avi")
     vf = f"scale={W}:{H},fps={FPS},fade=in:st=0:d=0.12,fade=out:st={dur - 0.12:.2f}:d=0.12"
+    if cap:
+        vf = f"scale={W}:{H},fps={FPS},{caption(cap, i)},fade=in:st=0:d=0.12,fade=out:st={dur - 0.12:.2f}:d=0.12"
     if end_card:
         # Darken the footage and bring the title up over it.
-        lines = [("NEON MEGA TANK", 150, PINK), ("ネオン・メガ・タンク", 70, CYAN), (" ", 20, WHITE),
-                 ("OUT NOW ON ITCH.IO", 64, YELLOW), ("ANDROID  ·  WINDOWS  ·  LINUX  ·  日本語対応", 38, WHITE),
-                 ("gamesdevni.site", 40, WHITE)]
+        lines = end_lines or END_LINES
         vf = (f"scale={W}:{H},fps={FPS},eq=brightness=-0.3:saturation=0.75,"
               f"drawbox=x=0:y=ih*0.27:w=iw:h=ih*0.46:color=black@0.62:t=fill,format=gbrp,"
               + glow(drawtexts(lines, i, start_alpha_at=0.3))
@@ -170,20 +222,28 @@ def music(total, switch_at):
 def main():
     if not shutil.which("ffmpeg"):
         sys.exit("ffmpeg is needed")
+    update = len(sys.argv) > 1 and sys.argv[1] == "update"
+    edit = UPDATE_EDIT if update else EDIT
+    name = "neon_mega_tank_update" if update else "neon_mega_tank"
+    end_lines = UPDATE_END_LINES if update else END_LINES
+    switch_index = 1 if update else MUSIC_SWITCH_INDEX
+    if os.path.isdir(WORK):
+        shutil.rmtree(WORK)
     os.makedirs(WORK, exist_ok=True)
     videos, audios = [], []
     t = 0.0
     switch_at = 0.0
-    for i, item in enumerate(EDIT):
+    for i, item in enumerate(edit):
         kind = item[0]
-        if i == MUSIC_SWITCH_INDEX:
+        if i == switch_index:
             switch_at = t
         print(f"[{t:6.2f}s] {kind:5} {item[1] if kind != 'card' else item[1][0][0]}")
         if kind == "card":
             videos.append(video_card(i, item[1], item[2]))
             t += item[2]
         else:
-            videos.append(video_shot(i, item[1], item[2], item[3], end_card=kind == "end"))
+            videos.append(video_shot(i, item[1], item[2], item[3], end_card=kind == "end",
+                                     cap=item[4] if len(item) > 4 else None, end_lines=end_lines))
             t += item[3]
         audios.append(audio_segment(i, kind, item))
     total = t
@@ -192,15 +252,16 @@ def main():
     game = os.path.join(WORK, "game.wav")
     concat(audios, game, copy=False)
     mus = music(total, switch_at)
-    final = os.path.join(OUT, "neon_mega_tank_trailer.mp4")
+    final = os.path.join(OUT, name + "_trailer.mp4")
     ff("-i", video, "-i", game, "-i", mus, "-filter_complex",
        "[2:a]volume=0.62[m];[1:a]volume=1.0[g];[m][g]amix=inputs=2:normalize=0:duration=first,"
        "alimiter=limit=0.95,loudnorm=I=-15:TP=-1.5:LRA=11[a]",
        "-map", "0:v", "-map", "[a]", "-c:v", "libx264", "-preset", "slow", "-crf", "22",
        "-maxrate", "3000k", "-bufsize", "6000k", "-pix_fmt", "yuv420p", "-profile:v", "high",
        "-c:a", "aac", "-b:a", "160k", "-ar", str(RATE), "-movflags", "+faststart", "-t", f"{total}", final)
-    poster = os.path.join(OUT, "neon_mega_tank_poster.jpg")
-    ff("-ss", f"{WARMUP + 3.2:.2f}", "-i", os.path.join(TAKES, "boss.avi"), "-frames:v", "1",
+    poster = os.path.join(OUT, name + "_poster.jpg")
+    poster_take, poster_at = ("shield", 2.6) if update else ("boss", 3.2)
+    ff("-ss", f"{WARMUP + poster_at:.2f}", "-i", os.path.join(TAKES, poster_take + ".avi"), "-frames:v", "1",
        "-vf", f"scale={W}:{H}", "-q:v", "3", poster)
     print(f"trailer: {final} ({total:.1f}s)\nposter:  {poster}")
 

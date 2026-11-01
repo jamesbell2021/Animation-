@@ -56,7 +56,7 @@ func _go() -> void:
 	var b: Dictionary = camp.buildings
 	check(b.has("quarters") and b.has("mess") and b.has("greenhouse"), "the quarters, the mess and the greenhouse can be wrecked")
 	check(camp.wire.size() == 5 and camp.wire[0].is_in_group("barricades"), "five runs of wire to tear through (%d)" % camp.wire.size())
-	check(camp.targets().size() == 4 and not camp.fallen(), "four things for creatures to make for: the generator and the buildings")
+	check(camp.targets().size() == 5 and not camp.fallen(), "five things for creatures to make for: the generator, the buildings and the wind turbine")
 
 	# ---- the way ----
 	var off: Vector3 = Terrain.holm_beach_point(0, 0.0)

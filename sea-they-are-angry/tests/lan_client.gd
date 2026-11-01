@@ -134,8 +134,16 @@ func _go() -> void:
 	_ack(true)
 	check(await _until(func(): return not _found("harpoon.gd", true), 900), "and goes when the host's keeper has it back")
 
-	# 6: the end.
-	check(await _at(6) or not Run.active, "stage 6")
+	# 6: the host's keeper rows out to Gull Rock.
+	check(await _at(6), "stage 6")
+	_ack(false)
+	check(await _until(func(): return main.rowing_boat.state == 2 and main.rowing_boat.progress() > 0.08, 1200), "the boat rows out here too")
+	var host_keeper = main.players[0]
+	check(not host_keeper._net.is_empty() and int(host_keeper._net[7]) & 256 != 0 and host_keeper.global_position.distance_to(main.rowing_boat.global_position) < 2.0, "with the host's keeper sitting in it (flags %d, %.1f m from the boat)" % [int(host_keeper._net[7]) if not host_keeper._net.is_empty() else -1, host_keeper.global_position.distance_to(main.rowing_boat.global_position)])
+	_ack(true)
+
+	# 7: the end.
+	check(await _at(7) or not Run.active, "stage 7")
 	_ack(false)
 	check(await _until(func(): return not Run.active and main.hud._over.visible, 300), "the run ends here too, and says so")
 	check(main.hud._over_btn.disabled, "the host starts the next one")

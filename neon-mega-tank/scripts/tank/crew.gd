@@ -99,7 +99,14 @@ func status_text() -> String:
 	if tank.dead:
 		return G.t("BAILED OUT")
 	if station != null:
-		return G.t("%s [JAMMED]") % G.t(station.title) if station.jammed else G.t(station.title)
+		if station.jammed:
+			return G.t("%s [JAMMED]") % G.t(station.title)
+		if station.id == "repair":
+			if tank.shield_up:
+				return G.t("REPAIR - SHIELD UP")
+			if tank.combo >= 2:
+				return G.t("REPAIR  COMBO x%d") % tank.combo
+		return G.t(station.title)
 	if fixing:
 		return G.t("PATCHING BREACH")
 	return G.t("ON DECK")

@@ -22,6 +22,18 @@ Start from the title screen with **New Run**. One keeper is enough for most of i
 - [ ] **Does the camp look like an old wartime camp?** The huts, the towers, the generator house, the sandbags and the rest. Is anything too dark, too clean, or out of place?
 - [ ] **Can you walk everywhere you'd expect,** and does nothing in the camp snag the keeper?
 
+## The wind turbine and the camp's lights
+
+- [ ] **Does it look right** for the 1980s, on its knoll by the camp? Do the lights round the wire make the camp at night feel better?
+- [ ] **When it's attacked:** do you notice the lights blink, and know why? When it's wrecked and the camp goes dark, do you want to go and mend it?
+
+## Gull Rock
+
+- [ ] **Did you notice it** from the main island (top of the screen), and want to go?
+- [ ] **The boat:** is it clear where to get in (the east beach's jetty)? Does the crossing feel good, or too long? Does the rowing look right? Try two keepers in the boat together, and hauling it over on its line from the rock.
+- [ ] **The eggs:** worth the trip? Is the gulls' mobbing fun, or annoying?
+- [ ] **The gulls:** do they make the place feel alive? Too many, too few, too loud? Do they go at dusk and stay away in a storm?
+
 ## The fights
 
 - [ ] **The shed's weapons:** the shotgun (does 10 cartridges feel too few, or about right?), the flamer, the longbow, petrol bombs and rat poison at a trap cairn.

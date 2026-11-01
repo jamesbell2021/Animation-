@@ -706,3 +706,59 @@ This is step 1 of five: the place, the crossing, the camera and the helpers. Nex
 
 - **An export preset for Windows** next to Linux (`export_presets.cfg`): `--export-release "Windows" build/windows/SeaTheyAreAngry.exe`, the program and its `.pck` side by side. It needs Godot 4.3's `windows_release_x86_64.exe` template installed. The program's icon and version details are left as Godot's (that needs `rcedit`).
 
+
+## Gull Rock, the rowing boat, the eggs and the gulls (owner's request: "a third small island you can take a rowing boat out to, and collect gull eggs, and flocks of seagulls; they aren't there at night or during storms")
+
+- **Gull Rock** (`Terrain.ISLET_*`, `_islet_height`): a small stack of grey whinstone about 14 by 9 m, 45 m north-east of the lighthouse, in the open sea past the channel between the main island and the holm. It sits at the top edge of the main view, so it's seen before it's visited. Its ledged cliffs stand straight out of the sea on the far side, and it has a turf knoll at its north-west end. Its colours are those of a real gull colony: rich green turf, thrift in pink cushions, orange Xanthoria lichen on the rock tops, and white guano streaking down from the ledges. A slip of flat rock runs down into the water on the side facing the lighthouse; that's the landing. Its ground is a mesh of its own beside the main island's square, and the sea's foam follows its baked shoreline as it does the holm's.
+- **Out of the creatures' way:** nothing lands there, and nothing on the other islands goes for a keeper out there (`Enemy.same_island` now tells the three islands apart). Helpers never go: they don't row, and a keeper downed out there gets up at dawn like everyone else.
+- **The rowing boat** (`scenes/world/rowing_boat.gd`): a clinker-built, double-ended yoal of the Northern Isles kind, made in code: lapped strakes, a teal sheer strake, a red rubbing strake, three thwarts, thole pins and two oars. It lies alongside the jetty on the east beach, where a boat used to sit as decoration.
+  - **[E] at the jetty's foot** puts that keeper at the oars, facing the stern. For a moment anyone else can press [E] to climb in too, up to three. It rows itself along the channel, under the keepers' camera, the oars sweeping through a real stroke (blades buried on the drive, lifted and feathered on the recovery) and the rower leaning in and pulling back. It lands everyone at the foot of the slip, about 12 seconds later.
+  - **Only by day, and not in a storm**, does it row out. Rowing back is always allowed, so nobody can be stranded. The game warns at dusk if a keeper is still out there.
+  - **It runs on a line**, made fast to the jetty's end post and to an iron ring on the rock, so from either end a keeper can haul the empty boat across to them.
+  - **Dry inside:** the sea is one sheet and the boat sits down in it, so the sea shader leaves out its own surface inside the hull's outline at the waterline (`boat_at`, `boat_half`). The keeper's boathook and weapons are put away while seated.
+  - **Keepers in the boat** are seated by code layers on the rig (no new clips), can't be hurt, and the camera slides from the main island's framing to Gull Rock's as it crosses. Gull Rock's framing comes in closer, since it's small.
+- **The eggs** (`scenes/world/gull_nest.gd`): six nests on the top, scrapes lined with dry grass. Each has 0 to 3 olive-brown, blotched eggs, laid fresh each dawn: about 8 a day. [E] takes them into the store (Gull eggs on the HUD), and the cottage boils 3 into a meal (+1 food). It's a day's errand for food that doesn't need the garden. Taking them sends the colony up to mob the keeper: wheeling, swooping and screaming. It's only a fright; they do no harm.
+- **The gulls** (`scenes/world/gull.gd`, `gull_flocks.gd`): 37 herring gulls with white heads and bodies, pale grey backs, black wingtips with white mirrors, yellow bills with the red spot, and pink legs.
+  - **Who they are:** a colony of 14 on Gull Rock's ledges and nests, 5 loafers on the beaches, and three flocks of 6 wheeling over the main island, the holm and the channel.
+  - **Flying:** they soar with their wings in the gull's shallow M, flap when they climb or slow, and bank into their turns.
+  - **Standing:** they face into the wind with their black primaries crossed over their tails, turning about, giving the long call, and stretching their wings.
+  - **Keepers put them up:** a keeper who comes close sends them up calling, to circle and land again somewhere quieter.
+  - **When they're about:** at dusk they fly off out to sea, and they don't come back until dawn, and only once the storm level is below the boat's limit too (`Weather.storm_now`). A stormy dawn keeps them away.
+  - **Calls:** made in code, as the other sounds are: the mew, the laughing long call, the alarm. Played on three voices of their own so they never crowd out the game's sounds.
+  - **On the LAN** they're cosmetic, each machine's own like the weather. The boat (in the snapshots) and the eggs (in the state) are the host's, and a client's colony mobs when the host says a nest was robbed.
+- **Tests:** `slice_islet.gd`.
+
+## The wind turbine and the lights round the camp (owner's request: "a 1980s style wind generator on the other island with the huts; lights strung around the compound; if the wind turbine gets attacked they go out")
+
+- **The machine** (`scenes/structures/wind_turbine.gd`): an early-1980s Danish-style turbine, put up on the holm long after the camp's war.
+  - **What it looks like:** three blades upwind of a 9 m galvanised lattice tower, with a cream glass-fibre nacelle.
+  - **It answers the wind** (owner's request: "make sure it's animated and turns when it's windy"):
+    - **Speed:** the rotor creeps in a calm, turns steadily in the day's breeze (about 7 turns a minute) and races in a gale (about 60).
+    - **Gusts:** it spins up faster than it runs down, so it surges with each one.
+    - **Facing:** the nacelle swings round on its yaw drive to face the wind as it veers.
+  - **The wind:** it now freshens and eases over half a minute or so, and veers and backs up to about 35° either side of its quarter over a few minutes (`Weather.wind_now`). The flag, the chimney smoke and the rope bridge follow it too.
+  - **Where it stands:** on the north-west knoll outside the wire, clear of the keepers' path round the outside, and in sight of the north beach where creatures come ashore. Inside the wire there wasn't room among the huts, beds and walkways, and outside is where such a machine would stand. Its cable runs on two poles to the north fence.
+- **The lights:** strings of warm bulbs sagging from post to post round the inside of the wire, about 56 bulbs, with a real light at every fifth. They're on from dusk to dawn while the turbine stands; there are batteries in the cabinet, so it doesn't matter how hard the wind blows.
+- **"If it gets attacked they go out":**
+  - **Every blow** makes the whole string blink out for a moment.
+  - **Below half health** the turbine smokes, its rotor wobbles, and the lights stutter and dip.
+  - **Wrecked**, they're out. The rotor runs down and stops, one blade gone and another hanging, and the keepers are warned.
+  - **Mending:** keepers mend it at the cabinet with scrap (2 a time), and the lights come back with it.
+- **Why the lights matter:** creatures inside the lit wire move 15% slower (they hate the light, as everywhere in the game). That's one more reason to keep the turbine standing.
+- **For raiders it's a target** like the generator and the buildings (`Camp.targets()`). Losing it doesn't count toward the camp falling, though: it only lights the wire (`Camp.fallen()` checks the generator and buildings). Once the camp has fallen, it isn't worth a raid on its own, and raids go back to the light.
+- **On the LAN:** its health is the host's like any building's. Each machine works out the lights and the rotor from that, so a blow blinks the lights everywhere.
+- **Tests:** `slice_turbine.gd`.
+
+## Pixel fire (owner's request: "use that sort of fire for the flame thrower: a real pixelated roaring flame")
+
+- **The owner's reference:** the fire in their game Rig Down, which wasn't available to this session. It's rebuilt from the description, in the old demoscene / Doom-fire way (`shaders/pixel_fire.gdshader`, `scenes/fx/pixel_fire.gd`).
+- **How it looks:**
+  - **Pixels:** the flame is worked out on a coarse pixel grid, about 12 by 30 blocks along the jet, with whole rows jittering sideways a frame at a time.
+  - **Palette:** stepped hard from white heat through yellow, orange and red to ember red, then nothing. The edges are cut out, not faded.
+  - **Movement:** its shape is torn by fast-scrolling noise, so it licks and roars.
+  - **Glow:** bright enough for the glow to bloom the core without washing out the steps.
+- **Three shapes from one shader:**
+  - **The flamer's jet:** laid from the nozzle along the stream and turned about it to face the camera. It shoots out when lit, flickers in length while held, and dies back when let go. It angles to reach about chest height over the ground where it ends, so it hits creatures down a slope as the damage always did. Billows of the same fire roll off it (GPU particles), burning down as they go.
+  - **Burning creatures:** a blaze of three standing flames while they're alight. It shows on LAN clients too (a flag in each creature's snapshot).
+  - **Petrol bombs' pools:** seven standing flames over the spill, dying down with it.
+- **Untouched:** the lamp's beam burn and the campfire keep their own soft look, since they're not the flamer's fire.
