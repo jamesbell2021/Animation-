@@ -51,6 +51,8 @@ GODOT=godot sea-they-are-angry/tests/run_lan.sh   # the LAN test: a host and a c
 
 On Windows use `Godot_v4.3-stable_win64_console.exe` in place of `godot`. All twenty-one tests and the LAN test ended in PASS on Godot 4.3 stable (2026-10-26). The holm, survival, research and camp-raid tests reach the camp's classes only through the scene, never by name: `--script` compiles whatever a test names before the autoloads exist, and that left a camp script unusable. The older seven turn the helper keepers off (`Players.helpers = false`) because they script every keeper themselves; `slice_holm.gd` covers the holm, the bridge, the split screen and the helpers. Run them one at a time: they share `user://run.json`. For balance, `tools/playtest.gd` plays several nights with a bot and prints a line per night (see README). `slice_behaviour.gd` covers every item of the slice's verify list, from W moving up-screen to New Run restarting at night 1.
 
+One intermittent failure to know about: in one of seven full runs on 2026-11-01, `slice_holm.gd`'s keeper stalled at the holm end of the rope bridge (x 28.07) instead of walking on to the camp gate. It didn't happen in six re-runs, nor in eight walks under different winds. If it happens in play, a keeper may catch on the seam where the bridge's deck meets the holm's clifftop. The test walks a dead-straight line, which a person wouldn't.
+
 Two kinds of console noise are expected and harmless:
 
 - `Parameter "m" is null` from `mesh_get_surface_count`: Godot 4.3's headless dummy renderer prints it once per primitive mesh with a material override. It does not appear with a real renderer.

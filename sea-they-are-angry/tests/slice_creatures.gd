@@ -280,7 +280,11 @@ func _run() -> void:
 			lamp.yaw = atan2(-hp_.x, -hp_.z)
 		return not is_instance_valid(eel) or eel.state == &"Release", 900)
 	check(is_instance_valid(eel) == false or eel.released_early, "the focused beam on its head drives it off early")
-	check(Stock.get_amount("bio") == bio0 + 3, "and it leaves bio in its wake")
+	var left := 0
+	for n in get_nodes_in_group("salvage"):
+		if n.kind == "bio" and Geo.flat_dist(n.global_position, main.lighthouse.global_position) < 6.0:
+			left += n.amount
+	check(left == 3 and Stock.get_amount("bio") == bio0, "and it leaves 3 bio at the lighthouse's foot, there to be picked up")
 	check(Anger.value <= anger0, "the sea calms a little (anger %d -> %d)" % [anger0, Anger.value])
 	lamp.set_operator(null)
 
