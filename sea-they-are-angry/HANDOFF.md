@@ -1,6 +1,6 @@
 # Handoff: Sea They Are Angry
 
-**v0.1.0 (Chapter One) is released:** tagged `sea-v0.1.0`, see `docs/RELEASE_NOTES_v0.1.0.md`. Read this first, then `docs/DECISIONS.md` and `git log`. Written 2026-10-19 at the end of a cloud session; brought up to date 2026-10-26.
+**v0.1.0 (Chapter One) is released** (the tag `sea-v0.1.0` couldn't be pushed from the cloud session: make it, or a release, on GitHub's Releases page), see `docs/RELEASE_NOTES_v0.1.0.md`. Read this first, then `docs/DECISIONS.md` and `git log`. Written 2026-10-19 at the end of a cloud session; brought up to date 2026-10-26.
 
 ## Where things stand
 

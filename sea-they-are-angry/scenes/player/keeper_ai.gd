@@ -12,6 +12,8 @@ extends Node
 ##            the diesel that washes up on the holm's beaches, mends the camp and does
 ##            its rounds; from dusk it climbs the tower facing the danger and works its
 ##            searchlight, burning whatever comes near the wire.
+## By day either picks up the salvage the night's creatures left on its island before the
+## sea takes it back at dusk.
 ## Either drops what it's doing to fight anything that comes close, to get a downed
 ## keeper back on their feet, or to go and pick up its thrown boathook. It fights with
 ## the shed's weapons when it has them: the lighthouse keeper takes the shotgun off the
@@ -150,6 +152,8 @@ func _day_light() -> void:
 	if lamp != null and lamp.fuel < Lamp.FUEL_MAX - 30.0 and lamp.lighthouse.work_kind() == "can":
 		_set_task("refuel", lamp.lighthouse, KeeperNav.door_point())
 		return
+	if _fetch_salvage(0):
+		return
 	var bed := _garden_to_work()
 	if bed != null:
 		_set_task("plot", bed, bed.global_position)
@@ -180,6 +184,8 @@ func _day_camp() -> void:
 	var fix := _nearest_fixable(true)
 	if fix != null:
 		_set_task("repair", fix, _work_point(fix))
+		return
+	if _fetch_salvage(1):
 		return
 	var plot := _plot_to_work()
 	if plot != null:
@@ -733,3 +739,21 @@ func _nearest_scavenge(holm: bool) -> Node3D:
 			best_d = d
 			best = sp
 	return best
+
+## The nearest salvage lying on this island (0 the crag's, 1 the holm): walk onto it, and
+## it comes into the keeper's hands (Salvage picks itself up).
+func _fetch_salvage(island: int) -> bool:
+	var best: Node3D = null
+	var best_d := INF
+	for s in get_tree().get_nodes_in_group("salvage"):
+		var n := s as Node3D
+		if n == null or n.is_queued_for_deletion() or Terrain.island_of(n.global_position.x, n.global_position.z) != island:
+			continue
+		var d := Geo.flat_dist(n.global_position, keeper.global_position)
+		if d < best_d:
+			best_d = d
+			best = n
+	if best == null:
+		return false
+	_set_task("salvage", best, best.global_position)
+	return true

@@ -145,5 +145,23 @@ func _go() -> void:
 	check(hit, "the arrow finds it")
 	await _clear()
 
+	# By day: the salvage the night left lying, picked up before the sea takes it back.
+	for sv in get_nodes_in_group("salvage"):
+		sv.queue_free()
+	main.lighthouse.lamp.fuel = Lamp.FUEL_MAX
+	Stk.set_amount("scrap", 0)
+	Stk.set_amount("seaweed", 0)
+	h.global_position = spot + Vector3(0.0, 0.3, 0.0)
+	await _wait(5)
+	Salvage.drop(main, Terrain.at_angle(-40.0, 9.0), "scrap", 2)
+	Salvage.drop(main, Terrain.at_angle(5.0, 8.0), "seaweed", 1)
+	var gone := false
+	for i in 1800:
+		if get_nodes_in_group("salvage").is_empty():
+			gone = true
+			break
+		await physics_frame
+	check(gone and Stk.get_amount("scrap") == 2 and Stk.get_amount("seaweed") == 1, "by day the helper picks up the salvage lying about (2 scrap, 1 kelp)")
+
 	print("\n%s" % ("ALL PASS" if fails == 0 else "%d FAILED" % fails))
 	quit(1 if fails > 0 else 0)
