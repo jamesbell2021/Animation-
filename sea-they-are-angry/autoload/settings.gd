@@ -35,6 +35,8 @@ var fullscreen := false
 var size_idx := 1
 var quality := 2
 var scale_idx := 4
+## The camera shakes with blows and blasts (Feel); some people would rather it didn't.
+var shake := true
 ## action -> "key:<keycode>" or "mouse:<button>"; only the ones changed from the defaults.
 var binds := {}
 
@@ -64,6 +66,7 @@ func _load() -> void:
 	size_idx = clampi(int(cf.get_value("display", "size", size_idx)), 0, SIZES.size() - 1)
 	quality = clampi(int(cf.get_value("display", "quality", quality)), 0, QUALITY.size() - 1)
 	scale_idx = clampi(int(cf.get_value("display", "scale", scale_idx)), 0, SCALES.size() - 1)
+	shake = bool(cf.get_value("display", "shake", shake))
 	if cf.has_section("controls"):
 		for a in cf.get_section_keys("controls"):
 			var code := str(cf.get_value("controls", a, ""))
@@ -78,6 +81,7 @@ func save() -> void:
 	cf.set_value("display", "size", size_idx)
 	cf.set_value("display", "quality", quality)
 	cf.set_value("display", "scale", scale_idx)
+	cf.set_value("display", "shake", shake)
 	for a in binds:
 		cf.set_value("controls", a, binds[a])
 	cf.save(PATH)

@@ -1448,6 +1448,8 @@ func take_damage(amount: int, from: Vector3 = Vector3.INF) -> void:
 	elif _clips() and not rig.is_ragdoll():
 		rig.shot("hit")
 	Audio.sfx("hurt", global_position)
+	if not ai and not remote:
+		Feel.shake(clampf(0.18 + float(amount) / 60.0, 0.18, 0.6))
 	FX.spray(get_parent(), global_position + Vector3(0.0, 1.1, 0.0), Vector3.UP, Color(0.75, 0.8, 0.82))
 	if hp == 0:
 		_stop_operating()

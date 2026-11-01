@@ -280,6 +280,8 @@ func fire_shot(aim: Vector3) -> void:
 		dir.y = 0.0
 		strike(e, roundi(hits[e]), dir.normalized(), keeper, "shot")
 	Audio.sfx("shotgun", from, 2.0, 0.06)
+	if not keeper.ai:
+		Feel.shake(0.2)
 	FX.sparks(keeper.get_parent(), from)
 	FX.emitter(keeper.get_parent(), from, FX._puff_mesh_ref(), Color(0.75, 0.72, 0.68, 0.45), 8, 0.9, aim, 25.0, 1.5, 3.5, -0.3, 0.4, 0.9, true, true)
 	var flash := OmniLight3D.new()

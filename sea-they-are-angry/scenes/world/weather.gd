@@ -299,6 +299,7 @@ func strike(on_rod: bool = false, show_watchers: bool = false) -> void:
 	if close:
 		FX.sparks(get_parent(), to)
 	_lightning.look_at_from_position(from, to, Vector3.UP)
+	Feel.shake(0.3 if close else 0.1)
 	var tw := create_tween()
 	tw.tween_property(_lightning, "light_energy", 3.0, 0.03)
 	tw.tween_property(_lightning, "light_energy", 0.3, 0.07)

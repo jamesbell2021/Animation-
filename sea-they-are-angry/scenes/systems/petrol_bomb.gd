@@ -47,6 +47,7 @@ func _smash() -> void:
 		return
 	Audio.sfx("glass", to, 0.0, 0.1)
 	Audio.sfx("ignite", to, 2.0, 0.1)
+	Feel.shake(0.35, to)
 	FX.emitter(parent, to + Vector3(0.0, 0.3, 0.0), FX._puff_mesh_ref(), Color(1.0, 0.5, 0.15, 0.95), 30, 0.7, Vector3.UP, 80.0, 2.0, 5.0, -1.0, 0.6, 1.6, true, true, 5.0)
 	for e in get_tree().get_nodes_in_group("enemies"):
 		if Arsenal._live(e) and Geo.flat_dist(e.global_position, to) <= BLAST_R and absf(e.global_position.y - to.y) < 1.5:

@@ -251,6 +251,7 @@ func _enter_Slam() -> void:
 	FX.splinters(get_parent(), at + Vector3(0.0, 0.3, 0.0))
 	FX.emitter(get_parent(), at, FX._puff_mesh_ref(), Color(0.45, 0.4, 0.33, 0.5), 10, 1.0, Vector3.UP, 80.0, 1.0, 2.5, 1.0, 0.4, 0.9, true, true)
 	Audio.sfx("crab_slam", c, 0.0, 0.05)
+	Feel.shake(0.32, c)
 
 func _tick_Slam(_delta: float) -> void:
 	velocity = Vector3.ZERO

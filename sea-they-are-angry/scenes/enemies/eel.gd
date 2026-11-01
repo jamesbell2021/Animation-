@@ -312,6 +312,7 @@ func _enter_Surge() -> void:
 	_hit_struct.clear()
 	_hit_players.clear()
 	Audio.sfx("eel_surge", origin, 2.0, 0.0)
+	Feel.shake(0.7)
 	FX.splash(get_parent(), Vector3(origin.x, Terrain.SEA_LEVEL, origin.z), 2.0)
 
 # A point along the surge line, riding over whatever ground is there.

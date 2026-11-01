@@ -18,6 +18,7 @@ var lighthouse: Lighthouse
 var lamp: Lamp
 var camp: Camp
 
+var markers: ThreatMarkers
 var _phase_label: Label
 var _sub_label: Label
 var _lh_bar: ProgressBar
@@ -56,6 +57,8 @@ func _ready() -> void:
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(root)
 	_build_danger(root)
+	markers = ThreatMarkers.new()
+	root.add_child(markers)
 
 	# Top left: the night, the sea, and the light.
 	var card := _panel(root)

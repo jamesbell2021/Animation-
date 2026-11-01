@@ -801,3 +801,14 @@ The missing pieces of plan 2 (`docs/prompts/02_first_release_phases_A-G.md`), af
 - **Prices say kelp and dirty fuel**, not the store's names "seaweed" and "dirty_fuel" (`Stock.word`).
 - **`tools/tour.gd`:** renders a run that the computer plays, frame by frame with the HUD, for reviewing how the game looks and reads.
 
+## 2026-11-01: how it feels: shake, hit-stop, hit flash, markers off screen
+
+- **`Feel` (autoload):** trauma-based screen shake (the shake is trauma squared, so small knocks barely stir it) and hit-stop.
+  - **What shakes:** a keeper hurt; a Bloated bursting; a crab's slam; the Eel's surge; the shotgun; a petrol bomb; lightning.
+  - **Distance:** events further than 6 m from a person's keeper shake less, and those past 26 m not at all.
+  - **Hit-stop:** a person's blow on a creature freezes the world for 35 to 75 ms, more for a kill.
+  - **Where it's off:** hit-stop runs only in local play, since on the LAN the host's clock is everyone's. Neither runs headless, so tests stay frame-exact; `force_live` turns them on for slice_hud.
+  - **Settings:** screen shake can be turned off (Display, Screen shake).
+- **Hit flash:** a creature flashes pale for 0.09 s when a blow lands, through `material_overlay` on its body meshes (not its eyes, glints or fire).
+- **Markers off screen (`ThreatMarkers`):** chevrons at the screen's edge point at creatures out of view, grouped by direction with a count. The Eel and the Crab get a bigger gold one. Not in a split screen, which already shows both islands.
+

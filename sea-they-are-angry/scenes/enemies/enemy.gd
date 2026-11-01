@@ -891,10 +891,45 @@ func take_damage(amount: int, from_dir: Vector3 = Vector3.ZERO, source: Node = n
 	if source != null:
 		FX.spray(get_parent(), global_position + Vector3(0.0, 1.1, 0.0), from_dir, Color(0.55, 0.65, 0.45))
 		Audio.sfx("hit", global_position)
+		flash()
 	_on_hit()
+	if source is Player and not source.ai:
+		Feel.blow(hp <= 0, amount >= 30)
 	if hp <= 0:
 		hp = 0
 		_die()
+
+## A blow landing: the creature flashes pale for a moment, so the hit reads.
+const FLASH_TIME := 0.09
+static var _flash_mat: StandardMaterial3D
+var _flash_meshes: Array = []
+var _flash_t := 0.0
+
+func flash() -> void:
+	if _flash_mat == null:
+		_flash_mat = StandardMaterial3D.new()
+		_flash_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		_flash_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		_flash_mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+		_flash_mat.albedo_color = Color(1.0, 0.95, 0.85, 0.7)
+	if _flash_meshes.is_empty():
+		for m in find_children("*", "MeshInstance3D", true, false):
+			# The body, not its eyes, glints or the pixel fire on it.
+			if m.mesh != null and m.get_aabb().size.length() > 0.25 and not (m.material_override is ShaderMaterial):
+				_flash_meshes.append(m)
+	var first := _flash_t <= 0.0
+	_flash_t = FLASH_TIME
+	if not first:
+		return
+	for m in _flash_meshes:
+		if is_instance_valid(m):
+			m.material_overlay = _flash_mat
+	while _flash_t > 0.0 and is_inside_tree():
+		await get_tree().process_frame
+		_flash_t -= get_process_delta_time() / maxf(Engine.time_scale, 0.04)
+	for m in _flash_meshes:
+		if is_instance_valid(m):
+			m.material_overlay = null
 
 # Virtual: visual reaction to a hit.
 func _on_hit() -> void:

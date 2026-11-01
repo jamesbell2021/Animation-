@@ -272,6 +272,7 @@ func begin_run(continue_save: bool, n: int) -> void:
 		add_child(director)
 	# On LAN each machine's screen follows its own keeper only.
 	director.players = [player] if Net.online() else players
+	hud.markers.director = director
 	hud.player = player
 	hud.players = players
 	hud.visible = true

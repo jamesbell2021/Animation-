@@ -171,6 +171,7 @@ static func splash(parent: Node, at: Vector3, size: float = 1.0) -> void:
 static func burst(parent: Node, at: Vector3) -> void:
 	if not ambient and not Net.fx_gate("burst", [at]):
 		return
+	Feel.shake(0.45, at)
 	_meshes()
 	emitter(parent, at, _chunk_mesh, Color(0.45, 0.55, 0.28, 1.0), 40, 1.1, Vector3.UP, 75.0, 3.0, 7.0, 12.0, 0.8, 2.2)
 	emitter(parent, at, _drop_mesh, Color(0.7, 0.85, 0.35, 0.95), 50, 0.9, Vector3.UP, 85.0, 2.0, 6.0, 9.0, 0.8, 1.8)

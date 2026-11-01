@@ -227,6 +227,8 @@ func _group_focus(g: Array) -> Vector3:
 	return s / float(maxi(n, 1))
 
 func _place(_delta: float) -> void:
+	if Feel._cams.size() != 1 + _sub_cams.size() or (not Feel._cams.is_empty() and Feel._cams[0] != main_camera):
+		Feel.use_cameras([main_camera] + _sub_cams)
 	var n := _groups.size()
 	var foci: Array[Vector3] = []
 	var mean := Vector3.ZERO

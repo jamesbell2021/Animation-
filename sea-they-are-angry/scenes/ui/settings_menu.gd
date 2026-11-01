@@ -68,6 +68,9 @@ func _ready() -> void:
 			Settings.scale_idx = clampi(Settings.scale_idx + d, 0, Settings.SCALES.size() - 1)
 			Settings.apply_graphics())
 	_label(_box, "Below 100% the world is drawn smaller and sharpened up: faster, a little softer.", 16, DIM)
+	_cycler("Screen shake", func() -> String: return "On" if Settings.shake else "Off",
+		func(_d: int) -> void:
+			Settings.shake = not Settings.shake)
 
 	_heading("Keeper one's keys")
 	_label(_box, "Pick a control, then press the key or mouse button for it (Esc to leave it). Two controls can't share a key: they swap. Gamepads keep their own layout: A use, X or RT swing, Y lamp, B beam, LT flare, LB dirty fuel, RB sprint, the right stick aims.", 16, DIM)
