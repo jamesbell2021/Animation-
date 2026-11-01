@@ -1,6 +1,6 @@
 # Sea They Are Angry
 
-**Version 0.1.0: Chapter One.** See [docs/RELEASE_NOTES_v0.1.0.md](docs/RELEASE_NOTES_v0.1.0.md).
+**Version 0.1.1: Chapter One, polished.** See [docs/RELEASE_NOTES_v0.1.1.md](docs/RELEASE_NOTES_v0.1.1.md) and, for Chapter One itself, [docs/RELEASE_NOTES_v0.1.0.md](docs/RELEASE_NOTES_v0.1.0.md).
 
 A lighthouse keeper on a tiny North Sea rock, late 1980s. By day you gather driftwood, scrap, kelp and bioluminescent matter from the shoreline, mend the fences, plant the garden, set traps and refuel the lamp. At dusk the fog and the storm roll in. At night things walk up out of the water toward the light. The lamp's beam slows them; your boathook does the rest. If the lamp goes dark, the run is over. Hold it until the relief boat comes (10 nights on the normal sea, 8 on a calm one, 12 on a raging one) and the keepers sail away: the end of Chapter One. Or stay on the rock for endless nights.
 

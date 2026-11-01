@@ -118,6 +118,11 @@ func _go() -> void:
 	check(hud.markers.marks.is_empty(), "in view: no chevron")
 	far_one.queue_free()
 
+	# The end of a run: a summary of it, and a way back to the title.
+	main.run_tally.merge({"ashore": 12, "beam": 7, "fall": 2}, true)
+	var summary: String = hud.run_summary(4)
+	check(summary.contains("held 3 nights") and summary.contains("12 came up out of the sea") and summary.contains("7 burned in the beam"), "the run's summary: " + summary.replace("\n", " / "))
+
 	# How it feels: the screen shakes with a blow and settles; a heavy blow freezes the
 	# world for a moment; the shake can be turned off.
 	var F = root.get_node("Feel")

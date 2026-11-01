@@ -19,6 +19,10 @@ var lamp: Lamp
 var camp: Camp
 
 var markers: ThreatMarkers
+## The run's counts (main's): what came ashore and how it was stopped.
+var run_tally := {}
+var _over_tally: Label
+var _over_title: Label
 var _phase_label: Label
 var _sub_label: Label
 var _lh_bar: ProgressBar
@@ -444,23 +448,31 @@ func _build_game_over(root: Control) -> void:
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 18)
 	center.add_child(box)
-	var title := _label(box, 64)
+	var title := _label(box, 68)
 	Fonts.use_title(title)
 	title.text = "The light is out."
+	title.add_theme_color_override("font_color", GOLD)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_over_title = title
 	_over_reason = _label(box, 26)
 	_over_reason.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_over_stats = _label(box, 22)
 	_over_stats.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	var btn := Button.new()
-	btn.text = "New Run"
-	btn.add_theme_font_size_override("font_size", 28)
-	Fonts.use_title(btn)
-	btn.custom_minimum_size = Vector2(220, 52)
-	btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	btn.pressed.connect(_on_new_run)
-	box.add_child(btn)
+	_over_stats.add_theme_color_override("font_color", DIM)
+	# The keeper's log for the whole run, on a card.
+	_over_tally = _label(box, 20)
+	_over_tally.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_over_tally.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_over_tally.custom_minimum_size = Vector2(860, 0)
+	_over_tally.add_theme_stylebox_override("normal", _card_style(0.55, 22, 14))
+	_over_tally.add_theme_constant_override("line_spacing", 6)
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 24)
+	box.add_child(row)
+	var btn := _over_button(row, "Try again", _on_new_run)
 	_over_btn = btn
+	_over_button(row, "Back to the title", _on_title)
 
 func _process(delta: float) -> void:
 	_process_danger(delta)
@@ -624,9 +636,59 @@ func _on_run_ended(reason: String, night: int) -> void:
 		_over_btn.text = "The host starts the next run"
 		_over_btn.disabled = true
 	_over_reason.text = reason
-	_over_stats.text = "Reached night %d · Best night %d" % [night, SaveSys.load_best()]
+	_over_stats.text = "Night %d on %s · best night %d" % [night, ["a calm sea", "an angry sea", "a raging sea"][Difficulty.level()], SaveSys.load_best()]
+	_over_tally.text = run_summary(night)
+	_report_label.visible = false
+	_report_t = 0.0
+	_warn_label.visible = false
+	_warn_t = 0.0
+	if not _over_btn.disabled:
+		_over_btn.grab_focus.call_deferred()
 	_over.visible = true
 	_prompt_label.text = ""
+
+func _over_button(parent: Node, text: String, cb: Callable) -> Button:
+	var b := Button.new()
+	b.text = text
+	b.add_theme_font_size_override("font_size", 28)
+	Fonts.use_title(b)
+	b.custom_minimum_size = Vector2(240, 52)
+	b.pressed.connect(cb)
+	parent.add_child(b)
+	return b
+
+## The run in a few lines: how long the light held, what came, and how it was stopped.
+func run_summary(night: int) -> String:
+	var t := run_tally
+	var g := func(k: String) -> int: return int(t.get(k, 0))
+	var lines: Array[String] = []
+	var held := maxi(0, night - 1)
+	lines.append("The light held %d night%s." % [held, "" if held == 1 else "s"])
+	var how: Array[String] = []
+	for k in [["beam", "burned in the beam"], ["fall", "sent over the edge"], ["hook", "to the boathook"], ["shot", "shot"], ["arrow", "to arrows"], ["flame", "to the flamer"], ["bomb", "to petrol bombs"], ["trap", "in traps"], ["poison", "poisoned"], ["flare", "to flares"]]:
+		if g.call(k[0]) > 0:
+			how.append("%d %s" % [g.call(k[0]), k[1]])
+	if g.call("ashore") > 0:
+		lines.append("%d came up out of the sea." % g.call("ashore"))
+	if not how.is_empty():
+		lines.append(", ".join(how) + ".")
+	var cost: Array[String] = []
+	if g.call("reached") > 0:
+		cost.append("%d reached the light" % g.call("reached"))
+	if g.call("fence") > 0:
+		cost.append("%d fence%s broken" % [g.call("fence"), "" if g.call("fence") == 1 else "s"])
+	if g.call("camp_lost") > 0:
+		cost.append("%d wrecked at the camp" % g.call("camp_lost"))
+	if not cost.is_empty():
+		lines.append("It cost: " + ", ".join(cost) + ".")
+	return "\n".join(lines)
+
+func _on_title() -> void:
+	get_tree().paused = false
+	Net.leave()
+	Run.active = false
+	Cycle.stop()
+	get_tree().reload_current_scene()
 
 func _on_new_run() -> void:
 	if Net.is_host() and Net.started:

@@ -101,6 +101,8 @@ var _gutter_horn_t := 0.0
 var _warned_low := false
 # This night's tally for the dawn report.
 var _tally := {}
+## The same counts for the whole run (since it was started or continued), for the end.
+var run_tally := {}
 const HORN_GUTTER_EVERY := 7.0
 const FIRST_DAY_TIP_TIME := 14.0
 # How long a page of the internees' notes stays up to be read.
@@ -275,6 +277,7 @@ func begin_run(continue_save: bool, n: int) -> void:
 	hud.markers.director = director
 	hud.player = player
 	hud.players = players
+	hud.run_tally = run_tally
 	hud.visible = true
 	var d := SaveSys.load_run() if continue_save and not Net.is_client() else {}
 	if not d.is_empty():
@@ -463,6 +466,7 @@ func _on_structure_destroyed(s: Node) -> void:
 
 func _count(key: String, n: int = 1) -> void:
 	_tally[key] = int(_tally.get(key, 0)) + n
+	run_tally[key] = int(run_tally.get(key, 0)) + n
 
 func _on_wave_incoming(_points: Array, count: int) -> void:
 	_count("ashore", count)
