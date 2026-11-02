@@ -823,3 +823,20 @@ The missing pieces of plan 2 (`docs/prompts/02_first_release_phases_A-G.md`), af
 - **Test:** slice_camera.
 - **The weapon bar (`WeaponBar`), asked for alongside:** the five weapons along the bottom of the screen, numbered for their keys (1 to 5 already picked them, but nothing on screen said so). Each has a line-drawn icon and what it has left: arrows, cartridges, the flamer's tank, petrol bombs, or "thrown" for the boathook. What's in hand is lit gold; what isn't to hand is dim. A number for something not to hand says where to get it (`Arsenal.why_not`). Shown for the person on this screen, not while rowing or aboard.
 
+## 2026-11-02: buildings you can walk into; roofs off alone, outlines together
+
+- The owner asked for the roofs of the cottage, the shed and the rest to come off in single player, showing inside when a keeper's in, and in multiplayer just a character outline.
+- **Walking in:** the cottage, the shed and the camp's two Nissen huts are now rooms with a doorway (`Interior.walls`).
+  - **Before:** each was a solid box.
+  - **Walls:** they stand in two bands. Up to knee height (0.7 m) stays; above it, with the roof, windows and door, sits under `Interior.upper`.
+  - **Collision:** boxes go round the walls with a gap at the door. The huts' come through `CampBuilding.hollow`; the greenhouse stays solid.
+  - **Unchanged:** creatures still measure to each building's footprint, so raids are as before. The menus still work from outside, and from inside too.
+- **The cutaway:** playing alone, not on the LAN (`Interior.cutaway_mode`), the upper band fades out over a quarter of a second when the person's keeper is inside, and back when they leave.
+- **The outline:** with more than one person playing (local co-op or the LAN), the roofs stay on. Each person's keeper draws in their colour through whatever hides them, roofs and the tower included. A `material_overlay` shader (`shaders/keeper_outline.gdshader`) draws only where the scene is nearer the camera than the keeper, strongest at the edge.
+- **The rooms:**
+  - **Cottage:** a range in the chimney breast with the fire glowing, a table and chairs with an oil lamp (lit at night), a box bed, a dresser of plates, a rag rug, oilskins and boots by the door.
+  - **Shed:** grown to 2.6 × 2.2 m with 2 m walls so a keeper fits. A workbench with a vice, the shotgun lying on it while it's in the shed, rat poison and arrows; the weed burner in the corner while it's there; shelves of tins, a drum.
+  - **Quarters:** two-tier iron bunks along both sides, lockers, the pot-bellied stove under the stovepipe (moved to line up with it).
+  - **Mess:** a long trestle table with benches and mugs, the serving counter with a pot, a desk of papers with a lamp. Both huts have a bulb inside, lit while the generator runs.
+- **Test:** slice_interior.
+

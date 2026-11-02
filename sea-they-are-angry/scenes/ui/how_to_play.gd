@@ -84,6 +84,7 @@ func pages() -> Array:
 			"Mend the fences and buildings the night broke (a hammer and driftwood). Keep the lamp's tank full: bio is its fuel.",
 			"Dig kelp into the garden's beds for potatoes by dawn. Eat at the cottage when you're hungry; get warm by a fire when you're cold.",
 			"At the cottage: meals, flares, dirty fuel and upgrades. At the shed: the shotgun, a flamer, longbows, arrows, petrol bombs and rat poison for the trap cairns.",
+			"Walk into the cottage, the shed and the camp's huts by their doors. Playing alone, the roof lifts away to show you inside; with friends, you see each other as outlines through the walls.",
 			"The first days' jobs, down the right of the screen, walk you through it.",
 		]],
 		["At night", "At night: keep the light", [

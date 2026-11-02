@@ -12,6 +12,9 @@ var visual: Node3D
 ## Parts that go when it's wrecked (the greenhouse's glass).
 var breakable: Array[Node3D] = []
 var _tints: Array[StandardMaterial3D] = []
+## A building you can walk into: its walls as [size, position] collision boxes, round a
+## room with its doors (else one solid box).
+var hollow: Array = []
 
 func _init(p_id: String = "", p_hp: int = 220, p_size: Vector3 = Vector3(4.0, 3.0, 4.0)) -> void:
 	id = p_id
@@ -23,7 +26,11 @@ func _ready() -> void:
 	add_to_group("camp")
 
 func _build() -> void:
-	Geo.box_shape(self, size, Vector3(0.0, size.y * 0.5, 0.0))
+	if hollow.is_empty():
+		Geo.box_shape(self, size, Vector3(0.0, size.y * 0.5, 0.0))
+		return
+	for box in hollow:
+		Geo.box_shape(self, box[0], box[1])
 
 func _refresh() -> void:
 	var standing := hp > 0

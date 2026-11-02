@@ -35,6 +35,13 @@ var _fire_t := 0.0
 var _flicker := 1.0
 var _smoke_fx: GPUParticles3D
 var _slabs: Array[MeshInstance3D] = []
+## The room inside (Interior: the cutaway, the walls with their doorway).
+var interior: Interior
+var _fire_light: OmniLight3D
+var _room_light: OmniLight3D
+const WALL_T := 0.22
+const DOOR_X := -0.3
+const DOOR_W := 1.0
 var _ridge_y := 0.0
 
 func _init() -> void:
@@ -43,21 +50,31 @@ func _init() -> void:
 
 func _build() -> void:
 	add_to_group("heat")
+	interior = Interior.new()
+	add_child(interior)
+	var up := interior.upper
 	# Whitewashed harl over rubble walls, a rubble footing and chimney, a slate roof.
 	_wall_mat = Look.textured("harl", HARL, 1.2, 0.95, 0.8)
 	var stone := Look.textured("rubble", Color.WHITE, 1.4, 0.9, 1.2)
-	# Rubble footing, then whitewashed walls.
-	var foot := Geo.box(self, Vector3(WIDTH + 0.2, 0.35, DEPTH + 0.2), STONE, Vector3(0.0, 0.1, 0.0))
-	foot.material_override = stone
-	var walls := Geo.box(self, Vector3(WIDTH, WALL_H, DEPTH), WALL, Vector3(0.0, WALL_H * 0.5 + 0.2, 0.0))
-	walls.material_override = _wall_mat
+	# The walls, hollow, with the door on the side facing the lighthouse (local -Z).
+	interior.walls(self, self, WIDTH, DEPTH, WALL_H + 0.2, 0.0, WALL_T, _wall_mat, DOOR_X, DOOR_W, 1.7)
+	# A rubble footing round the outside, a step at the door.
+	for f in [[Vector3(WIDTH + 0.2, 0.35, 0.1), Vector3(0.0, 0.1, DEPTH * 0.5 + 0.05)],
+			[Vector3(0.1, 0.35, DEPTH + 0.2), Vector3(-WIDTH * 0.5 - 0.05, 0.1, 0.0)],
+			[Vector3(0.1, 0.35, DEPTH + 0.2), Vector3(WIDTH * 0.5 + 0.05, 0.1, 0.0)],
+			[Vector3(DOOR_X - DOOR_W * 0.5 + WIDTH * 0.5 + 0.1, 0.35, 0.1), Vector3((-WIDTH * 0.5 - 0.1 + DOOR_X - DOOR_W * 0.5) * 0.5, 0.1, -DEPTH * 0.5 - 0.05)],
+			[Vector3(WIDTH * 0.5 + 0.1 - DOOR_X - DOOR_W * 0.5, 0.35, 0.1), Vector3((WIDTH * 0.5 + 0.1 + DOOR_X + DOOR_W * 0.5) * 0.5, 0.1, -DEPTH * 0.5 - 0.05)]]:
+		var foot := Geo.box(self, f[0], STONE, f[1])
+		foot.material_override = stone
+	var step := Geo.box(self, Vector3(DOOR_W + 0.2, 0.08, 0.4), STONE, Vector3(DOOR_X, 0.03, -DEPTH * 0.5 - 0.2))
+	step.material_override = stone
 	# Pitched slate roof from two tilted slabs, with stone gable ends under it.
 	var pitch := deg_to_rad(38.0)
 	var half := DEPTH * 0.5 + 0.25
 	var slab_len := half / cos(pitch)
 	var ridge_y := WALL_H + 0.2 + half * tan(pitch)
 	for side in [-1.0, 1.0]:
-		var slab := Geo.box(self, Vector3(WIDTH + 0.4, 0.14, slab_len + 0.05), SLATE, Vector3(0.0, (WALL_H + 0.2 + ridge_y) * 0.5, side * half * 0.5))
+		var slab := Geo.box(up, Vector3(WIDTH + 0.4, 0.14, slab_len + 0.05), SLATE, Vector3(0.0, (WALL_H + 0.2 + ridge_y) * 0.5, side * half * 0.5))
 		# Courses of slates along the eaves, each lip facing down the slope: the texture
 		# is turned round on the far side.
 		var slate := Look.textured("slate", Color.WHITE, 1.0, 0.55, 1.4)
@@ -74,24 +91,26 @@ func _build() -> void:
 		gable.material_override = _wall_mat
 		gable.position = Vector3(side * (WIDTH * 0.5 - 0.1), (WALL_H + 0.2 + ridge_y) * 0.5, 0.0)
 		gable.rotation.y = PI * 0.5
-		add_child(gable)
+		up.add_child(gable)
 	# Chimney on one gable end.
-	var chimney := Geo.box(self, Vector3(0.55, 1.1, 0.55), STONE, Vector3(WIDTH * 0.5 - 0.35, ridge_y + 0.15, 0.0))
+	var chimney := Geo.box(up, Vector3(0.55, 1.1, 0.55), STONE, Vector3(WIDTH * 0.5 - 0.35, ridge_y + 0.15, 0.0))
 	chimney.material_override = stone
-	var cope := Geo.box(self, Vector3(0.62, 0.1, 0.62), Color(0.3, 0.29, 0.27), Vector3(WIDTH * 0.5 - 0.35, ridge_y + 0.72, 0.0))
+	var cope := Geo.box(up, Vector3(0.62, 0.1, 0.62), Color(0.3, 0.29, 0.27), Vector3(WIDTH * 0.5 - 0.35, ridge_y + 0.72, 0.0))
 	cope.material_override = Look.textured("rubble", Color(0.7, 0.7, 0.7), 0.8)
 	# A ridge of slate along the top, where the two pitches meet.
-	var ridge := Geo.box(self, Vector3(WIDTH + 0.42, 0.12, 0.26), SLATE, Vector3(0.0, ridge_y + 0.03, 0.0))
+	var ridge := Geo.box(up, Vector3(WIDTH + 0.42, 0.12, 0.26), SLATE, Vector3(0.0, ridge_y + 0.03, 0.0))
 	ridge.material_override = Look.textured("slate", Color(0.8, 0.8, 0.85), 0.5, 0.55)
 	_chimney_top = Vector3(WIDTH * 0.5 - 0.35, ridge_y + 0.85, 0.0)
-	# Door and windows on the side facing the lighthouse (local -Z).
-	var door := Geo.box(self, Vector3(0.8, 1.45, 0.08), Color(0.22, 0.16, 0.11), Vector3(-0.3, 0.95, -DEPTH * 0.5 - 0.03))
+	# The door, standing open into the room.
+	var door := Geo.box(up, Vector3(DOOR_W - 0.05, 1.65, 0.06), Color(0.22, 0.16, 0.11), Vector3.ZERO)
 	door.material_override = Look.textured("planks", Color(0.75, 0.5, 0.35), 0.9)
+	door.position = Vector3(DOOR_X - DOOR_W * 0.5 + 0.05, 0.85, -DEPTH * 0.5 + WALL_T + 0.42)
+	door.rotation.y = deg_to_rad(-80.0)
 	_window_mat = Look.glow_mat(WINDOW_DARK, 0.0)
 	for wx in [-1.45, 0.95]:
-		var w := Geo.box(self, Vector3(0.6, 0.55, 0.08), WINDOW_DARK, Vector3(wx, 1.45, -DEPTH * 0.5 - 0.03))
+		var w := Geo.box(up, Vector3(0.6, 0.55, 0.08), WINDOW_DARK, Vector3(wx, 1.45, -DEPTH * 0.5 - 0.03))
 		w.material_override = _window_mat
-	var back := Geo.box(self, Vector3(0.6, 0.55, 0.08), WINDOW_DARK, Vector3(0.6, 1.45, DEPTH * 0.5 + 0.03))
+	var back := Geo.box(up, Vector3(0.6, 0.55, 0.08), WINDOW_DARK, Vector3(0.6, 1.45, DEPTH * 0.5 + 0.03))
 	back.material_override = _window_mat
 	# Four-pane sash windows: painted glazing bars and a sill over each glowing pane.
 	var bars := Look.wood(Color(0.82, 0.8, 0.74), 0.4)
@@ -99,20 +118,102 @@ func _build() -> void:
 		for piece in [[Vector3(0.66, 0.05, 0.03), Vector3(0.0, 0.0, 0.0)], [Vector3(0.05, 0.6, 0.03), Vector3(0.0, 0.0, 0.0)],
 				[Vector3(0.68, 0.05, 0.04), Vector3(0.0, 0.3, 0.0)], [Vector3(0.05, 0.6, 0.04), Vector3(-0.32, 0.0, 0.0)],
 				[Vector3(0.05, 0.6, 0.04), Vector3(0.32, 0.0, 0.0)]]:
-			var bar := Geo.box(self, piece[0], Color.WHITE, spot + piece[1])
+			var bar := Geo.box(up, piece[0], Color.WHITE, spot + piece[1])
 			bar.material_override = bars
-		var sill := Geo.box(self, Vector3(0.74, 0.06, 0.16), Color.WHITE, spot + Vector3(0.0, -0.31, signf(spot.z) * 0.05))
+		var sill := Geo.box(up, Vector3(0.74, 0.06, 0.16), Color.WHITE, spot + Vector3(0.0, -0.31, signf(spot.z) * 0.05))
 		sill.material_override = Look.stone(Color(0.5, 0.49, 0.46), 0.6)
+	_furnish()
 	_lamp = OmniLight3D.new()
 	_lamp.light_color = WINDOW_LIT
 	_lamp.omni_range = 4.5
 	_lamp.light_energy = 0.0
 	_lamp.position = Vector3(0.0, 1.4, -DEPTH * 0.5 - 0.8)
 	add_child(_lamp)
-	Geo.box_shape(self, Vector3(WIDTH, WALL_H + 0.4, DEPTH), Vector3(0.0, WALL_H * 0.5 + 0.2, 0.0))
 	Cycle.phase_changed.connect(_on_phase_changed)
 	_set_windows(Cycle.phase == Cycle.Phase.DUSK or Cycle.phase == Cycle.Phase.NIGHT)
 	_start_smoke.call_deferred()
+
+# The room: a range at the chimney end with the fire in it, the table and chairs, a box
+# bed, a dresser of plates, a rag rug, oilskins on pegs by the door.
+func _furnish() -> void:
+	var wood := Look.wood(Color(0.42, 0.3, 0.2))
+	var dark := Look.wood(Color(0.28, 0.2, 0.14))
+	var iron := Look.flat_mat(Color(0.1, 0.1, 0.11), 0.45)
+	var boards := Geo.box(self, Vector3(WIDTH - WALL_T * 2.0, 0.04, DEPTH - WALL_T * 2.0), Color.WHITE, Vector3(0.0, 0.02, 0.0))
+	boards.material_override = Look.textured("planks", Color(0.62, 0.48, 0.36), 0.8)
+	var ix := WIDTH * 0.5 - WALL_T
+	var iz := DEPTH * 0.5 - WALL_T
+	# The range in the chimney breast, the fire showing through its grate.
+	var stove := Geo.box(self, Vector3(0.55, 0.75, 0.95), Color.WHITE, Vector3(ix - 0.28, 0.4, 0.0))
+	stove.material_override = iron
+	var fire := Geo.box(self, Vector3(0.05, 0.22, 0.4), Color.WHITE, Vector3(ix - 0.57, 0.32, 0.0))
+	fire.material_override = Look.glow_mat(Color(1.0, 0.45, 0.15), 3.0)
+	var mantel := Geo.box(self, Vector3(0.25, 0.06, 1.3), Color.WHITE, Vector3(ix - 0.12, 1.25, 0.0))
+	mantel.material_override = dark
+	var kettle := Geo.cyl(self, 0.1, 0.16, Color.WHITE, Vector3(ix - 0.3, 0.86, 0.22))
+	kettle.material_override = Look.flat_mat(Color(0.55, 0.45, 0.3), 0.3)
+	_fire_light = OmniLight3D.new()
+	_fire_light.light_color = Color(1.0, 0.55, 0.25)
+	_fire_light.omni_range = 3.2
+	_fire_light.light_energy = 0.8
+	_fire_light.position = Vector3(ix - 0.8, 0.5, 0.0)
+	_fire_light.shadow_enabled = false
+	add_child(_fire_light)
+	# The table, two chairs, and the oil lamp on it.
+	var tx := 0.25
+	var tz := 0.2
+	var top := Geo.box(self, Vector3(1.0, 0.05, 0.7), Color.WHITE, Vector3(tx, 0.75, tz))
+	top.material_override = wood
+	for lx in [-0.42, 0.42]:
+		for lz in [-0.28, 0.28]:
+			var leg := Geo.box(self, Vector3(0.06, 0.73, 0.06), Color.WHITE, Vector3(tx + lx, 0.37, tz + lz))
+			leg.material_override = wood
+	for c in [[Vector3(tx - 0.75, 0.0, tz), 1.0], [Vector3(tx + 0.75, 0.0, tz), -1.0]]:
+		var at: Vector3 = c[0]
+		var seat := Geo.box(self, Vector3(0.42, 0.05, 0.42), Color.WHITE, at + Vector3(0.0, 0.45, 0.0))
+		seat.material_override = dark
+		var back := Geo.box(self, Vector3(0.05, 0.5, 0.42), Color.WHITE, at + Vector3(-0.19 * float(c[1]), 0.72, 0.0))
+		back.material_override = dark
+		for lx in [-0.17, 0.17]:
+			for lz in [-0.17, 0.17]:
+				var leg := Geo.box(self, Vector3(0.04, 0.45, 0.04), Color.WHITE, at + Vector3(lx, 0.22, lz))
+				leg.material_override = dark
+	var lamp_glass := Geo.cyl(self, 0.06, 0.16, Color.WHITE, Vector3(tx + 0.2, 0.86, tz - 0.1))
+	lamp_glass.material_override = Look.glow_mat(Color(1.0, 0.8, 0.5), 1.5)
+	_room_light = OmniLight3D.new()
+	_room_light.light_color = Color(1.0, 0.78, 0.5)
+	_room_light.omni_range = 3.6
+	_room_light.light_energy = 0.0
+	_room_light.position = Vector3(tx + 0.2, 1.1, tz - 0.1)
+	add_child(_room_light)
+	var bowl := Geo.cyl(self, 0.12, 0.06, Color.WHITE, Vector3(tx - 0.2, 0.8, tz + 0.1))
+	bowl.material_override = Look.flat_mat(Color(0.85, 0.85, 0.8), 0.4)
+	# The box bed along the far gable, a blanket and a pillow.
+	var bed := Geo.box(self, Vector3(0.95, 0.45, 1.9), Color.WHITE, Vector3(-ix + 0.48, 0.25, iz - 0.97))
+	bed.material_override = dark
+	var blanket := Geo.box(self, Vector3(0.88, 0.1, 1.35), Color.WHITE, Vector3(-ix + 0.48, 0.52, iz - 1.2))
+	blanket.material_override = Look.flat_mat(Color(0.45, 0.16, 0.14), 0.9)
+	var pillow := Geo.box(self, Vector3(0.7, 0.1, 0.35), Color.WHITE, Vector3(-ix + 0.48, 0.53, iz - 0.25))
+	pillow.material_override = Look.flat_mat(Color(0.86, 0.84, 0.78), 0.9)
+	# A dresser of plates against the back wall.
+	var dresser := Geo.box(self, Vector3(1.0, 0.85, 0.4), Color.WHITE, Vector3(1.15, 0.43, iz - 0.2))
+	dresser.material_override = wood
+	var rack := Geo.box(self, Vector3(1.0, 0.75, 0.12), Color.WHITE, Vector3(1.15, 1.25, iz - 0.06))
+	rack.material_override = wood
+	for i in 4:
+		var plate := Geo.cyl(self, 0.1, 0.02, Color.WHITE, Vector3(0.8 + float(i) * 0.24, 1.3, iz - 0.15))
+		plate.rotation.x = PI * 0.5
+		plate.material_override = Look.flat_mat(Color(0.88, 0.9, 0.95), 0.3)
+	# A rag rug before the fire.
+	var rug := Geo.box(self, Vector3(1.3, 0.02, 0.8), Color.WHITE, Vector3(0.9, 0.05, -0.3))
+	rug.material_override = Look.flat_mat(Color(0.5, 0.28, 0.18), 1.0)
+	# Oilskins on pegs inside the door, and a pair of boots.
+	for i in 2:
+		var coat := Geo.box(interior.upper, Vector3(0.32, 0.75, 0.12), Color.WHITE, Vector3(DOOR_X + 0.75 + float(i) * 0.38, 1.25, -iz + 0.08))
+		coat.material_override = Look.flat_mat(Color(0.95, 0.75, 0.15) if i == 0 else Color(0.2, 0.25, 0.32), 0.6)
+	for i in 2:
+		var boot := Geo.box(self, Vector3(0.12, 0.3, 0.26), Color.WHITE, Vector3(DOOR_X + 0.8 + float(i) * 0.16, 0.17, -iz + 0.2))
+		boot.material_override = Look.flat_mat(Color(0.12, 0.13, 0.12), 0.5)
 
 func _on_phase_changed(p: int) -> void:
 	_set_windows(p == Cycle.Phase.DUSK or p == Cycle.Phase.NIGHT)
@@ -123,6 +224,8 @@ func _set_windows(lit: bool) -> void:
 	_window_mat.emission = WINDOW_LIT
 	_window_mat.emission_energy_multiplier = WINDOW_GLOW if lit else 0.0
 	_lamp.light_energy = LAMP_ENERGY if lit else 0.0
+	if _room_light:
+		_room_light.light_energy = 1.2 if lit else 0.0
 
 func _start_smoke() -> void:
 	_smoke_fx = FX.chimney_smoke(get_parent(), to_global(_chimney_top))
@@ -150,6 +253,8 @@ func _process(delta: float) -> void:
 		_window_mat.emission_energy_multiplier = WINDOW_GLOW * _flicker
 		_window_mat.emission = WINDOW_LIT.lerp(Color(1.0, 0.55, 0.22), 0.5 - 0.5 * sin(_fire_t * 3.1))
 		_lamp.light_energy = LAMP_ENERGY * _flicker
+	if _fire_light:
+		_fire_light.light_energy = (0.9 if not is_destroyed() else 0.0) * (0.85 + 0.15 * sin(_fire_t * 9.0) * sin(_fire_t * 3.7))
 	if _smoke_fx == null or not is_instance_valid(_smoke_fx):
 		return
 	var pm := _smoke_fx.process_material as ParticleProcessMaterial

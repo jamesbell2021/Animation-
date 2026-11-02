@@ -12,32 +12,108 @@ const ARROWS_MADE := 5
 const BOMBS_COST := {"bio": 1, "seaweed": 1}
 const BOMBS_MADE := 2
 
-const WIDTH := 2.4
-const DEPTH := 2.0
-const WALL_H := 1.6
+const WIDTH := 2.6
+const DEPTH := 2.2
+const WALL_H := 2.0
+const WALL_T := 0.2
+const DOOR_X := 0.25
+const DOOR_W := 0.95
 const STONE := Color(0.44, 0.43, 0.40)
 
 var _wall_mat: StandardMaterial3D
 var _roof: MeshInstance3D
 var _door: MeshInstance3D
+## The room inside (Interior), and what's in it that comes and goes.
+var interior: Interior
+var _gun: Node3D
+var _burner: Node3D
+var _look_t := 0.0
 
 func _init() -> void:
 	id = "shed"
 	max_hp = 120
 
 func _build() -> void:
-	# A rubble-built store with a slate roof and a boarded door.
+	# A rubble-built store with a slate roof and a boarded door, standing open.
+	interior = Interior.new()
+	add_child(interior)
+	var up := interior.upper
 	_wall_mat = Look.stone(STONE)
-	var walls := Geo.box(self, Vector3(WIDTH, WALL_H, DEPTH), Color.WHITE, Vector3(0.0, WALL_H * 0.5, 0.0))
-	walls.material_override = _wall_mat
-	_roof = Geo.box(self, Vector3(2.7, 0.12, 2.4), Color.WHITE, Vector3(0.0, 1.75, 0.0))
+	interior.walls(self, self, WIDTH, DEPTH, WALL_H, 0.0, WALL_T, _wall_mat, DOOR_X, DOOR_W, 1.7)
+	_roof = Geo.box(up, Vector3(WIDTH + 0.3, 0.12, DEPTH + 0.4), Color.WHITE, Vector3(0.0, WALL_H + 0.15, 0.0))
 	_roof.material_override = Look.textured("slate", Color.WHITE, 1.0, 0.55, 1.4)
 	_roof.rotation.x = deg_to_rad(-12.0)
-	_door = Geo.box(self, Vector3(0.75, 1.25, 0.08), Color(0.30, 0.22, 0.14), Vector3(0.2, 0.62, -1.03))
+	_door = Geo.box(up, Vector3(DOOR_W - 0.05, 1.6, 0.06), Color(0.30, 0.22, 0.14), Vector3(DOOR_X + DOOR_W * 0.5 - 0.05, 0.8, -DEPTH * 0.5 + WALL_T + 0.4))
 	_door.material_override = Look.wood(Color(0.30, 0.22, 0.14))
-	var barrel := Geo.cyl(self, 0.28, 0.8, Color.WHITE, Vector3(-0.85, 0.4, -1.35))
+	_door.rotation.y = deg_to_rad(80.0)
+	var barrel := Geo.cyl(self, 0.28, 0.8, Color.WHITE, Vector3(-0.95, 0.4, -DEPTH * 0.5 - 0.4))
 	barrel.material_override = Look.flat_mat(Color(0.18, 0.2, 0.22), 0.5)
-	Geo.box_shape(self, Vector3(WIDTH, WALL_H, DEPTH), Vector3(0.0, WALL_H * 0.5, 0.0))
+	_furnish()
+
+# The workbench along the back wall with a vice, the shotgun lying on it while it's in
+# the shed, tins of rat poison and a sheaf of arrows; the weed burner in the corner;
+# shelves of tins and a drum of oil.
+func _furnish() -> void:
+	var wood := Look.wood(Color(0.45, 0.33, 0.22))
+	var iron := Look.flat_mat(Color(0.14, 0.14, 0.15), 0.45)
+	var ix := WIDTH * 0.5 - WALL_T
+	var iz := DEPTH * 0.5 - WALL_T
+	var boards := Geo.box(self, Vector3(WIDTH - WALL_T * 2.0, 0.03, DEPTH - WALL_T * 2.0), Color.WHITE, Vector3(0.0, 0.015, 0.0))
+	boards.material_override = Look.textured("planks", Color(0.42, 0.36, 0.3), 0.8)
+	var bench := Geo.box(self, Vector3(1.6, 0.07, 0.55), Color.WHITE, Vector3(-0.1, 0.85, iz - 0.28))
+	bench.material_override = wood
+	for lx in [-0.8, 0.6]:
+		var leg := Geo.box(self, Vector3(0.08, 0.82, 0.45), Color.WHITE, Vector3(lx, 0.41, iz - 0.28))
+		leg.material_override = wood
+	var vice := Geo.box(self, Vector3(0.16, 0.14, 0.18), Color.WHITE, Vector3(0.55, 0.96, iz - 0.12))
+	vice.material_override = iron
+	# The shotgun on the bench: two barrels and a stock.
+	_gun = Node3D.new()
+	_gun.position = Vector3(-0.2, 0.91, iz - 0.3)
+	_gun.rotation.y = 0.15
+	add_child(_gun)
+	var barrels := Geo.box(_gun, Vector3(0.75, 0.05, 0.08), Color.WHITE, Vector3(0.2, 0.0, 0.0))
+	barrels.material_override = Look.flat_mat(Color(0.12, 0.12, 0.13), 0.3)
+	var stock := Geo.box(_gun, Vector3(0.4, 0.07, 0.07), Color.WHITE, Vector3(-0.35, -0.01, 0.0))
+	stock.material_override = Look.wood(Color(0.4, 0.22, 0.12))
+	for i in 3:
+		var tin := Geo.cyl(self, 0.07, 0.14, Color.WHITE, Vector3(-0.75 + float(i) * 0.16, 0.96, iz - 0.42))
+		tin.material_override = Look.flat_mat(Color(0.75, 0.68, 0.2) if i != 1 else Color(0.5, 0.15, 0.12), 0.4)
+	for i in 5:
+		var arrow := Geo.box(self, Vector3(0.7, 0.015, 0.015), Color.WHITE, Vector3(0.1, 0.9, iz - 0.5 + float(i) * 0.02))
+		arrow.material_override = wood
+	# The weed burner in the corner by the door: a tank and its lance.
+	_burner = Node3D.new()
+	_burner.position = Vector3(ix - 0.25, 0.0, -iz + 0.3)
+	add_child(_burner)
+	var tank := Geo.cyl(_burner, 0.16, 0.6, Color.WHITE, Vector3(0.0, 0.3, 0.0))
+	tank.material_override = Look.flat_mat(Color(0.55, 0.12, 0.1), 0.5)
+	var lance := Geo.box(_burner, Vector3(0.04, 1.0, 0.04), Color.WHITE, Vector3(-0.12, 0.6, 0.1))
+	lance.rotation.z = 0.25
+	lance.material_override = iron
+	# Shelves on the end wall, tins and a coil of rope on them; a drum of oil.
+	for k in 2:
+		var shelf := Geo.box(self, Vector3(0.3, 0.04, 1.1), Color.WHITE, Vector3(-ix + 0.15, 0.3 + float(k) * 0.32, 0.0))
+		shelf.material_override = wood
+		for i in 3:
+			var t := Geo.cyl(self, 0.06, 0.12, Color.WHITE, Vector3(-ix + 0.15, 0.38 + float(k) * 0.32, -0.35 + float(i) * 0.3))
+			t.material_override = Look.flat_mat([Color(0.3, 0.42, 0.55), Color(0.62, 0.6, 0.55), Color(0.45, 0.5, 0.3)][(i + k) % 3], 0.5)
+	var drum := Geo.cyl(self, 0.24, 0.7, Color.WHITE, Vector3(ix - 0.3, 0.35, iz - 0.3))
+	drum.material_override = Look.flat_mat(Color(0.22, 0.32, 0.22), 0.5)
+	_show_kit()
+
+# The shotgun on the bench while it's in the shed; the burner while it's here.
+func _show_kit() -> void:
+	if _gun:
+		_gun.visible = Arsenal.holder("shotgun") < 0
+	if _burner:
+		_burner.visible = Arsenal.holder("flamer") < 0
+
+func _process(delta: float) -> void:
+	_look_t -= delta
+	if _look_t <= 0.0:
+		_look_t = 0.5
+		_show_kit()
 
 func _refresh() -> void:
 	if _wall_mat == null:
@@ -45,10 +121,9 @@ func _refresh() -> void:
 	var hurt := 1.0 - health_ratio()
 	_wall_mat.albedo_color = (Color(0.26, 0.25, 0.24).lerp(STONE, health_ratio())) * 2.6
 	_roof.rotation = Vector3(deg_to_rad(-12.0) - hurt * 0.2, 0.0, hurt * 0.25)
-	_roof.position.y = 1.75 - hurt * 0.3
+	_roof.position.y = WALL_H + 0.15 - hurt * 0.3
 	# The door hangs off one hinge, then off both.
 	_door.rotation.z = hurt * 0.6
-	_door.position.x = 0.2 + hurt * 0.2
 
 # ---- the workbench ----
 

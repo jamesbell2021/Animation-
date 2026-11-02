@@ -437,6 +437,30 @@ func aim_yaw() -> float:
 func aim_dir() -> Vector3:
 	return _aim
 
+## Multiplayer: a person's keeper shows as an outline in their colour through whatever
+## hides them (a hut's roof, the tower). Playing alone the buildings are cut away instead.
+var _outline_mat: ShaderMaterial
+var _outlined := false
+
+func _process(_delta: float) -> void:
+	var want := Run.active and not ai and visible and not Interior.cutaway_mode()
+	if want != _outlined:
+		set_outline(want)
+
+func set_outline(on: bool) -> void:
+	_outlined = on
+	if rig == null:
+		return
+	if on and _outline_mat == null:
+		_outline_mat = ShaderMaterial.new()
+		_outline_mat.shader = load("res://shaders/keeper_outline.gdshader")
+		_outline_mat.set_shader_parameter("color", Players.COLORS[idx % Players.COLORS.size()])
+	for m in rig.find_children("*", "MeshInstance3D", true, false):
+		(m as MeshInstance3D).material_overlay = _outline_mat if on else null
+
+func outlined() -> bool:
+	return _outlined
+
 func _physics_process(delta: float) -> void:
 	if puppet:
 		_puppet_step(delta)

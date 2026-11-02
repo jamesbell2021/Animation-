@@ -86,7 +86,7 @@ func _ready() -> void:
 	# The quarters' stove and the mess table, worked from in front of each hut.
 	stove = HutStove.new()
 	stove.position = _ground(Vector2(c.x - 4.6, c.y - 2.6))
-	stove.pipe_top = huts[0].to_global(Vector3(HUT_LEN * 0.25, HUT_R + 0.85, 0.4))
+	stove.pipe_top = huts[0].to_global(Vector3(HUT_LEN * 0.25, HUT_R + 0.85, HUT_PIPE_Z))
 	add_child(stove)
 	mess = MessTable.new()
 	mess.position = _ground(Vector2(c.x + 4.4, c.y - 2.6))
@@ -452,47 +452,75 @@ func _tower(corner: Vector2) -> void:
 # ---- buildings ----
 
 # A Nissen hut: a half-cylinder of corrugated iron, brick ends with a door and windows.
+# You can walk in at either end: playing alone, the shell lifts away to show the room
+# (Interior), the quarters' bunks and stove or the mess's long table and counter.
 func _hut(at: Vector2, label: String) -> void:
 	var hut := Node3D.new()
 	hut.name = label
 	add_child(hut)
 	hut.position = _ground(at)
-	var shell := Geo.cyl(hut, HUT_R, HUT_LEN, Color.WHITE, Vector3.ZERO)
+	var room := Interior.new()
+	hut.add_child(room)
+	var up := room.upper
+	room.half = Vector2(HUT_LEN * 0.5 - 0.2, HUT_R - 0.35)
+	room.height = HUT_R + 1.5
+	var shell := Geo.cyl(up, HUT_R, HUT_LEN, Color.WHITE, Vector3.ZERO)
 	shell.rotation.z = PI * 0.5
 	(shell.mesh as CylinderMesh).radial_segments = 20
 	shell.material_override = _tin
 	# Corrugations: ribs along the curve.
 	for i in 9:
-		var rib := Geo.cyl(hut, HUT_R + 0.03, 0.06, Color.WHITE, Vector3(-HUT_LEN * 0.5 + 0.3 + float(i) * (HUT_LEN - 0.6) / 8.0, 0.0, 0.0))
+		var rib := Geo.cyl(up, HUT_R + 0.03, 0.06, Color.WHITE, Vector3(-HUT_LEN * 0.5 + 0.3 + float(i) * (HUT_LEN - 0.6) / 8.0, 0.0, 0.0))
 		rib.rotation.z = PI * 0.5
 		(rib.mesh as CylinderMesh).radial_segments = 20
 		rib.material_override = _tin
-	# Its concrete base, a lip showing all round.
-	var base := Geo.box(hut, Vector3(HUT_LEN + 0.5, 0.3, HUT_R * 2.0 + 0.4), Color.WHITE, Vector3(0.0, -0.08, 0.0))
+	# Its concrete base, a lip showing all round; inside, the floor.
+	var base := Geo.box(hut, Vector3(HUT_LEN + 0.5, 0.3, HUT_R * 2.0 + 0.4), Color.WHITE, Vector3(0.0, -0.13, 0.0))
 	base.material_override = _concrete
+	# Knee-high sides and ends that stay when the shell lifts away.
+	for sz in [-1.0, 1.0]:
+		var low := Geo.box(hut, Vector3(HUT_LEN, Interior.LOW, 0.08), Color.WHITE, Vector3(0.0, Interior.LOW * 0.5, sz * (HUT_R - 0.12)))
+		low.material_override = _tin
 	for sx in [-1.0, 1.0]:
-		var end := Geo.cyl(hut, HUT_R - 0.05, 0.16, Color.WHITE, Vector3(sx * (HUT_LEN * 0.5 - 0.05), 0.0, 0.0))
-		end.rotation.z = PI * 0.5
-		(end.mesh as CylinderMesh).radial_segments = 20
-		end.material_override = _brick
+		# The brick end, with its doorway cut out of it.
+		var end := CSGCombiner3D.new()
+		end.position = Vector3(sx * (HUT_LEN * 0.5 - 0.05), 0.0, 0.0)
+		up.add_child(end)
+		var disc := CSGCylinder3D.new()
+		disc.radius = HUT_R - 0.05
+		disc.height = 0.16
+		disc.sides = 20
+		disc.rotation.z = PI * 0.5
+		disc.material = _brick
+		end.add_child(disc)
+		var gap := CSGBox3D.new()
+		gap.size = Vector3(0.5, 2.0, 1.0)
+		gap.position = Vector3(0.0, 1.0, 0.0)
+		gap.operation = CSGShape3D.OPERATION_SUBTRACTION
+		end.add_child(gap)
+		for sz in [-1.0, 1.0]:
+			var stub := Geo.box(hut, Vector3(0.16, Interior.LOW, HUT_R - 0.6), Color.WHITE, Vector3(sx * (HUT_LEN * 0.5 - 0.05), Interior.LOW * 0.5, sz * (0.5 + (HUT_R - 0.6) * 0.5)))
+			stub.material_override = _brick
 		# A concrete step to the door, and a little lean-to porch over it.
 		var step := Geo.box(hut, Vector3(0.5, 0.18, 1.3), Color.WHITE, Vector3(sx * (HUT_LEN * 0.5 + 0.3), 0.09, 0.0))
 		step.material_override = _concrete
-		var porch := Geo.box(hut, Vector3(0.7, 0.05, 1.5), Color.WHITE, Vector3(sx * (HUT_LEN * 0.5 + 0.3), 2.15, 0.0))
+		var porch := Geo.box(up, Vector3(0.7, 0.05, 1.5), Color.WHITE, Vector3(sx * (HUT_LEN * 0.5 + 0.3), 2.15, 0.0))
 		porch.rotation.z = sx * 0.18
 		porch.material_override = _felt
-		var door := Geo.box(hut, Vector3(0.1, 1.9, 0.95), Color.WHITE, Vector3(sx * (HUT_LEN * 0.5 + 0.04), 0.95, 0.0))
+		# The door, standing open against the inside of the end.
+		var door := Geo.box(up, Vector3(0.95, 1.9, 0.06), Color.WHITE, Vector3(sx * (HUT_LEN * 0.5 - 0.6), 0.95, 0.52))
+		door.rotation.y = PI * 0.5 - sx * 0.25
 		door.material_override = _wood
 		var win_mat := Look.glow_mat(Color(0.12, 0.13, 0.14), 0.0)
 		_hut_windows.append(win_mat)
 		for sz in [-1.0, 1.0]:
-			var win := Geo.box(hut, Vector3(0.08, 0.6, 0.55), Color.WHITE, Vector3(sx * (HUT_LEN * 0.5 + 0.03), 1.25, sz * 1.15))
+			var win := Geo.box(up, Vector3(0.08, 0.6, 0.55), Color.WHITE, Vector3(sx * (HUT_LEN * 0.5 + 0.03), 1.25, sz * 1.15))
 			win.material_override = win_mat
 			# A painted frame and sill round it, and a glazing bar.
 			for k in 2:
-				var fr := Geo.box(hut, Vector3(0.1, 0.06, 0.65), Color.WHITE, Vector3(sx * (HUT_LEN * 0.5 + 0.05), 0.92 + 0.66 * float(k), sz * 1.15))
+				var fr := Geo.box(up, Vector3(0.1, 0.06, 0.65), Color.WHITE, Vector3(sx * (HUT_LEN * 0.5 + 0.05), 0.92 + 0.66 * float(k), sz * 1.15))
 				fr.material_override = _wood
-			var bar := Geo.box(hut, Vector3(0.1, 0.6, 0.04), Color.WHITE, Vector3(sx * (HUT_LEN * 0.5 + 0.06), 1.25, sz * 1.15))
+			var bar := Geo.box(up, Vector3(0.1, 0.6, 0.04), Color.WHITE, Vector3(sx * (HUT_LEN * 0.5 + 0.06), 1.25, sz * 1.15))
 			bar.material_override = _wood
 		# Electric light inside, thrown out through the end windows.
 		var lamp := OmniLight3D.new()
@@ -504,15 +532,109 @@ func _hut(at: Vector2, label: String) -> void:
 		hut.add_child(lamp)
 		_hut_lights.append(lamp)
 	# A stovepipe through the roof.
-	var pipe := Geo.cyl(hut, 0.09, 1.0, Color(0.15, 0.15, 0.15), Vector3(HUT_LEN * 0.25, HUT_R + 0.3, 0.4))
+	var pipe := Geo.cyl(up, 0.09, 1.0, Color(0.15, 0.15, 0.15), Vector3(HUT_LEN * 0.25, HUT_R + 0.3, HUT_PIPE_Z))
 	pipe.name = "Stovepipe"
-	# Its body and health, beside it (so it can sag without the body scaling).
+	# Bulbs down the middle of the room.
+	var inner := OmniLight3D.new()
+	inner.light_color = Color(1.0, 0.86, 0.62)
+	inner.omni_range = 6.0
+	inner.light_energy = 0.0
+	inner.position = Vector3(0.0, 2.1, 0.0)
+	inner.visible = false
+	hut.add_child(inner)
+	_hut_inner.append(inner)
+	if label == "Quarters":
+		_furnish_quarters(hut)
+	else:
+		_furnish_mess(hut)
+	# Its body and health, beside it (so it can sag without the body scaling): hollow,
+	# a door at each end.
 	var b := CampBuilding.new(label.to_lower(), HUT_HP, Vector3(HUT_LEN, HUT_R * 1.2, HUT_R * 1.9))
+	var side_z := HUT_R - 0.35
+	b.hollow = [
+		[Vector3(HUT_LEN, 2.6, 0.3), Vector3(0.0, 1.3, side_z)],
+		[Vector3(HUT_LEN, 2.6, 0.3), Vector3(0.0, 1.3, -side_z)],
+	]
+	for sx in [-1.0, 1.0]:
+		for sz in [-1.0, 1.0]:
+			b.hollow.append([Vector3(0.25, 2.6, side_z - 0.5), Vector3(sx * (HUT_LEN * 0.5 - 0.08), 1.3, sz * (0.5 + (side_z - 0.5) * 0.5))])
 	b.visual = hut
 	b.position = hut.position
 	add_child(b)
 	buildings[b.id] = b
 	huts.append(hut)
+
+const HUT_PIPE_Z := 0.9
+var _hut_inner: Array[OmniLight3D] = []
+
+# The quarters: iron bunks along both sides, lockers, the stove under its pipe.
+func _furnish_quarters(hut: Node3D) -> void:
+	var iron := Look.flat_mat(Color(0.2, 0.24, 0.22), 0.5)
+	var blanket := Look.flat_mat(Color(0.32, 0.3, 0.24), 0.95)
+	var floor_mat := Look.textured("planks", Color(0.5, 0.42, 0.34), 0.8)
+	var boards := Geo.box(hut, Vector3(HUT_LEN - 0.4, 0.03, (HUT_R - 0.35) * 2.0), Color.WHITE, Vector3(0.0, 0.03, 0.0))
+	boards.material_override = floor_mat
+	for sz in [-1.0, 1.0]:
+		for bx in [-2.4, -0.3]:
+			var z: float = sz * (HUT_R - 0.85)
+			for tier in 2:
+				var y := 0.4 + float(tier) * 0.85
+				var frame := Geo.box(hut, Vector3(1.9, 0.08, 0.8), Color.WHITE, Vector3(bx, y, z))
+				frame.material_override = iron
+				var bed := Geo.box(hut, Vector3(1.8, 0.1, 0.72), Color.WHITE, Vector3(bx, y + 0.09, z))
+				bed.material_override = blanket
+			for px in [-0.92, 0.92]:
+				for pz in [-0.36, 0.36]:
+					var post := Geo.box(hut, Vector3(0.05, 1.55, 0.05), Color.WHITE, Vector3(bx + px, 0.78, z + pz))
+					post.material_override = iron
+	for i in 3:
+		var locker := Geo.box(hut, Vector3(0.5, 1.6, 0.45), Color.WHITE, Vector3(1.6 + float(i) * 0.55, 0.8, -(HUT_R - 0.65)))
+		locker.material_override = Look.flat_mat(Color(0.32, 0.38, 0.32), 0.45)
+	var stove := Geo.cyl(hut, 0.3, 0.75, Color.WHITE, Vector3(HUT_LEN * 0.25, 0.42, HUT_PIPE_Z))
+	stove.material_override = Look.flat_mat(Color(0.08, 0.08, 0.09), 0.4)
+	var pipe := Geo.cyl(hut, 0.08, 1.6, Color.WHITE, Vector3(HUT_LEN * 0.25, 1.6, HUT_PIPE_Z))
+	pipe.material_override = Look.flat_mat(Color(0.1, 0.1, 0.1), 0.4)
+	var glow := Geo.box(hut, Vector3(0.18, 0.12, 0.04), Color.WHITE, Vector3(HUT_LEN * 0.25, 0.4, HUT_PIPE_Z - 0.3))
+	glow.material_override = Look.glow_mat(Color(1.0, 0.45, 0.15), 2.5)
+	var chair := Geo.box(hut, Vector3(0.45, 0.05, 0.45), Color.WHITE, Vector3(HUT_LEN * 0.25 + 0.2, 0.45, -0.3))
+	chair.material_override = Look.wood(Color(0.4, 0.3, 0.2))
+
+# The mess: a long table and benches, the serving counter at one end, a desk of papers.
+func _furnish_mess(hut: Node3D) -> void:
+	var wood := Look.wood(Color(0.46, 0.34, 0.22))
+	var boards := Geo.box(hut, Vector3(HUT_LEN - 0.4, 0.03, (HUT_R - 0.35) * 2.0), Color.WHITE, Vector3(0.0, 0.03, 0.0))
+	boards.material_override = Look.textured("planks", Color(0.5, 0.42, 0.34), 0.8)
+	var table := Geo.box(hut, Vector3(4.0, 0.06, 0.9), Color.WHITE, Vector3(-0.8, 0.76, 0.0))
+	table.material_override = wood
+	for lx in [-2.6, -0.8, 1.0]:
+		var trestle := Geo.box(hut, Vector3(0.08, 0.74, 0.75), Color.WHITE, Vector3(lx, 0.37, 0.0))
+		trestle.material_override = wood
+	for sz in [-1.0, 1.0]:
+		var bench := Geo.box(hut, Vector3(4.0, 0.05, 0.3), Color.WHITE, Vector3(-0.8, 0.45, sz * 0.75))
+		bench.material_override = wood
+		for lx in [-2.6, 1.0]:
+			var bl := Geo.box(hut, Vector3(0.06, 0.43, 0.25), Color.WHITE, Vector3(lx, 0.22, sz * 0.75))
+			bl.material_override = wood
+	for i in 6:
+		var mug := Geo.cyl(hut, 0.05, 0.1, Color.WHITE, Vector3(-2.4 + float(i) * 0.65, 0.84, 0.25 * (1.0 if i % 2 == 0 else -1.0)))
+		mug.material_override = Look.flat_mat(Color(0.86, 0.86, 0.82), 0.4)
+	# The serving counter across the far end, a big pot on it.
+	var counter := Geo.box(hut, Vector3(0.6, 0.95, 2.4), Color.WHITE, Vector3(HUT_LEN * 0.5 - 0.75, 0.48, 0.0))
+	counter.material_override = wood
+	var pot := Geo.cyl(hut, 0.22, 0.3, Color.WHITE, Vector3(HUT_LEN * 0.5 - 0.75, 1.1, 0.5))
+	pot.material_override = Look.flat_mat(Color(0.5, 0.5, 0.52), 0.3)
+	# A desk of papers and a lamp: the internees' notes.
+	var desk := Geo.box(hut, Vector3(1.0, 0.05, 0.6), Color.WHITE, Vector3(2.0, 0.76, -(HUT_R - 0.75)))
+	desk.material_override = wood
+	for lx in [-0.45, 0.45]:
+		var dl := Geo.box(hut, Vector3(0.05, 0.74, 0.55), Color.WHITE, Vector3(2.0 + lx, 0.37, -(HUT_R - 0.75)))
+		dl.material_override = wood
+	for i in 4:
+		var paper := Geo.box(hut, Vector3(0.21, 0.005, 0.3), Color.WHITE, Vector3(1.75 + float(i) * 0.14, 0.79 + float(i) * 0.004, -(HUT_R - 0.78)))
+		paper.rotation.y = float(i) * 0.3 - 0.4
+		paper.material_override = Look.flat_mat(Color(0.9, 0.87, 0.76), 0.9)
+	var desk_lamp := Geo.cyl(hut, 0.07, 0.12, Color.WHITE, Vector3(2.35, 0.86, -(HUT_R - 0.7)))
+	desk_lamp.material_override = Look.glow_mat(Color(1.0, 0.8, 0.5), 1.2)
 
 ## Each hut's lights draw this much from the generator.
 const HUT_DRAW := 0.015
@@ -537,6 +659,9 @@ func _process(delta: float) -> void:
 			if i < _hut_lights.size():
 				_hut_lights[i].visible = on > 0.0
 				_hut_lights[i].light_energy = 1.3 * on
+			if k == 0 and h < _hut_inner.size():
+				_hut_inner[h].visible = on > 0.0
+				_hut_inner[h].light_energy = 1.4 * on
 			if i < _hut_windows.size():
 				_hut_windows[i].emission_energy_multiplier = 2.2 * on
 				_hut_windows[i].albedo_color = Color(1.0, 0.85, 0.55) if on > 0.0 else Color(0.12, 0.13, 0.14)

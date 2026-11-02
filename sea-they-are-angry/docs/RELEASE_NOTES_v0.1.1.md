@@ -16,6 +16,7 @@ A round of polish on v0.1.0 (Chapter One), from a look at the game frame by fram
 
 ## Better to play
 
+- **Walk into the buildings:** the cottage, the shed and the camp's huts have doors and furnished rooms. Playing alone, the roof lifts away while you're inside; with friends, each keeper shows as an outline in their colour through roofs and walls.
 - **A weapon bar** along the bottom of the screen, numbered 1 to 5 for the keys that take each up: the boathook, longbow, shotgun, flamer and petrol bombs, each with what it has left. What's in hand is lit gold, and what you don't have yet is dim. Press the number for one you haven't got and it tells you where to get it.
 - **A camera you can move, playing alone** (as in Company of Heroes): hold the middle mouse button and drag, or Z and C, to turn it round the island. The wheel zooms in toward your keeper (never too close) and out again, and X puts it back. Walking follows the camera, so up the screen is always away from it. With the camera free, Tab and 1 to 5 change what's in hand.
 

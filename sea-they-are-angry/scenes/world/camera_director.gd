@@ -131,6 +131,8 @@ const CLOSE_TILT := 10.0
 ## and whether the person can move it now. Static: input reads them.
 static var yaw := 0.0
 static var free_on := false
+## The one person this screen follows, while there's one (Interior's cutaway).
+static var person: Node3D = null
 var yaw_target := 0.0
 var zoom := 1.0
 var zoom_target := 1.0
@@ -161,6 +163,7 @@ func reset_view() -> void:
 
 func _free_camera(delta: float, people: Array) -> void:
 	free_on = Run.active and people.size() == 1 and not bool(people[0].get("ai"))
+	person = people[0] if people.size() == 1 else null
 	if not free_on:
 		yaw_target = 0.0
 		zoom_target = 1.0
