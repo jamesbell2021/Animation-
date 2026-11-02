@@ -794,7 +794,10 @@ func _switch_weapon() -> void:
 		for i in Arsenal.ORDER.size():
 			var a := "weapon_%d" % (i + 1)
 			if (remote and _just(a)) or (not remote and InputMap.has_action(a) and Input.is_action_just_pressed(a)):
-				arsenal.select(Arsenal.ORDER[i])
+				var w: String = Arsenal.ORDER[i]
+				if not arsenal.available(w) and not remote:
+					Events.message.emit(arsenal.why_not(w))
+				arsenal.select(w)
 
 func _attack() -> void:
 	if not has_hook:

@@ -821,4 +821,5 @@ The missing pieces of plan 2 (`docs/prompts/02_first_release_phases_A-G.md`), af
 - **Walking follows the camera:** up the screen is away from it, for the keys and for the pad's sticks (`InputSetup.on_ground`). A LAN client turns its input before sending it.
 - **The wheel and weapons:** while the free camera is on, the wheel zooms and doesn't change what's in hand (`InputSetup.wheel_zooming`); Tab and 1 to 5 still do. In split-screen co-op the wheel changes weapons as before.
 - **Test:** slice_camera.
+- **The weapon bar (`WeaponBar`), asked for alongside:** the five weapons along the bottom of the screen, numbered for their keys (1 to 5 already picked them, but nothing on screen said so). Each has a line-drawn icon and what it has left: arrows, cartridges, the flamer's tank, petrol bombs, or "thrown" for the boathook. What's in hand is lit gold; what isn't to hand is dim. A number for something not to hand says where to get it (`Arsenal.why_not`). Shown for the person on this screen, not while rowing or aboard.
 

@@ -117,6 +117,20 @@ func select(w: String) -> void:
 		Audio.sfx("creak", keeper.global_position, -12.0, 0.2)
 	refresh()
 
+## Why a weapon can't be taken up now, for a person who pressed its number.
+func why_not(w: String) -> String:
+	match w:
+		"bow":
+			return "No longbow yet: make one at the shed's workbench."
+		"shotgun":
+			var h := holder("shotgun")
+			return "The shotgun's on the shed wall: take it from the workbench." if h < 0 else "Someone else has the shotgun."
+		"flamer":
+			return "No flamer yet: rig the weed burner at the shed's workbench." if not Run.flamer_rigged else "Someone else has the flamer."
+		"bombs":
+			return "No petrol bombs: make them at the shed's workbench."
+	return ""
+
 ## The next (or previous) thing the keeper carries.
 func cycle(step: int) -> void:
 	var i := ORDER.find(weapon)

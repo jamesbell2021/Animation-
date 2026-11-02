@@ -19,6 +19,7 @@ var lamp: Lamp
 var camp: Camp
 
 var markers: ThreatMarkers
+var weapon_bar: WeaponBar
 ## The run's counts (main's): what came ashore and how it was stopped.
 var run_tally := {}
 var _over_tally: Label
@@ -144,8 +145,11 @@ func _ready() -> void:
 	_keys_label.custom_minimum_size = Vector2(396, 0)
 	_keys_label.add_theme_color_override("font_color", DIM)
 
-	_prompt_label = _bottom_label(root, -150.0, FONT + 2)
-	_msg_label = _bottom_label(root, -116.0, FONT)
+	# Bottom middle: the weapons, numbered for their keys.
+	weapon_bar = WeaponBar.new()
+	root.add_child(weapon_bar)
+	_prompt_label = _bottom_label(root, -168.0, FONT + 2)
+	_msg_label = _bottom_label(root, -134.0, FONT)
 	_msg_label.add_theme_color_override("font_color", AMBER)
 
 	_warn_label = _label(root, 52)
@@ -503,6 +507,7 @@ func _process(delta: float) -> void:
 	_sub_label.text = " · ".join(sub)
 	_update_stock()
 	_update_keepers()
+	weapon_bar.player = player if player != null and is_instance_valid(player) else null
 	if player and is_instance_valid(player):
 		_prompt_label.text = Settings.keys_in(player.interact_prompt(), player.idx) if Run.active else ""
 	if lighthouse and is_instance_valid(lighthouse):

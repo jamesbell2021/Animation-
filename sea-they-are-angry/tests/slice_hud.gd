@@ -123,6 +123,28 @@ func _go() -> void:
 	var summary: String = hud.run_summary(4)
 	check(summary.contains("held 3 nights") and summary.contains("12 came up out of the sea") and summary.contains("7 burned in the beam"), "the run's summary: " + summary.replace("\n", " / "))
 
+	# The weapons across the bottom, numbered for their keys.
+	var bar = hud.weapon_bar
+	root.get_node("Run").arms[0].append("bow")
+	root.get_node("Stock").set_amount("arrows", 7)
+	await process_frame
+	check(bar.shown() and bar.ammo_text("bow") == "7" and bar.ammo_text("shotgun") == "", "the weapon bar: the longbow with 7 arrows, no shotgun yet")
+	var said := [""]
+	var on_msg := func(t: String) -> void: said[0] = t
+	root.get_node("Events").message.connect(on_msg)
+	Input.action_press("weapon_3")
+	await physics_frame
+	await physics_frame
+	Input.action_release("weapon_3")
+	await process_frame
+	check(main.player.arsenal.weapon != "shotgun" and String(said[0]).contains("shotgun"), "3 with no shotgun to hand says where it is: " + String(said[0]))
+	Input.action_press("weapon_2")
+	await physics_frame
+	await physics_frame
+	Input.action_release("weapon_2")
+	check(main.player.arsenal.weapon == "bow", "2 takes up the longbow")
+	root.get_node("Events").message.disconnect(on_msg)
+
 	# How it feels: the screen shakes with a blow and settles; a heavy blow freezes the
 	# world for a moment; the shake can be turned off.
 	var F = root.get_node("Feel")
