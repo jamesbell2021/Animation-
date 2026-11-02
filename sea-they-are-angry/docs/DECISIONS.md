@@ -831,7 +831,7 @@ The missing pieces of plan 2 (`docs/prompts/02_first_release_phases_A-G.md`), af
   - **Walls:** they stand in two bands. Up to knee height (0.7 m) stays; above it, with the roof, windows and door, sits under `Interior.upper`.
   - **Collision:** boxes go round the walls with a gap at the door. The huts' come through `CampBuilding.hollow`; the greenhouse stays solid.
   - **Unchanged:** creatures still measure to each building's footprint, so raids are as before. The menus still work from outside, and from inside too.
-- **The cutaway:** playing alone, not on the LAN (`Interior.cutaway_mode`), the upper band fades out over a quarter of a second when the person's keeper is inside, and back when they leave.
+- **The cutaway:** playing alone, not on the LAN (`Interior.cutaway_mode`), the upper band fades out over a quarter of a second, but only when the keeper is obviously inside: 0.45 m in from the walls for a third of a second, not standing in the doorway or passing through. It stays off until they're out of the room altogether, so it doesn't flicker near a wall (the owner asked for this).
 - **The outline:** with more than one person playing (local co-op or the LAN), the roofs stay on. Each person's keeper draws in their colour through whatever hides them, roofs and the tower included. A `material_overlay` shader (`shaders/keeper_outline.gdshader`) draws only where the scene is nearer the camera than the keeper, strongest at the edge.
 - **The rooms:**
   - **Cottage:** a range in the chimney breast with the fire glowing, a table and chairs with an oil lamp (lit at night), a box bed, a dresser of plates, a rag rug, oilskins and boots by the door.

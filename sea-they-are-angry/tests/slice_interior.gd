@@ -66,6 +66,12 @@ func _go() -> void:
 	await _wait(40)
 	check(not cot.interior.contains(p.global_position) and cot.interior.fade < 0.01 and cot.interior.upper.visible, "out again: the roof comes back")
 
+	# Just in the doorway isn't obviously inside: the roof stays on.
+	var threshold := cot.to_global(Vector3(Cottage.DOOR_X, 0.0, -Cottage.DEPTH * 0.5 + Cottage.WALL_T + 0.2))
+	p.global_position = threshold + Vector3(0.0, 0.3, 0.0)
+	await _wait(60)
+	check(cot.interior.contains(p.global_position) and cot.interior.fade < 0.01, "standing in the doorway: the roof stays on")
+
 	# Not through the back wall.
 	var behind := cot.to_global(Vector3(0.0, 0.0, Cottage.DEPTH * 0.5 + 1.2))
 	p.global_position = behind + Vector3(0.0, 0.3, 0.0)

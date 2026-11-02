@@ -13,6 +13,11 @@ extends Node3D
 
 ## How fast the cutaway fades, per second.
 const FADE := 4.0
+## Only when obviously inside: this far in from the walls (not just in the doorway)...
+const DEEP := 0.45
+## ...for this long (not just passing through). Once lifted, the roof stays off until
+## the keeper is out of the room altogether.
+const SETTLE := 0.35
 ## Walls are cut at this height when you're inside.
 const LOW := 0.7
 
@@ -21,6 +26,8 @@ var upper := Node3D.new()
 var half := Vector2(1.0, 1.0)
 var height := 2.5
 var fade := 0.0
+var _in_t := 0.0
+var _open := false
 var _geoms: Array[GeometryInstance3D] = []
 
 func _init() -> void:
@@ -32,13 +39,22 @@ func _init() -> void:
 static func cutaway_mode() -> bool:
 	return CameraDirector.free_on and not Net.online()
 
-func contains(p: Vector3) -> bool:
+func contains(p: Vector3, margin: float = 0.0) -> bool:
 	var l := to_local(p)
-	return absf(l.x) < half.x and absf(l.z) < half.y and l.y > -1.0 and l.y < height
+	return absf(l.x) < half.x - margin and absf(l.z) < half.y - margin and l.y > -1.0 and l.y < height
 
 func _process(delta: float) -> void:
 	var who := CameraDirector.person
-	var want := 1.0 if cutaway_mode() and who != null and is_instance_valid(who) and contains(who.global_position) else 0.0
+	var here := cutaway_mode() and who != null and is_instance_valid(who)
+	if here and contains(who.global_position, DEEP):
+		_in_t += delta
+	else:
+		_in_t = 0.0
+	if _in_t >= SETTLE:
+		_open = true
+	elif not here or not contains(who.global_position):
+		_open = false
+	var want := 1.0 if _open else 0.0
 	if is_equal_approx(fade, want):
 		return
 	fade = move_toward(fade, want, delta * FADE)
