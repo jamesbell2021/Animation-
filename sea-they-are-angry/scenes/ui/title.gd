@@ -185,9 +185,9 @@ func _on_settings() -> void:
 # The keys named as they are now set (Settings).
 func _update_hint() -> void:
 	var k := func(a: String) -> String: return Settings.key_name(a)
-	_hint.text = "%s%s%s%s move · mouse aim · %s attack · %s weapon · %s use · %s lamp · %s beam · Esc pause · Hold the light until the relief boat comes" % [
+	_hint.text = "%s%s%s%s move · mouse aim · %s attack · %s or 1-5 weapon · %s use · %s lamp · %s beam · middle mouse or %s %s turn the camera, wheel zoom · Esc pause" % [
 		k.call("move_up"), k.call("move_left"), k.call("move_down"), k.call("move_right"),
-		Settings._short(k.call("attack")), k.call("weapon_next"), k.call("interact"), k.call("operate"), k.call("beam_mode")]
+		Settings._short(k.call("attack")), k.call("weapon_next"), k.call("interact"), k.call("operate"), k.call("beam_mode"), k.call("cam_left"), k.call("cam_right")]
 
 func _on_credits() -> void:
 	var c := preload("res://studio/credits.gd").open(self, "Sea They Are Angry", [
