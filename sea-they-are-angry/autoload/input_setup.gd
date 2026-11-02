@@ -20,12 +20,18 @@ func _ready() -> void:
 	_key("use_dirty", KEY_F)
 	_mouse("attack", MOUSE_BUTTON_LEFT)
 	_mouse("flare", MOUSE_BUTTON_RIGHT)
-	# What's in hand: Tab or the wheel to change it, 1 to 5 to pick it.
+	# What's in hand: Tab or the wheel to change it, 1 to 5 to pick it. (Playing alone
+	# the wheel zooms the camera instead: wheel_zooming.)
 	_key("weapon_next", KEY_TAB)
 	_mouse("weapon_next", MOUSE_BUTTON_WHEEL_DOWN)
 	_mouse("weapon_prev", MOUSE_BUTTON_WHEEL_UP)
 	for i in 5:
 		_key("weapon_%d" % (i + 1), KEY_1 + i)
+	# The camera, playing alone: Z and C turn it, X puts it back (and the middle mouse
+	# button dragged, and the wheel to zoom: CameraDirector).
+	_key("cam_left", KEY_Z)
+	_key("cam_right", KEY_C)
+	_key("cam_reset", KEY_X)
 	for a in ["aim_left", "aim_right", "aim_up", "aim_down"]:
 		if not InputMap.has_action(a):
 			InputMap.add_action(a, 0.25)
@@ -75,11 +81,26 @@ func _pad_axis(action: String, axis: JoyAxis, value: float) -> void:
 	InputMap.action_add_event(action, ev)
 	_pad_events.append([action, ev])
 
+## When the mouse wheel last turned (ms): with the camera free, the wheel zooms rather
+## than changing what's in hand.
+var wheel_at := -1000
+
+## Whether a weapon change this moment came from the wheel while it's zooming the camera.
+func wheel_zooming() -> bool:
+	return CameraDirector.free_on and Time.get_ticks_msec() - wheel_at < 120
+
+## A stick or keys' direction on screen, as a direction on the ground: up the screen is
+## away from the camera, however it's turned.
+static func on_ground(v: Vector2) -> Vector3:
+	return Vector3(v.x, 0.0, v.y).rotated(Vector3.UP, CameraDirector.yaw)
+
 ## The right stick, when the first keeper's pad is pushing it.
 func pad_stick() -> Vector2:
 	return Input.get_vector("aim_left", "aim_right", "aim_up", "aim_down")
 
 func _input(ev: InputEvent) -> void:
+	if ev is InputEventMouseButton and ev.pressed and (ev.button_index == MOUSE_BUTTON_WHEEL_UP or ev.button_index == MOUSE_BUTTON_WHEEL_DOWN):
+		wheel_at = Time.get_ticks_msec()
 	if _pad_events.is_empty():
 		return
 	if ev is InputEventJoypadButton and ev.pressed or ev is InputEventJoypadMotion and absf(ev.axis_value) > 0.5:

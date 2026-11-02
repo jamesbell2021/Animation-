@@ -381,9 +381,14 @@ func _send_input() -> void:
 	var held := {}
 	for a in ACTIONS:
 		if InputMap.has_action(a) and Input.is_action_just_pressed(a) and not quiet:
+			if (a == "weapon_next" or a == "weapon_prev") and InputSetup.wheel_zooming():
+				continue
 			_presses[a] = int(_presses.get(a, 0)) + 1
 		held[a] = InputMap.has_action(a) and Input.is_action_pressed(a) and not quiet
 	var move := Vector2.ZERO if quiet else Input.get_vector("move_left", "move_right", "move_up", "move_down")
+	# Turned to the ground the way this screen's camera faces.
+	var g: Vector3 = InputSetup.on_ground(move)
+	move = Vector2(g.x, g.z)
 	var aim: Vector3 = me.aim_dir()
 	var point := Vector3.INF
 	var cam := get_viewport().get_camera_3d()
@@ -391,7 +396,7 @@ func _send_input() -> void:
 		# On a pad: the right stick aims, or the way the keeper walks.
 		var stick := InputSetup.pad_stick()
 		if stick.length() > 0.35:
-			aim = Vector3(stick.x, 0.0, stick.y).normalized()
+			aim = InputSetup.on_ground(stick).normalized()
 		elif move.length() > 0.3:
 			aim = Vector3(move.x, 0.0, move.y).normalized()
 		cam = null

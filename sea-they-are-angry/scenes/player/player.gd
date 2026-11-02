@@ -689,7 +689,7 @@ func _update_aim() -> void:
 		# Keeper one on a pad (playing alone, or on the LAN): the right stick aims.
 		var pad := InputSetup.pad_stick()
 		if pad.length() > 0.35:
-			_aim = Vector3(pad.x, 0.0, pad.y).normalized()
+			_aim = InputSetup.on_ground(pad).normalized()
 			_aim_face_t = maxf(_aim_face_t, 0.15)
 			return
 		var walk := Vector2(velocity.x, velocity.z)
@@ -749,7 +749,9 @@ func _move(delta: float) -> void:
 		input = ai_move.limit_length(1.0)
 	else:
 		input = Input.get_vector(_act("move_left"), _act("move_right"), _act("move_up"), _act("move_down"))
-	var dir := Vector3(input.x, 0.0, input.y)
+	# Up the screen is away from the camera, however it's turned (the computer's keepers
+	# and LAN keepers come in already on the ground).
+	var dir := Vector3(input.x, 0.0, input.y) if ai or remote else InputSetup.on_ground(input)
 	var spd := SPEED
 	if _sprint_cd > 0.0:
 		_sprint_cd = maxf(0.0, _sprint_cd - delta)
@@ -779,9 +781,12 @@ func _clamp_to_island(before: Vector3) -> void:
 		global_position.x = before.x
 		global_position.z = before.z
 
-# Tab / the mouse wheel / a pad's d-pad change what's in hand; 1 to 5 pick it outright.
+# Tab / a pad's d-pad change what's in hand (the mouse wheel too, unless it's zooming
+# the free camera); 1 to 5 pick it outright.
 func _switch_weapon() -> void:
-	if _just("weapon_next"):
+	if idx == 0 and not remote and not ai and InputSetup.wheel_zooming():
+		pass
+	elif _just("weapon_next"):
 		arsenal.cycle(1)
 	elif _just("weapon_prev"):
 		arsenal.cycle(-1)

@@ -347,9 +347,12 @@ func _update_stock() -> void:
 ## The keys, as keeper one has them set.
 func _keys_text() -> String:
 	var k := func(a: String) -> String: return Settings.key_name(a)
-	return "%s%s%s%s move · %s attack · %s use · %s lamp · %s beam · %s flare · %s skip the day · Esc pause, and How to Play" % [
+	var line := "%s%s%s%s move · %s attack · %s use · %s lamp · %s beam · %s flare · %s skip the day" % [
 		k.call("move_up"), k.call("move_left"), k.call("move_down"), k.call("move_right"),
 		k.call("attack"), k.call("interact"), k.call("operate"), k.call("beam_mode"), k.call("flare"), k.call("skip")]
+	if CameraDirector.free_on:
+		line += " · middle mouse or %s %s turn the camera, wheel zoom, %s reset" % [k.call("cam_left"), k.call("cam_right"), k.call("cam_reset")]
+	return line + " · Esc pause, and How to Play"
 
 ## The sea's mood, by Anger: what the keepers feel, not a number.
 const MOODS := [[2, "The sea is quiet."], [5, "The sea is restless."], [8, "The sea is angry."], [10, "The sea wants the light."]]

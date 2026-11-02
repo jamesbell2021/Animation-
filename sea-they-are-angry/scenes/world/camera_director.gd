@@ -14,6 +14,12 @@ extends Node
 ## The first view is the main camera (P1's: the mouse aims through it); the others are
 ## drawn into SubViewports sharing the world and laid over it by the split shader. While
 ## the screen is whole nothing extra is drawn.
+##
+## Playing alone (or each on their own machine on the LAN), the camera is the player's
+## to move, as in Company of Heroes: the middle mouse button dragged, or Z and C, turn
+## it round the island; the wheel zooms in toward the keeper (never closer than
+## ZOOM_MIN) and out a little past the usual view; X puts it back. Walking keys and the
+## pad's sticks follow it: up the screen is always away from the camera.
 
 ## The main island's framing (main.gd's camera position less its target) and focus.
 const OFFSET := Vector3(0.0, 38.0, 26.0)
@@ -112,6 +118,62 @@ static func zoom_for_keeper(k: Node3D) -> float:
 
 var _zooms := {}
 
+## The free camera (one person on this screen).
+const ZOOM_MIN := 0.36
+const ZOOM_MAX := 1.3
+const ZOOM_STEP := 0.08
+const TURN_KEYS := 1.9
+const TURN_DRAG := 0.0065
+const EASE := 9.0
+## How much lower the camera looks as it comes in close (degrees off its usual pitch).
+const CLOSE_TILT := 10.0
+## Which way the camera faces round the island (0 is the usual view, from the south),
+## and whether the person can move it now. Static: input reads them.
+static var yaw := 0.0
+static var free_on := false
+var yaw_target := 0.0
+var zoom := 1.0
+var zoom_target := 1.0
+var _dragging := false
+var _near_at := Vector3.INF
+
+func _input(ev: InputEvent) -> void:
+	if not free_on:
+		_dragging = false
+		return
+	if ev is InputEventMouseButton:
+		match ev.button_index:
+			MOUSE_BUTTON_MIDDLE:
+				_dragging = ev.pressed
+			MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN:
+				if ev.pressed:
+					var step: float = ZOOM_STEP * (ev.factor if ev.factor > 0.0 else 1.0)
+					zoom_target = clampf(zoom_target + (step if ev.button_index == MOUSE_BUTTON_WHEEL_DOWN else -step), ZOOM_MIN, ZOOM_MAX)
+	elif ev is InputEventMouseMotion and _dragging:
+		yaw_target -= ev.relative.x * TURN_DRAG
+
+## Back to the usual view.
+func reset_view() -> void:
+	# The short way round.
+	yaw = wrapf(yaw, -PI, PI)
+	yaw_target = 0.0
+	zoom_target = 1.0
+
+func _free_camera(delta: float, people: Array) -> void:
+	free_on = Run.active and people.size() == 1 and not bool(people[0].get("ai"))
+	if not free_on:
+		yaw_target = 0.0
+		zoom_target = 1.0
+		_dragging = false
+	elif not get_tree().paused and ChoiceMenu.current == null:
+		var turn := Input.get_axis("cam_left", "cam_right") if InputMap.has_action("cam_left") else 0.0
+		yaw_target -= turn * TURN_KEYS * delta
+		if InputMap.has_action("cam_reset") and Input.is_action_just_pressed("cam_reset"):
+			reset_view()
+	var k := 1.0 - exp(-delta * EASE)
+	yaw = lerpf(yaw, yaw_target, k)
+	zoom = lerpf(zoom, zoom_target, k)
+
 func _people() -> Array:
 	var out := []
 	for p in players:
@@ -137,6 +199,7 @@ func _process(delta: float) -> void:
 	var people := _people()
 	if people.is_empty():
 		return
+	_free_camera(delta, people)
 	for p in people:
 		var want := focus_for_keeper(p)
 		var zoom := zoom_for_keeper(p)
@@ -226,7 +289,7 @@ func _group_focus(g: Array) -> Vector3:
 			n += 1
 	return s / float(maxi(n, 1))
 
-func _place(_delta: float) -> void:
+func _place(delta: float) -> void:
 	if Feel._cams.size() != 1 + _sub_cams.size() or (not Feel._cams.is_empty() and Feel._cams[0] != main_camera):
 		Feel.use_cameras([main_camera] + _sub_cams)
 	var n := _groups.size()
@@ -239,7 +302,16 @@ func _place(_delta: float) -> void:
 	mean /= float(maxi(n, 1))
 	var size := get_viewport().get_visible_rect().size
 	if n <= 1 or _split <= 0.0:
-		_pose(main_camera, foci[0] if n == 1 else mean, Vector2.ZERO, _group_zoom(_groups[0]) if n == 1 else 1.0)
+		var f: Vector3 = foci[0] if n == 1 else mean
+		# In close, the view closes on the keeper rather than the island's middle.
+		var close := clampf(inverse_lerp(1.0, ZOOM_MIN, zoom), 0.0, 1.0)
+		if close > 0.0 and n == 1 and not _groups[0].is_empty() and is_instance_valid(_groups[0][0]):
+			var me: Vector3 = (_groups[0][0] as Node3D).global_position + Vector3(0.0, 0.8, 0.0)
+			_near_at = me if _near_at == Vector3.INF else _near_at.lerp(me, 1.0 - exp(-delta * 6.0))
+			f = f.lerp(_near_at, smoothstep(0.0, 1.0, close))
+		else:
+			_near_at = Vector3.INF
+		_pose(main_camera, f, Vector2.ZERO, (_group_zoom(_groups[0]) if n == 1 else 1.0) * zoom, yaw, close)
 		_overlay.visible = false
 		for sv in _subs:
 			sv.render_target_update_mode = SubViewport.UPDATE_DISABLED
@@ -279,8 +351,12 @@ func _place(_delta: float) -> void:
 
 # Put a camera on its framing of `focus`, then slide it so the focus sits `off` pixels
 # from the middle of the screen (the middle of its side of a split).
-func _pose(cam: Camera3D, focus: Vector3, off: Vector2, pull: float) -> void:
-	cam.global_position = focus + OFFSET * pull
+func _pose(cam: Camera3D, focus: Vector3, off: Vector2, pull: float, turn: float = 0.0, close: float = 0.0) -> void:
+	var o := OFFSET
+	if close > 0.0:
+		var pitch := atan2(OFFSET.y, OFFSET.z) - deg_to_rad(CLOSE_TILT) * close
+		o = Vector3(0.0, sin(pitch), cos(pitch)) * OFFSET.length()
+	cam.global_position = focus + o.rotated(Vector3.UP, turn) * pull
 	cam.look_at(focus, Vector3.UP)
 	if off == Vector2.ZERO:
 		return

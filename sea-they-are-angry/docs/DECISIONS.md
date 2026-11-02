@@ -812,3 +812,13 @@ The missing pieces of plan 2 (`docs/prompts/02_first_release_phases_A-G.md`), af
 - **Hit flash:** a creature flashes pale for 0.09 s when a blow lands, through `material_overlay` on its body meshes (not its eyes, glints or fire).
 - **Markers off screen (`ThreatMarkers`):** chevrons at the screen's edge point at creatures out of view, grouped by direction with a count. The Eel and the Crab get a bigger gold one. Not in a split screen, which already shows both islands.
 
+## 2026-11-02: a free camera playing alone (Company of Heroes style)
+
+- The owner asked for camera controls like Company of Heroes in single player: turn it, and zoom with the wheel, but not too close in.
+- **When:** whenever one person plays on a screen, alone or each on their own machine on the LAN. With two or three on one screen the director keeps its fixed framings from the south, because the split screen depends on them.
+- **Turning:** hold the middle mouse button and drag, or use Z and C (rebindable in Settings). X puts the camera back to the usual view. It turns all the way round. The islands were checked from every side and read well; from some angles the tower can stand in front of a keeper.
+- **Zoom:** the wheel goes from 0.36 of the usual distance (about 17 m from the keeper) out to 1.3. Coming in, the view moves from the island's middle onto the keeper and tilts 10° lower.
+- **Walking follows the camera:** up the screen is away from it, for the keys and for the pad's sticks (`InputSetup.on_ground`). A LAN client turns its input before sending it.
+- **The wheel and weapons:** while the free camera is on, the wheel zooms and doesn't change what's in hand (`InputSetup.wheel_zooming`); Tab and 1 to 5 still do. In split-screen co-op the wheel changes weapons as before.
+- **Test:** slice_camera.
+

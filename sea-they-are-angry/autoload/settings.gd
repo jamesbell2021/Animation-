@@ -24,6 +24,7 @@ const REBINDABLE := [
 	["beam_mode", "Beam: wide or narrow"], ["sprint", "Sprint"], ["flare", "Flare gun"],
 	["use_dirty", "Pour dirty fuel"], ["weapon_next", "Next weapon"], ["weapon_prev", "Previous weapon"],
 	["skip", "Skip the day"],
+	["cam_left", "Turn the camera left"], ["cam_right", "Turn the camera right"], ["cam_reset", "Camera back to the usual view"],
 ]
 ## Keys that can't be given to anything else: the weapons' numbers and pause.
 var RESERVED: Array[String] = ["key:%d" % KEY_1, "key:%d" % KEY_2, "key:%d" % KEY_3, "key:%d" % KEY_4, "key:%d" % KEY_5, "key:%d" % KEY_ESCAPE]
