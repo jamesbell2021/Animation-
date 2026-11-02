@@ -32,6 +32,9 @@ func _ready() -> void:
 	_key("cam_left", KEY_Z)
 	_key("cam_right", KEY_C)
 	_key("cam_reset", KEY_X)
+	# Zoom by keys too, for a trackpad with no wheel.
+	_key("cam_zoom_in", KEY_EQUAL)
+	_key("cam_zoom_out", KEY_MINUS)
 	for a in ["aim_left", "aim_right", "aim_up", "aim_down"]:
 		if not InputMap.has_action(a):
 			InputMap.add_action(a, 0.25)
@@ -65,6 +68,11 @@ func set_pad(on: bool) -> void:
 	_pad_button("weapon_next", JOY_BUTTON_DPAD_RIGHT)
 	_pad_button("weapon_prev", JOY_BUTTON_DPAD_LEFT)
 	_pad_button("skip", JOY_BUTTON_BACK)
+	# The free camera on a pad: the d-pad's up and down zoom, a stick pressed in turns it.
+	_pad_button("cam_zoom_in", JOY_BUTTON_DPAD_UP)
+	_pad_button("cam_zoom_out", JOY_BUTTON_DPAD_DOWN)
+	_pad_button("cam_left", JOY_BUTTON_LEFT_STICK)
+	_pad_button("cam_right", JOY_BUTTON_RIGHT_STICK)
 
 func _pad_button(action: String, button: JoyButton) -> void:
 	var ev := InputEventJoypadButton.new()

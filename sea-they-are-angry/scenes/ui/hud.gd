@@ -355,7 +355,7 @@ func _keys_text() -> String:
 		k.call("move_up"), k.call("move_left"), k.call("move_down"), k.call("move_right"),
 		k.call("attack"), k.call("interact"), k.call("operate"), k.call("beam_mode"), k.call("flare"), k.call("skip")]
 	if CameraDirector.free_on:
-		line += " · middle mouse or %s %s turn the camera, wheel zoom, %s reset" % [k.call("cam_left"), k.call("cam_right"), k.call("cam_reset")]
+		line += " · middle mouse or %s %s turn the camera, wheel or %s %s zoom, %s reset" % [k.call("cam_left"), k.call("cam_right"), k.call("cam_zoom_in"), k.call("cam_zoom_out"), k.call("cam_reset")]
 	return line + " · Esc pause, and How to Play"
 
 ## The sea's mood, by Anger: what the keepers feel, not a number.
@@ -610,7 +610,8 @@ func _mmss(seconds: float) -> String:
 func _on_message(text: String) -> void:
 	_msg_label.text = Settings.keys_in(text)
 	_msg_label.modulate.a = 1.0
-	_msg_t = MSG_TIME
+	# Longer messages stay up long enough to read.
+	_msg_t = MSG_TIME + maxf(0.0, float(text.length() - 50)) * 0.04
 
 func _show_warning(text: String) -> void:
 	_warn_label.text = Settings.keys_in(text)

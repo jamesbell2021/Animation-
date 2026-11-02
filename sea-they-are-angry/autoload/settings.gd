@@ -25,6 +25,7 @@ const REBINDABLE := [
 	["use_dirty", "Pour dirty fuel"], ["weapon_next", "Next weapon"], ["weapon_prev", "Previous weapon"],
 	["skip", "Skip the day"],
 	["cam_left", "Turn the camera left"], ["cam_right", "Turn the camera right"], ["cam_reset", "Camera back to the usual view"],
+	["cam_zoom_in", "Zoom in"], ["cam_zoom_out", "Zoom out"],
 ]
 ## Keys that can't be given to anything else: the weapons' numbers and pause.
 var RESERVED: Array[String] = ["key:%d" % KEY_1, "key:%d" % KEY_2, "key:%d" % KEY_3, "key:%d" % KEY_4, "key:%d" % KEY_5, "key:%d" % KEY_ESCAPE]

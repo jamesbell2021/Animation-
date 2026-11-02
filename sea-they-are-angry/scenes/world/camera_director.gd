@@ -123,6 +123,7 @@ const ZOOM_MIN := 0.36
 const ZOOM_MAX := 1.3
 const ZOOM_STEP := 0.08
 const TURN_KEYS := 1.9
+const ZOOM_KEYS := 0.9
 const TURN_DRAG := 0.0065
 const EASE := 9.0
 ## How much lower the camera looks as it comes in close (degrees off its usual pitch).
@@ -171,6 +172,8 @@ func _free_camera(delta: float, people: Array) -> void:
 	elif not get_tree().paused and ChoiceMenu.current == null:
 		var turn := Input.get_axis("cam_left", "cam_right") if InputMap.has_action("cam_left") else 0.0
 		yaw_target -= turn * TURN_KEYS * delta
+		var push := Input.get_axis("cam_zoom_in", "cam_zoom_out") if InputMap.has_action("cam_zoom_in") else 0.0
+		zoom_target = clampf(zoom_target + push * ZOOM_KEYS * delta, ZOOM_MIN, ZOOM_MAX)
 		if InputMap.has_action("cam_reset") and Input.is_action_just_pressed("cam_reset"):
 			reset_view()
 	var k := 1.0 - exp(-delta * EASE)

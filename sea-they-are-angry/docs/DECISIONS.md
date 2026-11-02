@@ -840,3 +840,11 @@ The missing pieces of plan 2 (`docs/prompts/02_first_release_phases_A-G.md`), af
   - **Mess:** a long trestle table with benches and mugs, the serving counter with a pot, a desk of papers with a lamp. Both huts have a bulb inside, lit while the generator runs.
 - **Test:** slice_interior.
 
+## 2026-11-02: the free camera, easier to find; v0.1.2
+
+- The owner found no free camera in a Linux build. The last build had it: started from the title screen, it came on and C and the wheel worked. But three builds that day were all called v0.1.1, and the first had none. The controls were also easy to miss, and a trackpad or a pad had no way to work it. So:
+  - **Version 0.1.2,** so builds can be told apart. From now on each build sent gets its own version.
+  - **A hint a second into a run,** playing alone, says how to turn and zoom the camera (the pad's way on a pad). Longer messages stay up longer to be read.
+  - **Zoom by keys,** = and - (rebindable), for a trackpad.
+  - **On a pad,** the d-pad's up and down zoom, and pressing a stick in turns the camera.
+

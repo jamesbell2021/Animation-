@@ -105,6 +105,14 @@ func _go() -> void:
 		await _wait(1)
 	check(is_equal_approx(d.zoom_target, CameraDirector.ZOOM_MAX), "out a little past the usual view, no further")
 
+	# The = and - keys zoom too (a trackpad has no wheel).
+	d.zoom_target = 1.0
+	Input.action_press("cam_zoom_in")
+	await _wait(30)
+	Input.action_release("cam_zoom_in")
+	check(d.zoom_target < 0.9, "the = key zooms in (%.2f)" % d.zoom_target)
+	check(InputMap.has_action("cam_zoom_out"), "and - zooms out")
+
 	# X puts it back.
 	Input.action_press("cam_reset")
 	await _wait(2)

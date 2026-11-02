@@ -73,11 +73,11 @@ func pages() -> Array:
 			[k.call("sprint"), "Sprint"],
 			[k.call("skip"), "Skip the rest of the day"],
 			["Middle mouse, %s %s" % [k.call("cam_left"), k.call("cam_right")], "Playing alone: hold the middle button and drag, or the keys, to turn the camera round the island"],
-			["Wheel", "Playing alone: zoom in toward your keeper and out again"],
+			["Wheel, %s %s" % [k.call("cam_zoom_in"), k.call("cam_zoom_out")], "Playing alone: zoom in toward your keeper and out again"],
 			[k.call("cam_reset"), "Camera back to the usual view"],
 			["Esc", "Pause"],
 			"",
-			"Keys can be changed in Settings. A gamepad works too: left stick walks, right stick aims, A use, X or right trigger attack, Y lamp, B beam, left trigger flare, left shoulder dirty fuel, right shoulder sprint, d-pad changes what's in hand, Start pauses.",
+			"Keys can be changed in Settings. A gamepad works too: left stick walks, right stick aims, A use, X or right trigger attack, Y lamp, B beam, left trigger flare, left shoulder dirty fuel, right shoulder sprint, d-pad left and right change what's in hand, d-pad up and down zoom, a stick pressed in turns the camera, Start pauses.",
 		]],
 		["By day", "By day: get ready", [
 			"Walk the beaches and gather what the sea brought: driftwood, scrap, kelp, glowing bio, now and then a drum of oil or a tin of cartridges.",

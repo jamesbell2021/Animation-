@@ -227,6 +227,17 @@ func keeper_left(slot: int) -> void:
 	p.add_child(brain)
 
 ## Start (or continue) a run with n keepers.
+## Playing alone, a word on the camera a moment after the run starts (on a pad, the pad's).
+func _camera_hint() -> void:
+	await get_tree().create_timer(1.0).timeout
+	if not CameraDirector.free_on or not Run.active:
+		return
+	var k := func(a: String) -> String: return Settings.key_name(a)
+	if InputSetup.pad_active:
+		Events.message.emit("Camera: press a stick in to turn it, d-pad up and down to zoom")
+	else:
+		Events.message.emit("Camera: middle mouse drag or %s %s to turn it · wheel or %s %s to zoom · %s back to the usual view" % [k.call("cam_left"), k.call("cam_right"), k.call("cam_zoom_in"), k.call("cam_zoom_out"), k.call("cam_reset")])
+
 func begin_run(continue_save: bool, n: int) -> void:
 	if title != null:
 		title.queue_free()
@@ -304,6 +315,7 @@ func begin_run(continue_save: bool, n: int) -> void:
 	_apply_lighting(Cycle.Phase.DAY, 0.0)
 	atmosphere.apply(Cycle.Phase.DAY, 0.0)
 	Cycle.start(Cycle.Phase.DAY)
+	_camera_hint.call_deferred()
 	jobs = Jobs.new()
 	jobs.players = players
 	add_child(jobs)

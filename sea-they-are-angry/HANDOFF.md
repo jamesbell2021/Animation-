@@ -1,6 +1,6 @@
 # Handoff: Sea They Are Angry
 
-**v0.1.1 (Chapter One, polished) is the current build** (`docs/RELEASE_NOTES_v0.1.1.md`; v0.1.0's notes are `docs/RELEASE_NOTES_v0.1.0.md`). Tags can't be pushed from the cloud session: make `sea-v0.1.1`, or a release, on GitHub's Releases page. `tools/tour.gd` renders a computer-played run frame by frame for reviewing how it looks. Read this first, then `docs/DECISIONS.md` and `git log`. Written 2026-10-19 at the end of a cloud session; brought up to date 2026-10-26.
+**v0.1.2 (Chapter One, polished) is the current build** (`docs/RELEASE_NOTES_v0.1.2.md`; v0.1.0's notes are `docs/RELEASE_NOTES_v0.1.0.md`). Tags can't be pushed from the cloud session: make `sea-v0.1.2`, or a release, on GitHub's Releases page. `tools/tour.gd` renders a computer-played run frame by frame for reviewing how it looks. Read this first, then `docs/DECISIONS.md` and `git log`. Written 2026-10-19 at the end of a cloud session; brought up to date 2026-10-26.
 
 ## Where things stand
 
