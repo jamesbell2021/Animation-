@@ -12,9 +12,9 @@ const ARROWS_MADE := 5
 const BOMBS_COST := {"bio": 1, "seaweed": 1}
 const BOMBS_MADE := 2
 
-const WIDTH := 2.6
-const DEPTH := 2.2
-const WALL_H := 2.0
+const WIDTH := 3.2
+const DEPTH := 2.6
+const WALL_H := 2.3
 const WALL_T := 0.2
 const DOOR_X := 0.25
 const DOOR_W := 0.95
@@ -40,13 +40,13 @@ func _build() -> void:
 	var up := interior.upper
 	_wall_mat = Look.stone(STONE)
 	interior.walls(self, self, WIDTH, DEPTH, WALL_H, 0.0, WALL_T, _wall_mat, DOOR_X, DOOR_W, 1.7)
-	_roof = Geo.box(up, Vector3(WIDTH + 0.3, 0.12, DEPTH + 0.4), Color.WHITE, Vector3(0.0, WALL_H + 0.15, 0.0))
+	_roof = Geo.box(up, Vector3(WIDTH + 0.3, 0.12, DEPTH + 0.4), Color.WHITE, Vector3(0.0, WALL_H + 0.3, 0.0))
 	_roof.material_override = Look.textured("slate", Color.WHITE, 1.0, 0.55, 1.4)
 	_roof.rotation.x = deg_to_rad(-12.0)
 	_door = Geo.box(up, Vector3(DOOR_W - 0.05, 1.6, 0.06), Color(0.30, 0.22, 0.14), Vector3(DOOR_X + DOOR_W * 0.5 - 0.05, 0.8, -DEPTH * 0.5 + WALL_T + 0.4))
 	_door.material_override = Look.wood(Color(0.30, 0.22, 0.14))
 	_door.rotation.y = deg_to_rad(80.0)
-	var barrel := Geo.cyl(self, 0.28, 0.8, Color.WHITE, Vector3(-0.95, 0.4, -DEPTH * 0.5 - 0.4))
+	var barrel := Geo.cyl(self, 0.28, 0.8, Color.WHITE, Vector3(-1.2, 0.4, -DEPTH * 0.5 - 0.4))
 	barrel.material_override = Look.flat_mat(Color(0.18, 0.2, 0.22), 0.5)
 	_furnish()
 
@@ -121,7 +121,7 @@ func _refresh() -> void:
 	var hurt := 1.0 - health_ratio()
 	_wall_mat.albedo_color = (Color(0.26, 0.25, 0.24).lerp(STONE, health_ratio())) * 2.6
 	_roof.rotation = Vector3(deg_to_rad(-12.0) - hurt * 0.2, 0.0, hurt * 0.25)
-	_roof.position.y = WALL_H + 0.15 - hurt * 0.3
+	_roof.position.y = WALL_H + 0.3 - hurt * 0.3
 	# The door hangs off one hinge, then off both.
 	_door.rotation.z = hurt * 0.6
 

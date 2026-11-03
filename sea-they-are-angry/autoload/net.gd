@@ -25,7 +25,7 @@ const STATE_HZ := 4.0
 const DISCOVER_EVERY := 1.0
 const HOST_FORGET := 4.0
 ## The controls a client sends: held, and counted presses (so a lost packet loses no press).
-const ACTIONS := ["attack", "interact", "operate", "beam_mode", "sprint", "flare", "use_dirty",
+const ACTIONS := ["attack", "interact", "operate", "beam_mode", "sprint", "jump", "flare", "use_dirty",
 	"weapon_next", "weapon_prev", "weapon_1", "weapon_2", "weapon_3", "weapon_4", "weapon_5"]
 ## Puppets catch up with the host this fast (per second).
 const FOLLOW := 16.0

@@ -15,7 +15,8 @@ func _ready() -> void:
 	_key("interact", KEY_E)
 	_key("operate", KEY_R)
 	_key("beam_mode", KEY_Q)
-	_key("sprint", KEY_SPACE)
+	_key("sprint", KEY_SHIFT)
+	_key("jump", KEY_SPACE)
 	_key("skip", KEY_ENTER)
 	_key("use_dirty", KEY_F)
 	_mouse("attack", MOUSE_BUTTON_LEFT)
@@ -63,6 +64,8 @@ func set_pad(on: bool) -> void:
 	_pad_button("operate", JOY_BUTTON_Y)
 	_pad_button("beam_mode", JOY_BUTTON_B)
 	_pad_button("sprint", JOY_BUTTON_RIGHT_SHOULDER)
+	# A jumps when there's nothing to hand to use (Player).
+	_pad_button("jump", JOY_BUTTON_A)
 	_pad_axis("flare", JOY_AXIS_TRIGGER_LEFT, 1.0)
 	_pad_button("use_dirty", JOY_BUTTON_LEFT_SHOULDER)
 	_pad_button("weapon_next", JOY_BUTTON_DPAD_RIGHT)

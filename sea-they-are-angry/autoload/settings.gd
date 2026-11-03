@@ -21,7 +21,7 @@ const VOLUMES := ["Master", "Music", "SFX"]
 const REBINDABLE := [
 	["move_up", "Walk up"], ["move_down", "Walk down"], ["move_left", "Walk left"], ["move_right", "Walk right"],
 	["attack", "Swing / fire"], ["interact", "Use / pick up / repair"], ["operate", "Lamp on and off"],
-	["beam_mode", "Beam: wide or narrow"], ["sprint", "Sprint"], ["flare", "Flare gun"],
+	["beam_mode", "Beam: wide or narrow"], ["sprint", "Sprint"], ["jump", "Jump"], ["flare", "Flare gun"],
 	["use_dirty", "Pour dirty fuel"], ["weapon_next", "Next weapon"], ["weapon_prev", "Previous weapon"],
 	["skip", "Skip the day"],
 	["cam_left", "Turn the camera left"], ["cam_right", "Turn the camera right"], ["cam_reset", "Camera back to the usual view"],

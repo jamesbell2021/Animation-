@@ -27,6 +27,13 @@ const POUR_TIME := 0.9
 # Knocked flat (the Eel's surge) and shoved (the Crab's slam).
 const PUSH_DECAY := 10.0
 const FALL_SPEED := -5.0
+## A jump: up a step of rock or a bank on the beach (not over a fence or up a cliff).
+const JUMP_SPEED := 4.4
+const GRAVITY := 14.0
+## Walking into a fence this long climbs over it.
+const VAULT_AFTER := 0.25
+const VAULT_TIME := 0.6
+const VAULT_LIFT := 1.5
 const BODY_COLOR := Color(0.85, 0.65, 0.2)
 # Knocked down by a hard hit: how hard (per point of damage) and for how long.
 # How a blow lands, by its damage: below FLINCH_BELOW a flinch; up to FLOOR_FROM a
@@ -437,15 +444,112 @@ func aim_yaw() -> float:
 func aim_dir() -> Vector3:
 	return _aim
 
+# ---- jumping, and climbing over fences ----
+
+var _vy := 0.0
+var _vault_k := -1.0
+var _vault_from := Vector3.ZERO
+var _vault_to := Vector3.ZERO
+var _vault_push := 0.0
+var _vault_mask := 0
+var _air_layered := false
+
+# Up while a jump carries the keeper, then falling; standing, nothing.
+func _fall(delta: float) -> float:
+	if is_on_floor() and _vy <= 0.0:
+		_vy = 0.0
+	else:
+		_vy = maxf(_vy - GRAVITY * delta, FALL_SPEED)
+	return _vy
+
+# Walking into a fence (and on into it) for a moment: climb over to the far side, if
+# there's ground there to land on. Creatures can't; keepers have hands.
+func _check_vault(delta: float, wish: Vector3) -> void:
+	var fence: Fence = null
+	var normal := Vector3.ZERO
+	for i in get_slide_collision_count():
+		var c := get_slide_collision(i)
+		if c.get_collider() is Fence:
+			fence = c.get_collider()
+			normal = c.get_normal()
+			break
+	var flat := wish
+	if fence == null or fence.is_destroyed() or flat.length() < 0.5 or flat.normalized().dot(-Vector3(normal.x, 0.0, normal.z).normalized()) < 0.5:
+		_vault_push = 0.0
+		return
+	_vault_push += delta
+	if _vault_push < VAULT_AFTER:
+		return
+	_vault_push = 0.0
+	var local := fence.to_local(global_position)
+	var to := fence.to_global(Vector3(clampf(local.x, -fence.length * 0.5 + 0.3, fence.length * 0.5 - 0.3), 0.0, -signf(local.z) * 0.85))
+	if not Terrain.walkable(to.x, to.z):
+		return
+	to.y = Terrain.height_at(to.x, to.z) + 0.05
+	_vault_from = global_position
+	_vault_to = to
+	_vault_k = 0.0
+	_vault_mask = collision_mask
+	collision_mask = 0
+	_vy = 0.0
+	facing = atan2(-(to.x - global_position.x), -(to.z - global_position.z))
+	rotation.y = facing
+	Audio.sfx("step", global_position, -2.0, 0.15)
+
+func _vaulting(delta: float) -> void:
+	_vault_k = minf(1.0, _vault_k + delta / VAULT_TIME)
+	var k := smoothstep(0.0, 1.0, _vault_k)
+	global_position = _vault_from.lerp(_vault_to, k) + Vector3(0.0, sin(PI * _vault_k) * VAULT_LIFT, 0.0)
+	velocity = Vector3.ZERO
+	_air_pose(true)
+	_animate(delta)
+	if _vault_k >= 1.0:
+		_vault_k = -1.0
+		collision_mask = _vault_mask
+		_air_pose()
+
+func is_vaulting() -> bool:
+	return _vault_k >= 0.0
+
+# Off the ground (a jump, a fence): knees up.
+func _air_pose(force: bool = false) -> void:
+	if not _clips():
+		return
+	var up := force or (not is_on_floor() and _vy > -1.0)
+	if up:
+		rig.layer("thigh.L", Vector3(-0.9, 0.0, 0.0))
+		rig.layer("thigh.R", Vector3(-0.5, 0.0, 0.0))
+		rig.layer("shin.L", Vector3(1.2, 0.0, 0.0))
+		rig.layer("shin.R", Vector3(0.8, 0.0, 0.0))
+		_air_layered = true
+	elif _air_layered and not _ride_layers:
+		_air_layered = false
+		for b in ["thigh.L", "thigh.R", "shin.L", "shin.R"]:
+			rig.layer(b, Vector3.ZERO)
+
 ## Multiplayer: a person's keeper shows as an outline in their colour through whatever
 ## hides them (a hut's roof, the tower). Playing alone the buildings are cut away instead.
 var _outline_mat: ShaderMaterial
 var _outlined := false
 
-func _process(_delta: float) -> void:
+## Inside a building's room: weapons put by, no room to swing.
+var indoors := false
+var _indoors_t := 0.0
+
+func _process(delta: float) -> void:
 	var want := Run.active and not ai and visible and not Interior.cutaway_mode()
 	if want != _outlined:
 		set_outline(want)
+	_indoors_t -= delta
+	if _indoors_t <= 0.0:
+		_indoors_t = 0.15
+		var now := Interior.anywhere(get_tree(), global_position)
+		if now != indoors:
+			indoors = now
+			if arsenal != null:
+				if indoors:
+					arsenal.cease()
+				arsenal.refresh()
 
 func set_outline(on: bool) -> void:
 	_outlined = on
@@ -494,6 +598,9 @@ func _physics_process(delta: float) -> void:
 	if _climb_t >= 0.0:
 		_climbing(delta)
 		return
+	if _vault_k >= 0.0:
+		_vaulting(delta)
+		return
 	if _prone_t > 0.0:
 		_lying(delta)
 		return
@@ -531,7 +638,10 @@ func _physics_process(delta: float) -> void:
 	else:
 		_move(delta)
 		_switch_weapon()
-		if arsenal.in_hand():
+		if indoors:
+			if _just("attack") and not ai:
+				Events.message.emit("No room to swing in here.")
+		elif arsenal.in_hand():
 			arsenal.tick(delta, _just("attack"), _held("attack"))
 		elif _just("attack") and _attack_cd <= 0.0:
 			_attack()
@@ -539,15 +649,23 @@ func _physics_process(delta: float) -> void:
 			_fire_flare()
 		if _just("use_dirty"):
 			_pour_dirty()
-	velocity.y = 0.0 if is_on_floor() else FALL_SPEED
+		# On a pad A is both use and jump: it jumps only with nothing to hand to use.
+		var pad_a := _just("interact") and _just("jump")
+		if _just("jump") and is_on_floor() and riding == null and not (pad_a and _find_interactable() != null):
+			_vy = JUMP_SPEED
+			Audio.sfx("step", global_position, -4.0, 0.15)
+	velocity.y = _fall(delta)
 	velocity.x += _push.x
 	velocity.z += _push.z
 	_push = _push.move_toward(Vector3.ZERO, PUSH_DECAY * delta)
 	var before := global_position
+	var wish := Vector3(velocity.x, 0.0, velocity.z)
 	move_and_slide()
 	_clamp_to_island(before)
+	_check_vault(delta, wish)
 	_update_facing(delta)
 	_animate(delta)
+	_air_pose()
 	var mate := _downed_mate()
 	_reviving = mate != null and _held("interact")
 	if _reviving:

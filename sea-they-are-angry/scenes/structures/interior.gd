@@ -34,6 +34,14 @@ func _init() -> void:
 	name = "Interior"
 	upper.name = "Upper"
 	add_child(upper)
+	add_to_group("interiors")
+
+## Whether a point is inside any building's room.
+static func anywhere(tree: SceneTree, p: Vector3) -> bool:
+	for r in tree.get_nodes_in_group("interiors"):
+		if (r as Interior).contains(p):
+			return true
+	return false
 
 ## Whether this screen cuts buildings away (one person playing on it, not on the LAN).
 static func cutaway_mode() -> bool:

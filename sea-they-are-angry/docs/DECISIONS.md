@@ -848,3 +848,13 @@ The missing pieces of plan 2 (`docs/prompts/02_first_release_phases_A-G.md`), af
   - **Zoom by keys,** = and - (rebindable), for a trackpad.
   - **On a pad,** the d-pad's up and down zoom, and pressing a stick in turns the camera.
 
+## 2026-11-03: off the beaches, a jump, and nothing poking through the shed
+
+- The owner got stuck on a beach with no way back up, and asked for a jump. Walking each beach showed the fence across the head of every gully stopped keepers dead. Its gap (0.9 m, at one end, against the gully's steep side) was too tight to find or get through.
+  - **Climbing fences:** walk on into a fence for a quarter of a second and the keeper climbs over to the far side (0.6 s, an arc 1.5 m high, knees up), if there's ground to land on. Creatures still can't.
+  - **A jump:** 0.66 m, with gravity 14. Space is jump, Shift is sprint (was Space). On a pad, A jumps when there's nothing to use. The second keyboard player's use key moves from Shift to M, since Godot 4.3 can't tell left Shift from right. Jump is rebindable and goes over the LAN.
+- The owner also poked through the shed's walls, and could see the keeper's weapons through them. The shed's room was 2.2 × 1.8 m, the boathook is about 2 m, and the roof's low edge was at head height. Now:
+  - **Weapons put by indoors:** inside any building's room the weapon, the boathook and the flamer's tank are put by, and an attack says there's no room to swing. They come back out of doors.
+  - **A bigger shed:** 3.2 × 2.6 m with 2.3 m walls and the roof raised, on a pad widened to 2.1 m (the ground there is flat to that). The crates and barrels beside it move out.
+- **Test:** slice_interior covers the beaches, the jump and the indoors.
+

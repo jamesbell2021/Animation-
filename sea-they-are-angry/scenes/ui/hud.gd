@@ -351,8 +351,8 @@ func _update_stock() -> void:
 ## The keys, as keeper one has them set.
 func _keys_text() -> String:
 	var k := func(a: String) -> String: return Settings.key_name(a)
-	var line := "%s%s%s%s move · %s attack · %s use · %s lamp · %s beam · %s flare · %s skip the day" % [
-		k.call("move_up"), k.call("move_left"), k.call("move_down"), k.call("move_right"),
+	var line := "%s%s%s%s move · %s sprint · %s jump · %s attack · %s use · %s lamp · %s beam · %s flare · %s skip the day" % [
+		k.call("move_up"), k.call("move_left"), k.call("move_down"), k.call("move_right"), k.call("sprint"), k.call("jump"),
 		k.call("attack"), k.call("interact"), k.call("operate"), k.call("beam_mode"), k.call("flare"), k.call("skip")]
 	if CameraDirector.free_on:
 		line += " · middle mouse or %s %s turn the camera, wheel or %s %s zoom, %s reset" % [k.call("cam_left"), k.call("cam_right"), k.call("cam_zoom_in"), k.call("cam_zoom_out"), k.call("cam_reset")]

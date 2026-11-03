@@ -65,7 +65,7 @@ const WRACK := Color(0.15, 0.14, 0.09)
 const HEATHER := Color(0.32, 0.24, 0.24)
 
 # Flat building pads on the meadow: [x, z, radius]. Cottage, garden, shed.
-const PADS := [[-7.3, 9.3, 2.6], [7.3, 8.9, 2.2], [0.0, 12.0, 1.7]]
+const PADS := [[-7.3, 9.3, 2.6], [7.3, 8.9, 2.2], [0.0, 12.0, 2.1]]
 
 # The holm: a low island of turf on old red sandstone, the kind that lies off Orkney.
 # Its outline starts from a rounded box (centre, half size, corner radius) and is pushed

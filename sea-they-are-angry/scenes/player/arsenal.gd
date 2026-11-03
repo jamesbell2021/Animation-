@@ -485,10 +485,12 @@ func refresh() -> void:
 		return
 	# Hands busy with a tool, or with the oars (or sitting in the boat): nothing in hand.
 	var working: bool = keeper._job_tool != "" or keeper.riding != null or keeper._ride_layers
+	# Indoors the weapons are put by: no boathook through the shed's wall.
+	var stowed: bool = working or keeper.indoors
 	for w in _models:
-		_models[w].visible = w == weapon and not working
-	keeper._hook_holder.visible = weapon == "hook" and keeper.has_hook and not working
-	_tank.visible = carries("flamer")
+		_models[w].visible = w == weapon and not stowed
+	keeper._hook_holder.visible = weapon == "hook" and keeper.has_hook and not stowed
+	_tank.visible = carries("flamer") and not keeper.indoors
 
 ## What's in store of this ammunition: on a calm sea, never short.
 func _ammo(kind: String) -> int:

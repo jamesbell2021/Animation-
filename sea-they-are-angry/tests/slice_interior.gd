@@ -72,6 +72,23 @@ func _go() -> void:
 	await _wait(60)
 	check(cot.interior.contains(p.global_position) and cot.interior.fade < 0.01, "standing in the doorway: the roof stays on")
 
+	# Indoors the weapons are put by, and there's no room to swing.
+	await _walk(p, cot.to_global(Vector3(Cottage.DOOR_X, 0.0, -Cottage.DEPTH * 0.5 - 1.2)), 5)
+	p.global_position = cot.to_global(Vector3(0.3, 0.0, -0.2)) + Vector3(0.0, 0.3, 0.0)
+	await _wait(20)
+	check(p.indoors and not p._hook_holder.visible, "indoors: the boathook is put by (nothing pokes through the walls)")
+	var said := [""]
+	var on_msg := func(t: String) -> void: said[0] = t
+	root.get_node("Events").message.connect(on_msg)
+	Input.action_press("attack")
+	await _wait(2)
+	Input.action_release("attack")
+	check(String(said[0]).contains("No room to swing"), "and no swinging it: " + String(said[0]))
+	root.get_node("Events").message.disconnect(on_msg)
+	p.global_position = outside + Vector3(0.0, 0.3, 0.0)
+	await _wait(20)
+	check(not p.indoors and p._hook_holder.visible, "out of doors it's back in hand")
+
 	# Not through the back wall.
 	var behind := cot.to_global(Vector3(0.0, 0.0, Cottage.DEPTH * 0.5 + 1.2))
 	p.global_position = behind + Vector3(0.0, 0.3, 0.0)
@@ -107,6 +124,28 @@ func _go() -> void:
 	await _wait(3)
 	await _walk(p, side, 90)
 	check(room.contains(p.global_position), "and its curved side keeps a keeper in")
+
+	# Down on a beach: back up, over the fence across its gully.
+	for i in Terrain.BEACHES.size():
+		var low := Terrain.beach_point(i, 0.5)
+		p.global_position = low + Vector3(0.0, 0.4, 0.0)
+		await _wait(5)
+		await _walk(p, Terrain.at_angle(float(Terrain.BEACHES[i]), 9.0), 420)
+		var r := Vector2(p.global_position.x, p.global_position.z).length()
+		check(r < 11.0, "beach %d: back up past the fence to the path (%.1f m out)" % [i, r])
+
+	# A jump.
+	p.global_position = Terrain.at_angle(30.0, 9.0) + Vector3(0.0, 0.3, 0.0)
+	await _wait(20)
+	var y0 := p.global_position.y
+	var top := y0
+	Input.action_press("jump")
+	for i in 30:
+		await physics_frame
+		top = maxf(top, p.global_position.y)
+	Input.action_release("jump")
+	await _wait(40)
+	check(top - y0 > 0.4 and absf(p.global_position.y - y0) < 0.15, "Space jumps (%.2f m up) and comes down again" % (top - y0))
 
 	# Two on one screen: no cutaway, an outline instead.
 	check(not p.outlined(), "playing alone: no outline")
