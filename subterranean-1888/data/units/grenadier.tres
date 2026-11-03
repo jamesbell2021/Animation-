@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="UnitDef" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://rules/unit_def.gd" id="1"]
+[ext_resource type="Resource" path="res://data/weapons/gatling.tres" id="2"]
+
+[resource]
+script = ExtResource("1")
+id = &"grenadier"
+weapon = ExtResource("2")
+display_name = "The Grenadier"
+role = "Heavy assault, suppression"
+max_hp = 60
+base_tu = 45
+strength = 95
+perception = 50
+agility = 40
+armour = 4
+frontal_armour = 6
+gear_weight = 10.0
+gear = PackedStringArray("Hand-Crank Gatling (16 kg)", "Dynamite Satchel x2 (4 kg)", "Boilerplate Shield (6 kg)")
+hand_flares = 2
+dynamite = 2
+colour = Color(0.62, 0.18, 0.15, 1)

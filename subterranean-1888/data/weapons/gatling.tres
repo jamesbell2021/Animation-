@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="WeaponDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://rules/weapon_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"gatling"
+display_name = "Hand-Crank Gatling"
+damage = 14
+accuracy = 50
+optimal_range = 9
+clip = 30
+spare_clips = 2
+weight = 16.0
+pressure_per_shot = 2
+modes = PackedStringArray("snap", "burst")
+burst_min = 3
+burst_max = 5
+tracer_color = Color(1.0, 0.7, 0.3, 1)

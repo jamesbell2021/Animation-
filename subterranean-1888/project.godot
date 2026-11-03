@@ -1,0 +1,34 @@
+; Engine configuration file.
+config_version=5
+
+[application]
+
+config/name="Subterranean: 1888"
+config/description="Victorian turn-based tactics in the Earth's mantle. A 3BL_Indie prototype."
+config/version="0.1.0"
+run/main_scene="res://scenes/main.tscn"
+boot_splash/bg_color=Color(0.02, 0.02, 0.03, 1)
+boot_splash/show_image=false
+config/features=PackedStringArray("4.3", "Forward Plus")
+config/icon="res://icon.svg"
+
+[autoload]
+
+StudioSplash="*res://studio/splash.gd"
+Sfx="*res://view/sfx.gd"
+
+[display]
+
+window/size/viewport_width=1600
+window/size/viewport_height=900
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+
+[gui]
+
+theme/custom_font="res://fonts/SpecialElite.ttf"
+
+[rendering]
+
+renderer/rendering_method="forward_plus"
+anti_aliasing/quality/msaa_3d=2

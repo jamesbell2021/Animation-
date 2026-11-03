@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="WeaponDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://rules/weapon_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"dart_rifle"
+display_name = "Poisoned Dart Rifle"
+damage = 12
+accuracy = 70
+optimal_range = 14
+clip = 4
+spare_clips = 4
+weight = 5.0
+pressure_per_shot = 4
+modes = PackedStringArray("snap", "aimed")
+poison_turns = 3
+poison_damage = 4
+tracer_color = Color(0.45, 1.0, 0.35, 1)

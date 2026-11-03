@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="UnitDef" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://rules/unit_def.gd" id="1"]
+[ext_resource type="Resource" path="res://data/weapons/brass_carbine.tres" id="2"]
+
+[resource]
+script = ExtResource("1")
+id = &"cartographer"
+weapon = ExtResource("2")
+display_name = "The Cartographer"
+role = "Tactical intelligence, navigation"
+max_hp = 40
+base_tu = 60
+strength = 50
+perception = 85
+agility = 60
+armour = 2
+gear_weight = 8.0
+gear = PackedStringArray("Brass Carbine (6 kg)", "Seismograph Array (5 kg)", "Telegraph Beacon (3 kg)")
+hand_flares = 2
+seismograph = true
+colour = Color(0.25, 0.32, 0.55, 1)

@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="UnitDef" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://rules/unit_def.gd" id="1"]
+[ext_resource type="Resource" path="res://data/weapons/claws.tres" id="2"]
+
+[resource]
+script = ExtResource("1")
+id = &"crawler"
+weapon = ExtResource("2")
+display_name = "Crawler"
+role = "Fast, dark, flanks"
+is_enemy = true
+max_hp = 24
+base_tu = 52
+strength = 40
+perception = 60
+agility = 60
+armour = 0
+vision_range = 10.0
+vision_half_angle = 90.0
+flanker = true
+colour = Color(0.9, 0.15, 0.1, 1)

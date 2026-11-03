@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="UnitDef" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://rules/unit_def.gd" id="1"]
+[ext_resource type="Resource" path="res://data/weapons/steam_drill.tres" id="2"]
+
+[resource]
+script = ExtResource("1")
+id = &"engineer"
+weapon = ExtResource("2")
+display_name = "The Royal Engineer"
+role = "Support, demolition, structure control"
+max_hp = 45
+base_tu = 50
+strength = 80
+perception = 55
+agility = 50
+armour = 2
+gear_weight = 7.0
+gear = PackedStringArray("Pneumatic Steam-Drill (9 kg)", "Mortar Flare Launcher (4 kg)", "Boiler Repair Kit (3 kg)")
+hand_flares = 2
+mortar_flares = 3
+repair_kit = 3
+can_drill = true
+colour = Color(0.72, 0.45, 0.2, 1)

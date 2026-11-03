@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="WeaponDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://rules/weapon_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"brass_carbine"
+display_name = "Brass Carbine"
+damage = 20
+accuracy = 65
+optimal_range = 12
+clip = 8
+spare_clips = 3
+weight = 6.0
+pressure_per_shot = 5
+modes = PackedStringArray("snap", "aimed")
+tracer_color = Color(1.0, 0.9, 0.6, 1)

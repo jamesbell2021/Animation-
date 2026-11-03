@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="WeaponDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://rules/weapon_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"steam_drill"
+display_name = "Pneumatic Steam-Drill"
+damage = 30
+accuracy = 85
+optimal_range = 1
+melee = true
+clip = 0
+spare_clips = 0
+weight = 9.0
+pressure_per_shot = 8
+modes = PackedStringArray("snap")
+flat_tu = 15
+tracer_color = Color(1.0, 0.85, 0.5, 1)

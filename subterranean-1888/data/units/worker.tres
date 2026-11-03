@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="UnitDef" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://rules/unit_def.gd" id="1"]
+[ext_resource type="Resource" path="res://data/weapons/mandibles.tres" id="2"]
+
+[resource]
+script = ExtResource("1")
+id = &"worker"
+weapon = ExtResource("2")
+display_name = "Insectoid Worker"
+role = "Chitinous quadruped, glowing abdomen"
+is_enemy = true
+max_hp = 40
+base_tu = 36
+strength = 70
+perception = 45
+agility = 30
+armour = 3
+vision_range = 10.0
+vision_half_angle = 90.0
+glow = 0.45
+colour = Color(0.22, 1.0, 0.08, 1)

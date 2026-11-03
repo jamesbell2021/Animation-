@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="WeaponDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://rules/weapon_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"mandibles"
+display_name = "Scythe Mandibles"
+damage = 16
+accuracy = 75
+optimal_range = 1
+melee = true
+clip = 0
+spare_clips = 0
+weight = 0.0
+pressure_per_shot = 0
+modes = PackedStringArray("snap")
+flat_tu = 12

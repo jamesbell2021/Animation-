@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="UnitDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://rules/unit_def.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"hive"
+display_name = "The Hive"
+role = "Spawns crawlers once the swarm is roused"
+is_enemy = true
+max_hp = 80
+base_tu = 0
+strength = 0
+perception = 0
+agility = 0
+armour = 2
+vision_range = 0.0
+stationary = true
+glow = 0.7
+colour = Color(0.22, 1.0, 0.08, 1)

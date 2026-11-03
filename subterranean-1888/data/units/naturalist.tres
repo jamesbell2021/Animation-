@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="UnitDef" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://rules/unit_def.gd" id="1"]
+[ext_resource type="Resource" path="res://data/weapons/dart_rifle.tres" id="2"]
+
+[resource]
+script = ExtResource("1")
+id = &"naturalist"
+weapon = ExtResource("2")
+display_name = "The Naturalist"
+role = "Recon, status ailments, biological control"
+max_hp = 35
+base_tu = 65
+strength = 45
+perception = 90
+agility = 70
+armour = 1
+gear_weight = 3.0
+gear = PackedStringArray("Poisoned Dart Rifle (5 kg)", "Sample Syringe (1 kg)", "Pheromone Grenades x2 (2 kg)")
+hand_flares = 2
+pheromone_grenades = 2
+colour = Color(0.36, 0.55, 0.3, 1)
