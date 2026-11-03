@@ -69,11 +69,8 @@ func _ready() -> void:
 	_button("Quit", func() -> void: get_tree().quit())
 	first.call_deferred("grab_focus")
 	var foot := Kit.label("v%s  ·  a 3BL_Indie prototype" % ProjectSettings.get_setting("application/config/version", "0.1"), 14, Kit.DIM_INK)
-	foot.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
-	foot.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	foot.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	foot.position = Vector2(-16, -30)
 	_root.add_child(foot)
+	foot.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT, Control.PRESET_MODE_MINSIZE, 16)
 
 
 func _button(text: String, on_press: Callable) -> Button:
