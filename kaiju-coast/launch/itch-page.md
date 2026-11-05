@@ -132,7 +132,7 @@ Godot 4で制作。
 | Embed options | Embed in page, viewport **1280 × 720**, tick **Fullscreen button**, tick **Click to launch in fullscreen** off, **Mobile friendly** off, **Automatically start on page load** off, **SharedArrayBuffer support** off (not needed: the web build is single-threaded) |
 | Pricing | Your call. Neon Mega Tank is **$4.99 or more**; the same price would let Kaiju Coast join the Neon Arcade Collection bundle |
 | Genre | Strategy (or Action) |
-| Tags (up to 10) | tower-defense, kaiju, neon, fps, retro, arcade, japan, monsters, godot, vector |
+| Tags (up to 10) | tower-defense, kaiju, neon, first-person, shooter, retro, arcade, monsters, japan, synthwave ("Godot" goes in *Made with*, not a tag slot) |
 | Made with | Godot |
 | Average session | About half an hour |
 | Languages | English (menus carry Japanese labels; the voices are Japanese with English subtitles) |
