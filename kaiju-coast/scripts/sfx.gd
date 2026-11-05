@@ -37,7 +37,11 @@ func _ready() -> void:
 		p3.max_db = 6.0
 		add_child(p3)
 		_players3d.append(p3)
-	_render()
+	if AudioBank.baked():
+		streams = AudioBank.load_group("sfx")
+		ready_done = true
+	else:
+		_render()
 
 
 func _process(delta: float) -> void:

@@ -1,10 +1,11 @@
-# Tests and builds Kaiju Coast for Windows and Linux whenever the game changes, and (optionally)
-# pushes the builds to itch.io. The Android APK is only built on request: "Run workflow" with
+# Tests and builds Kaiju Coast for Windows, Linux and the web (played in the browser on itch.io)
+# whenever the game changes, and (optionally) pushes the builds to itch.io. The Android APK is only built on request: "Run workflow" with
 # "Also build the Android APK" ticked.
 #
 # Download the builds from the run's "Artifacts" section (Actions tab -> latest
 # "Kaiju Coast builds" run): kaiju-coast-windows (a zip with KaijuCoast.exe) and
-# kaiju-coast-linux, each with HOW_TO_PLAY.txt and the font licences.
+# kaiju-coast-linux, each with HOW_TO_PLAY.txt and the font licences, and kaiju-coast-web (a zip
+# with index.html to upload to itch.io as "played in the browser").
 #
 # Secrets (Settings -> Secrets and variables -> Actions), the same ones the other games use:
 #   ANDROID_RELEASE_KEYSTORE_BASE64  the release keystore, base64-encoded (Android builds only)
@@ -74,6 +75,7 @@ jobs:
             "templates/android_debug.apk" "templates/android_release.apk" \
             "templates/windows_release_x86_64.exe" "templates/windows_debug_x86_64.exe" \
             "templates/linux_release.x86_64" "templates/linux_debug.x86_64" \
+            "templates/web_nothreads_release.zip" "templates/web_nothreads_debug.zip" \
             "templates/version.txt" -d "$templates"
           rm "Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
 
@@ -166,6 +168,18 @@ jobs:
           (cd build/linux && zip -q -9 -r ../kaiju-coast-linux.zip .)
           ls -la build
 
+      # Single-threaded web build: it runs on itch.io without SharedArrayBuffer or special headers.
+      - name: Export the web build
+        working-directory: kaiju-coast
+        run: |
+          mkdir -p build/web
+          ../godot --headless --path . --export-release "Web" build/web/index.html
+          test -s build/web/index.html
+          test -s build/web/index.wasm
+          test -s build/web/index.pck
+          (cd build/web && zip -q -9 -r ../kaiju-coast-web.zip .)
+          ls -la build/web build/kaiju-coast-web.zip
+
       - name: Export Android
         if: inputs.android
         working-directory: kaiju-coast
@@ -185,6 +199,10 @@ jobs:
         with:
           name: kaiju-coast-linux
           path: kaiju-coast/build/kaiju-coast-linux.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kaiju-coast-web
+          path: kaiju-coast/build/kaiju-coast-web.zip
       - uses: actions/upload-artifact@v4
         if: inputs.android
         with:
@@ -233,6 +251,7 @@ jobs:
           version=$(grep -o 'config/version="[^"]*"' src/kaiju-coast/project.godot | head -1 | cut -d'"' -f2)
           ./butler push dist/kaiju-coast-windows/kaiju-coast-windows.zip "$ITCH_PROJECT:windows" --userversion "${version:-dev}"
           ./butler push dist/kaiju-coast-linux/kaiju-coast-linux.zip "$ITCH_PROJECT:linux" --userversion "${version:-dev}"
+          ./butler push dist/kaiju-coast-web/kaiju-coast-web.zip "$ITCH_PROJECT:html5" --userversion "${version:-dev}"
           if [ -f dist/kaiju-coast-apk/kaiju-coast.apk ] && [ "$RELEASE_SIGNED" = "true" ]; then
             ./butler push dist/kaiju-coast-apk/kaiju-coast.apk "$ITCH_PROJECT:android" --userversion "${version:-dev}"
           fi

@@ -39,6 +39,12 @@ subtitles.
   `KaijuCoast.exe`. Windows SmartScreen may warn because the game isn't code-signed: choose
   **More info → Run anyway**.
 * **Linux:** **kaiju-coast-linux**.
+* **Browser:** **kaiju-coast-web** is the version itch.io plays on the page. To try it locally,
+  unzip it and serve the folder (`python3 -m http.server`, then open `localhost:8000`): browsers
+  won't run it from a `file://` path. It's single-threaded, so it needs no special server headers.
+  It plays the soundtrack, effects and voices baked to Ogg by `tools/web/bake_audio.sh` (run it
+  again after changing any sound; the smoke test fails if one is missing), and starts on MEDIUM
+  graphics.
 * **itch.io:** builds go to `gamesdevnisite/kaiju-coast` when you push a tag like `kc-v1.0.0`, or
   run the workflow by hand with *Push the builds to itch.io* ticked. It needs the
   `BUTLER_API_KEY` secret.
@@ -182,7 +188,7 @@ All of the game is built in code from `scenes/main.tscn`, which holds a single n
 | `hud.gd` · `touch_controls.gd` | All the 2D UI, menus and the phone controls |
 | `settings.gd` · `tutorial.gd` | Saved settings; the guided first wave |
 | `solid_builder.gd` · `line_builder.gd` · `frame_lines.gd` · `mats.gd` | Vector-solid meshes, thick screen-space lines and shared materials |
-| `synth.gd` · `sfx.gd` · `music.gd` · `voice.gd` · `voice_synth.gd` | The synthesiser, 3D sound effects, the soundtrack and the voices |
+| `synth.gd` · `sfx.gd` · `music.gd` · `voice.gd` · `voice_synth.gd` · `audio_bank.gd` | The synthesiser, 3D sound effects, the soundtrack and the voices; the baked copies the browser build plays |
 
 The renderer is **Compatibility** (OpenGL 3.3 / OpenGL ES 3), so it runs on almost any Windows PC
 and on Android phones. Lines are drawn as screen-space quads (`shaders/thick_line.gdshaderinc`),

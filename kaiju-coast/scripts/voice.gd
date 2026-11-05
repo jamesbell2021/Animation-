@@ -40,6 +40,9 @@ func _ready() -> void:
 	_player.bus = "Voice"
 	_player.volume_db = 2.0
 	add_child(_player)
+	if AudioBank.baked():
+		streams = AudioBank.load_group("voice")
+		return
 	_thread = Thread.new()
 	_thread.start(_render_all)
 
@@ -90,7 +93,7 @@ func say(key: String) -> void:
 	_cool[key] = now + float(COOLDOWN.get(key, 2.5))
 	last_key = key
 	_prio = prio
-	var s: AudioStreamWAV = streams.get(key)
+	var s: AudioStream = streams.get(key)
 	var dur := 1.4
 	if s != null:
 		_player.stream = s

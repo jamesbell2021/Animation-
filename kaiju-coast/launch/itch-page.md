@@ -58,9 +58,12 @@ subtitles. All of the music, voices and sound effects are synthesised in code.
 
 ### Platforms
 
+* **Play in your browser** right here on the page: no download. Best in Chrome, Edge or Firefox
+  on a PC with a mouse; click the game to capture the mouse when you man a gun.
 * **Windows** and **Linux** (64-bit): mouse and keyboard, or any gamepad. Needs OpenGL 3.3, which
   almost every PC from the last ten years has. Three graphics settings (LOW, MEDIUM, HIGH) for
-  older machines, with an FPS counter to check.
+  older machines, with an FPS counter to check. The download runs faster than the browser
+  version in big fights.
 
 ### Controls
 
@@ -110,7 +113,7 @@ Made with Godot 4 by 3BL.
 効果音、字幕つきの日本語の無線（出撃！ 敵襲来！ 大鬼だ！）。音楽、音声、効果音はすべて
 プログラムで合成しています。
 
-**対応機種：** Windows、Linux（64ビット。マウスとキーボード、ゲームパッド）。
+**対応機種：** ブラウザでそのまま遊べます（ダウンロード不要）。Windows、Linux（64ビット。マウスとキーボード、ゲームパッド）。
 難易度は3段階。チュートリアルつき。15波を守り抜けばクリア、その後はエンドレスモード。
 
 Godot 4で制作。
@@ -125,7 +128,8 @@ Godot 4で制作。
 | Project URL | `gamesdevnisite.itch.io/kaiju-coast` (the CI workflow pushes to this name; change `ITCH_PROJECT` in `.github/workflows/kaiju-coast.yml` if you pick another) |
 | Short description / tagline | Hold a neon Japanese bay against giant kaiju, then climb into the guns and fight them yourself. |
 | Classification | Game |
-| Kind of project | Downloadable |
+| Kind of project | **HTML** (playable in the browser), with the Windows and Linux downloads alongside |
+| Embed options | Embed in page, viewport **1280 × 720**, tick **Fullscreen button**, tick **Click to launch in fullscreen** off, **Mobile friendly** off, **Automatically start on page load** off, **SharedArrayBuffer support** off (not needed: the web build is single-threaded) |
 | Pricing | Your call. Neon Mega Tank is **$4.99 or more**; the same price would let Kaiju Coast join the Neon Arcade Collection bundle |
 | Genre | Strategy (or Action) |
 | Tags (up to 10) | tower-defense, kaiju, neon, fps, retro, arcade, japan, monsters, godot, vector |
@@ -150,11 +154,14 @@ Godot 4で制作。
 |---|---|---|
 | `kaiju-coast-windows.zip` | Windows | from the CI run's `kaiju-coast-windows` artifact |
 | `kaiju-coast-linux.zip` | Linux | artifact `kaiju-coast-linux` |
+| `kaiju-coast-web.zip` | — | artifact `kaiju-coast-web`: tick **This file will be played in the browser** |
 
-Each zip holds the game (one file), `HOW_TO_PLAY.txt` and the font licences. Tick **Windows** on
-the first upload and **Linux** on the second; mark both as "executable".
+The Windows and Linux zips hold the game (one file), `HOW_TO_PLAY.txt` and the font licences.
+Tick **Windows** on the first upload and **Linux** on the second. The web zip holds `index.html`
+and the files it loads; it has no platform tag, only the "played in the browser" tick.
 
 Or let the workflow upload them: with the `BUTLER_API_KEY` secret set, push a tag like
 `kc-v1.0.0` (or run **Kaiju Coast builds** by hand with "Push the builds to itch.io" ticked). It
-uses the channels `windows` and `linux`, and itch.io creates them on the first push. There is no
-Android build in this release.
+uses the channels `windows`, `linux` and `html5`, and itch.io creates them on the first push.
+After the first push, open the html5 upload on the Edit page once and tick **This file will be
+played in the browser**. There is no Android build in this release.

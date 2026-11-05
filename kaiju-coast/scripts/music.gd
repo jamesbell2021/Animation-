@@ -4,6 +4,7 @@ extends Node
 ## shamisen bass, a pentatonic synth arp, koto melodies with echo and a shakuhachi lead, all in the
 ## Japanese In scale on D. Four loops (title, calm, battle, boss) are composed from fixed seeds and
 ## rendered on a background thread at startup, then cached in user:// so later launches are instant.
+## The browser build plays the same loops baked to Ogg instead (see AudioBank).
 
 const CACHE_VERSION: int = 3
 const SCALE: Array[int] = [0, 1, 5, 7, 8]
@@ -31,6 +32,10 @@ func _ready() -> void:
 	add_child(_a)
 	add_child(_b)
 	_cur = _a
+	if AudioBank.baked():
+		streams = AudioBank.load_group("music", true)
+		_start(mode)
+		return
 	for m: String in MODES:
 		var path: String = "user://music_%s_v%d.res" % [m, CACHE_VERSION]
 		if ResourceLoader.exists(path):

@@ -18,6 +18,8 @@ static func load_all() -> void:
 		var d: Variant = DEFAULTS[k]
 		if k == "quality" and OS.has_feature("mobile"):
 			d = 0
+		elif k == "quality" and OS.has_feature("web"):
+			d = 1   # GDScript runs slower in the browser: MEDIUM to start with
 		values[k] = Game.load_setting(k, d)
 
 
@@ -49,7 +51,7 @@ static func apply() -> void:
 		Game.fx.max_smoke = [160, 280, 420][q]
 	if Game.world != null and Game.world.env != null:
 		Game.world.set_quality(q)
-	if DisplayServer.get_name() != "headless":
+	if DisplayServer.get_name() != "headless" and not OS.has_feature("web"):
 		DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ENABLED if bool(get_v("vsync")) else DisplayServer.VSYNC_DISABLED)
 	if Game.hud != null:
 		Game.hud.fps_label.visible = bool(get_v("show_fps"))

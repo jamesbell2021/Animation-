@@ -507,6 +507,21 @@ func _ready() -> void:
 	check(Game.turrets.size() == 7, "attract mode has 7 guns")
 	check(Game.world.buildings.size() > 100, "city has %d buildings" % Game.world.buildings.size())
 	check(Game.sfx.streams.size() >= 20, "%d sound effects synthesised" % Game.sfx.streams.size())
+	# The browser build plays sounds baked by tools/web/bake_audio.sh: they must match the game's.
+	var baked_sfx: Dictionary = AudioBank.load_group("sfx")
+	var baked_voice: Dictionary = AudioBank.load_group("voice")
+	var baked_music: Dictionary = AudioBank.load_group("music", true)
+	var missing: Array = []
+	for k: String in Game.sfx.streams:
+		if not baked_sfx.has(k):
+			missing.append("sfx " + k)
+	for k2: String in Voice.LINES:
+		if not baked_voice.has(k2):
+			missing.append("voice " + k2)
+	for k3: String in Music.MODES:
+		if not baked_music.has(k3):
+			missing.append("music " + k3)
+	check(missing.is_empty(), "web audio is baked for every sound %s" % (str(missing) if not missing.is_empty() else "(%d)" % (baked_sfx.size() + baked_voice.size() + baked_music.size())))
 	# Demo runs on its own.
 	for i: int in range(300):
 		Game.main.step(1.0 / 30.0)

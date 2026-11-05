@@ -2,7 +2,9 @@
 // being hurt and a white flash for big moments.
 shader_type canvas_item;
 
-uniform sampler2D screen_tex : hint_screen_texture, filter_linear_mipmap;
+// Plain linear filtering: the pass never samples a lower mip, and mipmapping the screen copy
+// costs a pass on desktop and is refused by WebGL 2.
+uniform sampler2D screen_tex : hint_screen_texture, filter_linear;
 uniform float aberration : hint_range(0.0, 0.01) = 0.0011;
 uniform float scanline_strength : hint_range(0.0, 1.0) = 0.16;
 uniform float vignette : hint_range(0.0, 2.0) = 0.85;

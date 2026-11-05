@@ -1029,7 +1029,8 @@ func _build_settings() -> void:
 	_check_row(grid, "CRT scanlines", "crt")
 	if not OS.has_feature("mobile"):
 		_check_row(grid, "Fullscreen", "fullscreen")
-		_check_row(grid, "V-sync", "vsync")
+		if not OS.has_feature("web"):
+			_check_row(grid, "V-sync", "vsync")
 	_check_row(grid, "Show FPS", "show_fps")
 	_check_row(grid, "Show the tutorial", "tutorial")
 	v.add_child(_label("Controller: sticks aim and pan, RT fire, LT zoom, A select, B back, Y man a gun / swap,\nX airship / reload, LB RB cycle guns, d-pad special attacks, Start next wave, Back pause.", 11, DIM))

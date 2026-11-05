@@ -7,3 +7,4 @@
 *.mp3 -filter -diff -merge binary
 *.gif -filter -diff -merge binary
 *.mp4 -filter -diff -merge binary
+*.ogg -filter -diff -merge binary
