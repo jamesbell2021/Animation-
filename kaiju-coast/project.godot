@@ -42,3 +42,5 @@ renderer/rendering_method.mobile="gl_compatibility"
 anti_aliasing/quality/msaa_3d=2
 textures/vram_compression/import_etc2_astc=true
 environment/defaults/default_clear_color=Color(0.02, 0.016, 0.04, 1)
+; The single-threaded web build loses most of the scene when culling is split across threads.
+limits/spatial_indexer/threaded_cull_minimum_instances.web=1000000

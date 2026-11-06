@@ -25,6 +25,14 @@ var look: Kaiju = null
 var look_t: float = 0.0
 var sens: float = 0.0022
 var invert_y: bool = false
+## When the mouse was last captured or released. Browsers report the jump from the pointer's old
+## position to the lock point as one huge movement as the lock takes hold, which would fling the
+## aim at the sky, so movement is ignored briefly after any change, and so is any single movement
+## too big for a hand.
+var _mode_changed_ms: int = 0
+var _last_mode: Input.MouseMode = Input.MOUSE_MODE_VISIBLE
+const SETTLE_MS: int = 250
+const MAX_MOTION: float = 400.0
 
 var _vm: Node3D
 var _gun_vm: Node3D
@@ -211,8 +219,13 @@ func _unhandled_input(event: InputEvent) -> void:
 	# Touches arrive twice: as touches (see TouchControls) and as made-up mouse events. Skip those.
 	if not active or event.device == InputEvent.DEVICE_ID_EMULATION:
 		return
+	if Input.mouse_mode != _last_mode:
+		_last_mode = Input.mouse_mode
+		_mode_changed_ms = Time.get_ticks_msec()
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		var m: InputEventMouseMotion = event
+		if Time.get_ticks_msec() - _mode_changed_ms < SETTLE_MS or m.relative.length() > MAX_MOTION:
+			return
 		var s: float = sens * fov / 1.15
 		yaw -= m.relative.x * s
 		pitch -= m.relative.y * s * (-1.0 if invert_y else 1.0)

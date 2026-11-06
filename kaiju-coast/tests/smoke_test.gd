@@ -518,6 +518,12 @@ func _ready() -> void:
 		for bus: String in ["Music", "SFX", "Voice"]:
 			in_layout = in_layout and names.has(bus)
 	check(in_layout, "Music, SFX and Voice are in default_bus_layout.tres (the web build is silent without them)")
+	# Godot 4.3's single-threaded web build loses most of the scene once culling is split across
+	# threads (past 1000 instances), so the web build keeps culling on one thread.
+	var cfg: ConfigFile = ConfigFile.new()
+	cfg.load("res://project.godot")
+	check(int(cfg.get_value("rendering", "limits/spatial_indexer/threaded_cull_minimum_instances.web", 0)) >= 100000,
+		"the web build culls on one thread (big scenes vanish otherwise)")
 	# The browser build plays sounds baked by tools/web/bake_audio.sh: they must match the game's.
 	var baked_sfx: Dictionary = AudioBank.load_group("sfx")
 	var baked_voice: Dictionary = AudioBank.load_group("voice")
