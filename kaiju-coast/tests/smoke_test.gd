@@ -507,6 +507,17 @@ func _ready() -> void:
 	check(Game.turrets.size() == 7, "attract mode has 7 guns")
 	check(Game.world.buildings.size() > 100, "city has %d buildings" % Game.world.buildings.size())
 	check(Game.sfx.streams.size() >= 20, "%d sound effects synthesised" % Game.sfx.streams.size())
+	# The browser only hears buses that exist in the bus layout file, not ones made in code.
+	var layout: AudioBusLayout = load("res://default_bus_layout.tres") as AudioBusLayout
+	var in_layout: bool = layout != null
+	if in_layout:
+		var names: Array = []
+		for p: Dictionary in layout.get_property_list():
+			if str(p["name"]).ends_with("/name"):
+				names.append(str(layout.get(p["name"])))
+		for bus: String in ["Music", "SFX", "Voice"]:
+			in_layout = in_layout and names.has(bus)
+	check(in_layout, "Music, SFX and Voice are in default_bus_layout.tres (the web build is silent without them)")
 	# The browser build plays sounds baked by tools/web/bake_audio.sh: they must match the game's.
 	var baked_sfx: Dictionary = AudioBank.load_group("sfx")
 	var baked_voice: Dictionary = AudioBank.load_group("voice")

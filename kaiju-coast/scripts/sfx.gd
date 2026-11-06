@@ -83,6 +83,10 @@ func play_at(name: String, pos: Vector3, vol: float = 1.0, pitch: float = 1.0) -
 
 
 ## Creates the Music, SFX and Voice buses (all into Master) so each has its own volume.
+## The buses are defined in default_bus_layout.tres, and this only fills in any that are missing.
+## The layout file matters for the browser build: Godot 4.3 plays web audio through the browser's
+## own audio graph, which is built from the bus layout at startup, so a bus added here at runtime
+## exists in the game but not in the browser, and everything routed to it is silent.
 static func make_buses() -> void:
 	for bus: String in ["Music", "SFX", "Voice"]:
 		if AudioServer.get_bus_index(bus) == -1:
