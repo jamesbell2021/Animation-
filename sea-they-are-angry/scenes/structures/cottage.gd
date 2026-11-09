@@ -50,6 +50,7 @@ func _init() -> void:
 
 func _build() -> void:
 	add_to_group("heat")
+	add_to_group("fog_lights")
 	interior = Interior.new()
 	add_child(interior)
 	var up := interior.upper
@@ -378,3 +379,7 @@ func mix_fuel() -> void:
 		Stock.add("dirty_fuel", MIX_YIELD)
 		Audio.sfx("refuel", global_position, -2.0, 0.1)
 		Events.message.emit("+%d dirty fuel: pour it in at the lighthouse [F]" % MIX_YIELD)
+
+## Its lit windows and fire hold the fog off the doorstep (FogBank).
+func fog_hole() -> Vector3:
+	return Vector3(global_position.x, global_position.z, 0.0 if is_destroyed() else 6.0)

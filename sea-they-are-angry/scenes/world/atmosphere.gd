@@ -24,6 +24,8 @@ var env: Environment
 var sky_mat: ProceduralSkyMaterial
 var sea_mat: ShaderMaterial
 
+## The glowing bank that rolls in off the sea (FogBank).
+var fog: FogBank
 var _ring: Node3D
 var _bank_mat: FogMaterial
 var _mist_mat: FogMaterial
@@ -44,6 +46,8 @@ var _phase := 0
 
 func _ready() -> void:
 	_build_fog()
+	fog = FogBank.new()
+	add_child(fog)
 	_build_vignette()
 	weather = Weather.new()
 	weather.name = "Weather"
@@ -219,6 +223,10 @@ func apply(p: int, duration: float) -> void:
 	var sheet: float = SHEETS[p]
 	if Weather.tonight() == Weather.Kind.CLEAR and (p == Cycle.Phase.DUSK or p == Cycle.Phase.NIGHT):
 		sheet *= 0.6
+	if fog != null:
+		# The bank comes every night; a clear night's is a little thinner, a storm's thicker.
+		var thick := 0.85 if Weather.tonight() == Weather.Kind.CLEAR else (1.1 if Weather.tonight() == Weather.Kind.STORM else 1.0)
+		fog.apply(p, duration * 1.6 if p == Cycle.Phase.DUSK else duration, thick)
 	if duration <= 0.0:
 		_set_sheets(sheet)
 	else:

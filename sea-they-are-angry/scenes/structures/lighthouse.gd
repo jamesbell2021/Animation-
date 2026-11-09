@@ -63,6 +63,7 @@ func _cyl(r_bottom: float, r_top: float, h: float, y: float, mat: Material, segs
 
 func _build() -> void:
 	add_to_group("lighthouse")
+	add_to_group("fog_lights")
 	# Painted render over stone, a rubble plinth, a boarded door.
 	var stone := Look.textured("rubble", Color(1.05, 1.05, 1.05), 1.4, 0.9, 1.2)
 	var iron := Look.flat_mat(IRON, 0.6)
@@ -227,3 +228,8 @@ func use_dirty(_player: Node) -> bool:
 	Audio.sfx("ignite", global_position + Vector3(0.0, 8.0, 0.0), -4.0, 0.0)
 	Events.message.emit("Dirty fuel in: the light burns hot  (%d%%).  The sea smells it..." % roundi(lamp.fuel))
 	return true
+
+## The lamp holds the fog off the crag while it burns (FogBank).
+func fog_hole() -> Vector3:
+	var lit: bool = lamp != null and lamp.is_lit()
+	return Vector3(global_position.x, global_position.z, 11.0 if lit else 0.0)

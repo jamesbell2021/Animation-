@@ -58,6 +58,7 @@ var _sacking: StandardMaterial3D
 func _ready() -> void:
 	name = "Camp"
 	add_to_group("camp_root")
+	add_to_group("fog_lights")
 	# Weathered boards, silvered rough-sawn posts, olive corrugated iron gone to rust,
 	# tarred felt, red brick, board-marked concrete, sacking: the 1940s, after five years
 	# of North Sea weather and nobody since.
@@ -921,3 +922,7 @@ func _physics_process(_delta: float) -> void:
 		if e is Enemy and Terrain.in_camp(e.global_position.x, e.global_position.z):
 			e.speed_mult *= LIT_SLOW
 
+## The camp's lights hold the fog off the wire while they burn (FogBank).
+func fog_hole() -> Vector3:
+	var c := Terrain.CAMP_C
+	return Vector3(c.x, c.y, 15.0 * clampf(lights_level, 0.0, 1.0))

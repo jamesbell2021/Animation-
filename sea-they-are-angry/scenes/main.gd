@@ -77,7 +77,7 @@ const CAMPFIRE_AT := [-22.0, 10.4]
 # distance fog density, volumetric fog density, fog glow tint.
 # How each kind of night shifts dusk and night: ambient and moon energy, fog.
 const WEATHER_LIGHT := [
-	{"amb": 1.2, "sun": 1.45, "fog": 0.55, "bg": Color(0.05, 0.08, 0.14), "moon": Color(0.78, 0.86, 1.0)},
+	{"amb": 1.12, "sun": 1.35, "fog": 0.55, "bg": Color(0.03, 0.06, 0.11), "moon": Color(0.70, 0.82, 1.0)},
 	{"amb": 1.0, "sun": 1.0, "fog": 1.0, "bg": Color(0.0, 0.0, 0.0)},
 	{"amb": 1.1, "sun": 0.95, "fog": 0.9, "bg": Color(0.0, 0.0, 0.0)},
 ]
@@ -85,7 +85,7 @@ const WEATHER_LIGHT := [
 var _lighting := [
 	{"bg": Color(0.60, 0.67, 0.72), "amb": Color(0.62, 0.68, 0.76), "amb_e": 0.55, "sun": Color(1.0, 0.92, 0.78), "sun_e": 1.3, "fog": 0.0013, "vfog": 0.0035, "tint": Color(0.70, 0.75, 0.80)},
 	{"bg": Color(0.34, 0.31, 0.38), "amb": Color(0.52, 0.44, 0.52), "amb_e": 0.38, "sun": Color(1.0, 0.58, 0.36), "sun_e": 0.8, "fog": 0.005, "vfog": 0.019, "tint": Color(0.52, 0.42, 0.44)},
-	{"bg": Color(0.04, 0.06, 0.10), "amb": Color(0.30, 0.40, 0.56), "amb_e": 0.95, "sun": Color(0.6, 0.72, 0.98), "sun_e": 1.05, "fog": 0.006, "vfog": 0.018, "tint": Color(0.11, 0.15, 0.21)},
+	{"bg": Color(0.02, 0.04, 0.07), "amb": Color(0.22, 0.34, 0.46), "amb_e": 0.62, "sun": Color(0.5, 0.66, 0.92), "sun_e": 0.7, "fog": 0.006, "vfog": 0.018, "tint": Color(0.08, 0.16, 0.19)},
 	{"bg": Color(0.52, 0.50, 0.55), "amb": Color(0.60, 0.55, 0.60), "amb_e": 0.42, "sun": Color(1.0, 0.74, 0.58), "sun_e": 0.95, "fog": 0.004, "vfog": 0.013, "tint": Color(0.62, 0.56, 0.58)},
 ]
 
@@ -480,8 +480,12 @@ func _count(key: String, n: int = 1) -> void:
 	_tally[key] = int(_tally.get(key, 0)) + n
 	run_tally[key] = int(run_tally.get(key, 0)) + n
 
-func _on_wave_incoming(_points: Array, count: int) -> void:
+func _on_wave_incoming(points: Array, count: int) -> void:
 	_count("ashore", count)
+	# The fog comes up the beach ahead of them.
+	if atmosphere != null and atmosphere.fog != null:
+		for pt in points:
+			atmosphere.fog.tongue(pt)
 
 # One foghorn blast per landing, and a warning naming what and where.
 func _on_group_warning(kind: String, points: Array, raid: bool) -> void:
