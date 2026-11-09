@@ -90,7 +90,15 @@ func _go() -> void:
 	Engine.time_scale = 4.0
 	check(await _until(func(): return boat.state == 2, 300), "pushes off and rows")
 	var mid := false
+	# The hands stay on the oars' handles all through the stroke.
+	var worst := 0.0
+	var sites := p.rig.skeleton
 	for i in 1200:
+		if boat.state == 2 and boat.progress() > 0.1 and p.riding != null:
+			var grips: Array = boat.grips()
+			for hand in ["hand.L", "hand.R"]:
+				var w: Vector3 = sites.global_transform * sites.get_bone_global_pose(sites.find_bone(hand)).origin
+				worst = maxf(worst, minf(w.distance_to(grips[0]), w.distance_to(grips[1])))
 		if boat.progress() > 0.4 and boat.progress() < 0.6 and p.riding != null:
 			mid = absf(p.global_position.distance_to(boat.global_position)) < 1.5
 			if mid:
@@ -100,6 +108,7 @@ func _go() -> void:
 				break
 		await physics_frame
 	check(mid, "half way across, in the boat")
+	check(worst < 0.12, "rowing: both hands stay on the oar handles (worst %.2f m off)" % worst)
 	check(await _until(func(): return boat.state == 0 and p.riding == null, 1800), "lands at Gull Rock")
 	await _wait(20)
 	check(Terrain.on_islet(p.global_position.x, p.global_position.z) and Terrain.walkable(p.global_position.x, p.global_position.z), "the keeper steps ashore on the rock")

@@ -62,6 +62,7 @@ var _board_t := 0.0
 var _yaw := 0.0
 var _hull: Node3D
 var _oars: Array[Node3D] = []
+var _grips: Array[Marker3D] = []
 var _oar_rest: Array[Node3D] = []
 var _bob_t := 0.0
 var _net: Array = []
@@ -359,6 +360,13 @@ func _pose_oars() -> void:
 		o.rotation = Vector3(0.0, -s * sweep, s * lift)
 		(o.get_child(0) as Node3D).rotation.x = feather
 
+## The two handles in the world, [starboard oar's, port oar's] (the hull's +X side first).
+func grips() -> Array[Vector3]:
+	var out: Array[Vector3] = []
+	for g in _grips:
+		out.append(g.global_position)
+	return out
+
 ## Where the rower's hands are on the handles now (for the rig's arms): the stroke's
 ## phase, 0 at the catch (reached out) to 1 at the finish (pulled in).
 func pull() -> float:
@@ -423,6 +431,11 @@ func _build() -> void:
 		var shaft_holder := Node3D.new()
 		pivot.add_child(shaft_holder)
 		_oar(shaft_holder, s)
+		# Where the rower's hand goes: on the inboard end of the shaft.
+		var grip := Marker3D.new()
+		grip.position = Vector3(-s * 0.55, 0.0, 0.0)
+		shaft_holder.add_child(grip)
+		_grips.append(grip)
 		_oars.append(pivot)
 		var rest := Node3D.new()
 		rest.position = Vector3(s * 0.3, 0.46, -0.2)

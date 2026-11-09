@@ -1686,6 +1686,7 @@ func _seated_pose(w: float, pull: float) -> void:
 	rig.layer("shin.L", Vector3(1.35 * w, 0.0, 0.0))
 	rig.layer("shin.R", Vector3(1.35 * w, 0.0, 0.0))
 	if pull < 0.0:
+		rig.reach_free()
 		rig.layer("spine", Vector3(0.12 * w, 0.0, 0.0))
 		rig.layer("chest", Vector3.ZERO)
 		rig.layer("upper_arm.L", Vector3(-0.55 * w, 0.0, -0.1 * w))
@@ -1698,15 +1699,30 @@ func _seated_pose(w: float, pull: float) -> void:
 	# ribs at the finish.
 	rig.layer("spine", Vector3((0.4 * reach - 0.22 * pull) * w, 0.0, 0.0))
 	rig.layer("chest", Vector3((0.15 * reach - 0.1 * pull) * w, 0.0, 0.0))
-	rig.layer("upper_arm.L", Vector3(-(0.35 + 0.95 * reach) * w, 0.0, -0.25 * w))
-	rig.layer("upper_arm.R", Vector3(-(0.35 + 0.95 * reach) * w, 0.0, 0.25 * w))
-	rig.layer("forearm.L", Vector3(-(1.5 - 1.25 * reach) * w, 0.0, 0.0))
-	rig.layer("forearm.R", Vector3(-(1.5 - 1.25 * reach) * w, 0.0, 0.0))
+	var boat := riding if riding != null and is_instance_valid(riding) else get_tree().get_first_node_in_group("rowing_boat")
+	if boat != null and boat.has_method("grips"):
+		# Hands on the oars' handles: each arm reaches for the one on its side.
+		var grips: Array[Vector3] = boat.grips()
+		var right := global_basis.x
+		var a := grips[0]
+		var b := grips[1]
+		if (a - global_position).dot(right) < (b - global_position).dot(right):
+			rig.reach("L", a, -right * 0.7 + Vector3.DOWN, w)
+			rig.reach("R", b, right * 0.7 + Vector3.DOWN, w)
+		else:
+			rig.reach("L", b, -right * 0.7 + Vector3.DOWN, w)
+			rig.reach("R", a, right * 0.7 + Vector3.DOWN, w)
+	else:
+		rig.layer("upper_arm.L", Vector3(-(0.35 + 0.95 * reach) * w, 0.0, -0.25 * w))
+		rig.layer("upper_arm.R", Vector3(-(0.35 + 0.95 * reach) * w, 0.0, 0.25 * w))
+		rig.layer("forearm.L", Vector3(-(1.5 - 1.25 * reach) * w, 0.0, 0.0))
+		rig.layer("forearm.R", Vector3(-(1.5 - 1.25 * reach) * w, 0.0, 0.0))
 
 func _clear_seated() -> void:
 	_ride_layers = false
 	if not _clips():
 		return
+	rig.reach_free()
 	for b in _SEAT_BONES:
 		rig.layer(b, Vector3.ZERO)
 

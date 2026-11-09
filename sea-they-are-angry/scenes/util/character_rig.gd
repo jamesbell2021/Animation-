@@ -412,6 +412,77 @@ func _run_clips(delta: float) -> void:
 		var i := skeleton.find_bone(bone)
 		skeleton.set_bone_pose_rotation(i, skeleton.get_bone_pose_rotation(i) * _model_q(bone, _layers[bone]))
 	_alive(delta)
+	_run_reach()
+
+# ---- hands on things ----
+
+var _reach := {}
+
+## Put a hand (side "L" or "R") on a point in the world: the shoulder's arm bones are
+## turned (two-bone IK, over the clips and layers) so the wrist meets it, the elbow
+## bending toward `elbow` (a direction in the world). `weight` eases it in over the
+## pose underneath. Call it every frame; reach_free lets go.
+func reach(side: String, point: Vector3, elbow: Vector3 = Vector3.DOWN, weight: float = 1.0) -> void:
+	_reach[side] = [point, elbow, weight]
+
+func reach_free(side: String = "") -> void:
+	if side == "":
+		_reach.clear()
+	else:
+		_reach.erase(side)
+
+func reaching() -> bool:
+	return not _reach.is_empty()
+
+func _run_reach() -> void:
+	if _ragdoll:
+		return
+	for side in _reach:
+		var r: Array = _reach[side]
+		_ik_arm(String(side), r[0], r[1], float(r[2]))
+
+func _ik_arm(side: String, world_pt: Vector3, elbow_world: Vector3, weight: float) -> void:
+	var ub := skeleton.find_bone("upper_arm." + side)
+	var fb := skeleton.find_bone("forearm." + side)
+	var hb := skeleton.find_bone("hand." + side)
+	if ub < 0 or fb < 0 or hb < 0 or weight <= 0.0:
+		return
+	var to_skel := skeleton.global_transform.affine_inverse()
+	var target: Vector3 = to_skel * world_pt
+	var pole: Vector3 = to_skel.basis * elbow_world
+	var rest_u := skeleton.get_bone_global_rest(ub)
+	var rest_f := skeleton.get_bone_global_rest(fb)
+	var rest_h := skeleton.get_bone_global_rest(hb)
+	var a := rest_u.origin.distance_to(rest_f.origin)
+	var b := rest_f.origin.distance_to(rest_h.origin)
+	var shoulder := skeleton.get_bone_global_pose(ub).origin
+	var to_t := target - shoulder
+	var d := clampf(to_t.length(), absf(a - b) + 0.02, a + b - 0.01)
+	var dir := to_t.normalized()
+	var x := (d * d + a * a - b * b) / (2.0 * d)
+	var h := sqrt(maxf(a * a - x * x, 0.0))
+	var perp := pole - dir * pole.dot(dir)
+	if perp.length() < 0.01:
+		perp = dir.cross(Vector3.RIGHT)
+	perp = perp.normalized()
+	var elbow := shoulder + dir * x + perp * h
+	var wrist := shoulder + dir * d
+	# Upper arm: from where it points at rest to the elbow.
+	var up_dir := (elbow - shoulder).normalized()
+	var rest_up_dir := (rest_f.origin - rest_u.origin).normalized()
+	var rest_q_u: Quaternion = _rest_global[skeleton.get_bone_name(ub)]
+	var g_u: Quaternion = Quaternion(rest_up_dir, up_dir) * rest_q_u
+	var p_u := skeleton.get_bone_parent(ub)
+	var par_u: Quaternion = skeleton.get_bone_global_pose(p_u).basis.get_rotation_quaternion() if p_u >= 0 else Quaternion.IDENTITY
+	var local_u: Quaternion = par_u.inverse() * g_u
+	skeleton.set_bone_pose_rotation(ub, skeleton.get_bone_pose_rotation(ub).slerp(local_u, weight))
+	# Forearm: from the elbow to the wrist, under the upper arm as it now stands.
+	var fo_dir := (wrist - elbow).normalized()
+	var rest_fo_dir := (rest_h.origin - rest_f.origin).normalized()
+	var rest_q_f: Quaternion = _rest_global[skeleton.get_bone_name(fb)]
+	var g_f: Quaternion = Quaternion(rest_fo_dir, fo_dir) * rest_q_f
+	var par_f: Quaternion = skeleton.get_bone_global_pose(ub).basis.get_rotation_quaternion()
+	skeleton.set_bone_pose_rotation(fb, skeleton.get_bone_pose_rotation(fb).slerp(par_f.inverse() * g_f, weight))
 
 # How fast the character is turning (rad/s, + to its left), smoothed.
 func _track_turn(delta: float) -> void:
