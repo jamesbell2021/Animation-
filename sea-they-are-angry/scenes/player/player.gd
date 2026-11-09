@@ -527,8 +527,8 @@ func _air_pose(force: bool = false) -> void:
 		for b in ["thigh.L", "thigh.R", "shin.L", "shin.R"]:
 			rig.layer(b, Vector3.ZERO)
 
-## Multiplayer: a person's keeper shows as an outline in their colour through whatever
-## hides them (a hut's roof, the tower). Playing alone the buildings are cut away instead.
+## A person's keeper shows as an outline in their colour through whatever hides them (the
+## lighthouse, a tower, a hut's roof). Alone, inside a building, the roof is cut away instead.
 var _outline_mat: ShaderMaterial
 var _outlined := false
 
@@ -537,7 +537,9 @@ var indoors := false
 var _indoors_t := 0.0
 
 func _process(delta: float) -> void:
-	var want := Run.active and not ai and visible and not Interior.cutaway_mode()
+	# A person's keeper shows through whatever hides them. Alone, the room's roof lifts
+	# instead while they're inside it (Interior), so no outline there.
+	var want := Run.active and not ai and visible and not (Interior.cutaway_mode() and indoors)
 	if want != _outlined:
 		set_outline(want)
 	_indoors_t -= delta

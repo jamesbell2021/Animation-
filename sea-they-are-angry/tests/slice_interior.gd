@@ -148,7 +148,14 @@ func _go() -> void:
 	check(top - y0 > 0.4 and absf(p.global_position.y - y0) < 0.15, "Space jumps (%.2f m up) and comes down again" % (top - y0))
 
 	# Two on one screen: no cutaway, an outline instead.
-	check(not p.outlined(), "playing alone: no outline")
+	p.global_position = cot.to_global(Vector3(0.3, 0.0, -0.2)) + Vector3(0.0, 0.3, 0.0)
+	await _wait(60)
+	check(not p.outlined(), "playing alone, inside a room: the roof is cut away, no outline")
+	p.global_position = Terrain.at_angle(60.0, 9.0) + Vector3(0.0, 0.3, 0.0)
+	await _wait(30)
+	check(p.outlined(), "alone out of doors: the outline is on (it only draws where something hides the keeper)")
+	p.global_position = hut.to_global(Vector3(-1.0, 0.0, 0.0)) + Vector3(0.0, 0.3, 0.0)
+	await _wait(60)
 	var d: CameraDirector = main.director
 	var other := Node3D.new()
 	var sc := GDScript.new()

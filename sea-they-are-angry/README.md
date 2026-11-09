@@ -43,14 +43,16 @@ Or Play on the LAN: one keeper to a machine, each on a screen of its own (host f
 | Move | W A S D | Arrow keys | Left stick |
 | Aim | Mouse | Facing direction | Right stick |
 | Attack with what's in hand: swing, shoot, burn, throw (hold to draw the bow or keep the flamer going) | Left mouse | Ctrl | X or right trigger |
-| Change what's in hand: boathook, longbow, shotgun, flamer, petrol bombs | Tab / mouse wheel, or 1 to 5 | [ ] | D-pad left / right |
-| Use: gather, repair, refuel, climb a ladder, revive (hold) | E | Shift | A |
+| Change what's in hand: boathook, longbow, shotgun, flamer, petrol bombs | Tab or 1 to 5 (the wheel too, with two on one screen) | [ ] | D-pad left / right |
+| Use: gather, repair, refuel, climb a ladder, revive (hold) | E | M | A |
 | Work the lamp (walk in at the door) / leave it | R (within 3.8 m of the lighthouse) | / | Y |
-| Take a camp searchlight (up a tower) / let it go | E (R also lets go) | Shift | A |
+| Take a camp searchlight (up a tower) / let it go | E (R also lets go) | M | A |
 | Switch beam: wide slows, focused burns | Q | . | B |
 | Fire a flare (lobbed to the cursor) | Right mouse | ; | Left trigger |
 | Pour dirty fuel (at the lighthouse) | F | ' | Left shoulder |
-| Sprint | Space | , | Right shoulder |
+| Sprint | Shift | , | Right shoulder |
+| Jump (up a bank or rock); walking on into a fence climbs over it | Space | Enter (numpad) | A, when there's nothing to use |
+| The camera, playing alone: turn / zoom / back to the usual view | Middle mouse drag or Z C / wheel or = - / X | | A stick pressed in / d-pad up and down |
 | Skip the rest of the day or dawn | Enter | | |
 | Pause | Esc | | Start |
 

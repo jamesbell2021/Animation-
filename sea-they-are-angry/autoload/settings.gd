@@ -176,7 +176,7 @@ static func describe(code: String) -> String:
 const HINT_ACTIONS := {"[E]": "interact", "[R]": "operate", "[Q]": "beam_mode", "[F]": "use_dirty",
 	"[LMB]": "attack", "[RMB]": "flare", "[Tab]": "weapon_next"}
 const PAD_NAMES := {"interact": "A", "operate": "Y", "beam_mode": "B", "use_dirty": "LB", "attack": "X / RT", "flare": "LT", "weapon_next": "D-pad"}
-const ARROW_NAMES := {"interact": "Shift", "operate": "/", "beam_mode": ".", "use_dirty": "'", "attack": "Ctrl", "flare": ";", "weapon_next": "]"}
+const ARROW_NAMES := {"interact": "M", "operate": "/", "beam_mode": ".", "use_dirty": "'", "attack": "Ctrl", "flare": ";", "weapon_next": "]"}
 
 func keys_in(text: String, keeper_idx: int = 0) -> String:
 	if text.find("[") == -1:

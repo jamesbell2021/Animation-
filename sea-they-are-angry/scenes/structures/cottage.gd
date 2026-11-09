@@ -237,10 +237,10 @@ func _start_smoke() -> void:
 		pm.initial_velocity_min = 0.4
 		pm.initial_velocity_max = 0.7
 		# Big soft puffs, overlapping into one plume rather than a string of beads.
-		pm.scale_min = 1.6
-		pm.scale_max = 2.8
-		_smoke_fx.amount = 60
-		_smoke_fx.lifetime = 6.0
+		pm.scale_min = 0.9
+		pm.scale_max = 1.7
+		_smoke_fx.amount = 48
+		_smoke_fx.lifetime = 5.0
 
 # The fire inside and its smoke: the windows' glow and the light they throw flicker like
 # an open fire with an oil lamp; the smoke thickens once the fire's built up at night and

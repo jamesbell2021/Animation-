@@ -38,15 +38,23 @@ static func soft_puff() -> QuadMesh:
 	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
 	var noise := FastNoiseLite.new()
 	noise.seed = 11
-	noise.frequency = 0.09
-	noise.fractal_octaves = 3
+	noise.frequency = 0.07
+	noise.fractal_octaves = 4
+	var warp := FastNoiseLite.new()
+	warp.seed = 5
+	warp.frequency = 0.05
 	for y in n:
 		for x in n:
-			var d := Vector2(x - n * 0.5 + 0.5, y - n * 0.5 + 0.5).length() / (n * 0.5)
+			# Wisps, not a disc: the edge is pushed about by a second noise, the
+			# middle is thin, and only the ragged patches in between are dense.
+			var px := float(x) + warp.get_noise_2d(x, y) * 9.0
+			var py := float(y) + warp.get_noise_2d(y + 31.0, x) * 9.0
+			var d := Vector2(px - n * 0.5 + 0.5, py - n * 0.5 + 0.5).length() / (n * 0.5)
 			var a := clampf(1.0 - d, 0.0, 1.0)
 			a = a * a * (3.0 - 2.0 * a)
-			a *= clampf(0.55 + 0.6 * noise.get_noise_2d(x, y), 0.0, 1.0)
-			img.set_pixel(x, y, Color(1.0, 1.0, 1.0, a))
+			var w := clampf(0.5 + 0.9 * noise.get_noise_2d(px, py), 0.0, 1.0)
+			a *= w * w
+			img.set_pixel(x, y, Color(1.0, 1.0, 1.0, clampf(a * 1.1, 0.0, 1.0)))
 	_soft_tex = ImageTexture.create_from_image(img)
 	var m := StandardMaterial3D.new()
 	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
@@ -240,7 +248,7 @@ static func sparks(parent: Node, at: Vector3) -> void:
 ## Continuous chimney smoke.
 static func chimney_smoke(parent: Node, at: Vector3) -> GPUParticles3D:
 	_meshes()
-	return smoke(parent, at, Color(0.62, 0.62, 0.64, 0.9), 24, 4.5, Vector3(0.3, 1.0, 0.1).normalized(), 12.0, 0.4, 0.8, 0.15, 0.6, 1.0)
+	return smoke(parent, at, Color(0.66, 0.66, 0.68, 0.38), 24, 4.5, Vector3(0.3, 1.0, 0.1).normalized(), 12.0, 0.4, 0.8, 0.15, 0.6, 1.0)
 
 ## Spray thrown up where swell hits the rocks.
 static func sea_spray(parent: Node, at: Vector3) -> void:
