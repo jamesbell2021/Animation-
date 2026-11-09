@@ -102,7 +102,8 @@ func pages() -> Array:
 		]],
 		["Together", "Keepers together", [
 			"There are always three keepers. Any nobody plays are the computer's helpers: one keeps the light, one the camp.",
-			"Up to three can play on one screen (the screen splits when you're apart), or each on their own machine over the LAN.",
+			"Up to three can play on one screen (the screen splits when you're apart), or each on their own machine over the LAN. A friend can join a game under way, by day: Insert for the arrow keys, or A on a second gamepad.",
+			"F12 saves a snapshot of the moment to feedback.txt (in the game's user folder): press it when something feels wrong, and say what you were doing.",
 			"Pick how hard the sea is on the title screen. A calm sea never runs you out of ammunition.",
 		]],
 	]

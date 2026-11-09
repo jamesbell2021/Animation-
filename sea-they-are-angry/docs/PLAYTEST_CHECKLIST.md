@@ -54,6 +54,29 @@ Start from the title screen with **New Run**. One keeper is enough for most of i
 - [ ] **Angry:** the game as it's meant. Does it get harder at the right rate?
 - [ ] **Raging:** hard but fair?
 
+## Added since v0.1.0 (v0.1.1 to v0.1.4)
+
+Everything here has passed the tests but not a person.
+
+- [ ] **The music.** Does the title's air, the day's piece, the night's, and the last night's reel fit what's happening? Too loud, too long, too repetitive? Does the sound level in Settings reach the music?
+- [ ] **The HUD.** The night card top left, the keepers' cards bottom left, the store top right, the weapon bar along the bottom. Can you read it all at a glance, in a storm and at night? Does anything get in the way of the play?
+- [ ] **The camera, playing alone:** hold the middle mouse button and drag, or Z and C, to turn it; the wheel or = and - to zoom; X to put it back. Does the turn feel right? Does it come in close enough, and not too close? Do W, A, S, D follow the camera however it's turned?
+- [ ] **The weapon bar and 1 to 5.** Does the number take the weapon up? What does it say when you press the number for one you don't have yet?
+- [ ] **Walk into the cottage, the shed and the huts.** Does the roof lift only when you're clearly inside, and not flicker at the door? Is the room worth seeing? With two people playing, does the keeper's outline show through the roof?
+- [ ] **A jump (Space), and walking into a fence to climb it.** Can you get back up from the beach? Does the climb feel like a move, or like a glitch?
+- [ ] **The outline.** Standing behind the lighthouse or a tower, can you still see where your keeper is?
+- [ ] **Hits.** The screen shake, the pause on a heavy blow, the pale flash on a creature, the numbers floating up. Too much, too little? Try Settings, Comfort and access, and turn each down.
+- [ ] **The arrows at the edge of the screen** pointing at creatures you can't see: do they help, and do they tell you the right thing about a raid on the camp?
+- [ ] **Salvage.** Creatures leave bio, scrap or kelp where they fall. Do you pick it up in time? Does the sea taking what's left at dusk feel fair?
+- [ ] **Gull Rock.** Row out by day, take the eggs, row back before dark. Do the keeper's hands stay on the oars? Do the gulls go at night and in a storm?
+- [ ] **The wind turbine** on the holm and the lights round the camp: do they go out when it's wrecked? Does the turbine turn faster in a squall?
+- [ ] **Kelp broth** at the cottage, and the camp's cheaper mends: is there ever too little scrap, or too much kelp?
+- [ ] **Join a game under way** (by day): press Insert for the arrow keys' keeper, or A on a second pad. Does it seat the newcomer sensibly, and does the screen split when you're apart?
+- [ ] **The end of a run:** the summary of the night and what came, and Try again / Back to the title.
+- [ ] **Comfort and access:** Reduce flashing (a steady lamp and a soft lightning glow), the other keeper colours, the interface size 125% and 150%, and the shake Off, Low and Full. Do they all hold up on every screen?
+- [ ] **F12** saves a snapshot to `feedback.txt` and says so. Use it the moment something feels off, and say what you were doing when you report.
+- [ ] **The local play log** (Settings, Comfort and access, or start with `--telemetry`): after a run, is `telemetry.jsonl` filled in? See `docs/TELEMETRY.md` for where.
+
 ## Co-op and the LAN
 
 - [ ] **Two keepers on one screen** with a pad: the split screen, reviving a downed keeper, sharing the shed.

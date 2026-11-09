@@ -1,4 +1,4 @@
-# Sea They Are Angry: v0.1.3 (and v0.1.1, v0.1.2), polish
+# Sea They Are Angry: v0.1.4 (and v0.1.1 to v0.1.3), polish
 
 A round of polish on v0.1.0 (Chapter One), from a look at the game frame by frame as a player sees it.
 
@@ -27,6 +27,16 @@ A round of polish on v0.1.0 (Chapter One), from a look at the game frame by fram
 - **The computer's keepers:**
   - **Salvage:** they pick up what creatures leave lying on their island before the sea takes it back.
   - **Food:** they boil eggs or a broth when the store is out of food.
+
+## Comfort and access (v0.1.4)
+
+- **Settings, Comfort and access:** screen shake Off, Low or Full; the pause on a heavy blow; damage numbers; **Reduce flashing** (a steady lamp, a soft lightning glow, a steady red edge, no hit flashes); a keeper palette that's easier to tell apart (amber, blue, white, green); the interface at 100%, 125% or 150%; and a local play log (see below).
+- **Damage numbers** float up off what you hit, and red ones off a keeper who is hit, who flashes red.
+- **A morning card:** "Night N to come" and how the sea feels.
+- **Join a game under way:** by day, press Insert (the arrow keys' keeper) or A on a second gamepad, and the computer's keeper becomes yours.
+- **Hands on the oars:** a rower's hands stay on the handles through the whole stroke.
+- **Easier to see:** the chimney smoke is wispier, and your keeper shows as an outline through the lighthouse or a tower, not only in co-op.
+- **For playtests:** F12 saves a snapshot of the moment to `feedback.txt`, and an optional play log writes `telemetry.jsonl`, both in the game's user folder; nothing is sent anywhere. See `docs/PLAYTEST.md` and `docs/TELEMETRY.md`.
 
 ## Better to look at
 

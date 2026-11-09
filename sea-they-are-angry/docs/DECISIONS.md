@@ -858,3 +858,14 @@ The missing pieces of plan 2 (`docs/prompts/02_first_release_phases_A-G.md`), af
   - **A bigger shed:** 3.2 × 2.6 m with 2.3 m walls and the roof raised, on a pad widened to 2.1 m (the ground there is flat to that). The crates and barrels beside it move out.
 - **Test:** slice_interior covers the beaches, the jump and the indoors.
 
+## 2026-11-09: the leftovers: balance file, joining, comfort options, playtest tools; v0.1.4
+
+The owner asked for everything fixable in the repo review to be done. What was done, and what was left on purpose:
+
+- **Smoke:** chimney, stove and fire smoke are thinner, smaller and raggedier (`FX.soft_puff`): it read as white discs when the wind carried it. **Outline alone:** a person's keeper now shows through whatever hides them playing alone too (the lighthouse, a tower); inside a room the roof lifts instead.
+- **Rowing:** `CharacterRig.reach` is a two-bone arm IK (over the clips and layers); the boat marks a grip on each oar and the rower's arms follow them, within 5 cm through the stroke.
+- **The bridge stall** could not be reproduced (24 more walks, none stalled); noted in HANDOFF.
+- **`Balance`** (`autoload/balance.gd`, a class, not a registered autoload: constants in other scripts' `const` lines can read it) holds the day's lengths, the lamp, creature hp and speed, drops, the three seas, a keeper's speed and health, mends and prices. The values are the ones the code had; `docs/BALANCING.md` lists them and the night tables. The upgrade prices, the night tables and the weather stay where they are. **Joining under way:** `Players.join`, by day or dawn, Insert or A on a pad keeper one isn't using (`InputSetup.main_pad`). **`tests/smoke.gd`:** a lone, still keeper at 20x. **`docs/ASSET_LIST.md`** is generated.
+- **Comfort and access** (plan 3 phases I and J): the options listed in the v0.1.4 notes; `Settings.shake` is still readable as a bool. Rebinding stays keeper one only (plan 3 asked for every player; local co-op's keys are fixed and a pad's layout is fixed). **`Strings`** (`scenes/util/strings.gd`) carries the title, pause, game-over and settings text, not the game's long text. **`Telemetry`** and F12 (phase K), and the export scripts, `LICENSE` (the code MIT, assets reserved, 3BL_Indie, as the plan said: the owner should confirm), the third-party table in `CREDITS.md` and `docs/ITCH_PAGE.md` (phase L). Dawn dissolve (phase I) is not done: survivors already walk back into the sea.
+- **Not done, deliberately:** the roadmap (`docs/prompts/04_after_v0.2_roadmap.md`): it says to wait for playtests. **Chapter Two** is a separate piece of work.
+

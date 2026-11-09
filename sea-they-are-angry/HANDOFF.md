@@ -1,23 +1,25 @@
 # Handoff: Sea They Are Angry
 
-**v0.1.3 (Chapter One, polished) is the current build** (`docs/RELEASE_NOTES_v0.1.3.md`; v0.1.0's notes are `docs/RELEASE_NOTES_v0.1.0.md`). Tags can't be pushed from the cloud session: make `sea-v0.1.3`, or a release, on GitHub's Releases page. `tools/tour.gd` renders a computer-played run frame by frame for reviewing how it looks. Read this first, then `docs/DECISIONS.md` and `git log`. Written 2026-10-19 at the end of a cloud session; brought up to date 2026-10-26.
+**v0.1.4 (Chapter One, polished) is the current build** (`docs/RELEASE_NOTES_v0.1.4.md`; the first release's notes are `docs/RELEASE_NOTES_v0.1.0.md`). The cloud session can't push tags: make `sea-v0.1.4`, or a release, on GitHub's Releases page. Read this first, then `docs/DESIGN.md` (the game as it is), `docs/DECISIONS.md` (why, newest last) and `git log`. Brought up to date 2026-11-09.
 
 ## Where things stand
 
-| Plan | File | State |
-|---|---|---|
-| 1. Vertical slice | `docs/prompts/01_vertical_slice.md` | Done, tested, pushed |
-| 2. First release, phases A to G | `docs/prompts/02_first_release_phases_A-G.md` | **Next: start at Phase A** |
-| 3. Phases H to L | `docs/prompts/03_phases_H-L.md` | After v0.1.0 |
-| 4. Roadmap after v0.2.0 | `docs/prompts/04_after_v0.2_roadmap.md` | Ideas for after playtests |
+Chapter One is built, tested and released. What the plans (`docs/prompts/`) asked for, and where each stands:
+
+| Plan | State |
+|---|---|
+| 1. Vertical slice (`01_vertical_slice.md`) | Done |
+| 2. First release, phases A to G (`02_first_release_phases_A-G.md`) | Done, with differences listed in `docs/DESIGN.md` and `docs/ARCHITECTURE.md`. Built: the creatures (plus a fifth), garden, cottage, traps, upgrades, flares, co-op (with joining a game under way), pause and options, fog, sound, the F10 overlay, `Balance` (`autoload/balance.gd`), `tests/smoke.gd`, the asset list, the Windows export. Not built as planned: `Loot` (drops go through `Enemy.salvage()`), `Targeting`, `Assets` (the models load directly), and the plan's appendix numbers (the code's are newer). |
+| 3. Phases H to L (`03_phases_H-L.md`) | Done: the design docs (`docs/DESIGN.md`, `ENEMIES.md`, `ARCHITECTURE.md`, `BALANCING.md`), game feel (shake, hit-stop, hit flash, damage numbers, the morning card), accessibility (shake levels, steady lights, a second keeper palette, interface size; rebinding is keeper one only), the strings table (the menus only), the local play log, F12, the playtest script, the export scripts, `LICENSE`, `CREDITS.md`, `docs/ITCH_PAGE.md`. |
+| 4. Roadmap (`04_after_v0.2_roadmap.md`) | **Not started, on purpose.** It says to do these after playtests: the daily rock, unlockable keepers, run modifiers, special nights, dawn wrecks, lamp mastery. Build none of them until a person has played v0.1.4 and the six checks (`docs/BALANCING.md`) say what's wrong. |
+
+**What is next:** the owner plays it (`docs/PLAYTEST_CHECKLIST.md`, and `docs/PLAYTEST.md` for watching someone else). Then Chapter Two, The Harbour, which the ending of Chapter One sets up (`scenes/ui/chapter_end.gd`) and nothing builds yet. The things only a person can judge: the music, the shake and the hit pause, the jump and the fence climb, when the roof lifts, the free camera, and the Windows build, which has never been run on Windows.
 
 The work lives on branch `claude/windows-build-omarchy-d2b94k` of `jamesbell2021/Animation-`, in the `sea-they-are-angry/` folder. The repo also holds other projects (`neon-mega-tank/`, `animation-principles/`); leave them alone.
 
-Since 2026-10-19 the owner asked for, and got, a great deal that plan 2 places later or doesn't have (each has its section in DECISIONS): the holm and its old camp across a rope bridge, with a generator, searchlights, hunger and warmth, crops, research and raids; the shed's weapons; three difficulty levels; LAN play; the holm reshaped and the camp textured; an ending, the relief boat at the end of Chapter One; the first days' jobs; a settings screen; helpers that use the shed's weapons; a Windows build; Gull Rock, a third islet reached by rowing boat, with gull eggs and gulls everywhere by day; and a 1980s wind turbine on the holm that runs strings of lights round the camp. Before more building, the owner should play it: `docs/PLAYTEST_CHECKLIST.md` is a list of what to try and look out for.
+`tools/tour.gd` renders a computer-played run frame by frame, with the HUD, for reviewing how it looks; `tools/screenshot.gd` takes a still; `tools/playtest.gd` plays nights with a bot for balance; `tools/make_asset_list.py` rewrites `docs/ASSET_LIST.md`.
 
-To start the next session, open Claude Code in `sea-they-are-angry/` and say:
-
-> Follow docs/prompts/02_first_release_phases_A-G.md from Phase A. Read HANDOFF.md, docs/DECISIONS.md and git log first.
+To start the next session, open Claude Code in `sea-they-are-angry/` and say what you want; `docs/DESIGN.md` and this file are the map.
 
 ## How to verify
 
@@ -46,12 +48,17 @@ godot --headless --path sea-they-are-angry --script res://tests/slice_turbine.gd
 godot --headless --path sea-they-are-angry --script res://tests/slice_music.gd
 godot --headless --path sea-they-are-angry --script res://tests/slice_hud.gd
 godot --headless --path sea-they-are-angry --script res://tests/slice_salvage.gd
+godot --headless --path sea-they-are-angry --script res://tests/slice_camera.gd
+godot --headless --path sea-they-are-angry --script res://tests/slice_interior.gd
+godot --headless --path sea-they-are-angry --script res://tests/slice_join.gd
+godot --headless --path sea-they-are-angry --script res://tests/slice_access.gd
+godot --headless --path sea-they-are-angry --script res://tests/smoke.gd    # a whole run at 20x, about half a minute
 GODOT=godot sea-they-are-angry/tests/run_lan.sh   # the LAN test: a host and a client, two processes
 ```
 
-On Windows use `Godot_v4.3-stable_win64_console.exe` in place of `godot`. All twenty-one tests and the LAN test ended in PASS on Godot 4.3 stable (2026-10-26). The holm, survival, research and camp-raid tests reach the camp's classes only through the scene, never by name: `--script` compiles whatever a test names before the autoloads exist, and that left a camp script unusable. The older seven turn the helper keepers off (`Players.helpers = false`) because they script every keeper themselves; `slice_holm.gd` covers the holm, the bridge, the split screen and the helpers. Run them one at a time: they share `user://run.json`. For balance, `tools/playtest.gd` plays several nights with a bot and prints a line per night (see README). `slice_behaviour.gd` covers every item of the slice's verify list, from W moving up-screen to New Run restarting at night 1.
+On Windows use `Godot_v4.3-stable_win64_console.exe` in place of `godot`. All twenty-five tests, the smoke test and the LAN test ended in PASS on Godot 4.3 stable (2026-11-09). The holm, survival, research and camp-raid tests reach the camp's classes only through the scene, never by name: `--script` compiles whatever a test names before the autoloads exist, and that left a camp script unusable. The older seven turn the helper keepers off (`Players.helpers = false`) because they script every keeper themselves; `slice_holm.gd` covers the holm, the bridge, the split screen and the helpers. Run them one at a time: they share `user://run.json`. For balance, `tools/playtest.gd` plays several nights with a bot and prints a line per night (see README). `slice_behaviour.gd` covers every item of the slice's verify list, from W moving up-screen to New Run restarting at night 1.
 
-One intermittent failure to know about: in one of seven full runs on 2026-11-01, `slice_holm.gd`'s keeper stalled at the holm end of the rope bridge (x 28.07) instead of walking on to the camp gate. It didn't happen in six re-runs, nor in eight walks under different winds. If it happens in play, a keeper may catch on the seam where the bridge's deck meets the holm's clifftop. The test walks a dead-straight line, which a person wouldn't.
+One intermittent failure to know about: in one of seven full runs on 2026-11-01, `slice_holm.gd`'s keeper stalled at the holm end of the rope bridge (x 28.07) instead of walking on to the camp gate. It didn't happen in six re-runs, in eight walks under different winds, or in 24 more walks from different starting offsets and moments of the bridge's sway (2026-11-09). If it happens in play, a keeper may catch on the seam where the bridge's deck meets the holm's clifftop (the deck's collision is a concave surface rebuilt every physics step in `rope_bridge.gd`).
 
 Two kinds of console noise are expected and harmless:
 
@@ -60,7 +67,11 @@ Two kinds of console noise are expected and harmless:
 
 `slice_night.gd` overwrites `user://run.json`, so do not run it on a machine with a save you care about.
 
-## Things Phase A must reconcile
+## Notes from reconciling the plans (kept for reference)
+
+These were written to guide plan 2's Phase A and are mostly done; `docs/DESIGN.md` and `docs/ARCHITECTURE.md` are the current word. Where one still bites (the fences' gap, the lamp's cone, enemy order of `speed_mult`), it is worth reading.
+
+## Things Phase A had to reconcile
 
 - **Parts of later phases already exist:** 3-player co-op and a simplified downed/revive (Phase D), the title and pause menus (Phase E), synthesised sound with `.ogg` overrides (Phase F), particle effects (Phase I) and the cottage, shed and garden buildings (Phase C). Extend these rather than rebuilding them; DECISIONS lists exactly what each covers and what is missing.
 - **Phase B's creatures already exist** (owner's request): Squid, Crab and Eel, adapted to the crag island, plus a fifth, the Smotherer, from the roadmap's "something that climbs the lighthouse" idea (see DECISIONS). So do the hammer and oil-can repairs, homestead raids and damage, the `Shed` structure, and the lamp-room door. See DECISIONS, "The other creatures…", for every number and where it departs from plan 2. Phase B now means moving their numbers into `Balance`, adding drops through Phase A's `Loot` (they currently add straight to `Stock`), and reconciling the Eel's head position and the Squid's tell.

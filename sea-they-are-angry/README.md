@@ -1,6 +1,6 @@
 # Sea They Are Angry
 
-**Version 0.1.3: Chapter One, polished.** See [docs/RELEASE_NOTES_v0.1.3.md](docs/RELEASE_NOTES_v0.1.3.md) and, for Chapter One itself, [docs/RELEASE_NOTES_v0.1.0.md](docs/RELEASE_NOTES_v0.1.0.md).
+**Version 0.1.4: Chapter One, polished.** See [docs/RELEASE_NOTES_v0.1.4.md](docs/RELEASE_NOTES_v0.1.4.md) and, for Chapter One itself, [docs/RELEASE_NOTES_v0.1.0.md](docs/RELEASE_NOTES_v0.1.0.md).
 
 A lighthouse keeper on a tiny North Sea rock, late 1980s. By day you gather driftwood, scrap, kelp and bioluminescent matter from the shoreline, mend the fences, plant the garden, set traps and refuel the lamp. At dusk the fog and the storm roll in. At night things walk up out of the water toward the light. The lamp's beam slows them; your boathook does the rest. If the lamp goes dark, the run is over. Hold it until the relief boat comes (10 nights on the normal sea, 8 on a calm one, 12 on a raging one) and the keepers sail away: the end of Chapter One. Or stay on the rock for endless nights.
 
@@ -58,7 +58,7 @@ Or Play on the LAN: one keeper to a machine, each on a screen of its own (host f
 
 Playing alone, or on the LAN, a gamepad works for keeper one too, with the layout in the gamepad column; the right stick aims until the mouse moves again. In local co-op the pads belong to keepers two and three.
 
-**Settings** (title screen, or the pause menu): the volume, music and sounds; full screen or a window and its size; the graphics (Low, Medium or High, and a render scale below 100% for slower machines); and keeper one's keys, which can be changed to any key or mouse button (two controls can't share one: they swap). They're kept in `user://settings.cfg`. The game's hints name the keys as they're set, or the pad's buttons when someone's on one.
+**Settings** (title screen, or the pause menu): the volume, music and sounds; full screen or a window and its size; the graphics (Low, Medium or High, and a render scale below 100% for slower machines); the interface size; the comfort options (screen shake Off, Low or Full, the pause on a heavy blow, damage numbers, reduced flashing, an easier-to-tell-apart keeper palette, and an optional local play log); and keeper one's keys, which can be changed to any key or mouse button (two controls can't share one: they swap). They're kept in `user://settings.cfg`. The game's hints name the keys as they're set, or the pad's buttons when someone's on one.
 
 The camera frames whichever island you're on and follows you across the bridge. When the people playing are on different islands, the screen splits (Baldur's Gate style) along a line square to the way between them, and joins up again when they come back together. Helper keepers get no view of their own.
 
