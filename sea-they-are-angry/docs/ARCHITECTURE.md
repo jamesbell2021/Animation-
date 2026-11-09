@@ -1,6 +1,6 @@
 # Architecture
 
-Written from the code (v0.1.3, Godot 4.3, GDScript, Forward Plus). Everything in the world, the HUD and the menus is built in code; the only scene file is `scenes/main.tscn`, which holds a node with `scenes/main.gd`. Where this file and `docs/DECISIONS.md` disagree, the code is right. Plan files in `docs/prompts/` describe things that were never built (see "Where the plans and the code differ" at the end).
+Written from the code (v0.1.3, with v0.1.4's additions noted, Godot 4.3, GDScript, Forward Plus). Everything in the world, the HUD and the menus is built in code; the only scene file is `scenes/main.tscn`, which holds a node with `scenes/main.gd`. Where this file and `docs/DECISIONS.md` disagree, the code is right. Plan files in `docs/prompts/` describe things that were never built (see "Where the plans and the code differ" at the end).
 
 ## Autoloads
 
@@ -20,6 +20,7 @@ Order is as in `project.godot` `[autoload]`. `Settings._ready` reads the default
 | Players | `autoload/players.gd` | Local keepers. `MAX = 3`, `wanted`, `helpers` (fill empty places with computer keepers), `devices`, `nodes`. `configure(n)` picks P2/P3 devices (a free pad, else the arrow keys), `bind_device(idx, device)`, static `action(idx, name)` ("p1_attack"), `count()`, `humans()` (people, at least 1: what creature counts scale with), `alive_count()`, `all_down()`, `device_label(idx)`. Names `Callum, Hamish, Mairi, Ewan`; only the first three can be in a run. |
 | Net | `autoload/net.gd` | LAN host/client (see "LAN"). |
 | Settings | `autoload/settings.gd` | `user://settings.cfg`: volumes (Master, Music, SFX), fullscreen, window size, graphics quality (Low/Medium/High), render scale, camera shake, keeper one's rebinds. Signal `changed`. `use_world(env, sun)` receives main's Environment, `key_name(action)` and `keys_in(text, idx)` rewrite "[E]" hints to the keys in use or the pad's buttons, `rebind`, `reset_controls`, `apply_*`. |
+| Telemetry | `autoload/telemetry.gd` | The optional local play log (`user://telemetry.jsonl`: run start, each night at dawn, upgrades, dirty fuel, run end; off unless `Settings.telemetry` or `--telemetry`) and the F12 snapshot to `user://feedback.txt`. Format in `docs/TELEMETRY.md`. |
 | Feel | `autoload/feel.gd` | Camera trauma shake (decay 1.7/s, offset is trauma squared, max 0.55 m lens shift) and hit-stop (`Engine.time_scale` x0.04). `shake(amount, at)` fades with distance to the nearest person's keeper (6 m full, 26 m none); `hitstop(s)`; `blow(killed, heavy)`. Both are off headless (tests stay frame-exact) and hit-stop is off on a LAN. |
 
 ## Scene and class map
@@ -107,8 +108,8 @@ Each prints `PASS`/`FAIL` lines and a `RESULT` line. Most `quit(1)` on failure; 
 
 ## Where the plans and the code differ
 
-- `docs/prompts/02_first_release_phases_A-G.md` asks for `Balance`, `Loot`, `Targeting`, `Strings`, `Accessibility` autoloads and classes. None exist: numbers are constants in each class, creatures drop through `Enemy.salvage()` and `Salvage`, and `HANDOFF.md`/README still call Phase A next.
+- `docs/prompts/02_first_release_phases_A-G.md` asks for `Balance`, `Loot`, `Targeting`, `Strings`, `Accessibility` autoloads and classes. As of v0.1.4: `Balance` (`autoload/balance.gd`, a class the scripts' constants read, with the numbers a designer tunes; see `docs/BALANCING.md`) and `Strings` (`scenes/util/strings.gd`, the menus' text) exist; accessibility is in `Settings`. `Loot` and `Targeting` do not: creatures drop through `Enemy.salvage()` and `Salvage`, and each creature picks its own target.
 - The plan's appendix numbers are older than the code: it has Day 120, Dusk 30, Dawn 60 s (code 60, 15, 30), lamp burn 0.5 and 1.5 per second (code 0.35 and 1.0), ranges 20 and 18 m (code 26 and 29), a clean refuel of 25 (code 40 per bio), a first wave at t = 0.10 (code 0.06), a bleed-out timer and a solo self-revive (neither exists), and Anger bands with fog and Squid-from-two-points effects (code uses Anger only for extra creatures, the storm chance, the Eel a night early, and the HUD's mood line).
-- `docs/prompts/03_phases_H-L.md` Phase H is this documentation. Phases I and J (game feel, accessibility) are only partly built: hit flash, hit-stop, shake with an off switch and key rebinding exist; damage numbers, colourblind palette, UI scale and the shake levels do not.
+- `docs/prompts/03_phases_H-L.md`: Phase H is this documentation. As of v0.1.4 phases I to L are built except the dawn dissolve of survivors and per-player rebinding (keeper one's keys can be changed; local co-op's keys and the pads' layout are fixed).
 - `docs/NEXT_MILESTONE.md` numbers for the creatures are compared in `docs/ENEMIES.md`.
-- `README.md`'s control table says Sprint is Space; the code binds Sprint to Shift and Jump to Space (`autoload/input_setup.gd`).
+- (Fixed in v0.1.4: the README's control table now says Sprint is Shift and Jump is Space, and Settings names the arrow-key player's Use key as M.)

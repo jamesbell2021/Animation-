@@ -106,7 +106,7 @@ Keepers face the way they walk and turn to their aim to swing. Each carries a pa
 - Characters modelled, rigged, textured and animated in Blender by scripts (`art/source/characters/build_characters.py`, `animate.py`): IK-solved walks, runs and sprints with planted feet, tool work, ladder climbs and creature gaits. Hard hits knock keepers and creatures down as ragdolls, and they get back up with real get-up animations from where they fall.
 - Keeper movement, mouse aim, boathook attack. A blow aimed outward on the ledge knocks a creature over the edge. Keepers have their own ladders down the crag.
 - The lamp: fuel, wide and focused beams (the focused one reaches the beaches), auto-sweep when nobody operates it, Burning to Guttering to Dark.
-- Seven scavenge points on the beaches that refill at dawn (an eighth with three keepers), five fences at the chokepoints (beach heads and the ledge), repair, refuel.
+- Eight scavenge points on the main island's beaches and four on the holm's that refill at dawn (a ninth on the main island with three keepers), five fences at the chokepoints (beach heads and the ledge), repair, refuel.
 - The keepers' economy:
   - **Garden:** dig kelp into the potato beds by day; they are ready at dawn.
   - **Cottage:** go in to eat (full heal and more max health), load flares, mix oil into dirty fuel, and buy upgrades for the lighthouse, the defences and the garden.

@@ -1,6 +1,6 @@
 # Enemies
 
-Read from `scenes/enemies/*.gd`, `scenes/systems/spawner.gd`, `scenes/systems/difficulty.gd`, `scenes/systems/lamp.gd` and `scenes/player/arsenal.gd` (v0.1.3). Numbers are the code's. Damage to a keeper is multiplied by `Difficulty.keeper_damage()` (0.6 calm, 1.0 angry, 1.3 raging) in `Player.take_damage`; a blow of 25 or more after that floors the keeper (`FLOOR_FROM`), 12 or more makes them stagger (`FLINCH_BELOW`). Structure damage is not scaled.
+Read from `scenes/enemies/*.gd`, `scenes/systems/spawner.gd`, `scenes/systems/difficulty.gd`, `scenes/systems/lamp.gd` and `scenes/player/arsenal.gd` (v0.1.4). Numbers are the code's. Damage to a keeper is multiplied by `Difficulty.keeper_damage()` (0.6 calm, 1.0 angry, 1.3 raging) in `Player.take_damage`; a blow of 25 or more after that floors the keeper (`FLOOR_FROM`), 12 or more makes them stagger (`FLINCH_BELOW`). Structure damage is not scaled.
 
 ## The five creatures
 
