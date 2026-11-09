@@ -131,6 +131,8 @@ func pick_target() -> Node3D:
 	if _grudge != null and is_instance_valid(_grudge) and _grudge_t > 0.0 and not _grudge.downed and not _grudge.is_inside() \
 			and Enemy.same_island(global_position, _grudge.global_position):
 		return _grudge
+	if _goal_standing():
+		return raid_goal
 	if camp_raid:
 		return Enemy.nearest_camp(global_position)
 	var home := Enemy.nearest_home(global_position)

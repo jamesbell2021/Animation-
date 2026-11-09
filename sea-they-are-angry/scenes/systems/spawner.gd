@@ -57,6 +57,17 @@ signal holm_warning(kind: String, points: Array)
 var points: Array[Vector3] = []
 ## Landing points on the holm's beaches (two to a beach), for the camp's raiders.
 var holm_points: Array[Vector3] = []
+## Chapter Two: its nights start further down the table than the rock's did.
+var table_shift := 0
+## Optional: choose the landing for a group (returns an index into `points`, or -1 to
+## leave it to chance), and scale a group by where it lands (the harbour: a lit landing
+## lets fewer through).
+var pick_point: Callable
+var count_scale: Callable
+## Whether a Bloated group may raid (the harbour: every other group from the first night).
+var raid_from := RAID_FROM_NIGHT
+## Called with each creature as it's made, before it enters the tree: (enemy, kind, raid).
+var on_spawn: Callable
 var enemies_root: Node
 var lighthouse: Node3D
 
@@ -80,6 +91,7 @@ static func eel_night(n: int, keepers: int, anger: int) -> bool:
 	return m >= first and (m - first) % 3 == 0
 
 func night_table(n: int) -> Array[Dictionary]:
+	n += table_shift
 	var rows: Array = NIGHT_TABLES.get(mini(n, 8), NIGHT_TABLES[8])
 	if n >= 9:
 		rows = NIGHT_TABLES[7]
@@ -91,7 +103,7 @@ func night_table(n: int) -> Array[Dictionary]:
 	for row in rows:
 		out.append({"t": float(row[0]), "kind": String(row[1]), "count": int(row[2]) + extra, "opp": row.size() > 3, "point": -1})
 	# The last night before the relief boat: the sea throws everything it has.
-	if not Run.endless and n == Rescue.night():
+	if not Run.endless and n - table_shift == Rescue.night():
 		for e in out:
 			e["count"] = maxi(int(e["count"]) + 1, roundi(float(e["count"]) * Rescue.LAST_NIGHT_SURGE))
 	# Every so many of the groups that can, to the holm (counted in order through the night).
@@ -102,7 +114,8 @@ func night_table(n: int) -> Array[Dictionary]:
 		if n >= HOLM_FROM_NIGHT and HOLM_KINDS.has(e["kind"]):
 			k += 1
 			e["holm"] = k % every == 0
-	if eel_night(n, Players.humans(), Anger.value):
+	# The Eel keeps to the open sea round the rock: it never comes into the harbour.
+	if Terrain.chapter != 2 and eel_night(n, Players.humans(), Anger.value):
 		out.append({"t": EEL_AT, "kind": "E", "count": 1, "opp": false, "point": -1, "holm": false})
 	return out
 
@@ -140,6 +153,8 @@ func _queue_group(entry: Dictionary) -> void:
 		_queue_holm(entry)
 		return
 	var idx: int = entry["point"]
+	if (idx < 0 or idx >= points.size()) and pick_point.is_valid():
+		idx = int(pick_point.call(entry))
 	if idx < 0 or idx >= points.size():
 		idx = randi() % points.size()
 		# "opp": a beach other than the night's first group's (points come in pairs, one pair per beach).
@@ -154,10 +169,12 @@ func _queue_group(entry: Dictionary) -> void:
 	var count := group_size(int(entry["count"]))
 	if eel_active():
 		count = maxi(1, roundi(count * EEL_RATE))
+	if count_scale.is_valid():
+		count = maxi(1, roundi(float(count) * float(count_scale.call(points[idx]))))
 	var raid := false
 	if kind == "B":
 		_bloated_groups += 1
-		raid = Run.night >= RAID_FROM_NIGHT and _bloated_groups % 2 == 0 and Enemy.nearest_home(Vector3.ZERO) != null
+		raid = Run.night >= raid_from and _bloated_groups % 2 == 0 and Enemy.nearest_home(Vector3.ZERO) != null
 	var landings: Array = [points[idx]]
 	if kind == "B" and not raid and Run.night >= SPLIT_FROM_NIGHT and count >= SPLIT_MIN and points.size() > 2:
 		# A second landing at a different beach.
@@ -253,6 +270,8 @@ func _spawn_one(at: Vector3, kind: String = "B", raid: bool = false, camp: bool 
 			e = b
 	e.lighthouse = lighthouse
 	e.camp_raid = camp
+	if on_spawn.is_valid():
+		on_spawn.call(e, kind, raid)
 	var jitter := Vector3(randf_range(-JITTER, JITTER), 0.0, randf_range(-JITTER, JITTER))
 	e.position = Vector3(at.x, SPAWN_Y, at.z) + jitter
 	enemies_root.add_child(e)

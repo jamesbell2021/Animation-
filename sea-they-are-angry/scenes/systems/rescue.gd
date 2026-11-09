@@ -8,12 +8,16 @@ extends RefCounted
 ## A run kept on past it (Run.endless) has no boat.
 
 const NIGHTS := [8, 10, 12]
+## Chapter Two: the nights Kirkhaven has to be held (by the sea's mood).
+const HARBOUR_NIGHTS := [4, 5, 6]
 const WIRELESS_SOONER := 2
 ## The last night's landings are this much bigger.
 const LAST_NIGHT_SURGE := 1.3
 
 ## The night after whose dawn the boat comes.
 static func night() -> int:
+	if Run.chapter == 2:
+		return HARBOUR_NIGHTS[Difficulty.level()]
 	var n: int = NIGHTS[Difficulty.level()]
 	if Research.has("wireless"):
 		n -= WIRELESS_SOONER
@@ -33,6 +37,10 @@ static func countdown() -> String:
 	if Run.endless:
 		return ""
 	var n := nights_left()
+	if Run.chapter == 2:
+		if n <= 0:
+			return "the town is held"
+		return "the last night" if n == 1 else "%d nights to hold" % n
 	if n <= 0:
 		return "the boat is here"
 	if n == 1:

@@ -18,7 +18,7 @@ const DENSITY := [0.0, 0.75, 0.95, 0.35]
 const TONGUE_TIME := 14.0
 const TONGUE_REACH := 10.0
 const MAX_TONGUES := 4
-const MAX_HOLES := 12
+const MAX_HOLES := 16
 
 var density := 0.0
 var gap := 70.0

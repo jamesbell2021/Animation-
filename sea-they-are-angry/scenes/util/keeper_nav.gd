@@ -32,6 +32,10 @@ static func add_ladder(top: Vector3, bottom: Vector3, down_time: float, up_time:
 
 ## Where a keeper stands to go in at the lighthouse door.
 static func door_point() -> Vector3:
+	if Terrain.chapter == 2:
+		# The harbour light's door faces the pier's end.
+		var l := HarbourMap.LIGHT_AT
+		return Vector3(l.x, HarbourMap.QUAY_H, l.y + YARD_R)
 	_ensure()
 	return _nodes[_door]
 
@@ -227,6 +231,12 @@ static func _nearest(p: Vector3) -> int:
 ## A keeper's way from here to there: an Array of steps {"p": where to walk, and
 ## "climb": the far end of a ladder to climb from p, with "time"}. Ends at `to`.
 static func route(from: Vector3, to: Vector3) -> Array:
+	if Terrain.chapter == 2:
+		var way := []
+		for q in HarbourMap.path(from, to, false):
+			way.append({"p": q})
+		way.append({"p": to})
+		return way
 	_ensure()
 	var s := _nearest(from)
 	var g := _nearest(to)

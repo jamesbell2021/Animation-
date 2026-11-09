@@ -2,6 +2,8 @@ extends CanvasLayer
 ## Start menu over the island at dusk. Keyboard, mouse and gamepad navigable.
 
 signal start_requested(continue_save: bool, players: int)
+## Chapter Two, from its first day.
+signal harbour_requested(players: int)
 
 const GOLD := Color(1.0, 0.78, 0.42)
 const PALE := Color(0.9, 0.92, 0.95)
@@ -42,10 +44,13 @@ func _ready() -> void:
 	box.add_child(gap)
 	var save := SaveSys.load_run()
 	if not save.is_empty():
-		_first = _button(box, Strings.t("title.continue", [int(save.get("night", 1))]), _on_continue)
+		var key := "title.continue_harbour" if int(save.get("chapter", 1)) == 2 else "title.continue"
+		_first = _button(box, Strings.t(key, [int(save.get("night", 1))]), _on_continue)
 	var new_btn := _button(box, Strings.t("title.new_run"), _on_new)
 	if _first == null:
 		_first = new_btn
+	var harbour_btn := _button(box, Strings.t("title.harbour"), func() -> void: harbour_requested.emit(_keepers))
+	harbour_btn.tooltip_text = Strings.t("title.harbour_note")
 	_keepers_btn = _button(box, "", _cycle_keepers)
 	_keepers_btn.gui_input.connect(_on_keepers_input)
 	_sea_btn = _button(box, "", _cycle_sea)

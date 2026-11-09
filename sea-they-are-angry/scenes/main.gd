@@ -124,6 +124,9 @@ var _enemies: Node3D
 var _tween: Tween
 
 func _ready() -> void:
+	# This scene is the rock (Chapter One); Kirkhaven's (harbour.gd) builds its own.
+	Run.chapter = 1
+	Terrain.chapter = 1
 	KeeperNav.reset()
 	_build_environment()
 	_build_ground()
@@ -196,6 +199,7 @@ func _show_title() -> void:
 	lighthouse.lamp._set_state(Lamp.State.BURNING)
 	title = TitleScript.new()
 	title.start_requested.connect(begin_run)
+	title.harbour_requested.connect(go_harbour.bind(false))
 	add_child(title)
 
 ## A LAN game, begun on every machine together (Net.start_game): `humans` keepers, one
@@ -238,7 +242,20 @@ func _camera_hint() -> void:
 	else:
 		Events.message.emit("Camera: middle mouse drag or %s %s to turn it · wheel or %s %s to zoom · %s back to the usual view" % [k.call("cam_left"), k.call("cam_right"), k.call("cam_zoom_in"), k.call("cam_zoom_out"), k.call("cam_reset")])
 
+## On to Chapter Two: Kirkhaven harbour, its own scene (scenes/harbour/harbour.gd).
+func go_harbour(n: int, continue_save: bool) -> void:
+	Net.leave()
+	Players.wanted = clampi(n, 1, Players.MAX)
+	Run.active = false
+	Run.enter_harbour = true
+	Run.harbour_continue = continue_save
+	get_tree().change_scene_to_file("res://scenes/harbour.tscn")
+
 func begin_run(continue_save: bool, n: int) -> void:
+	# A saved run in Kirkhaven continues there.
+	if continue_save and title != null and not Net.online() and int(SaveSys.load_run().get("chapter", 1)) == 2:
+		go_harbour(n, true)
+		return
 	if title != null:
 		title.queue_free()
 		title = null
@@ -418,6 +435,9 @@ func _chapter_end() -> void:
 	card.host_decides = Net.is_client()
 	card.back_to_title.connect(_after_chapter.bind(false))
 	card.stay_on.connect(_after_chapter.bind(true))
+	card.go_on.connect(func() -> void:
+		SaveSys.clear_run()
+		go_harbour(Players.wanted, false))
 	add_child(card)
 	Run.active = false
 

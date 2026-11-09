@@ -15,6 +15,9 @@ func save_run() -> void:
 func snapshot() -> Dictionary:
 	return {
 		"night": Run.night,
+		"chapter": Run.chapter,
+		"lamps_on": Run.lamps_on,
+		"bell_mended": Run.bell_mended,
 		"difficulty": Run.difficulty,
 		"endless": Run.endless,
 		"jobs": Run.jobs,

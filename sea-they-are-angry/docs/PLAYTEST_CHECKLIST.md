@@ -89,3 +89,29 @@ Everything here has passed the tests but not a person.
 ## Reporting
 
 For each problem, note the night, which island, what you were doing, and what you expected. A screenshot, or a short video on a phone, helps a lot.
+
+## Added in v1.0.0: the fog, and Chapter Two
+
+The fog (both chapters):
+
+- [ ] **The bank.** At dusk a glowing bank of fog rolls in and lies off the shore. Does it look like fog, lit from inside? Is it too bright, too green, too regular at its edge? Does it get in the way of seeing the beaches?
+- [ ] **Before a landing** a tongue of it comes up that beach. Do you notice, and does it tell you where to look? Do the creatures show as dark shapes against it?
+- [ ] **Are the nights too dark now?** Can you still find your keeper, the fences, what's lying on the ground? On a clear night with the moon?
+- [ ] **The new music** (title, night, last night, game over): made and measured by a program, never heard. Does it suit? Is any piece harsh, too loud, too busy, or does a loop click where it joins?
+- [ ] **The wireless at dusk, the knock at the cottage door, the lights dipping, the far foghorn.** Did you notice each? Eerie, or annoying? Do the captions read well?
+
+Chapter Two (from the title: "Chapter Two: The Harbour"):
+
+- [ ] **Arriving.** Is it clear where you are and what to do first? Does the jobs list lead you round the town?
+- [ ] **Does Kirkhaven look like a harbour town?** The quay, the pier and its light, the slips, the strand, the house fronts, the wynds, the kirk. Anything floating, sunk, see-through, or the wrong size beside a keeper?
+- [ ] **Walking about.** Can you get everywhere you'd expect? Do you snag on a lamp post, a wall, a boat, the corner of a house? Can you fall off the quay?
+- [ ] **The generator and the lamps.** Is "switch it in by day, it lights at dusk" understood? Is the green tell-tale on the fuse box enough? Is a can of diesel a day too much, too little?
+- [ ] **A lamp at night.** Does the fog visibly stand off from it? Do the creatures slow in its light? Do you feel it when one is smashed?
+- [ ] **The harbour light.** Does its beam reach the slips? Is leaving the strand out of its reach a good problem, or just unfair?
+- [ ] **The kirk.** Did you go and knock? Did what was said help? Is the bell (two scrap, [F], once a night) worth the walk up the hill in the dark?
+- [ ] **The helpers.** One should work the harbour light from dusk; the other should switch lamps in and mend them. Do they? Do they get stuck anywhere?
+- [ ] **The squid** come straight across the basin and up the quay wall. Frightening, or silly?
+- [ ] **The last night.** Does the fog coming over the quay read? Is holding the kirk doors possible? Too hard, too easy?
+- [ ] **The ending.** The fog going out, the people coming down, the windows lighting, the three pages. Does it land? Too long?
+- [ ] **The length.** Five nights on the normal sea. Too short for a chapter?
+- [ ] **Leaving and coming back.** Quit to the title from the pause menu and Continue: are you back in Kirkhaven with your lamps as you left them?

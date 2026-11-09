@@ -17,7 +17,20 @@ const LIST := [
 	["lamp", "At dusk, work the lamp: [R] at the lighthouse door"],
 ]
 ## After this night the list goes, done or not.
+## Chapter Two's: the way round Kirkhaven.
+const HARBOUR := [
+	["generator", "Fill the harbour's generator with diesel: the west end of the quay"],
+	["lamp_on", "Switch in a street lamp at its fuse box [E]"],
+	["kirk", "Knock at the kirk door, up the wynds [E]"],
+	["gather", "Fetch stores: the chandler's door, the fuel berth, the strand"],
+	["lamp", "At dusk, work the harbour light: [R] at its door, out on the pier"],
+	["bell", "Mend the kirk bell's rope, and ring it when they come [F]"],
+]
 const UNTIL_NIGHT := 3
+
+## The list for the chapter being played.
+static func list() -> Array:
+	return HARBOUR if Run.chapter == 2 else LIST
 
 var players: Array = []
 var _poll := 0.0
@@ -27,7 +40,7 @@ func _ready() -> void:
 
 ## Whether the list is still up.
 static func showing() -> bool:
-	return Run.active and Run.night <= UNTIL_NIGHT and Run.jobs.size() < LIST.size()
+	return Run.active and Run.night <= UNTIL_NIGHT and Run.jobs.size() < list().size()
 
 static func done(id: String) -> bool:
 	return Run.jobs.has(id)
@@ -42,18 +55,21 @@ func tick(id: String) -> void:
 	if Run.jobs.has(id) or Net.is_client():
 		return
 	var known := false
-	for j in LIST:
+	for j in list():
 		known = known or j[0] == id
 	if not known:
 		return
 	Run.jobs.append(id)
 	Audio.sfx("ui_accept", Vector3.INF, -6.0, 0.0)
-	if Run.jobs.size() == LIST.size():
-		Events.message.emit("Every job done: you know the rock. Now keep the light until the boat comes.")
+	if Run.jobs.size() == list().size():
+		if Run.chapter == 2:
+			Events.message.emit("Every job done: you know the town. Now hold it until the fog lifts.")
+		else:
+			Events.message.emit("Every job done: you know the rock. Now keep the light until the boat comes.")
 
 # The jobs that are a state of things rather than an action, checked twice a second.
 func _process(delta: float) -> void:
-	if not showing() or Net.is_client():
+	if not showing() or Net.is_client() or Run.chapter == 2:
 		return
 	_poll -= delta
 	if _poll > 0.0:

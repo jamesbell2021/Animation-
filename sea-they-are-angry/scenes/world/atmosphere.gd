@@ -10,6 +10,8 @@ const BANK_SIZE := Vector3(19.0, 8.0, 19.0)
 const ROLL_IN := 15.0
 const ROLL_OUT := 8.0
 const BUOY_POS := Vector3(20.5, 0.0, -19.0)
+## Kirkhaven's, off the harbour mouth.
+const HARBOUR_BUOY := Vector3(21.0, 0.0, 36.0)
 
 # Per phase: fog bank density, ground mist density, vignette, saturation, contrast, sea glow.
 # Fog glow ("fog_e") lets the banks read as pale walls of mist even by moonlight.
@@ -87,6 +89,9 @@ func _build_fog() -> void:
 		v.size = BANK_SIZE * (0.85 + 0.3 * float((i * 7) % 3) / 2.0)
 		v.material = _bank_mat
 		v.position = Vector3(sin(a) * BANK_RING, Terrain.SEA_LEVEL + 1.2, cos(a) * BANK_RING)
+		if Terrain.chapter == 2:
+			# Kirkhaven: a line of banks across the harbour mouth, not a ring.
+			v.position = Vector3(lerpf(-52.0, 52.0, float(i) / float(BANKS - 1)), Terrain.SEA_LEVEL + 1.2, 30.0 + 7.0 * sin(float(i) * 1.7))
 		_ring.add_child(v)
 	# A low sheet of mist over the rock itself.
 	_mist_mat = FogMaterial.new()
@@ -100,6 +105,9 @@ func _build_fog() -> void:
 	mist.size = Vector3(44.0, 3.0, 44.0)
 	mist.material = _mist_mat
 	mist.position = Vector3(0.0, Terrain.PLATEAU_HEIGHT + 0.4, 0.0)
+	if Terrain.chapter == 2:
+		mist.size = Vector3(84.0, 3.0, 44.0)
+		mist.position = Vector3(0.0, HarbourMap.QUAY_H + 0.5, -6.0)
 	add_child(mist)
 	# Drifting sheets of mist over the sea and across the rock's top, lit by the scene so
 	# the beam shows in them. (Puffs of particles read as discs from the keepers' camera.)
@@ -156,7 +164,7 @@ void fragment() {
 # A bell buoy bobbing out in the swell; it tolls in the dark.
 func _build_buoy() -> void:
 	_buoy = Node3D.new()
-	_buoy.position = BUOY_POS + Vector3(0.0, Terrain.SEA_LEVEL, 0.0)
+	_buoy.position = (HARBOUR_BUOY if Terrain.chapter == 2 else BUOY_POS) + Vector3(0.0, Terrain.SEA_LEVEL, 0.0)
 	add_child(_buoy)
 	var red := Look.flat_mat(Color(0.55, 0.14, 0.1), 0.6)
 	var iron := Look.flat_mat(Color(0.15, 0.15, 0.16), 0.5)
@@ -254,7 +262,8 @@ func _on_phase(p: int) -> void:
 func _process(delta: float) -> void:
 	_t += delta
 	# The fog banks drift slowly round the rock.
-	_ring.rotation.y += delta * 0.012
+	if Terrain.chapter != 2:
+		_ring.rotation.y += delta * 0.012
 	_buoy.position.y = Terrain.SEA_LEVEL + sin(_t * 1.1) * 0.12
 	_buoy.rotation.z = sin(_t * 0.9) * 0.12
 	_buoy.rotation.x = sin(_t * 0.7 + 1.0) * 0.08
@@ -272,6 +281,8 @@ func _process(delta: float) -> void:
 		_creep_t = randf_range(9.0, 20.0)
 		var a := randf() * TAU
 		var at := Vector3(sin(a) * 22.0, 1.0, cos(a) * 22.0)
+		if Terrain.chapter == 2:
+			at = Vector3(randf_range(-30.0, 30.0), 1.0, randf_range(8.0, 30.0))
 		var key: String = ["creak", "whisper", "groan", "whisper"][randi() % 4]
 		Audio.ambient_sfx(key, at, -10.0, 0.25)
 

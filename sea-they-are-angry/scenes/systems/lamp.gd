@@ -48,6 +48,9 @@ var operator: Node3D = null
 var yaw: float = 0.0
 # On the title screen the lamp sweeps for show: no fuel burn, no effect on creatures.
 var showcase := false
+## How far down the beam points. The harbour light stands lower than the rock's, so it
+## points flatter to reach the slips.
+var tilt_deg := TILT_DEG
 
 var _pivot: Node3D
 var _light: SpotLight3D
@@ -65,7 +68,7 @@ func _ready() -> void:
 	_pivot = Node3D.new()
 	add_child(_pivot)
 	_light = SpotLight3D.new()
-	_light.rotation.x = deg_to_rad(TILT_DEG)
+	_light.rotation.x = deg_to_rad(tilt_deg)
 	_light.light_color = Color(1.0, 0.8, 0.5)
 	_light.shadow_enabled = true
 	_light.spot_attenuation = 0.6
@@ -93,6 +96,12 @@ func _ready() -> void:
 	Cycle.phase_changed.connect(_on_phase_changed)
 	if lighthouse:
 		lighthouse.destroyed.connect(_on_lighthouse_destroyed)
+
+## Point the beam flatter or steeper (degrees below level, negative).
+func set_tilt(deg: float) -> void:
+	tilt_deg = deg
+	if _light != null:
+		_light.rotation.x = deg_to_rad(deg)
 
 func current_angle() -> float:
 	return WIDE_ANGLE if mode == Mode.WIDE else FOCUS_ANGLE
@@ -304,7 +313,7 @@ func _set_state(s: int) -> void:
 	if s == State.BURNING and is_inside_tree():
 		FX.sparks(self, global_position)
 	if s == State.DARK:
-		Run.end_run("The lamp went dark.")
+		Run.end_run("The harbour light went dark." if Run.chapter == 2 else "The lamp went dark.")
 
 func _update_visibility() -> void:
 	_light.visible = is_lit()

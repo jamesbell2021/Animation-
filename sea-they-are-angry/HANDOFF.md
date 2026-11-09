@@ -1,10 +1,10 @@
 # Handoff: Sea They Are Angry
 
-**v0.1.4 (Chapter One, polished) is the current build** (`docs/RELEASE_NOTES_v0.1.4.md`; the first release's notes are `docs/RELEASE_NOTES_v0.1.0.md`). The cloud session can't push tags: make `sea-v0.1.4`, or a release, on GitHub's Releases page. Read this first, then `docs/DESIGN.md` (the game as it is), `docs/DECISIONS.md` (why, newest last) and `git log`. Brought up to date 2026-11-09.
+**v1.0.0 (both chapters, and the ending) is the current build** (`docs/RELEASE_NOTES_v1.0.0.md`; earlier notes are `RELEASE_NOTES_v0.1.4.md` and `RELEASE_NOTES_v0.1.0.md`). The cloud session can't push tags: make `sea-v1.0.0`, or a release, on GitHub's Releases page. Read this first, then `docs/DESIGN.md` (the rock as it is), `docs/CHAPTER_TWO.md` (Kirkhaven), `docs/DECISIONS.md` (why, newest last) and `git log`. Brought up to date 2026-11-10.
 
 ## Where things stand
 
-Chapter One is built, tested and released. What the plans (`docs/prompts/`) asked for, and where each stands:
+Both chapters are built and tested by script; neither has been played through by a person since Chapter Two and the fog went in. What the plans (`docs/prompts/`) asked for, and where each stands:
 
 | Plan | State |
 |---|---|
@@ -13,11 +13,15 @@ Chapter One is built, tested and released. What the plans (`docs/prompts/`) aske
 | 3. Phases H to L (`03_phases_H-L.md`) | Done: the design docs (`docs/DESIGN.md`, `ENEMIES.md`, `ARCHITECTURE.md`, `BALANCING.md`), game feel (shake, hit-stop, hit flash, damage numbers, the morning card), accessibility (shake levels, steady lights, a second keeper palette, interface size; rebinding is keeper one only), the strings table (the menus only), the local play log, F12, the playtest script, the export scripts, `LICENSE`, `CREDITS.md`, `docs/ITCH_PAGE.md`. |
 | 4. Roadmap (`04_after_v0.2_roadmap.md`) | **Not started, on purpose.** It says to do these after playtests: the daily rock, unlockable keepers, run modifiers, special nights, dawn wrecks, lamp mastery. Build none of them until a person has played v0.1.4 and the six checks (`docs/BALANCING.md`) say what's wrong. |
 
-**What is next:** the owner plays it (`docs/PLAYTEST_CHECKLIST.md`, and `docs/PLAYTEST.md` for watching someone else). Then Chapter Two, The Harbour, which the ending of Chapter One sets up (`scenes/ui/chapter_end.gd`) and nothing builds yet. The things only a person can judge: the music, the shake and the hit pause, the jump and the fence climb, when the roof lifts, the free camera, and the Windows build, which has never been run on Windows.
+**Chapter Two, The Harbour** (2026-11-10) is built: Kirkhaven, its own scene (`scenes/harbour.tscn`, `scenes/harbour/`), reached from the title or from Chapter One's end card, with an ending that closes the story. `docs/CHAPTER_TWO.md` says how it plays and how it is built (the harbour scene's script extends `scenes/main.gd`; `Terrain` hands over to `HarbourMap` while `Terrain.chapter == 2`). It is local play only.
+
+**The fog** (same date): a glowing bank (`scenes/world/fog_bank.gd`, `shaders/fog_bank.gdshader`) on both maps, a synthesiser score (`art/source/music/build_music.py`), and night events (`scenes/world/night_events.gd`): the wireless, the knock, lights dipping, a far foghorn.
+
+**What is next:** the owner plays it (`docs/PLAYTEST_CHECKLIST.md`, and `docs/PLAYTEST.md` for watching someone else). The things only a person can judge: the new music and sounds (made and measured, never heard), whether the nights are now too dark, Chapter Two's balance and length (first guesses, checked by `tests/slice_harbour.gd` and `tools/playtest_harbour.gd` only), the shake and the hit pause, the jump and the fence climb, when the roof lifts, the free camera, and the Windows build, which has never been run on Windows.
 
 The work lives on branch `claude/windows-build-omarchy-d2b94k` of `jamesbell2021/Animation-`, in the `sea-they-are-angry/` folder. The repo also holds other projects (`neon-mega-tank/`, `animation-principles/`); leave them alone.
 
-`tools/tour.gd` renders a computer-played run frame by frame, with the HUD, for reviewing how it looks; `tools/screenshot.gd` takes a still; `tools/playtest.gd` plays nights with a bot for balance; `tools/make_asset_list.py` rewrites `docs/ASSET_LIST.md`.
+`tools/tour.gd` renders a computer-played run frame by frame, with the HUD, for reviewing how it looks; `tools/screenshot.gd` takes a still; `tools/playtest.gd` plays nights with a bot for balance (`tools/playtest_harbour.gd` does Kirkhaven); `tools/make_asset_list.py` rewrites `docs/ASSET_LIST.md`.
 
 To start the next session, open Claude Code in `sea-they-are-angry/` and say what you want; `docs/DESIGN.md` and this file are the map.
 

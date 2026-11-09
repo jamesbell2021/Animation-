@@ -118,6 +118,9 @@ func _decide() -> void:
 			_set_task("hook", hook, hook.global_position)
 			return
 	var night := Cycle.phase == Cycle.Phase.DUSK or Cycle.phase == Cycle.Phase.NIGHT
+	if Terrain.chapter == 2:
+		_harbour(night)
+		return
 	if role == "light":
 		if night:
 			_night_light()
@@ -173,6 +176,64 @@ func _day_light() -> void:
 		return
 	# Nothing to do: wait about the cottage.
 	_set_task("idle", null, Terrain.at_angle(-18.0, 10.5))
+
+## Kirkhaven (Chapter Two). The "light" helper works the harbour light from dusk if
+## nobody else is on it; otherwise, and the "lamps" helper always, it mends what's broken,
+## switches dark lamps in, keeps the generator and the light fed, fetches the day's
+## stores, and at night stands by the landings.
+const HARBOUR_POSTS := [Vector2(-15.0, 3.0), Vector2(15.0, 3.0), Vector2(26.0, 1.5), Vector2(0.0, 1.5)]
+
+func _harbour(night: bool) -> void:
+	var lamp := keeper.lamp
+	if night and role == "light" and lamp != null:
+		var taken := lamp.operator != null and is_instance_valid(lamp.operator) and lamp.operator != keeper
+		if not taken:
+			_set_task("lamp", lamp, KeeperNav.door_point())
+			return
+	var gen := _generator()
+	if gen != null and gen.work_kind() == "can" and gen.fuel < Generator.FUEL_MAX - Generator.CAN_UNITS:
+		_set_task("generator", gen, gen.global_position + Vector3(0.0, 0.0, 2.4))
+		return
+	var fix := _nearest_fixable(false)
+	if fix != null:
+		_set_task("repair", fix, _work_point(fix))
+		return
+	var dark := _dark_lamp()
+	if dark != null:
+		_set_task("gather", dark, dark.global_position + Vector3(0.0, 0.0, -0.9))
+		return
+	if not night:
+		if lamp != null and lamp.fuel < Lamp.FUEL_MAX - 30.0 and lamp.lighthouse.work_kind() == "can":
+			_set_task("refuel", lamp.lighthouse, KeeperNav.door_point())
+			return
+		# The bell rope, when there's scrap to spare beyond a lamp's mending.
+		var kirk := get_tree().get_first_node_in_group("kirk")
+		if kirk != null and role == "lamps" and not Run.bell_mended and Stock.get_amount("scrap") >= 3:
+			_set_task("bell", kirk, kirk.door_point())
+			return
+		if _fetch_salvage(0):
+			return
+		if _keep_gathering():
+			return
+		var sp := _nearest_scavenge(false)
+		if sp != null:
+			_set_task("gather", sp, sp.global_position)
+			return
+	var post: Vector2 = HARBOUR_POSTS[(_round + keeper.idx) % HARBOUR_POSTS.size()]
+	_set_task("round", null, Vector3(post.x, Terrain.height_at(post.x, post.y), post.y))
+
+# The nearest street lamp that's whole and not yet switched in.
+func _dark_lamp() -> Node3D:
+	var best: Node3D = null
+	var best_d := INF
+	for l in get_tree().get_nodes_in_group("street_lamps"):
+		if l.on or l.hp <= 0:
+			continue
+		var d := Geo.flat_dist(l.global_position, keeper.global_position)
+		if d < best_d:
+			best_d = d
+			best = l
+	return best
 
 func _night_light() -> void:
 	var lamp := keeper.lamp
@@ -333,6 +394,11 @@ func _act(delta: float) -> void:
 					_think = 0.0
 		"hook":
 			pass
+		"bell":
+			if _task_target != null and is_instance_valid(_task_target) and Geo.flat_dist(keeper.global_position, _task_target.door_point()) < 1.8:
+				_task_target.alt_use(keeper)
+				_task = ""
+				_route.clear()
 
 func _fight() -> void:
 	var e: Node3D = _task_target if is_instance_valid(_task_target) else null
@@ -465,7 +531,7 @@ func _lamp_pick(lamp: Lamp) -> Node3D:
 static func _reachable(lamp: Lamp, at: Vector3) -> bool:
 	var d := Geo.flat_dist(at, lamp.lighthouse.global_position)
 	var dep := rad_to_deg(atan2(lamp.global_position.y - at.y, d))
-	return dep > -Lamp.TILT_DEG - Lamp.FOCUS_ANGLE + 1.0 and dep < -Lamp.TILT_DEG + Lamp.FOCUS_ANGLE - 1.0
+	return dep > -lamp.tilt_deg - Lamp.FOCUS_ANGLE + 1.0 and dep < -lamp.tilt_deg + Lamp.FOCUS_ANGLE - 1.0
 
 # Up a tower: sweep its ground, and when something comes near, swing onto it and burn
 # it in the focused beam. Down again at dawn.

@@ -126,6 +126,11 @@ const XANTHORIA := Color(0.80, 0.50, 0.16)
 const GUANO := Color(0.86, 0.85, 0.80)
 const COLONY_TURF := Color(0.27, 0.42, 0.14)
 
+## Which chapter's ground this is: 1 the rock (everything below), 2 Kirkhaven harbour
+## (HarbourMap, which the functions that keepers, creatures and the ground mesh use
+## hand over to). Set before the scene is built.
+static var chapter := 1
+
 static var _noise: FastNoiseLite
 static var _detail: FastNoiseLite
 static var _bridge_ends: Array = []
@@ -220,6 +225,8 @@ static func _beach(i: int, x: float, z: float) -> Vector3:
 
 ## Weight of the strongest beach at this point (0 off the beaches).
 static func beach_weight(x: float, z: float) -> float:
+	if chapter == 2:
+		return HarbourMap.shore_weight(x, z)
 	var w := 0.0
 	for i in BEACHES.size():
 		w = maxf(w, _beach(i, x, z).z)
@@ -227,6 +234,8 @@ static func beach_weight(x: float, z: float) -> float:
 
 ## A point on beach i: t from 0 (out under the sea) to 1 (top of the gully), lateral offset in metres.
 static func beach_point(i: int, t: float, lateral: float = 0.0) -> Vector3:
+	if chapter == 2:
+		return HarbourMap.landing_point(i, t, lateral)
 	var a := deg_to_rad(float(BEACHES[i]))
 	var along := lerpf(BEACH_OUT, BEACH_IN, t)
 	var p := Vector3(sin(a) * along + cos(a) * lateral, 0.0, cos(a) * along - sin(a) * lateral)
@@ -242,6 +251,8 @@ static func beach_half_width(t: float) -> float:
 ## Height of the ground at a point: the main island or the holm, whichever stands
 ## higher there (both fall away to the same sea floor).
 static func height_at(x: float, z: float) -> float:
+	if chapter == 2:
+		return HarbourMap.height_at(x, z)
 	return maxf(maxf(_main_height(x, z), _holm_height(x, z)), _islet_height(x, z))
 
 static func _main_height(x: float, z: float) -> float:
@@ -275,6 +286,8 @@ static func slope_at(x: float, z: float) -> float:
 ## True where a keeper may stand: above the water and not on a cliff or crag wall,
 ## or on the rope bridge's deck.
 static func walkable(x: float, z: float) -> bool:
+	if chapter == 2:
+		return HarbourMap.walkable(x, z)
 	if on_bridge(x, z):
 		return true
 	return height_at(x, z) > SEA_LEVEL - 0.1 and slope_at(x, z) < 1.1
@@ -333,6 +346,8 @@ static func _holm_shelf(x: float, z: float) -> float:
 
 ## True on the holm (its plateau, cliffs or beaches) rather than the main island.
 static func on_holm(x: float, z: float) -> bool:
+	if chapter == 2:
+		return false
 	return _holm_height(x, z) > _main_height(x, z)
 
 ## True inside the camp's fence.
@@ -521,6 +536,8 @@ static func bridge_coords(x: float, z: float) -> Vector2:
 ## True on the bridge's deck (between its ends, within its width, allowing for its swing:
 ## the rope sides are what keep a keeper on it).
 static func on_bridge(x: float, z: float) -> bool:
+	if chapter == 2:
+		return false
 	var c := bridge_coords(x, z)
 	return c.x > -0.02 and c.x < 1.02 and c.y < BRIDGE_HALF + 0.5
 
@@ -547,17 +564,23 @@ static func _path_dist(x: float, z: float) -> float:
 
 ## True on the ledge's walking surface.
 static func on_ledge(x: float, z: float) -> bool:
+	if chapter == 2:
+		return false
 	var s := ledge_s(x, z)
 	return s >= 0.0 and absf(Vector2(x, z).length() - ledge_radius(s)) < LEDGE_HALF - 0.1
 
 ## Where the camp's gate is: the middle of the compound's west side, facing the bridge.
 ## Whether a point is nearer the holm than the main island (for which island something is on).
 static func holm_side(x: float, z: float) -> bool:
+	if chapter == 2:
+		return false
 	return Vector2(x, z).distance_to(HOLM_C) < Vector2(x, z).length()
 
 ## Which island a point belongs to: 0 the main island, 1 the holm, 2 Gull Rock (by
 ## nearness, so the sea round each counts as its own).
 static func island_of(x: float, z: float) -> int:
+	if chapter == 2:
+		return 0
 	if Vector2(x, z).distance_to(ISLET_C) < ISLET_HALF.x + 7.0:
 		return 2
 	return 1 if holm_side(x, z) else 0
@@ -584,6 +607,8 @@ static func islet_edge_dist(x: float, z: float) -> float:
 
 ## True on Gull Rock (its top, cliffs or the slip) rather than either other island.
 static func on_islet(x: float, z: float) -> bool:
+	if chapter == 2:
+		return false
 	if Vector2(x, z).distance_to(ISLET_C) > ISLET_HALF.x + 10.0:
 		return false
 	var hi := _islet_height(x, z)
@@ -689,6 +714,8 @@ static func _holm_path_dist(x: float, z: float) -> float:
 
 ## True where grass may grow: flat meadow or crag top, off the tracks, pads and beaches.
 static func is_grassy(x: float, z: float) -> bool:
+	if chapter == 2:
+		return HarbourMap.is_grassy(x, z)
 	if on_islet(x, z):
 		if islet_edge_dist(x, z) > -0.7 or islet_slip_weight(x, z) > 0.2 or islet_outcrop(x, z) > 0.35:
 			return false
@@ -720,6 +747,8 @@ static func _hash(i: int, j: int, k: int) -> float:
 	return float(h & 0xFFFF) / 65535.0
 
 static func color_at(x: float, z: float, h: float, steep: float) -> Color:
+	if chapter == 2:
+		return HarbourMap.color_at(x, z, h, steep)
 	_ensure_noise()
 	if on_islet(x, z):
 		return _islet_color(x, z, h, steep)
@@ -762,6 +791,8 @@ static func color_at(x: float, z: float, h: float, steep: float) -> Color:
 ## x rock, y shingle, z dirt (worn track, bare patches), w wet (by the sea). Grass is
 ## whatever is left. Follows the same rules as color_at, so texture and paint agree.
 static func layers_at(x: float, z: float, h: float, steep: float) -> Vector4:
+	if chapter == 2:
+		return HarbourMap.layers_at(x, z, h, steep)
 	_ensure_noise()
 	if on_islet(x, z):
 		return _islet_layers(x, z, h, steep)
@@ -899,6 +930,11 @@ static func build_islet_mesh() -> ArrayMesh:
 	return _grid_mesh(ISLET_GRID.position.x, ISLET_GRID.end.x, ISLET_GRID.position.y, ISLET_GRID.end.y)
 
 ## The holm's ground, beside the main island's: the same grid, so the two meet exactly.
+## Kirkhaven's ground (Chapter Two).
+static func build_harbour_mesh() -> ArrayMesh:
+	var r := HarbourMap.GRID
+	return _grid_mesh(r.position.x, r.end.x, r.position.y, r.end.y)
+
 static func build_holm_mesh() -> ArrayMesh:
 	return _grid_mesh(HOLM_GRID_X.x, HOLM_GRID_X.y, -GRID_HALF, GRID_HALF)
 

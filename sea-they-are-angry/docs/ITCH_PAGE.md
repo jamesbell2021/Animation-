@@ -1,6 +1,6 @@
 # itch.io page: draft copy
 
-For when there's a page to put it on. Facts are as of v0.1.3 (see `docs/DESIGN.md`); change a line here when the game changes.
+For when there's a page to put it on. Facts are as of v1.0.0 (see `docs/DESIGN.md` and `docs/CHAPTER_TWO.md`); change a line here when the game changes.
 
 ## Title
 
@@ -22,7 +22,14 @@ Across a swaying rope bridge is the holm, with the huts, wire and searchlights o
 
 The sea has moods. Its anger builds as the nights go on, and the lamp's wide beam slows what comes while its focused beam burns them, at the price of oil. Anything that falls in the water washes ashore at dawn; whatever is left lying at dusk, the sea takes back.
 
+Then the relief boat takes you to Kirkhaven, the harbour town that stopped answering the wireless. Its lamps are out, its people are shut in the kirk, and a bank of fog that glows lies off the harbour mouth. Put the town's lights back, one lamp at a time, with the things from the sea coming up the slips to break them. Hold it to the last dawn and the story ends.
+
+The nights are made in the spirit of John Carpenter's *The Fog*: the bank rolling in against the wind, shapes in it, a cold synthesiser score, a voice on the wireless, a knock at the door.
+
 ## Features
+
+- Two chapters and an ending: the rock, then the harbour town of Kirkhaven.
+- A fog bank that glows, comes ashore ahead of each landing, and is held off by light.
 
 - Gather, repair, plant and cook by day; defend a lighthouse and a camp by night
 - Five kinds of creature, each with its own way in: the Bloated Dead, the wall-crawling Squid, the armoured Crab, the giant Eel and the Smotherer that climbs the tower to put the light out

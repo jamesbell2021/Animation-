@@ -251,6 +251,9 @@ func _breakers(delta: float) -> void:
 		var a := randf() * 360.0
 		var r := Terrain.coast_radius(a) + Terrain.CLIFF_WIDTH * 0.8
 		var p := Terrain.at_angle(a, r)
+		if Terrain.chapter == 2:
+			# Kirkhaven: against the quay wall and up the slips.
+			p = Vector3(randf_range(HarbourMap.WEST, HarbourMap.STRAND_X), 0.0, HarbourMap.QUAY_Z + 0.9)
 		p.y = Terrain.SEA_LEVEL
 		if Terrain.beach_weight(p.x, p.z) > 0.3:
 			FX.ambient = true

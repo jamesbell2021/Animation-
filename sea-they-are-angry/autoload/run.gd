@@ -45,9 +45,22 @@ var weather_for := 0
 var weather_kind := 0
 # Set before reloading the scene to skip the title screen (New Run from game over).
 var quick_start := false
+## Which chapter is being played: 1 the rock, 2 Kirkhaven harbour.
+var chapter := 1
+## Set by whoever sends the game to the harbour scene: begin there (true to continue a
+## saved run). Cleared once the harbour has read it.
+var enter_harbour := false
+var harbour_continue := false
+## Chapter Two: which street lamps are switched in, and whether the kirk bell is mended.
+var lamps_on: Array = []
+var bell_mended := false
+var bell_rung_night := 0
 
 func start_new() -> void:
 	night = 1
+	lamps_on = []
+	bell_mended = false
+	bell_rung_night = 0
 	endless = false
 	jobs = []
 	difficulty = next_difficulty
@@ -77,6 +90,11 @@ func start_new() -> void:
 
 func start_loaded(d: Dictionary) -> void:
 	night = int(d.get("night", 1))
+	lamps_on = []
+	for l in d.get("lamps_on", []):
+		lamps_on.append(int(l))
+	bell_mended = bool(d.get("bell_mended", false))
+	bell_rung_night = 0
 	difficulty = clampi(int(d.get("difficulty", 1)), 0, 2)
 	endless = bool(d.get("endless", false))
 	jobs = []

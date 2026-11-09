@@ -130,6 +130,11 @@ static func nodes() -> Array[Vector3]:
 	return _nodes
 
 static func offshore_points() -> Array[Vector3]:
+	if Terrain.chapter == 2:
+		var pts: Array[Vector3] = []
+		for i in HarbourMap.LANDINGS.size():
+			pts.append(HarbourMap.landing_point(i, 0.0))
+		return pts
 	_ensure()
 	var out: Array[Vector3] = []
 	for i in _offshore:
@@ -191,18 +196,25 @@ static func _walk(prev: Array[int], to: int) -> Array[Vector3]:
 
 ## Waypoints from here to the lighthouse yard.
 static func route_to_light(from: Vector3) -> Array[Vector3]:
+	if Terrain.chapter == 2:
+		var l := HarbourMap.LIGHT_AT
+		return HarbourMap.path(from, Vector3(l.x, HarbourMap.QUAY_H, l.y), true)
 	_ensure()
 	var res := _dijkstra(_nearest(from))
 	return _walk(res[1], _goal)
 
 ## Waypoints from here to the graph node nearest a goal on its own level.
 static func route_to(from: Vector3, goal: Vector3) -> Array[Vector3]:
+	if Terrain.chapter == 2:
+		return HarbourMap.path(from, goal, true)
 	_ensure()
 	var res := _dijkstra(_nearest(from))
 	return _walk(res[1], _nearest(goal))
 
 ## Waypoints from here back out to sea, by the nearest beach.
 static func route_to_sea(from: Vector3) -> Array[Vector3]:
+	if Terrain.chapter == 2:
+		return HarbourMap.path_to_sea(from)
 	_ensure()
 	var res := _dijkstra(_nearest(from))
 	var dist: Array[float] = res[0]

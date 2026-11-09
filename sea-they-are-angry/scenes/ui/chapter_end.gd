@@ -5,6 +5,8 @@ extends CanvasLayer
 
 signal back_to_title
 signal stay_on
+## On to Chapter Two.
+signal go_on
 
 const GOLD := Color(1.0, 0.78, 0.42)
 const PALE := Color(0.9, 0.92, 0.95)
@@ -42,7 +44,7 @@ func _ready() -> void:
 	var gap := Control.new()
 	gap.custom_minimum_size = Vector2(0, 18)
 	box.add_child(gap)
-	var next := _label(box, "Next: Chapter Two — The Harbour", 30, GOLD)
+	var next := _label(box, "Chapter Two — The Harbour", 30, GOLD)
 	Fonts.use_title(next)
 	var tease := _label(box, "Halfway to Kirkhaven the skipper came down from the wheelhouse. The harbour lights had gone out " +
 		"three nights since, he said, and nobody had answered the wireless from the town since Tuesday. " +
@@ -55,7 +57,8 @@ func _ready() -> void:
 	if host_decides:
 		_label(box, "The host decides what's next.", 18, DIM)
 	else:
-		first = _button(row, "Back to the title", func() -> void: back_to_title.emit())
+		first = _button(row, "On to Kirkhaven", func() -> void: go_on.emit())
+		_button(row, "Back to the title", func() -> void: back_to_title.emit())
 		_button(row, "Stay on the rock (endless nights)", func() -> void: stay_on.emit())
 	var tw := create_tween()
 	tw.tween_property(shade, "color:a", 0.72, 2.5)

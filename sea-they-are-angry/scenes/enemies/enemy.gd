@@ -372,6 +372,8 @@ func in_light(_mode: int, _delta: float) -> void:
 	pass
 
 func pick_target() -> Node3D:
+	if _goal_standing():
+		return raid_goal
 	if camp_raid:
 		return Enemy.nearest_camp(global_position)
 	return lighthouse
@@ -388,6 +390,12 @@ const HOME_IDS := ["cottage", "shed", "garden"]
 ## Came ashore on the holm, for the camp: it makes for the camp's generator and buildings,
 ## never the light (the holm isn't joined to the main island for them).
 var camp_raid := false
+## Sent for one thing in particular (Kirkhaven's kirk doors): it makes for that while it
+## stands, whatever else is nearer.
+var raid_goal: Structure
+
+func _goal_standing() -> bool:
+	return raid_goal != null and is_instance_valid(raid_goal) and not raid_goal.is_destroyed()
 
 ## The nearest of the camp's generator and buildings still standing, or null.
 static func nearest_camp(from: Vector3) -> Structure:
@@ -414,7 +422,11 @@ static func nearest_home(from: Vector3) -> Structure:
 	var best_d := INF
 	var tree := Engine.get_main_loop() as SceneTree
 	for s in tree.get_nodes_in_group("structures"):
-		if s is Structure and HOME_IDS.has(s.id) and not s.is_destroyed():
+		# The homestead's buildings; in Kirkhaven, whatever is in the group "homes" and
+		# says it draws them (a lamp only while it's lit).
+		if s is Structure and (HOME_IDS.has(s.id) or s.is_in_group("homes")) and not s.is_destroyed():
+			if s.has_method("draws_raiders") and not s.draws_raiders():
+				continue
 			var d := Geo.flat_dist(from, s.global_position)
 			if d < best_d:
 				best_d = d

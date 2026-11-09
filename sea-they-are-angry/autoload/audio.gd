@@ -79,6 +79,15 @@ const SOUNDS := {
 	"gull_alarm": ["_s_gull_alarm", false],
 	"oar": ["_s_oar", false],
 	"turbine": ["_s_turbine", true],
+	"knock": ["_s_knock", false],
+	"radio": ["_s_radio", false],
+	"radio_voice": ["_s_radio_voice", false],
+	"fog_roll": ["_s_fog_roll", false],
+	"kirk_bell": ["_s_kirk_bell", false],
+	"lamp_on": ["_s_lamp_on", false],
+	"lamp_off": ["_s_lamp_off", false],
+	"door_rattle": ["_s_door_rattle", false],
+	"heartbeat": ["_s_heartbeat", false],
 }
 
 func _ready() -> void:
@@ -195,10 +204,10 @@ func _on_phase(p: int) -> void:
 		Cycle.Phase.NIGHT:
 			sfx("night_sting", Vector3.INF, -6.0, 0.0)
 			if Run.active:
-				music("finale" if Rescue.is_last_night() else "night", 4.0)
+				music("finale" if Rescue.is_last_night() else ("harbour_night" if Run.chapter == 2 else "night"), 4.0)
 		Cycle.Phase.DAWN, Cycle.Phase.DAY:
-			if Run.active and _music_key != "chapter_end":
-				music("day", 8.0)
+			if Run.active and _music_key != "chapter_end" and _music_key != "ending":
+				music("harbour_day" if Run.chapter == 2 else "day", 8.0)
 
 func _on_lamp_state(s: int) -> void:
 	match s:
@@ -971,6 +980,211 @@ func _s_turbine() -> PackedFloat32Array:
 	_mix(out, hum, 0.05)
 	return _seamless(out, 0.2)
 
+# ---- the uncanny (NightEvents, and the harbour) ----
+
+# Three slow, heavy knocks on a thick door: each a low thud of the fist, the plank's
+# woody ring and the door shifting in its frame.
+func _s_knock() -> PackedFloat32Array:
+	var out := PackedFloat32Array()
+	out.resize(_n(2.4))
+	for k in 3:
+		var seg := _n(0.6)
+		var thud := _env(_tone(seg, 112.0 - 3.0 * float(k), 72.0), 0.002, 14.0)
+		_mix(thud, _env(_tone(seg, 232.0, 208.0), 0.001, 26.0), 0.75)
+		_mix(thud, _env(_tone(seg, 415.0, 396.0), 0.001, 44.0), 0.4)
+		_mix(thud, _env(_tone(seg, 655.0, 640.0), 0.001, 70.0), 0.2)
+		_mix(thud, _env(_lowpass(_noise(_n(0.06), 950 + k), 1400.0), 0.0005, 70.0), 0.8)
+		_mix(thud, _env(_lowpass(_noise(_n(0.3), 960 + k), 320.0), 0.02, 14.0), 1.2, _n(0.03))
+		_mix(out, thud, 1.0 - 0.07 * float(k), _n(0.08 + 0.78 * float(k)))
+	return _gain(out, 0.4)
+
+# The wireless between stations: static that swells and fades, crackling, with a faint
+# tuning whistle sliding down through it.
+func _s_radio() -> PackedFloat32Array:
+	var n := _n(1.6)
+	var b := _highpass(_lowpass(_noise(n, 970), 4200.0), 500.0)
+	var drift := _lowpass(_noise(n, 971), 5.0)
+	var whistle := _tone(n, 2900.0, 640.0)
+	for i in n:
+		var t := float(i) / float(n)
+		var fading := clampf(0.75 + drift[i] * 12.0, 0.3, 1.2)
+		var w := whistle[i] * 0.2 * pow(sin(t * PI), 2.0) * (0.65 + 0.35 * sin(t * 57.0))
+		b[i] = (b[i] * 0.7 * fading + w) * pow(sin(t * PI), 0.6)
+	var r := RandomNumberGenerator.new()
+	r.seed = 972
+	for k in 12:
+		var crack := _env(_highpass(_noise(_n(0.012), 973 + k), 1500.0), 0.0003, 260.0)
+		_mix(b, crack, r.randf_range(0.2, 0.55), r.randi_range(_n(0.1), n - _n(0.15)))
+	return _gain(b, 0.8)
+
+# A transmission coming through: somebody speaking, too muffled to make out. A buzz like
+# a voice's, shaped by two wandering formants into syllables and phrases, on a narrow
+# band, under light static.
+func _s_radio_voice() -> PackedFloat32Array:
+	var n := _n(2.0)
+	var voice := PackedFloat32Array()
+	voice.resize(n)
+	var r := RandomNumberGenerator.new()
+	r.seed = 980
+	var ph := 0.0
+	# Two resonators (the mouth's first two formants), each [y1, y2].
+	var f := [[0.0, 0.0], [0.0, 0.0]]
+	var want := [450.0, 1300.0]
+	var now := [450.0, 1300.0]
+	var last_syll := -1
+	for i in n:
+		var t := float(i) / RATE
+		# About four syllables a second, unevenly, in two phrases with a breath between.
+		var beat := t * 4.1 + 0.35 * sin(t * 2.3)
+		var syll := int(beat)
+		if syll != last_syll:
+			last_syll = syll
+			want = [r.randf_range(300.0, 720.0), r.randf_range(950.0, 1900.0)]
+		var open := pow(sin(fposmod(beat, 1.0) * PI), 0.7)
+		var phrase := smoothstep(0.03, 0.15, t) * (1.0 - smoothstep(0.82, 0.9, t)) + smoothstep(1.02, 1.1, t) * (1.0 - smoothstep(1.8, 1.95, t))
+		# The pitch falls away over each phrase, as a sentence does.
+		var pitch := 118.0 - 16.0 * fposmod(t, 1.0) + 5.0 * sin(t * 31.0)
+		ph += TAU * pitch / RATE
+		var buzz := (1.0 if fposmod(ph, TAU) < 0.9 else 0.0) - 0.143
+		var v := 0.0
+		for k in 2:
+			now[k] = lerpf(float(now[k]), float(want[k]), 0.004)
+			var rad := exp(-PI * (110.0 + 60.0 * float(k)) / RATE)
+			var y: float = buzz + 2.0 * rad * cos(TAU * float(now[k]) / RATE) * float(f[k][0]) - rad * rad * float(f[k][1])
+			f[k][1] = f[k][0]
+			f[k][0] = y
+			v += y * (1.0 if k == 0 else 0.6)
+		voice[i] = v * open * phrase
+	# A small speaker's band, and the static it comes through.
+	_highpass(_lowpass(voice, 1900.0), 320.0)
+	var peak := 0.0001
+	for i in n:
+		peak = maxf(peak, absf(voice[i]))
+	_gain(voice, 0.75 / peak)
+	var hiss := _highpass(_lowpass(_noise(n, 981), 3800.0), 700.0)
+	for i in n:
+		var t := float(i) / float(n)
+		voice[i] += hiss[i] * 0.16 * sin(t * PI)
+	return voice
+
+# A tongue of fog coming up a beach: a long, soft breath, low, with a faint shimmer in
+# it like a wet finger on glass.
+func _s_fog_roll() -> PackedFloat32Array:
+	var n := _n(3.0)
+	var src := _noise(n, 985)
+	var b := PackedFloat32Array()
+	b.resize(n)
+	var y := 0.0
+	var y2 := 0.0
+	var ph := 0.0
+	for i in n:
+		var t := float(i) / float(n)
+		var cut := 140.0 + 330.0 * pow(sin(t * PI), 2.0)
+		var a := 1.0 - exp(-TAU * cut / RATE)
+		y += a * (src[i] - y)
+		y2 += a * (y - y2)
+		ph += TAU * 1318.0 / RATE
+		var shimmer := (sin(ph) + sin(ph * 1.004) * 0.8 + sin(ph * 1.498) * 0.4) * (0.6 + 0.4 * sin(t * 19.0))
+		b[i] = y2 * 5.5 * pow(sin(t * PI), 1.4) + shimmer * 0.05 * smoothstep(0.15, 0.6, t) * (1.0 - smoothstep(0.7, 1.0, t))
+	return _gain(_highpass(b, 90.0), 0.33)
+
+# The kirk's bell, tolled once: a great bronze bell's hum, strike note, minor third and
+# the partials above, each a beating pair, with a long tail.
+func _s_kirk_bell() -> PackedFloat32Array:
+	var n := _n(4.8)
+	var b := PackedFloat32Array()
+	b.resize(n)
+	var strike := 131.0
+	# [ratio to the strike note, level, decay]
+	for p in [[0.5, 0.45, 0.55], [1.0, 1.0, 0.8], [1.19, 0.7, 1.0], [1.5, 0.35, 1.5], [2.0, 0.8, 1.3],
+			[2.51, 0.4, 2.2], [3.01, 0.4, 2.8], [4.02, 0.3, 3.6], [5.33, 0.2, 5.0]]:
+		var hz: float = strike * float(p[0])
+		var ring := _tone(n, hz, hz * 0.999)
+		# Its twin, a shade sharp: no bell is quite round, and the pair beat slowly.
+		var beat := 0.3 + 0.17 * float(p[0])
+		_mix(ring, _tone(n, hz + beat, hz + beat), 0.35)
+		_mix(b, _env(ring, 0.004, float(p[2])), float(p[1]))
+	# The clapper: a dull iron thump.
+	_mix(b, _env(_lowpass(_noise(_n(0.12), 990), 700.0), 0.001, 40.0), 1.0)
+	var tail := _n(0.6)
+	for i in tail:
+		b[n - tail + i] *= 1.0 - float(i) / float(tail)
+	return _gain(_lowpass(b, 1800.0), 0.15)
+
+# A street lamp coming on: the relay's clunk, then the sodium tube striking, its buzz
+# climbing and steadying to a faint hum.
+func _s_lamp_on() -> PackedFloat32Array:
+	var n := _n(1.5)
+	var b := PackedFloat32Array()
+	b.resize(n)
+	var ph := 0.0
+	for i in n:
+		var t := float(i) / RATE
+		if t < 0.09:
+			continue
+		var u := t - 0.09
+		# The tube catches in fits, then holds.
+		var catching := 1.0 if u > 0.42 else (1.0 if fmod(u * 13.0 + 3.0 * u * u, 1.0) < 0.35 + u * 1.5 else 0.15)
+		ph += TAU * lerpf(96.0, 100.0, smoothstep(0.0, 0.5, u)) / RATE
+		var bright := smoothstep(0.0, 0.55, u) * (1.0 - 0.7 * smoothstep(0.6, 1.1, u))
+		var v := sin(ph) * 0.5 + sin(ph * 2.0) * 0.3 + (sin(ph * 3.0) * 0.3 + sin(ph * 5.0) * 0.22 + sin(ph * 7.0) * 0.14) * bright
+		var level := smoothstep(0.0, 0.5, u) * (1.0 - 0.72 * smoothstep(0.6, 1.1, u)) * (1.0 - smoothstep(1.25, 1.41, u))
+		b[i] = v * level * catching * 0.5
+	var clunk := _env(_tone(_n(0.2), 150.0, 85.0), 0.001, 26.0)
+	_mix(clunk, _env(_highpass(_noise(_n(0.04), 992), 1600.0), 0.0005, 120.0), 0.6)
+	_mix(b, clunk, 0.55)
+	return _lowpass(b, 3000.0)
+
+# A lamp failing: a spit of arcing, the buzz sagging, and the relay dropping out.
+func _s_lamp_off() -> PackedFloat32Array:
+	var n := _n(0.6)
+	var b := _highpass(_noise(n, 994), 1400.0)
+	var ph := 0.0
+	for i in n:
+		var t := float(i) / RATE
+		ph += TAU * lerpf(100.0, 62.0, smoothstep(0.0, 0.4, t)) / RATE
+		var arc := 1.0 if sin(ph) > 0.2 else 0.1
+		var fizz := b[i] * 0.7 * arc * exp(-t * 9.0) * (1.0 if fmod(t * 31.0, 1.0) < 0.7 else 0.3)
+		var buzz := (sin(ph) * 0.5 + sin(ph * 3.0) * 0.25 + sin(ph * 5.0) * 0.12) * 0.4 * exp(-t * 7.0)
+		b[i] = (fizz + buzz) * minf(1.0, t / 0.004)
+	var click := _env(_highpass(_noise(_n(0.03), 995), 1800.0), 0.0005, 150.0)
+	_mix(click, _env(_tone(_n(0.12), 170.0, 95.0), 0.001, 32.0), 0.4)
+	_mix(b, click, 0.8, _n(0.4))
+	return _gain(b, 0.8)
+
+# A door tried from outside: the handle worked up and down and the latch shaken in its
+# keep, the door bumping in the frame.
+func _s_door_rattle() -> PackedFloat32Array:
+	var out := PackedFloat32Array()
+	out.resize(_n(1.0))
+	var r := RandomNumberGenerator.new()
+	r.seed = 996
+	var at := 0.02
+	var k := 0
+	while at < 0.84:
+		var hz := r.randf_range(1500.0, 2700.0)
+		var clack := _env(_tone(_n(0.09), hz, hz * 0.98), 0.0005, 60.0)
+		_mix(clack, _env(_tone(_n(0.09), hz * 1.52, hz * 1.5), 0.0005, 85.0), 0.5)
+		_mix(clack, _env(_highpass(_noise(_n(0.03), 997 + k), 1200.0), 0.0005, 140.0), 1.6)
+		_mix(clack, _env(_tone(_n(0.12), 190.0, 140.0), 0.001, 38.0), 0.6)
+		_mix(out, clack, r.randf_range(0.3, 0.6), _n(at))
+		at += r.randf_range(0.05, 0.13) if k % 3 != 2 else r.randf_range(0.12, 0.2)
+		k += 1
+	return _gain(out, 0.48)
+
+# A heart heard from inside: lub-dub, soft and low.
+func _s_heartbeat() -> PackedFloat32Array:
+	var out := PackedFloat32Array()
+	out.resize(_n(0.9))
+	for k in 2:
+		var seg := _n(0.4)
+		var hz := 54.0 if k == 0 else 64.0
+		var thump := _env(_tone(seg, hz, hz * 0.62), 0.012, 15.0 if k == 0 else 19.0)
+		_mix(thump, _env(_tone(seg, hz * 2.0, hz * 1.3), 0.012, 24.0), 0.7)
+		_mix(thump, _env(_lowpass(_noise(seg, 998 + k), 140.0), 0.01, 22.0), 1.5)
+		_mix(out, thump, 1.0 if k == 0 else 0.72, _n(0.04 + 0.33 * float(k)))
+	return _gain(out, 0.5)
+
 # ---- music ----
 
 ## The score (audio/music_*.ogg, made by art/source/music/build_music.py): the piece's
@@ -978,6 +1192,7 @@ func _s_turbine() -> PackedFloat32Array:
 const MUSIC := {
 	"title": [-6.0, true], "day": [-11.0, true], "night": [-8.0, true], "finale": [-6.0, true],
 	"chapter_end": [-4.0, false], "game_over": [-4.0, false],
+	"harbour_day": [-11.0, true], "harbour_night": [-8.0, true], "ending": [-4.0, false],
 }
 
 var _music: Array[AudioStreamPlayer] = []

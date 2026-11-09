@@ -602,7 +602,8 @@ func _physics_process(delta: float) -> void:
 		Net.input_frame(idx)
 	_update_tag()
 	if not downed:
-		_needs(delta)
+		if Run.chapter != 2:
+			_needs(delta)
 	_flicker += delta
 	if _lantern_light.visible:
 		_lantern_light.light_energy = 1.5 + 0.12 * sin(_flicker * 11.0) * sin(_flicker * 7.3)
@@ -1332,6 +1333,11 @@ func _fire_flare() -> void:
 	get_parent().add_child(f)
 
 func _pour_dirty() -> void:
+	# [F] is also the second use of whatever is to hand that has one (the kirk's bell).
+	var near := _find_interactable()
+	if near != null and near.has_method("alt_use"):
+		near.alt_use(self)
+		return
 	if lamp == null or lamp.lighthouse == null:
 		return
 	var lh: Structure = lamp.lighthouse

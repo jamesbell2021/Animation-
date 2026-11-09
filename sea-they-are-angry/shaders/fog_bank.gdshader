@@ -19,7 +19,7 @@ uniform float soft = 1.2;
 uniform vec4 isles[3];              // centre x, z, half extents x, z
 uniform float isle_yaw[3];
 uniform vec4 tongues[4];            // x, z, radius, strength
-uniform vec4 holes[12];             // x, z, radius, strength
+uniform vec4 holes[16];             // x, z, radius, strength
 uniform sampler2D depth_tex : hint_depth_texture, filter_linear_mipmap;
 
 varying vec3 world;
@@ -77,7 +77,7 @@ void fragment() {
 		m = max(m, tongues[i].w * (1.0 - smoothstep(r * 0.45, r, d)));
 	}
 	// Held off by lights.
-	for (int i = 0; i < 12; i++) {
+	for (int i = 0; i < 16; i++) {
 		float d = distance(p, holes[i].xy);
 		float r = holes[i].z * (0.85 + 0.3 * fine);
 		m *= 1.0 - holes[i].w * (1.0 - smoothstep(r * 0.6, r, d));

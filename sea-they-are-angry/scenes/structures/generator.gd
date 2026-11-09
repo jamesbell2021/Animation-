@@ -18,6 +18,8 @@ const HOUSE := Vector3(2.6, 2.3, 3.2)
 const BRICK := Color(0.42, 0.24, 0.18)
 
 var fuel := FUEL_MAX
+## Whose generator it is, for what it says ("camp", or "harbour").
+var owner_name := "camp"
 var running := false
 var _draw := {}
 var _sound: AudioStreamPlayer3D
@@ -156,9 +158,9 @@ func _physics_process(delta: float) -> void:
 	Run.camp_fuel = fuel
 	if fuel < LOW and not _warned:
 		_warned = true
-		Events.message.emit("The camp's generator is running low on diesel.")
+		Events.message.emit("The %s's generator is running low on diesel." % owner_name)
 	if fuel <= 0.0:
-		Events.message.emit("The generator has run dry: the camp is dark.")
+		Events.message.emit("The generator has run dry: the %s is dark." % owner_name)
 		_update_running()
 	elif is_destroyed():
 		_update_running()

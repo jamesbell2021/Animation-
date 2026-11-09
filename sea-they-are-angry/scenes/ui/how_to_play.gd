@@ -100,6 +100,13 @@ func pages() -> Array:
 			"Creatures raid it from the second night. Climb a tower and work its searchlight; mend what they wreck. The turbine down means a dark camp.",
 			"From the east beach's jetty a rowing boat goes out to Gull Rock, by day and not in a storm. Take the gulls' eggs there; the cottage boils three into a meal. The gulls won't thank you.",
 		]],
+		["Kirkhaven", "Chapter Two: the harbour", [
+			"The town's lamps are out and its people are shut in the kirk. Hold Kirkhaven for a few nights and put its lights back.",
+			"Fill the generator at the west end of the quay with diesel (a can a day at the fuel berth by the pier). Switch each street lamp in at its fuse box; they burn from dusk while the generator runs.",
+			"The fog cannot lie in a burning lamp's light, and what stands in it is slowed and scorched. They would sooner come up a dark landing, so they make for the lamps and break them. One scrap mends a lamp.",
+			"Work the harbour light on the pier as you did the rock's. It reaches both slips, but not the strand.",
+			"Knock at the kirk. Splice its bell rope (%s, two scrap) and ring it in the dark, once a night: every burning lamp flares white. If the kirk doors go, or the harbour light goes dark, it's over." % k.call("use_dirty"),
+		]],
 		["Together", "Keepers together", [
 			"There are always three keepers. Any nobody plays are the computer's helpers: one keeps the light, one the camp.",
 			"Up to three can play on one screen (the screen splits when you're apart), or each on their own machine over the LAN. A friend can join a game under way, by day: Insert for the arrow keys, or A on a second gamepad.",

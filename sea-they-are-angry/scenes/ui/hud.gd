@@ -17,6 +17,9 @@ var players: Array = []
 var lighthouse: Lighthouse
 var lamp: Lamp
 var camp: Camp
+## Chapter Two: a line for the camp's place in the HUD (the town's lamps and generator),
+## as [text, alarming].
+var status_line: Callable
 
 var markers: ThreatMarkers
 var weapon_bar: WeaponBar
@@ -132,9 +135,9 @@ func _ready() -> void:
 	_jobs_box = _vbox(_jobs_panel, 3)
 	var jt := _label(_jobs_box, FONT + 3)
 	Fonts.use_title(jt)
-	jt.text = "Jobs for the first days"
+	jt.text = "Jobs about the town" if Run.chapter == 2 else "Jobs for the first days"
 	jt.add_theme_color_override("font_color", GOLD)
-	for j in Jobs.LIST:
+	for j in Jobs.list():
 		var l := _label(_jobs_box, FONT - 2)
 		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		l.custom_minimum_size = Vector2(396, 0)
@@ -525,6 +528,10 @@ func _process(delta: float) -> void:
 		if _beam_label.visible:
 			var focused: bool = (player.manning.mode if on_light else lamp.mode) == Lamp.Mode.FOCUSED
 			_beam_label.text = Settings.keys_in("%s: %s   [Q] switch" % ["Searchlight" if on_light else "Beam", "FOCUSED" if focused else "WIDE"], player.idx)
+	if status_line.is_valid():
+		var st: Array = status_line.call()
+		_camp_label.text = String(st[0])
+		_camp_label.add_theme_color_override("font_color", RED if bool(st[1]) else PALE)
 	if camp and is_instance_valid(camp) and camp.generator != null:
 		var g := camp.generator
 		var lit := 0
@@ -559,9 +566,9 @@ func _process(delta: float) -> void:
 	_jobs_panel.visible = _jobs_box.visible
 	if _jobs_box.visible:
 		_keys_label.text = _keys_text()
-		for i in Jobs.LIST.size():
-			var did := Jobs.done(Jobs.LIST[i][0])
-			_job_labels[i].text = ("✓ " if did else "○ ") + Settings.keys_in(String(Jobs.LIST[i][1]), player.idx if player != null else 0)
+		for i in Jobs.list().size():
+			var did := Jobs.done(Jobs.list()[i][0])
+			_job_labels[i].text = ("✓ " if did else "○ ") + Settings.keys_in(String(Jobs.list()[i][1]), player.idx if player != null else 0)
 			_job_labels[i].add_theme_color_override("font_color", Color(0.55, 0.62, 0.55) if did else PALE)
 	if _msg_t > 0.0:
 		_msg_t = maxf(0.0, _msg_t - delta)
