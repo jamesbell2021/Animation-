@@ -12,7 +12,7 @@ const IRON := Color(0.085, 0.085, 0.095)
 const BOAT_LEN := 7.0
 const BOAT_BEAM := 2.4
 ## Metres per repeat of each roof covering.
-const ROOF_TILE := {"slate": 1.5, "pantile": 1.3, "corrugated": 1.7}
+const ROOF_TILE := {"slate": 1.15, "pantile": 1.3, "corrugated": 1.7}
 
 # ---- one mesh per material ----
 
@@ -269,9 +269,12 @@ static func roof_mat(kind: String) -> StandardMaterial3D:
 			m = Look.textured("corrugated", Color(1.5, 1.45, 1.4), 1.0, 0.6, 1.0)
 			m.metallic = 0.3
 		_:
-			m = Look.textured("slate", Color(1.15, 1.15, 1.2), 1.0, 0.5, 1.4)
+			m = Look.textured("slate", Color(1.0, 1.0, 1.04), 1.0, 0.5, 1.4)
 	m.uv1_triplanar = false
 	m.uv1_scale = Vector3.ONE
+	# Each roof's own weathering comes from its vertices.
+	m.vertex_color_use_as_albedo = true
+	m.vertex_color_is_srgb = true
 	_shared[key] = m
 	return m
 
@@ -330,13 +333,14 @@ static func _pantile_textures() -> Array:
 			var fu := fposmod(u, 1.0)
 			var fv := fposmod(v, 1.0)
 			var tile := int(u) * 7 + int(v) * 13
-			var vary := 0.86 + 0.28 * fposmod(sin(float(tile) * 12.9898) * 43758.5453, 1.0)
-			var shade := 0.72 + 0.28 * sin(fu * TAU)
-			var lap := 0.55 if fv > 0.9 else 1.0
-			var clay := Color(0.60, 0.25, 0.14).lerp(Color(0.48, 0.22, 0.15), fposmod(float(tile) * 0.37, 1.0))
+			var vary := 0.78 + 0.4 * fposmod(sin(float(tile) * 12.9898) * 43758.5453, 1.0)
+			var shade := 0.7 + 0.3 * sin(fu * TAU)
+			# Each course laps the one below: a shadow under its edge, a lit lip above it.
+			var lap := 0.42 if fv > 0.86 else (1.12 if fv < 0.1 else 1.0 - 0.12 * fv)
+			var clay := Color(0.60, 0.25, 0.14).lerp(Color(0.46, 0.21, 0.15), fposmod(float(tile) * 0.37, 1.0))
 			albedo.set_pixel(x, y, Color(clay.r * vary * shade * lap, clay.g * vary * shade * lap, clay.b * vary * shade * lap))
 			var nx := -cos(fu * TAU) * 0.7
-			var ny := 0.6 if fv > 0.9 else 0.0
+			var ny := 0.6 if fv > 0.86 else 0.0
 			var nn := Vector3(nx, ny, 1.0).normalized()
 			normal.set_pixel(x, y, Color(nn.x * 0.5 + 0.5, nn.y * 0.5 + 0.5, nn.z * 0.5 + 0.5))
 	albedo.generate_mipmaps()
@@ -345,23 +349,23 @@ static func _pantile_textures() -> Array:
 
 ## A pitched roof drawn into a batch, its ridge along the batch's x axis: two slopes
 ## from the ridge (top surface at `ridge_y`) out `half_span` on plan to the eaves, and
-## `half_len` each way along the ridge. Courses run along the eaves.
-static func pitched_roof(b: Batch, key: String, half_len: float, half_span: float, ridge_y: float, pitch: float, tile: float, thick: float = 0.1) -> void:
+## `half_len` each way along the ridge. Courses run along the eaves. `tint` weathers it.
+static func pitched_roof(b: Batch, key: String, half_len: float, half_span: float, ridge_y: float, pitch: float, tile: float, thick: float = 0.1, tint: Color = Color.WHITE) -> void:
 	var drop := half_span * tan(pitch)
 	var u := half_len / tile
 	var v := half_span / cos(pitch) / tile
 	var under := Vector3(0.0, thick / cos(pitch), 0.0)
+	var lip := under.y / tile
 	for side: float in [1.0, -1.0]:
 		var e_l := Vector3(-half_len * side, ridge_y - drop, half_span * side)
 		var e_r := Vector3(half_len * side, ridge_y - drop, half_span * side)
 		var r_r := Vector3(half_len * side, ridge_y, 0.0)
 		var r_l := Vector3(-half_len * side, ridge_y, 0.0)
-		b.quad(key, e_l, e_r, r_r, r_l, Color.WHITE, PackedVector2Array([Vector2(-u, v), Vector2(u, v), Vector2(u, 0.0), Vector2(-u, 0.0)]))
-		b.quad(key, e_r - under, e_l - under, r_l - under, r_r - under, Color.WHITE, PackedVector2Array([Vector2(u, v), Vector2(-u, v), Vector2(-u, 0.0), Vector2(u, 0.0)]))
-		var lip := under.y / tile
-		b.quad(key, e_l - under, e_r - under, e_r, e_l, Color.WHITE, PackedVector2Array([Vector2(-u, v + lip), Vector2(u, v + lip), Vector2(u, v), Vector2(-u, v)]))
-		b.quad(key, e_r - under, r_r - under, r_r, e_r, Color.WHITE, PackedVector2Array([Vector2(0.0, v), Vector2(0.0, 0.0), Vector2(lip, 0.0), Vector2(lip, v)]))
-		b.quad(key, e_l, r_l, r_l - under, e_l - under, Color.WHITE, PackedVector2Array([Vector2(lip, v), Vector2(lip, 0.0), Vector2(0.0, 0.0), Vector2(0.0, v)]))
+		b.quad(key, e_l, e_r, r_r, r_l, tint, PackedVector2Array([Vector2(-u, v), Vector2(u, v), Vector2(u, 0.0), Vector2(-u, 0.0)]))
+		b.quad(key, e_r - under, e_l - under, r_l - under, r_r - under, tint, PackedVector2Array([Vector2(u, v), Vector2(-u, v), Vector2(-u, 0.0), Vector2(u, 0.0)]))
+		b.quad(key, e_l - under, e_r - under, e_r, e_l, tint, PackedVector2Array([Vector2(-u, v + lip), Vector2(u, v + lip), Vector2(u, v), Vector2(-u, v)]))
+		b.quad(key, e_r - under, r_r - under, r_r, e_r, tint, PackedVector2Array([Vector2(0.0, v), Vector2(0.0, 0.0), Vector2(lip, 0.0), Vector2(lip, v)]))
+		b.quad(key, e_l, r_l, r_l - under, e_l - under, tint, PackedVector2Array([Vector2(lip, v), Vector2(lip, 0.0), Vector2(0.0, 0.0), Vector2(0.0, v)]))
 
 ## Lettering painted on a board: fitted into `width` by `height` metres, facing +Z, lit
 ## like the wall it is on (it does not glow in the dark).
@@ -616,7 +620,7 @@ static func fishing_boat(hull: Color, boat_name: String, seed_value: int) -> Nod
 	var truck := Vector3(0.0, 4.1, mast_z)
 	b.rod("wood", Vector3(0.0, deck_y, mast_z), truck, 0.06, spar, 6, 0.04)
 	b.rod("wood", Vector3(-0.35, 3.3, mast_z), Vector3(0.35, 3.3, mast_z), 0.025, spar, 4)
-	b.rod("wood", Vector3(0.0, deck_y + 0.9, mast_z + 0.06), Vector3(0.0, deck_y + house.y + 0.5, house_z + 0.5), 0.04, spar, 5)
+	b.rod("iron", Vector3(0.4, deck_y + house.y, house_z + 0.5), Vector3(0.4, deck_y + house.y + 1.3, house_z + 0.55), 0.012, IRON, 3)
 	b.rod("iron", truck, rows[0][4] + Vector3(0.0, 0.16, -0.03), 0.012, IRON, 3)
 	b.ball("paint", Vector3(0.07, 0.07, 0.07), truck + Vector3(0.0, 0.06, 0.0), Color(0.85, 0.85, 0.8), 6, 4)
 	# A mizzen aft on most, its tanned sail furled along the boom.
@@ -859,13 +863,14 @@ static func wall(length: float, height: float = 1.0) -> Node3D:
 	var b := Batch.new()
 	var thick := 0.5
 	var cope := minf(0.2, height * 0.3)
-	b.box("stone", Vector3(length, height - cope, thick), Vector3(0.0, (height - cope) * 0.5, 0.0))
+	var grey := Color(0.6, 0.58, 0.54)
+	b.box("stone", Vector3(length, height - cope, thick), Vector3(0.0, (height - cope) * 0.5, 0.0), grey)
 	var x := -length * 0.5
 	while x < length * 0.5 - 0.05:
 		var run := minf(rng.randf_range(0.13, 0.24), length * 0.5 - x)
 		var tall := cope * rng.randf_range(0.75, 1.25)
 		b.box("stone", Vector3(run - 0.015, tall, thick * rng.randf_range(0.8, 0.94)), Vector3(x + run * 0.5, height - cope + tall * 0.5, 0.0),
-			Color.WHITE.darkened(rng.randf_range(0.0, 0.3)), Basis(Vector3.BACK, rng.randf_range(-0.12, 0.12)))
+			grey.darkened(rng.randf_range(0.0, 0.3)), Basis(Vector3.BACK, rng.randf_range(-0.12, 0.12)))
 		x += run
 	b.build(root)
 	var body := StaticBody3D.new()

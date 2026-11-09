@@ -7,7 +7,7 @@ extends StaticBody3D
 
 const WINDOW_DARK := Color(0.06, 0.075, 0.1)
 const WINDOW_LIT := Color(1.0, 0.72, 0.38)
-const WINDOW_GLOW := 2.4
+const WINDOW_GLOW := 2.0
 const LAMP_ENERGY := 1.3
 const LAMP_RANGE := 5.0
 ## Wall height from which a building has an upstairs.
@@ -72,6 +72,7 @@ var _door_x := 0.0
 var _storeys := 1
 var _pitch := 0.0
 var _ridge := 0.0
+var _roof_tint := Color.WHITE
 
 func _ready() -> void:
 	collision_layer = HarbourProps.SOLID_LAYER
@@ -96,7 +97,7 @@ func set_lit(on: bool, fade: float = 1.5) -> void:
 
 func _show_glow(k: float) -> void:
 	_glow = k
-	_glass.albedo_color = WINDOW_DARK.lerp(_lit_col, k)
+	_glass.albedo_color = WINDOW_DARK.lerp(_lit_col, k * 0.7)
 	_glass.emission_energy_multiplier = WINDOW_GLOW * k
 	_lamp.light_energy = LAMP_ENERGY * k
 	_lamp.visible = k > 0.001
@@ -140,7 +141,10 @@ func _build() -> void:
 	b.tri("wall", Vector3(-hw, size.y, -hd), Vector3(-hw, size.y, hd), Vector3(-hw, size.y + rise, 0.0))
 	b.box("stone", Vector3(size.x + 0.1, PLINTH, size.z + 0.1), Vector3(0.0, PLINTH * 0.5, 0.0), PLINTH_STONE)
 	var roof_key := "roof_" + covering
-	HarbourProps.pitched_roof(b, roof_key, hw + over, hd + EAVES, _roof_y(hd + EAVES), _pitch, HarbourProps.roof_tile(covering), ROOF_T)
+	# Skews and crow steps sit on the roof's ends: it stops just short of the gable's face.
+	var shade := rng.randf_range(0.8, 1.05)
+	_roof_tint = Color(shade, shade * rng.randf_range(0.96, 1.02), shade * rng.randf_range(0.92, 1.04))
+	HarbourProps.pitched_roof(b, roof_key, hw + (over if gable == 0 else -0.05), hd + EAVES, _ridge, _pitch, HarbourProps.roof_tile(covering), ROOF_T, _roof_tint)
 	_ridge_and_gutters(b, covering, hw + over, hd, rng)
 	if gable == 1:
 		_skews(b, hw, hd)
@@ -304,13 +308,24 @@ func _wall_lamp(b: HarbourProps.Batch, x: float, y: float) -> void:
 	b.box("paint", Vector3(0.3, 0.2, 0.06), Vector3(x, y, 0.03), BLACK)
 	b.box("glass", Vector3(0.22, 0.13, 0.08), Vector3(x, y, 0.08))
 
-# A painted board canted back to face the high camera, with the sign on it.
+# A painted board canted back to face the high camera, with the sign on it. Close under
+# the eaves it would be hidden from above, so there it stands out past them, boxed in.
 func _fascia(b: HarbourProps.Batch, x: float, y: float, width: float, height: float, board: Color, letters: Color) -> void:
 	var cant := Basis(Vector3.RIGHT, -FASCIA_TILT)
-	var at := Vector3(x, y, 0.06 + height * 0.5 * sin(FASCIA_TILT))
+	var top_y := y + height * 0.5 * cos(FASCIA_TILT)
+	var low_y := y - height * 0.5 * cos(FASCIA_TILT)
+	var out := 0.06 if top_y < size.y - 0.9 else EAVES + 0.17
+	var low_z := out + height * sin(FASCIA_TILT)
+	var at := Vector3(x, y, (out + low_z) * 0.5)
+	var pale := board.lightened(0.12)
 	b.box("paint", Vector3(width, height, 0.05), at, board, cant)
-	b.box("paint", Vector3(width + 0.14, 0.06, 0.12), at + cant * Vector3(0.0, height * 0.5 + 0.03, 0.0), board.lightened(0.12), cant)
-	b.box("paint", Vector3(width + 0.08, 0.05, 0.08), at + cant * Vector3(0.0, -height * 0.5 - 0.02, 0.0), board.lightened(0.12), cant)
+	b.box("paint", Vector3(width + 0.14, 0.06, 0.12), at + cant * Vector3(0.0, height * 0.5 + 0.03, 0.0), pale, cant)
+	b.box("paint", Vector3(width + 0.08, 0.05, 0.08), at + cant * Vector3(0.0, -height * 0.5 - 0.02, 0.0), pale, cant)
+	if out > 0.1:
+		b.box("paint", Vector3(width, 0.04, low_z), Vector3(x, low_y, low_z * 0.5), board.darkened(0.3))
+		for sx: float in [-1.0, 1.0]:
+			var ex := x + sx * width * 0.5
+			b.poly("paint", PackedVector3Array([Vector3(ex, top_y, 0.0), Vector3(ex, top_y, out), Vector3(ex, low_y, low_z), Vector3(ex, low_y, 0.0)]), pale, Vector3(sx, 0.0, 0.0))
 	if sign_text.strip_edges() == "":
 		return
 	var label := HarbourProps.lettering(sign_text, width * 0.9, height * 0.66, letters)
@@ -411,7 +426,7 @@ func _pub_front(b: HarbourProps.Batch, rng: RandomNumberGenerator) -> void:
 # apron, a lamp on the wall, a board over the doors if it has a name.
 func _shed_front(b: HarbourProps.Batch, rng: RandomNumberGenerator) -> void:
 	var door_w := minf(3.4, size.x - 1.5)
-	var door_h := minf(2.8, size.y - 0.45)
+	var door_h := clampf(size.y - 1.0, 2.2, 2.8)
 	var boards: Color = [Color(0.2, 0.34, 0.3), Color(0.42, 0.16, 0.12), Color(0.24, 0.32, 0.42), Color(0.5, 0.46, 0.4)][rng.randi() % 4]
 	b.box("paint", Vector3(door_w + 0.3, door_h + 0.2, 0.05), Vector3(0.0, (door_h + 0.2) * 0.5, 0.025), BLACK.lightened(0.1))
 	for sx: float in [-1.0, 1.0]:
@@ -424,7 +439,7 @@ func _shed_front(b: HarbourProps.Batch, rng: RandomNumberGenerator) -> void:
 	b.box("dressed", Vector3(door_w + 0.8, 0.07, 1.0), Vector3(0.0, 0.035, 0.52), Color(0.6, 0.6, 0.58))
 	_wall_lamp(b, door_w * 0.5 + 0.5, minf(2.5, size.y - 0.35))
 	_door_x = 0.0
-	if sign_text.strip_edges() != "" and size.y - door_h > 0.9:
+	if sign_text.strip_edges() != "" and size.y - door_h > 0.75:
 		_fascia(b, 0.0, door_h + 0.2 + (size.y - door_h - 0.2) * 0.45, minf(door_w, 3.0), minf(0.55, size.y - door_h - 0.45), Color(0.8, 0.78, 0.7), Color(0.1, 0.12, 0.2))
 	# Louvred vents on the ridge.
 	b.xf = Transform3D.IDENTITY
@@ -489,10 +504,10 @@ func _lean_to(b: HarbourProps.Batch, x: float, roof_key: String, covering: Strin
 	var e_r := Vector3(x + half + 0.12, low, out)
 	var w_r := Vector3(x + half + 0.12, high, 0.0)
 	var w_l := Vector3(x - half - 0.12, high, 0.0)
-	b.quad(roof_key, e_l, e_r, w_r, w_l, Color.WHITE, PackedVector2Array([Vector2(-u, v), Vector2(u, v), Vector2(u, 0.0), Vector2(-u, 0.0)]))
+	b.quad(roof_key, e_l, e_r, w_r, w_l, _roof_tint, PackedVector2Array([Vector2(-u, v), Vector2(u, v), Vector2(u, 0.0), Vector2(-u, 0.0)]))
 	var lip := Vector3(0.0, 0.08, 0.0)
-	b.quad(roof_key, e_l - lip, e_r - lip, e_r, e_l, Color.WHITE, PackedVector2Array([Vector2(-u, v + 0.05), Vector2(u, v + 0.05), Vector2(u, v), Vector2(-u, v)]))
-	b.quad(roof_key, e_r - lip, e_l - lip, w_l - lip, w_r - lip)
+	b.quad(roof_key, e_l - lip, e_r - lip, e_r, e_l, _roof_tint, PackedVector2Array([Vector2(-u, v + 0.05), Vector2(u, v + 0.05), Vector2(u, v), Vector2(-u, v)]))
+	b.quad(roof_key, e_r - lip, e_l - lip, w_l - lip, w_r - lip, _roof_tint)
 	b.box("paint", Vector3(0.8, 1.75, 0.04), Vector3(x, 0.9, LEAN_TO.z + 0.02), _door_col.darkened(0.2))
 	# The back wall's frame is turned half round from the building's own.
 	Geo.box_shape(self, LEAN_TO, Vector3(-x, LEAN_TO.y * 0.5, -size.z * 0.5 - LEAN_TO.z * 0.5))

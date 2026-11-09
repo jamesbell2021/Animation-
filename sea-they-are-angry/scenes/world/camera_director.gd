@@ -93,6 +93,10 @@ func _ready() -> void:
 ## Where a keeper standing at p should be framed from: their island, or between the two
 ## on the bridge.
 static func focus_for(p: Vector3) -> Vector3:
+	if Terrain.chapter == 2:
+		# Kirkhaven is too deep for one framing: the view follows the keeper up the town
+		# and out along the pier, and leans a little their way along the quay.
+		return Vector3(clampf(p.x * 0.5, -12.0, 12.0), HarbourMap.QUAY_H + 1.0, clampf(p.z * 0.85 - 1.0, -24.0, 20.0))
 	if Terrain.island_of(p.x, p.z) == 2:
 		return ISLET_FOCUS
 	var t := 0.0

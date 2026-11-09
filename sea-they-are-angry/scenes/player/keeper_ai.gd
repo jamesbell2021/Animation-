@@ -200,7 +200,7 @@ func _harbour(night: bool) -> void:
 		return
 	var dark := _dark_lamp()
 	if dark != null:
-		_set_task("gather", dark, dark.global_position + Vector3(0.0, 0.0, -0.9))
+		_set_task("switch", dark, dark.global_position + Vector3(0.0, 0.0, -0.9))
 		return
 	if not night:
 		if lamp != null and lamp.fuel < Lamp.FUEL_MAX - 30.0 and lamp.lighthouse.work_kind() == "can":
@@ -394,6 +394,11 @@ func _act(delta: float) -> void:
 					_think = 0.0
 		"hook":
 			pass
+		"switch":
+			if _task_target != null and is_instance_valid(_task_target) and Geo.flat_dist(keeper.global_position, (_task_target as Node3D).global_position) < 1.7:
+				_task_target.interact(keeper)
+				_task = ""
+				_route.clear()
 		"bell":
 			if _task_target != null and is_instance_valid(_task_target) and Geo.flat_dist(keeper.global_position, _task_target.door_point()) < 1.8:
 				_task_target.alt_use(keeper)

@@ -30,6 +30,8 @@ var isles: Array = []
 var _mats: Array[ShaderMaterial] = []
 var _tongues: Array = []     # [Vector3 at, float age]
 var _tween: Tween
+## The first of the flood's sheets among the children (none until add_flood_layers).
+var _flood_from := 9999
 
 func _ready() -> void:
 	name = "FogBank"
@@ -39,22 +41,33 @@ func _ready() -> void:
 			[Terrain.HOLM_C.x, Terrain.HOLM_C.y, Terrain.HOLM_HALF.x + 1.0, Terrain.HOLM_HALF.y + 1.0, 0.0],
 			[Terrain.ISLET_C.x, Terrain.ISLET_C.y, Terrain.ISLET_HALF.x, Terrain.ISLET_HALF.y, deg_to_rad(Terrain.ISLET_YAW)],
 		]
-	var shader: Shader = load("res://shaders/fog_bank.gdshader")
 	for i in LAYERS.size():
-		var sheet := MeshInstance3D.new()
-		var pm := PlaneMesh.new()
-		pm.size = Vector2(SIZE, SIZE)
-		sheet.mesh = pm
-		sheet.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		var m := ShaderMaterial.new()
-		m.shader = shader
-		m.set_shader_parameter("layer", float(i) / float(LAYERS.size() - 1))
-		m.render_priority = i
-		sheet.material_override = m
-		sheet.position = Vector3(20.0, Terrain.SEA_LEVEL + float(LAYERS[i]), -6.0)
-		sheet.visible = false
-		add_child(sheet)
-		_mats.append(m)
+		_add_sheet(Terrain.SEA_LEVEL + float(LAYERS[i]), float(i) / float(LAYERS.size() - 1))
+	_push_isles()
+	_push()
+
+func _add_sheet(y: float, layer_k: float) -> void:
+	var sheet := MeshInstance3D.new()
+	var pm := PlaneMesh.new()
+	pm.size = Vector2(SIZE, SIZE)
+	sheet.mesh = pm
+	sheet.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var m := ShaderMaterial.new()
+	m.shader = load("res://shaders/fog_bank.gdshader")
+	m.set_shader_parameter("layer", layer_k)
+	m.render_priority = _mats.size()
+	sheet.material_override = m
+	sheet.position = Vector3(20.0, y, -6.0)
+	sheet.visible = false
+	add_child(sheet)
+	_mats.append(m)
+
+## Higher sheets for when the bank comes over the land (Kirkhaven's last night): at these
+## heights, drawn only while `flood` is up. The sea's sheets lie below a quay.
+func add_flood_layers(heights: Array) -> void:
+	_flood_from = _mats.size()
+	for i in heights.size():
+		_add_sheet(float(heights[i]), lerpf(0.25, 1.0, float(i) / float(maxi(heights.size() - 1, 1))))
 	_push_isles()
 	_push()
 
@@ -154,8 +167,9 @@ func _push() -> void:
 	var wind := Weather.wind_now
 	for i in _mats.size():
 		var m := _mats[i]
-		(get_child(i) as MeshInstance3D).visible = on
-		if not on:
+		var show := on and (i < _flood_from or flood > 0.01)
+		(get_child(i) as MeshInstance3D).visible = show
+		if not show:
 			continue
 		m.set_shader_parameter("density", density)
 		m.set_shader_parameter("gap", gap)

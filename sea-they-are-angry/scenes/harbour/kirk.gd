@@ -75,7 +75,7 @@ func set_glow(k: float, fade: float = 1.5) -> void:
 	_glow_tween.tween_method(_show_glow, from, glow, fade)
 
 func _show_glow(k: float) -> void:
-	_glass.albedo_color = WINDOW_DARK.lerp(CANDLE, k)
+	_glass.albedo_color = WINDOW_DARK.lerp(CANDLE, k * 0.7)
 	_glass.emission_energy_multiplier = WINDOW_GLOW * k
 	_lamp.light_energy = LAMP_ENERGY * k
 	_lamp.visible = k > 0.001
@@ -145,7 +145,7 @@ func _build() -> void:
 	# The roof, its ridge along z: drawn in a frame turned a quarter round.
 	b.xf = Transform3D(Basis(Vector3.UP, PI * 0.5), Vector3.ZERO)
 	var span := hw + EAVES
-	HarbourProps.pitched_roof(b, "roof_slate", hl, span, _roof_y(span), pitch, HarbourProps.roof_tile("slate"), ROOF_T)
+	HarbourProps.pitched_roof(b, "roof_slate", hl - 0.05, span, _ridge, pitch, HarbourProps.roof_tile("slate"), ROOF_T)
 	b.box("paint", Vector3(NAVE_L, 0.1, 0.26), Vector3(0.0, _ridge - 0.01, 0.0), Color(0.2, 0.21, 0.24))
 	# Skews up each gable.
 	for sx: float in [-1.0, 1.0]:

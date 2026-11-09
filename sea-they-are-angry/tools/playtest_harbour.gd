@@ -88,14 +88,6 @@ func _go() -> void:
 				night_seen += 1
 				_killed = {}
 				_smashed = 0
-		if cyc.phase == cyc.Phase.DAY and cyc.time_left < 50.0:
-			# Nothing left to do by day: on to dusk, as a player would.
-			var busy := false
-			for k in main.players:
-				var b = k.get_node_or_null("KeeperAI")
-				busy = busy or (b != null and b._task in ["repair", "generator", "gather", "refuel"])
-			if not busy:
-				cyc.skip()
 	Engine.time_scale = 1.0
 	if main._ending:
 		print("RESULT: held. The lights of Kirkhaven: %d of %d lamps in at the end." % [main._lamps_on(), main.lamps.size()])

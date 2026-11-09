@@ -21,7 +21,11 @@ const LIGHT_TILT := -26.0
 ## The nights start this far down the rock's table of landings.
 const TABLE_SHIFT := 2
 ## A landing with a lamp burning at its head lets this share of a group through.
-const LIT_LANDING := 0.6
+const LIT_LANDING := 0.7
+## Kirkhaven draws more of them than the rock did: every group is this much bigger, and
+## bigger again on the last night.
+const SWELL := 1.35
+const LAST_SWELL := 1.1
 const LIT_LANDING_RANGE := 9.0
 ## How likely a group is to pick a dark landing over a lit one.
 const DARK_WEIGHT := 3.0
@@ -39,7 +43,6 @@ var generator: Generator
 var kirk: KirkKeep
 var lamps: Array[StreetLamp] = []
 var houses: Array[TownHouse] = []
-var events: Node
 var _ending := false
 var _ending_t := 0.0
 var _kirk_groups := 0
@@ -92,6 +95,8 @@ func _ready() -> void:
 	# The fog lies off the town's front: one long "island" whose south shore is the quay.
 	atmosphere.fog.isles = [[0.0, -34.0, 70.0, 40.0 + HarbourMap.QUAY_Z - 6.0, 0.0]]
 	atmosphere.fog._push_isles()
+	# On the last night it comes over the quay and up the terraces.
+	atmosphere.fog.add_flood_layers([HarbourMap.QUAY_H + 0.7, HarbourMap.QUAY_H + 1.5, HarbourMap.BACK_H + 0.9, HarbourMap.GREEN_H + 0.9])
 	hud = HudScript.new()
 	hud.lighthouse = lighthouse
 	hud.lamp = lighthouse.lamp
@@ -99,10 +104,8 @@ func _ready() -> void:
 	hud.status_line = _status_line
 	add_child(hud)
 	add_child(PauseScript.new())
-	if ClassDB.class_exists("NightEvents") or ResourceLoader.exists("res://scenes/world/night_events.gd"):
-		events = load("res://scenes/world/night_events.gd").new()
-		events.name = "NightEvents"
-		add_child(events)
+	events = NightEvents.new()
+	add_child(events)
 	Cycle.phase_changed.connect(_on_phase_changed)
 	Events.run_ended.connect(_on_run_ended)
 	Events.enemy_killed.connect(_on_enemy_killed)
@@ -377,7 +380,7 @@ func _build_dressing() -> void:
 # at the chandler's, diesel at the fuel berth, driftwood off the strand.
 func _build_stores() -> void:
 	var rows := [
-		["scrap", 2, -6.4, -0.7], ["bio", 1, -2.6, -0.7], ["scrap", 1, -18.4, -0.6],
+		["scrap", 1, -6.4, -0.7], ["bio", 2, -2.6, -0.7], ["scrap", 1, -18.4, -0.6],
 		["diesel", 1, -6.2, 4.4], ["driftwood", 2, 28.4, 5.6], ["driftwood", 1, 33.6, 7.4],
 		["driftwood", 1, 35.0, 2.0], ["scrap", 1, 27.0, -1.2],
 	]
@@ -403,6 +406,7 @@ func _build_harbour_spawner() -> void:
 	spawner.lighthouse = lighthouse
 	spawner.table_shift = TABLE_SHIFT
 	spawner.raid_from = 1
+	spawner.raid_skip = 3
 	spawner.pick_point = _pick_landing
 	spawner.count_scale = _landing_scale
 	spawner.on_spawn = _on_spawn
@@ -566,7 +570,8 @@ func _pick_landing(entry: Dictionary) -> int:
 	return -1
 
 func _landing_scale(at: Vector3) -> float:
-	return LIT_LANDING if landing_lit(HarbourMap.nearest_landing(at.x, at.z)) else 1.0
+	var k := SWELL * (LAST_SWELL if Rescue.is_last_night() else 1.0)
+	return k * (LIT_LANDING if landing_lit(HarbourMap.nearest_landing(at.x, at.z)) else 1.0)
 
 # Some of each night's raiders are sent at the kirk doors: one group from the third
 # night, every other group on the last.
@@ -578,12 +583,6 @@ func _on_spawn(e: Enemy, kind: String, raid: bool) -> void:
 			e.raid_goal = kirk
 	elif Run.night >= KIRK_FROM_NIGHT and raid and _kirk_groups <= 1:
 		e.raid_goal = kirk
-
-func _on_wave_incoming(points: Array, count: int) -> void:
-	super._on_wave_incoming(points, count)
-	if events != null and events.has_method("fog_ashore"):
-		for pt in points:
-			events.fog_ashore(pt)
 
 func _on_group_warning(kind: String, points: Array, raid: bool) -> void:
 	Audio.horn([1.0] if points.size() == 1 else [1.0, 1.0], -5.0)
@@ -700,10 +699,7 @@ func _wireless() -> void:
 	var line: String = WIRELESS[(Run.night - 1) % WIRELESS.size()]
 	if Rescue.is_last_night():
 		line = "Wireless: \"...all vessels. The bank is closing on Kirkhaven. If there is a light still burning there, God help whoever keeps it...\""
-	if events != null and events.has_method("wireless"):
-		events.wireless(line.trim_prefix("Wireless: "))
-	else:
-		Events.message.emit(line)
+	events.wireless(line.trim_prefix("Wireless: "))
 
 # The keeper's log for a night in the town.
 func _dawn_report() -> void:

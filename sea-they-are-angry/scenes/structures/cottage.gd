@@ -130,6 +130,7 @@ func _build() -> void:
 	_lamp.light_energy = 0.0
 	_lamp.position = Vector3(0.0, 1.4, -DEPTH * 0.5 - 0.8)
 	add_child(_lamp)
+	_lamp.add_to_group("flicker_lights")
 	Cycle.phase_changed.connect(_on_phase_changed)
 	_set_windows(Cycle.phase == Cycle.Phase.DUSK or Cycle.phase == Cycle.Phase.NIGHT)
 	_start_smoke.call_deferred()
@@ -160,6 +161,7 @@ func _furnish() -> void:
 	_fire_light.position = Vector3(ix - 0.8, 0.5, 0.0)
 	_fire_light.shadow_enabled = false
 	add_child(_fire_light)
+	_fire_light.add_to_group("flicker_lights")
 	# The table, two chairs, and the oil lamp on it.
 	var tx := 0.25
 	var tz := 0.2
@@ -187,6 +189,7 @@ func _furnish() -> void:
 	_room_light.light_energy = 0.0
 	_room_light.position = Vector3(tx + 0.2, 1.1, tz - 0.1)
 	add_child(_room_light)
+	_room_light.add_to_group("flicker_lights")
 	var bowl := Geo.cyl(self, 0.12, 0.06, Color.WHITE, Vector3(tx - 0.2, 0.8, tz + 0.1))
 	bowl.material_override = Look.flat_mat(Color(0.85, 0.85, 0.8), 0.4)
 	# The box bed along the far gable, a blanket and a pillow.

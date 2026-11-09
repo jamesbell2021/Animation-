@@ -57,6 +57,8 @@ const TURF_A := Color(0.19, 0.28, 0.11)
 const TURF_B := Color(0.28, 0.34, 0.14)
 const WEED := Color(0.14, 0.17, 0.10)
 
+## The two in the middle of the back row stand apart: the kirk wynd runs between them
+## from the back street to the kirk gate.
 ## The town: [x, z of the centre, width, wall height, depth, style, sign, roof, harl tint].
 ## Fronts face the sea. HarbourMain makes a TownHouse of each.
 const BUILDINGS := [
@@ -70,8 +72,8 @@ const BUILDINGS := [
 	[29.6, -5.2, 6.0, 3.2, 6.0, "shed", "", "pantile", 3],
 	[-25.2, -16.4, 6.4, 2.8, 5.6, "cottage", "", "slate", 1],
 	[-16.6, -16.4, 6.4, 2.8, 5.6, "cottage", "", "pantile", 0],
-	[-4.1, -16.4, 7.0, 4.8, 5.6, "house", "", "slate", 2],
-	[4.1, -16.4, 7.0, 2.8, 5.6, "cottage", "", "pantile", 1],
+	[-5.0, -16.4, 6.4, 4.8, 5.6, "house", "", "slate", 2],
+	[5.0, -16.4, 6.4, 2.8, 5.6, "cottage", "", "pantile", 1],
 	[15.6, -16.4, 6.4, 2.8, 5.6, "cottage", "", "slate", 0],
 	[23.0, -16.4, 6.0, 2.8, 5.6, "cottage", "", "pantile", 2],
 	[30.2, -16.4, 6.0, 2.8, 5.6, "cottage", "", "slate", 1],

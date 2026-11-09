@@ -1025,13 +1025,15 @@ func _s_radio_voice() -> PackedFloat32Array:
 	var voice := PackedFloat32Array()
 	voice.resize(n)
 	var r := RandomNumberGenerator.new()
-	r.seed = 980
+	r.seed = 983
 	var ph := 0.0
 	# Two resonators (the mouth's first two formants), each [y1, y2].
 	var f := [[0.0, 0.0], [0.0, 0.0]]
 	var want := [450.0, 1300.0]
 	var now := [450.0, 1300.0]
 	var last_syll := -1
+	var stress := 1.0
+	var loud := 1.0
 	for i in n:
 		var t := float(i) / RATE
 		# About four syllables a second, unevenly, in two phrases with a breath between.
@@ -1040,7 +1042,9 @@ func _s_radio_voice() -> PackedFloat32Array:
 		if syll != last_syll:
 			last_syll = syll
 			want = [r.randf_range(300.0, 720.0), r.randf_range(950.0, 1900.0)]
-		var open := pow(sin(fposmod(beat, 1.0) * PI), 0.7)
+			# Some words are leaned on, and now and then there's a gap between two.
+			stress = 0.0 if r.randf() < 0.1 else r.randf_range(0.6, 1.0)
+		var open := pow(sin(fposmod(beat, 1.0) * PI), 1.1) * stress
 		var phrase := smoothstep(0.03, 0.15, t) * (1.0 - smoothstep(0.82, 0.9, t)) + smoothstep(1.02, 1.1, t) * (1.0 - smoothstep(1.8, 1.95, t))
 		# The pitch falls away over each phrase, as a sentence does.
 		var pitch := 118.0 - 16.0 * fposmod(t, 1.0) + 5.0 * sin(t * 31.0)
@@ -1054,13 +1058,15 @@ func _s_radio_voice() -> PackedFloat32Array:
 			f[k][1] = f[k][0]
 			f[k][0] = y
 			v += y * (1.0 if k == 0 else 0.6)
-		voice[i] = v * open * phrase
+		# Evened out, as a voice is (the formants ring louder at some pitches than others).
+		loud = maxf(maxf(absf(v), 1.0), loud * 0.9994)
+		voice[i] = v / loud * open * phrase
 	# A small speaker's band, and the static it comes through.
 	_highpass(_lowpass(voice, 1900.0), 320.0)
 	var peak := 0.0001
 	for i in n:
 		peak = maxf(peak, absf(voice[i]))
-	_gain(voice, 0.75 / peak)
+	_gain(voice, 0.66 / peak)
 	var hiss := _highpass(_lowpass(_noise(n, 981), 3800.0), 700.0)
 	for i in n:
 		var t := float(i) / float(n)
@@ -1096,7 +1102,7 @@ func _s_kirk_bell() -> PackedFloat32Array:
 	b.resize(n)
 	var strike := 131.0
 	# [ratio to the strike note, level, decay]
-	for p in [[0.5, 0.45, 0.55], [1.0, 1.0, 0.8], [1.19, 0.7, 1.0], [1.5, 0.35, 1.5], [2.0, 0.8, 1.3],
+	for p in [[0.5, 0.6, 0.35], [1.0, 1.0, 0.5], [1.19, 0.7, 0.7], [1.5, 0.35, 1.0], [2.0, 0.8, 0.9],
 			[2.51, 0.4, 2.2], [3.01, 0.4, 2.8], [4.02, 0.3, 3.6], [5.33, 0.2, 5.0]]:
 		var hz: float = strike * float(p[0])
 		var ring := _tone(n, hz, hz * 0.999)

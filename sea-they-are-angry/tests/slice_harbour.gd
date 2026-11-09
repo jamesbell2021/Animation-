@@ -80,7 +80,7 @@ func _go() -> void:
 	await _wait(60)
 	check(lamp.fog_hole().z > 6.0 and main.lamps[5].fog_hole().z == 0.0, "its light holds the fog off (%.1f m)" % lamp.fog_hole().z)
 	check(main.landing_lit(0) and not main.landing_lit(1) and not main.landing_lit(2), "the west slip has a lamp at its head; the east slip and the strand are dark")
-	check(is_equal_approx(main._landing_scale(HarbourMap.landing_point(0, 0.0)), main.LIT_LANDING) and main._landing_scale(HarbourMap.landing_point(2, 0.0)) == 1.0, "a lit landing lets fewer through")
+	check(is_equal_approx(main._landing_scale(HarbourMap.landing_point(0, 0.0)) / main._landing_scale(HarbourMap.landing_point(2, 0.0)), main.LIT_LANDING), "a lit landing lets fewer through")
 	var picks := [0, 0, 0]
 	for i in 600:
 		picks[main._pick_landing({}) / 2] += 1

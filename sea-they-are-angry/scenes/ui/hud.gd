@@ -82,7 +82,7 @@ func _ready() -> void:
 	_mood_label = _label(col, FONT - 1)
 	_mood_label.add_theme_color_override("font_color", Color(0.72, 0.8, 0.86))
 	_gap(col, 4)
-	var lh_row := _row(col, "Lighthouse")
+	var lh_row := _row(col, "Harbour light" if Run.chapter == 2 else "Lighthouse")
 	_lh_bar = _bar(lh_row, Color(0.88, 0.3, 0.26), Vector2(170, 12))
 	_lh_bar.max_value = 1.0
 	_lh_label = _label(lh_row, FONT - 3)
@@ -689,7 +689,7 @@ func run_summary(night: int) -> String:
 	var g := func(k: String) -> int: return int(t.get(k, 0))
 	var lines: Array[String] = []
 	var held := maxi(0, night - 1)
-	lines.append("The light held %d night%s." % [held, "" if held == 1 else "s"])
+	lines.append("%s held %d night%s." % ["Kirkhaven" if Run.chapter == 2 else "The light", held, "" if held == 1 else "s"])
 	var how: Array[String] = []
 	for k in [["beam", "burned in the beam"], ["fall", "sent over the edge"], ["hook", "to the boathook"], ["shot", "shot"], ["arrow", "to arrows"], ["flame", "to the flamer"], ["bomb", "to petrol bombs"], ["trap", "in traps"], ["poison", "poisoned"], ["flare", "to flares"]]:
 		if g.call(k[0]) > 0:

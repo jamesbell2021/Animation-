@@ -66,6 +66,8 @@ var pick_point: Callable
 var count_scale: Callable
 ## Whether a Bloated group may raid (the harbour: every other group from the first night).
 var raid_from := RAID_FROM_NIGHT
+## 0: every second Bloated group raids (the rock). N: all but every Nth do (the harbour).
+var raid_skip := 0
 ## Called with each creature as it's made, before it enters the tree: (enemy, kind, raid).
 var on_spawn: Callable
 var enemies_root: Node
@@ -174,7 +176,8 @@ func _queue_group(entry: Dictionary) -> void:
 	var raid := false
 	if kind == "B":
 		_bloated_groups += 1
-		raid = Run.night >= raid_from and _bloated_groups % 2 == 0 and Enemy.nearest_home(Vector3.ZERO) != null
+		var turn := _bloated_groups % raid_skip != 0 if raid_skip > 0 else _bloated_groups % 2 == 0
+		raid = Run.night >= raid_from and turn and Enemy.nearest_home(Vector3.ZERO) != null
 	var landings: Array = [points[idx]]
 	if kind == "B" and not raid and Run.night >= SPLIT_FROM_NIGHT and count >= SPLIT_MIN and points.size() > 2:
 		# A second landing at a different beach.

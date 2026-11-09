@@ -11,8 +11,10 @@ const FOG_RADIUS := 8.5
 const DRAW := 0.016
 const SODIUM := Color(1.0, 0.60, 0.22)
 const WHITE := Color(1.0, 0.95, 0.85)
-const ENERGY := 2.6
-const RANGE := 10.0
+## Godot's lights fall off with distance as well as range: from 4 m up, a pool on the
+## ground wants this much.
+const ENERGY := 15.0
+const RANGE := 11.0
 ## While the kirk bell rings, every lit lamp flares: wider, and it burns like the beam.
 const FLARE_RADIUS := 9.0
 const HEIGHT := 4.6
@@ -31,6 +33,7 @@ var _light: OmniLight3D
 var _lens_mat: StandardMaterial3D
 var _lens: MeshInstance3D
 var _tell: MeshInstance3D
+var _halo: MeshInstance3D
 var _lit := false
 var _level := 0.0
 var _t := 0.0
@@ -44,6 +47,8 @@ func _build() -> void:
 	add_to_group("fog_lights")
 	add_to_group("homes")
 	_post = HarbourProps.lamp_post(HEIGHT)
+	# The arm reaches inland, over the quay and the street, not out over the water.
+	_post.rotation.y = PI
 	add_child(_post)
 	_lens = _post.find_child("Lens", true, false) as MeshInstance3D
 	if _lens != null:
@@ -58,13 +63,16 @@ func _build() -> void:
 	_light = OmniLight3D.new()
 	_light.light_color = SODIUM
 	_light.omni_range = RANGE
-	_light.omni_attenuation = 1.3
+	_light.omni_attenuation = 1.0
 	_light.light_energy = 0.0
 	_light.shadow_enabled = false
 	_light.light_volumetric_fog_energy = 1.6
 	_light.position = to_local(bulb.global_position) + Vector3(0.0, -0.25, 0.0) if bulb != null else Vector3(0.0, HEIGHT - 0.4, 0.4)
 	_light.add_to_group("flicker_lights")
 	add_child(_light)
+	# A halo round the head, so a burning lamp reads from above.
+	_halo = Look.glint(self, _light.position + Vector3(0.0, 0.35, 0.0), SODIUM, 1.5)
+	_halo.visible = false
 	# A small tell-tale on the fuse box: green when it's switched in.
 	_tell = MeshInstance3D.new()
 	var sm := SphereMesh.new()
@@ -136,6 +144,8 @@ func _physics_process(delta: float) -> void:
 		_lens_mat.emission = SODIUM.lerp(WHITE, hot)
 		_lens_mat.emission_energy_multiplier = 5.0 * _level * (1.0 + hot)
 	(_tell.material_override as StandardMaterial3D).emission_energy_multiplier = 2.0 if on and hp > 0 else 0.0
+	if _halo != null:
+		_halo.visible = _level > 0.05
 	if not _lit or not Run.active or Net.is_client():
 		return
 	# What stands in its light is slowed and scorched; in the bell's flare, burned.

@@ -20,6 +20,8 @@ const CAMERA_POS := Vector3(0.0, 41.0, 27.0)
 const CAMERA_TARGET := Vector3(0.0, 3.0, 1.0)
 const CAMERA_FOV := 45.0
 const LIGHT_TWEEN := 2.0
+## How near a landing's fog must come to a light to make it dip.
+const ASHORE_REACH := 22.0
 const GRASS_TUFTS := 9500
 const HOLM_GRASS_TUFTS := 5000
 const JETTY_LATERAL := 4.2
@@ -116,6 +118,8 @@ var _env: Environment
 var _sky_mat: ProceduralSkyMaterial
 var _sea_mat: ShaderMaterial
 var atmosphere: Atmosphere
+## The night's small uncanny things: the wireless, the knock, lights dipping (NightEvents).
+var events: NightEvents
 var _sun: DirectionalLight3D
 ## Gull Rock's boat, and the gulls.
 var rowing_boat: RowingBoat
@@ -152,6 +156,8 @@ func _ready() -> void:
 	atmosphere.sky_mat = _sky_mat
 	atmosphere.sea_mat = _sea_mat
 	add_child(atmosphere)
+	events = NightEvents.new()
+	add_child(events)
 	hud = HudScript.new()
 	hud.lighthouse = lighthouse
 	hud.lamp = lighthouse.lamp
@@ -506,6 +512,10 @@ func _on_wave_incoming(points: Array, count: int) -> void:
 	if atmosphere != null and atmosphere.fog != null:
 		for pt in points:
 			atmosphere.fog.tongue(pt)
+	# The lights dip as it comes ashore (the nearest beach is 20 m from the cottage).
+	if events != null:
+		for pt in points:
+			events.fog_ashore(pt, ASHORE_REACH)
 
 # One foghorn blast per landing, and a warning naming what and where.
 func _on_group_warning(kind: String, points: Array, raid: bool) -> void:
