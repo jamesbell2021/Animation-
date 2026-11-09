@@ -24,7 +24,7 @@ var _bands: Array[MeshInstance3D] = []
 
 # Stakes are quick to drive back in: one driftwood mends half a fence, so a day's
 # beachcombing can stand most of the line back up.
-const MEND := 50
+const MEND := Balance.MEND_FENCE
 
 func repair_amount() -> int:
 	return MEND

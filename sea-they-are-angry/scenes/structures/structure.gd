@@ -4,7 +4,7 @@ extends StaticBody3D
 signal health_changed(hp: int, max_hp: int)
 signal destroyed
 
-const REPAIR_AMOUNT := 25
+const REPAIR_AMOUNT := Balance.MEND_DEFAULT
 # Below this much health a building smoulders, so damage reads from across the island.
 const SMOKE_BELOW := 0.45
 
@@ -69,7 +69,7 @@ func health_ratio() -> float:
 	return float(hp) / float(max_hp)
 
 func repair_cost() -> Dictionary:
-	return {"driftwood": 1}
+	return Balance.COST_MEND
 
 ## A camp mend: a scrap if there's any in the store, else a driftwood (the camp has to
 ## be kept going on what the beaches bring, and scrap is scarce).
@@ -78,7 +78,7 @@ static func scrap_or_wood() -> Dictionary:
 
 ## Health restored per repair. Homestead buildings and fences mend faster than the
 ## lighthouse: a day's driftwood should go a long way toward putting a raid right.
-const MEND_HOMESTEAD := 50
+const MEND_HOMESTEAD := Balance.MEND_HOMESTEAD
 
 func repair_amount() -> int:
 	return MEND_HOMESTEAD if id in ["cottage", "shed", "garden"] else REPAIR_AMOUNT

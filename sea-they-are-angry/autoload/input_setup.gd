@@ -5,6 +5,8 @@ extends Node
 ## True while the first keeper is playing on a pad rather than the mouse: the right
 ## stick (or the way they walk) aims instead of the cursor.
 var pad_active := false
+## The gamepad keeper one plays on (-1 until one's used): others' presses can join.
+var main_pad := -1
 var _pad_events: Array = []
 
 func _ready() -> void:
@@ -47,6 +49,7 @@ func set_pad(on: bool) -> void:
 		if InputMap.has_action(pair[0]):
 			InputMap.action_erase_event(pair[0], pair[1])
 	_pad_events.clear()
+	main_pad = -1
 	if not on:
 		pad_active = false
 		return
@@ -116,6 +119,9 @@ func _input(ev: InputEvent) -> void:
 		return
 	if ev is InputEventJoypadButton and ev.pressed or ev is InputEventJoypadMotion and absf(ev.axis_value) > 0.5:
 		pad_active = true
+		# The first pad keeper one is played on is theirs; later pads can join a friend.
+		if main_pad == -1:
+			main_pad = ev.device
 	elif ev is InputEventMouseMotion and ev.relative.length() > 4.0 or ev is InputEventMouseButton and ev.pressed:
 		pad_active = false
 

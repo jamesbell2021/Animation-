@@ -10,11 +10,11 @@ enum Level { CALM, ANGRY, RAGING }
 
 const NAMES := ["Calm sea", "Angry sea", "Raging sea"]
 const BLURBS := ["easy: fewer of them, and ammunition never runs out", "the game as it's meant", "hard: more of them, and they hit harder"]
-const CREATURES := [0.7, 1.0, 1.35]
-const KEEPER_DAMAGE := [0.6, 1.0, 1.3]
-const NEEDS := [0.6, 1.0, 1.25]
-const SHELLS := [10, 10, 6]
-const POISON := [4, 4, 2]
+const CREATURES := Balance.SEA_CREATURES
+const KEEPER_DAMAGE := Balance.SEA_KEEPER_DAMAGE
+const NEEDS := Balance.SEA_NEEDS
+const SHELLS := Balance.SEA_SHELLS
+const POISON := Balance.SEA_POISON
 
 static func level() -> int:
 	return clampi(Run.difficulty, 0, NAMES.size() - 1)

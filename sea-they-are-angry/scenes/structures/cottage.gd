@@ -13,16 +13,16 @@ const SLATE := Color(0.20, 0.22, 0.25)
 const HARL := Color(1.0, 1.0, 0.97)
 const WINDOW_DARK := Color(0.10, 0.12, 0.15)
 const WINDOW_LIT := Color(1.0, 0.72, 0.38)
-const MEAL := {"food": 1}
-const MEAL_MAX_HP := 10
-const FLARE_COST := {"scrap": 1}
-const MIX_COST := {"oil": 1, "driftwood": 1}
-const MIX_YIELD := 2
+const MEAL := Balance.COST_MEAL
+const MEAL_MAX_HP := Balance.MEAL_MAX_HEALTH_GAIN
+const FLARE_COST := Balance.COST_FLARE
+const MIX_COST := Balance.COST_MIX_FUEL
+const MIX_YIELD := Balance.MIX_FUEL_YIELD
 ## Gull eggs from Gull Rock, boiled: this many make a meal for the store.
-const EGGS_MEAL := {"eggs": 3}
+const EGGS_MEAL := Balance.COST_EGGS_MEAL
 ## Kelp broth: a thin meal for the store from the kelp the beds don't need. Dear next to
 ## the garden (a kelp there grows a meal by dawn), so it's for a full store of kelp.
-const BROTH := {"seaweed": 3}
+const BROTH := Balance.COST_BROTH
 
 var _wall_mat: StandardMaterial3D
 var _window_mat: StandardMaterial3D

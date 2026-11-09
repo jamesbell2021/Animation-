@@ -27,13 +27,13 @@ func duration_for(p: int) -> float:
 	var n: int = Run.night
 	match p:
 		Phase.DAY:
-			return 60.0
+			return Balance.DAY_SECONDS
 		Phase.DUSK:
-			return 15.0
+			return Balance.DUSK_SECONDS
 		Phase.NIGHT:
-			return minf(120.0 + 10.0 * (n - 1), 210.0)
+			return minf(Balance.NIGHT_BASE + Balance.NIGHT_STEP * (n - 1), Balance.NIGHT_CAP)
 		Phase.DAWN:
-			return 30.0
+			return Balance.DAWN_SECONDS
 	return 1.0
 
 func progress() -> float:

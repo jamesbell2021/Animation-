@@ -17,7 +17,7 @@ const SURGE_TIME := 3.0
 const COIL_TIME := 20.0
 const COIL_TIME_SOLO := 25.0
 const RELEASE_TIME := 2.0
-const BEAM_HP := 90
+const BEAM_HP := Balance.EEL_HP
 const BEAM_DPS := 12.0
 const MELEE_MULT := 0.25
 # Arrows, shot and fire from the shed's weapons bite deeper than the boathook, but the
@@ -71,7 +71,7 @@ func _init() -> void:
 	speed = 0.0
 
 func _ready() -> void:
-	max_hp = roundi(BEAM_HP * (1.0 + 0.2 * float(Players.humans() - 1)))
+	max_hp = roundi(BEAM_HP * (1.0 + Balance.HP_PER_EXTRA_PERSON * float(Players.humans() - 1)))
 	_coil_len = COIL_TIME_SOLO if Players.humans() <= 1 else COIL_TIME
 	super._ready()
 	collision_layer = 0

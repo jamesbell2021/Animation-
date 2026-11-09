@@ -30,6 +30,59 @@ func _ready() -> void:
 		start.device = -1
 		InputMap.action_add_event("pause", start)
 
+## A second or third person joins a local game that's under way: press Insert (the
+## arrow keys' keeper) or A on a gamepad that keeper one isn't using. By day or at dawn
+## (not in the dark); the first computer keeper becomes theirs, at the cottage, on full
+## health, and the screen splits when they're apart (the camera follows whoever isn't the
+## computer's).
+func _input(ev: InputEvent) -> void:
+	if not Run.active or nodes.is_empty() or wanted >= MAX:
+		return
+	if ev is InputEventKey and ev.pressed and not ev.echo and ev.keycode == KEY_INSERT:
+		join(KEYBOARD_ARROWS)
+	elif ev is InputEventJoypadButton and ev.pressed and ev.button_index == JOY_BUTTON_A and ev.device != InputSetup.main_pad:
+		join(ev.device)
+
+## Why nobody can join now ("" when someone can).
+func join_blocked(device: int) -> String:
+	if Net.online():
+		return "Joining a LAN game is done from the lobby."
+	if devices.has(device):
+		return "That controller is already playing."
+	if wanted >= MAX:
+		return "All three keepers are people already."
+	if Cycle.phase != Cycle.Phase.DAY and Cycle.phase != Cycle.Phase.DAWN:
+		return "Join by day: wait for the light."
+	if wanted >= nodes.size() or not is_instance_valid(nodes[wanted]) or not nodes[wanted].ai:
+		return "No computer keeper to hand over."
+	return ""
+
+## Seat a new person on `device`. Returns their keeper, or null (with a word on screen).
+func join(device: int) -> Player:
+	var why := join_blocked(device)
+	if why != "":
+		if not why.begins_with("That controller"):
+			Events.message.emit(why)
+		return null
+	var p: Player = nodes[wanted]
+	var brain := p.get_node_or_null("KeeperAI")
+	if brain != null:
+		brain.queue_free()
+	p.ai = false
+	p.ai_move = Vector2.ZERO
+	p.in_menu = false
+	devices.append(device)
+	bind_device(wanted, device)
+	wanted += 1
+	# Playing with someone: the pad is theirs now, not keeper one's.
+	InputSetup.set_pad(false)
+	var at := Terrain.at_angle(-18.0, 10.5)
+	p.global_position = Vector3(at.x, Terrain.height_at(at.x, at.z) + 0.2, at.z)
+	p.hp = p.max_hp
+	Events.message.emit("%s joins: %s" % [p.keeper_name(), device_label(wanted - 1)])
+	Audio.sfx("ui_accept", Vector3.INF, -2.0, 0.0)
+	return p
+
 func count() -> int:
 	return maxi(1, nodes.size())
 

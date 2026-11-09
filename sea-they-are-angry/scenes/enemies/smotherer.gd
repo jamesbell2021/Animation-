@@ -10,7 +10,7 @@ extends Enemy
 ## shake it loose: three blows and it falls, and from the top the fall kills it. Solo,
 ## that means leaving the lamp; in co-op it's a job for the other keeper.
 
-const CLIMB_SPEED := 1.3
+const CLIMB_SPEED := Balance.SMOTHERER_CLIMB_SPEED
 const CLIMB_FROM := 0.4
 # Each blow at the tower's foot jolts a climber back down a little.
 # A thrown boathook wounds it as well as knocking it off.
@@ -35,9 +35,9 @@ var _fall_from := 0.0
 var _smothering := false
 
 func _init() -> void:
-	max_hp = 50
+	max_hp = Balance.SMOTHERER_HP
 	hp = 50
-	speed = 1.4
+	speed = Balance.SMOTHERER_SPEED
 	mass = 1.2
 	reach = 0.0
 
@@ -343,7 +343,7 @@ func _physics_process(delta: float) -> void:
 
 ## Sometimes a twist of old metal caught in it.
 func salvage() -> Array:
-	return [["scrap", 1, 0.4]]
+	return [["scrap", 1, Balance.DROP_SMOTHERER_SCRAP_CHANCE]]
 
 func _die() -> void:
 	_let_go_of_lamp()

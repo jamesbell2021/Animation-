@@ -6,7 +6,7 @@ extends Enemy
 ## squirts a cloud of ink that hides the other creatures from all but the beam.
 ## With no keeper outside, it goes for the lighthouse door.
 
-const DASH_SPEED := 4.5
+const DASH_SPEED := Balance.SQUID_DASH_SPEED
 const DASH_TIME := 1.0
 const PAUSE_TIME := 0.6
 const LUNGE_RANGE := 1.5
@@ -18,7 +18,7 @@ const INK_EVERY := 8.0
 const LIGHT_SLOW := 0.4
 const BEAM_DPS := 15.0
 const CLIMB_TIME := 0.9
-const CLIMB_SPEED := 2.0
+const CLIMB_SPEED := Balance.SQUID_CLIMB_SPEED
 const BODY := Color(0.25, 0.3, 0.4)
 const DOTS := Color(0.3, 0.9, 0.9)
 const LIT_TINT := Color(0.75, 0.82, 0.9)
@@ -46,8 +46,8 @@ const PHYS := {
 }
 
 func _init() -> void:
-	max_hp = 35
-	hp = 35
+	max_hp = Balance.SQUID_HP
+	hp = Balance.SQUID_HP
 	speed = 2.2
 	mass = 0.8
 	turn_rate = 10.0
@@ -326,7 +326,7 @@ func on_dawn() -> void:
 
 ## Half the time, the glowing stuff it's full of.
 func salvage() -> Array:
-	return [["bio", 1, 0.5]]
+	return [["bio", 1, Balance.DROP_SQUID_BIO_CHANCE]]
 
 func _die() -> void:
 	if last_hit == "beam":

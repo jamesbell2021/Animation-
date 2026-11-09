@@ -30,9 +30,9 @@ var _burst_done := false
 var _steam_t := 0.0
 
 func _init() -> void:
-	max_hp = 60
-	hp = 60
-	speed = 1.15
+	max_hp = Balance.BLOATED_HP
+	hp = Balance.BLOATED_HP
+	speed = Balance.BLOATED_SPEED
 	mass = 2.0
 	turn_rate = 5.0
 	# Heavy on its feet: three quick blows to floor it (it bursts on the third anyway).
@@ -252,6 +252,6 @@ func _enter_Burst() -> void:
 		Audio.sfx("pop", c + Vector3(0.0, 1.0, 0.0), 5.0, 0.08)
 		FX.steam_burst(get_parent(), c + Vector3(0.0, 1.0, 0.0))
 	Events.enemy_killed.emit(self)
-	if _killed and not puppet and randf() < 0.35:
+	if _killed and not puppet and randf() < Balance.DROP_BLOATED_KELP_CHANCE:
 		Salvage.drop(get_parent(), c, "seaweed", 1)
 	queue_free()

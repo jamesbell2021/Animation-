@@ -51,7 +51,7 @@ func repair_cost() -> Dictionary:
 	return scrap_or_wood()
 
 func repair_amount() -> int:
-	return 60
+	return Balance.MEND_CAMP_WIRE
 
 func display_name() -> String:
 	return "the wire"

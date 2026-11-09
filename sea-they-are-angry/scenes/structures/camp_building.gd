@@ -52,7 +52,7 @@ func repair_cost() -> Dictionary:
 	return {"driftwood": 1}
 
 func repair_amount() -> int:
-	return 70
+	return Balance.MEND_CAMP_HUT
 
 func display_name() -> String:
 	return {"quarters": "the quarters", "mess": "the mess hut", "greenhouse": "the greenhouse"}.get(id, id)

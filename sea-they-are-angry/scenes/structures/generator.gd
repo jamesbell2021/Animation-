@@ -78,7 +78,7 @@ func repair_cost() -> Dictionary:
 
 ## Wrecked to running in two mends.
 func repair_amount() -> int:
-	return 60
+	return Balance.MEND_GENERATOR
 
 ## Something it powers, drawing this much fuel a second (0 stops the draw).
 func set_draw(who: Object, per_s: float) -> void:

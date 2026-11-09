@@ -9,7 +9,7 @@ extends Enemy
 ## front; after a slam it's wide open. The beam can't burn it, but a focused beam in its
 ## eyes during the wind-up staggers it. Too heavy to shove off the ledge.
 
-const BASE_HP := 150
+const BASE_HP := Balance.CRAB_HP
 const SLAM_RANGE := 2.2
 const SLAM_ARC_DEG := 60.0
 const SLAM_STRUCT_DMG := 30
@@ -59,14 +59,14 @@ var _flipping := false
 func _init() -> void:
 	max_hp = BASE_HP
 	hp = BASE_HP
-	speed = 1.2
+	speed = Balance.CRAB_SPEED
 	mass = 5.0
 	turn_rate = 4.0
 	reach = SLAM_RANGE - 0.4
 
 func _ready() -> void:
 	# More keepers, tougher shell.
-	max_hp = roundi(BASE_HP * (1.0 + 0.2 * float(Players.humans() - 1)))
+	max_hp = roundi(BASE_HP * (1.0 + Balance.HP_PER_EXTRA_PERSON * float(Players.humans() - 1)))
 	super._ready()
 
 func _build() -> void:
@@ -390,4 +390,4 @@ func _die() -> void:
 ## Scrap grown into its shell, left where it fell for the taking, if it was beaten (a
 ## crab burnt to nothing leaves nothing).
 func salvage() -> Array:
-	return [["scrap", 2, 1.0]] if last_hit != "beam" else []
+	return [["scrap", Balance.DROP_CRAB_SCRAP, 1.0]] if last_hit != "beam" else []

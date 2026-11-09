@@ -1,10 +1,10 @@
 class_name Player
 extends CharacterBody3D
 
-const SPEED := 4.5
-const SPRINT := 6.5
-const SPRINT_MAX := 3.0
-const SPRINT_COOLDOWN := 2.0
+const SPEED := Balance.KEEPER_SPEED
+const SPRINT := Balance.KEEPER_SPRINT
+const SPRINT_MAX := Balance.KEEPER_SPRINT_MAX
+const SPRINT_COOLDOWN := Balance.KEEPER_SPRINT_COOLDOWN
 const ATTACK_RANGE := 2.5
 const ATTACK_DMG := 20
 const ATTACK_CD := 0.6
@@ -28,8 +28,8 @@ const POUR_TIME := 0.9
 const PUSH_DECAY := 10.0
 const FALL_SPEED := -5.0
 ## A jump: up a step of rock or a bank on the beach (not over a fence or up a cliff).
-const JUMP_SPEED := 4.4
-const GRAVITY := 14.0
+const JUMP_SPEED := Balance.KEEPER_JUMP_SPEED
+const GRAVITY := Balance.KEEPER_GRAVITY
 ## Walking into a fence this long climbs over it.
 const VAULT_AFTER := 0.25
 const VAULT_TIME := 0.6
@@ -49,14 +49,14 @@ const HIT_IMPULSE := 3.0
 const HIT_DOWN_TIME := 0.7
 # Roughly the ragdoll's mass, to turn a shove (m/s) into an impulse.
 const RAG_MASS := 30.0
-const BASE_HP := 100
+const BASE_HP := Balance.KEEPER_HP
 # The flare gun: two shots, reloaded at the cottage.
-const FLARES_MAX := 2
+const FLARES_MAX := Balance.KEEPER_FLARES_MAX
 const FLARE_RANGE := 14.0
 const FLARE_PAD_DIST := 10.0
 const REVIVE_RANGE := 1.5
-const REVIVE_HP := 0.4
-const DAWN_HP := 0.5
+const REVIVE_HP := Balance.REVIVE_HEALTH
+const DAWN_HP := Balance.DAWN_HEALTH
 const LANTERN_COLOR := Color(1.0, 0.68, 0.32)
 const HOOK_PATH := "res://art/props/boat_hook.glb"
 # The keeper GLBs are 2.05 m tall; scaled so the keeper stands about 1.75 m.
@@ -70,8 +70,8 @@ const STEP_EVERY := 0.42
 # Hunger and warmth (0 to 100). Hunger drains all the time (faster sprinting); warmth
 # drains outdoors at night, faster in rain and a storm, and comes back by day, by a
 # fire or a lit stove, or up in the lamp room.
-const HUNGER_RATE := 0.18
-const COLD_NIGHT := 0.12
+const HUNGER_RATE := Balance.HUNGER_RATE
+const COLD_NIGHT := Balance.COLD_NIGHT_RATE
 const WEATHER_COLD := [1.0, 1.6, 2.2]
 const SUN_WARM := 0.25
 const SHELTER_WARM := 0.6

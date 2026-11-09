@@ -5,12 +5,12 @@ extends Structure
 ## box of cartridges, a weed burner to rig as a flamer, tins of rat poison, and what's
 ## needed to make a longbow and arrows from driftwood and fill petrol bombs with bio.
 
-const FLAMER_COST := {"scrap": 2}
-const BOW_COST := {"driftwood": 3, "seaweed": 1}
-const ARROWS_COST := {"driftwood": 1, "scrap": 1}
-const ARROWS_MADE := 5
-const BOMBS_COST := {"bio": 1, "seaweed": 1}
-const BOMBS_MADE := 2
+const FLAMER_COST := Balance.COST_FLAMER
+const BOW_COST := Balance.COST_BOW
+const ARROWS_COST := Balance.COST_ARROWS
+const ARROWS_MADE := Balance.ARROWS_MADE
+const BOMBS_COST := Balance.COST_BOMBS
+const BOMBS_MADE := Balance.BOMBS_MADE
 
 const WIDTH := 3.2
 const DEPTH := 2.6

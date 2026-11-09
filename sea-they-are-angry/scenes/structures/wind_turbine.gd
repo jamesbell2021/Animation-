@@ -73,7 +73,7 @@ func repair_cost() -> Dictionary:
 
 ## Wrecked to turning in two mends.
 func repair_amount() -> int:
-	return 80
+	return Balance.MEND_TURBINE
 
 func smoke_point() -> Vector3:
 	return Vector3(0.0, HUB_H + 0.2, 0.4)

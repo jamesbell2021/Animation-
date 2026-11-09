@@ -8,14 +8,14 @@ enum Mode { WIDE, FOCUSED }
 signal state_changed(s: int)
 signal smothered_changed(on: bool)
 
-const GUTTER_WINDOW := 25.0
-const FUEL_MAX := 100.0
+const GUTTER_WINDOW := Balance.LAMP_GUTTER_WINDOW
+const FUEL_MAX := Balance.LAMP_FUEL_MAX
 const WIDE_ANGLE := 35.0
 const FOCUS_ANGLE := 10.0
 const WIDE_RANGE := 26.0
 const FOCUS_RANGE := 29.0
-const BURN_WIDE := 0.35
-const BURN_FOCUSED := 1.0
+const BURN_WIDE := Balance.LAMP_BURN_WIDE
+const BURN_FOCUSED := Balance.LAMP_BURN_FOCUSED
 const UNMANNED_MULT := 0.8
 const AUTO_SWEEP_DEG := 20.0
 const AIM_SHARPNESS := 6.0
