@@ -1,0 +1,31 @@
+Sea They Are Angry: licence
+
+The source code (the GDScript, shader and tool scripts in this folder: scenes/, autoload/,
+shaders/, tools/, tests/, scripts/, art/source/*.py and similar) is under the MIT licence:
+
+  Copyright (c) 2026 3BL_Indie
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy of this
+  software and associated documentation files (the "Software"), to deal in the Software
+  without restriction, including without limitation the rights to use, copy, modify, merge,
+  publish, distribute, sublicense, and/or sell copies of the Software, and to permit
+  persons to whom the Software is furnished to do so, subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in all copies or
+  substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+  INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
+  PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
+  FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+  OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+  DEALINGS IN THE SOFTWARE.
+
+The game's assets are NOT under that licence. All rights are reserved by 3BL_Indie for:
+the 3D models, textures and animations (art/), the music and sounds (audio/, and the
+sounds the code synthesises), the story and the writing, the title, the characters and
+the studio's logo and splash (studio/). You may not reuse them without written permission.
+
+Third-party material keeps its own licence: the fonts (fonts/CREDITS.md: IM FELL English
+under the SIL OFL 1.1, Special Elite under the Apache 2.0) and the Godot Engine
+(godotengine.org/license, MIT).

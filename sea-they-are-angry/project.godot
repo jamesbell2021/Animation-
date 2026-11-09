@@ -25,6 +25,7 @@ Players="*res://autoload/players.gd"
 Net="*res://autoload/net.gd"
 Settings="*res://autoload/settings.gd"
 Feel="*res://autoload/feel.gd"
+Telemetry="*res://autoload/telemetry.gd"
 
 [display]
 

@@ -256,7 +256,7 @@ func _keeper_card(p: Player) -> Dictionary:
 	var v := _vbox(pc, 2)
 	var nm := _label(v, FONT)
 	Fonts.use_title(nm)
-	nm.add_theme_color_override("font_color", Players.COLORS[p.idx % Players.COLORS.size()])
+	nm.add_theme_color_override("font_color", Players.color_of(p.idx))
 	var down := _label(v, FONT - 2)
 	down.add_theme_color_override("font_color", RED)
 	var bars := {}
@@ -414,7 +414,8 @@ func _process_danger(delta: float) -> void:
 	_danger_t += delta
 	var ph := fmod(_danger_t, 1.0)
 	var beat := exp(-ph * 9.0) + 0.5 * exp(-maxf(0.0, ph - 0.22) * 11.0) * float(ph > 0.22)
-	_danger_mat.set_shader_parameter("strength", 0.15 + 0.5 * beat)
+	# Reduced flashing (Settings): a steady glow instead of a pulse.
+	_danger_mat.set_shader_parameter("strength", 0.3 if Settings.calm_lights else 0.15 + 0.5 * beat)
 
 func _label(parent: Node, size: int) -> Label:
 	var l := Label.new()
@@ -457,7 +458,7 @@ func _build_game_over(root: Control) -> void:
 	center.add_child(box)
 	var title := _label(box, 68)
 	Fonts.use_title(title)
-	title.text = "The light is out."
+	title.text = Strings.t("over.title")
 	title.add_theme_color_override("font_color", GOLD)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_over_title = title
@@ -477,9 +478,9 @@ func _build_game_over(root: Control) -> void:
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.add_theme_constant_override("separation", 24)
 	box.add_child(row)
-	var btn := _over_button(row, "Try again", _on_new_run)
+	var btn := _over_button(row, Strings.t("over.again"), _on_new_run)
 	_over_btn = btn
-	_over_button(row, "Back to the title", _on_title)
+	_over_button(row, Strings.t("over.title_screen"), _on_title)
 
 func _process(delta: float) -> void:
 	_process_danger(delta)
@@ -635,6 +636,15 @@ func report(heading: String, lines: Array, time: float = REPORT_TIME) -> void:
 	_report_t = time
 
 func _on_phase_changed(p: int) -> void:
+	# The morning: the night to come, and how the sea feels, in a card for a couple of seconds
+	# (not over the first day's welcome, or the dawn's log).
+	if p == Cycle.Phase.DAY and Run.active and _report_t <= 0.0 and _warn_t <= 0.0:
+		_show_warning("Night %d to come" % Run.night)
+		_warn_t = 2.5
+		_report_label.text = String(MOODS[mood(Anger.value)][1])
+		_report_label.visible = true
+		_report_label.modulate.a = 1.0
+		_report_t = 2.5
 	if p == Cycle.Phase.DUSK:
 		_show_warning(["A clear night. The fog is coming.", "Squalls coming in with the fog.", "A storm is coming."][Weather.tonight()])
 	elif p == Cycle.Phase.NIGHT:

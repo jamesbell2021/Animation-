@@ -34,6 +34,7 @@ func live() -> bool:
 func shake(amount: float, at: Vector3 = Vector3.INF) -> void:
 	if not Settings.shake or not live():
 		return
+	amount *= float(Settings.SHAKE_SCALE[Settings.shake_level])
 	if at != Vector3.INF:
 		var best := INF
 		for k in get_tree().get_nodes_in_group("player"):
@@ -46,7 +47,7 @@ func shake(amount: float, at: Vector3 = Vector3.INF) -> void:
 
 ## Freeze the world for `seconds` of real time (a blow landing).
 func hitstop(seconds: float) -> void:
-	if not live() or Net.online() or seconds <= 0.0:
+	if not live() or Net.online() or seconds <= 0.0 or not Settings.hitstop:
 		return
 	if _stop_left <= 0.0:
 		_scale_before = Engine.time_scale

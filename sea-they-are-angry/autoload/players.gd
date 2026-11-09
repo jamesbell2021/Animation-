@@ -10,6 +10,14 @@ const KEYBOARD_ARROWS := -2
 const NAMES := ["Callum", "Hamish", "Mairi", "Ewan"]
 const MODELS := ["callum_keeper", "hamish_keeper", "mairi_keeper", "ewan_keeper"]
 const COLORS := [Color(1.0, 0.72, 0.25), Color(0.35, 0.85, 1.0), Color(1.0, 0.4, 0.8), Color(0.45, 1.0, 0.45)]
+## The other palette (Settings): amber, blue, white and green, which stay apart for most
+## kinds of colour blindness.
+const SAFE_COLORS := [Color(1.0, 0.72, 0.25), Color(0.30, 0.55, 1.0), Color(0.96, 0.96, 0.96), Color(0.40, 0.90, 0.40)]
+
+## A keeper's colour, in the palette that's chosen.
+static func color_of(idx: int) -> Color:
+	var list: Array = SAFE_COLORS if Settings.palette == 1 else COLORS
+	return list[idx % list.size()]
 const ACTIONS := ["move_left", "move_right", "move_up", "move_down", "aim_left", "aim_right", "aim_up", "aim_down", "attack", "interact", "operate", "beam_mode", "sprint", "jump", "flare", "use_dirty", "weapon_next", "weapon_prev"]
 
 var wanted := 1

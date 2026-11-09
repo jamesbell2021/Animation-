@@ -167,6 +167,29 @@ static func emitter(parent: Node, at: Vector3, mesh: Mesh, color: Color, amount:
 
 # ---- named effects ----
 
+## A number floating up off what was hit and fading (Settings can turn them off).
+static func damage_number(parent: Node, at: Vector3, amount: int, color: Color = Color(1.0, 0.95, 0.8)) -> void:
+	if parent == null or not parent.is_inside_tree() or not Settings.damage_numbers or amount <= 0:
+		return
+	var l := Label3D.new()
+	l.text = str(amount)
+	l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	l.no_depth_test = true
+	l.pixel_size = 0.011
+	l.font_size = 56
+	l.outline_size = 12
+	l.modulate = color
+	l.outline_modulate = Color(0.0, 0.0, 0.0, 0.85)
+	var f := Fonts.title()
+	if f != null:
+		l.font = f
+	parent.add_child(l)
+	l.global_position = at
+	var tw := l.create_tween().set_parallel(true)
+	tw.tween_property(l, "position:y", l.position.y + 1.1, 0.6)
+	tw.tween_property(l, "modulate:a", 0.0, 0.35).set_delay(0.25)
+	tw.chain().tween_callback(l.queue_free)
+
 ## Water bursting up as something breaks the surface.
 static func splash(parent: Node, at: Vector3, size: float = 1.0) -> void:
 	if not ambient and not Net.fx_gate("splash", [at, size]):

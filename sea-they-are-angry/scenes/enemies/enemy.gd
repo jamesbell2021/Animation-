@@ -895,6 +895,7 @@ func take_damage(amount: int, from_dir: Vector3 = Vector3.ZERO, source: Node = n
 	_on_hit()
 	if source is Player and not source.ai:
 		Feel.blow(hp <= 0, amount >= 30)
+		FX.damage_number(get_parent(), global_position + Vector3(randf_range(-0.3, 0.3), 1.9, randf_range(-0.2, 0.2)), amount)
 	if hp <= 0:
 		hp = 0
 		_die()
@@ -906,6 +907,8 @@ var _flash_meshes: Array = []
 var _flash_t := 0.0
 
 func flash() -> void:
+	if Settings.calm_lights:
+		return
 	if _flash_mat == null:
 		_flash_mat = StandardMaterial3D.new()
 		_flash_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED

@@ -339,7 +339,7 @@ func _on_phase_changed(p: int) -> void:
 
 # Coloured ring and name tag, shown when more than one keeper is playing.
 func _build_marker() -> void:
-	var col: Color = Players.COLORS[idx % Players.COLORS.size()]
+	var col: Color = Players.color_of(idx)
 	_ring = MeshInstance3D.new()
 	var t := TorusMesh.new()
 	t.inner_radius = 0.42
@@ -560,12 +560,37 @@ func set_outline(on: bool) -> void:
 	if on and _outline_mat == null:
 		_outline_mat = ShaderMaterial.new()
 		_outline_mat.shader = load("res://shaders/keeper_outline.gdshader")
-		_outline_mat.set_shader_parameter("color", Players.COLORS[idx % Players.COLORS.size()])
+		_outline_mat.set_shader_parameter("color", Players.color_of(idx))
 	for m in rig.find_children("*", "MeshInstance3D", true, false):
 		(m as MeshInstance3D).material_overlay = _outline_mat if on else null
 
 func outlined() -> bool:
 	return _outlined
+
+## A keeper who's hit flashes red for a moment (not with reduced flashing).
+static var _hurt_mat: StandardMaterial3D
+var _hurt_t := 0.0
+
+func _flash_hurt() -> void:
+	if Settings.calm_lights or rig == null:
+		return
+	if _hurt_mat == null:
+		_hurt_mat = StandardMaterial3D.new()
+		_hurt_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		_hurt_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		_hurt_mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+		_hurt_mat.albedo_color = Color(1.0, 0.15, 0.1, 0.55)
+	var first := _hurt_t <= 0.0
+	_hurt_t = 0.12
+	if not first:
+		return
+	for m in rig.find_children("*", "MeshInstance3D", true, false):
+		(m as MeshInstance3D).material_overlay = _hurt_mat
+	while _hurt_t > 0.0 and is_inside_tree():
+		await get_tree().process_frame
+		_hurt_t -= get_process_delta_time() / maxf(Engine.time_scale, 0.04)
+	for m in rig.find_children("*", "MeshInstance3D", true, false):
+		(m as MeshInstance3D).material_overlay = _outline_mat if _outlined and _outline_mat != null else null
 
 func _physics_process(delta: float) -> void:
 	if puppet:
@@ -1315,6 +1340,7 @@ func _pour_dirty() -> void:
 	if Stock.get_amount("dirty_fuel") <= 0:
 		Events.message.emit("No dirty fuel: mix oil and driftwood at the cottage.")
 		return
+	Telemetry.record("dirty_fuel", {"night": Run.night, "phase": Cycle.phase_name()})
 	_start_job("can", lh, "use_dirty")
 
 func is_busy() -> bool:
@@ -1602,6 +1628,8 @@ func take_damage(amount: int, from: Vector3 = Vector3.INF) -> void:
 	Audio.sfx("hurt", global_position)
 	if not ai and not remote:
 		Feel.shake(clampf(0.18 + float(amount) / 60.0, 0.18, 0.6))
+	FX.damage_number(get_parent(), global_position + Vector3(0.0, 2.1, 0.0), amount, Color(1.0, 0.45, 0.4))
+	_flash_hurt()
 	FX.spray(get_parent(), global_position + Vector3(0.0, 1.1, 0.0), Vector3.UP, Color(0.75, 0.8, 0.82))
 	if hp == 0:
 		_stop_operating()

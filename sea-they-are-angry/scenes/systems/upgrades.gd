@@ -66,6 +66,7 @@ static func buy(path: String, tree: SceneTree) -> bool:
 	if cost.is_empty() or not Stock.spend(cost):
 		return false
 	Run.upgrades[path] = level(path) + 1
+	Telemetry.record("upgrade", {"path": path, "level": level(path), "night": Run.night})
 	apply(tree)
 	Audio.sfx("repair", Vector3.INF, 0.0, 0.0)
 	Events.message.emit("%s upgraded to level %d" % [TITLES[path], level(path)])

@@ -37,14 +37,37 @@ var fullscreen := false
 var size_idx := 1
 var quality := 2
 var scale_idx := 4
-## The camera shakes with blows and blasts (Feel); some people would rather it didn't.
-var shake := true
+## How much the camera shakes with blows and blasts (Feel): 0 off, 1 low, 2 full.
+const SHAKE_LEVELS := ["Off", "Low", "Full"]
+const SHAKE_SCALE := [0.0, 0.4, 1.0]
+var shake_level := 2
+## True while the shake isn't off (the older on/off setting).
+var shake: bool:
+	get:
+		return shake_level > 0
+	set(v):
+		shake_level = 2 if v else 0
+## A blow landing freezes the world for a moment (Feel.hitstop).
+var hitstop := true
+## Numbers float up off what you hit and what hits you.
+var damage_numbers := true
+## Steady lights: no lamp flicker, no pulsing red edge, a softer lightning flash.
+var calm_lights := false
+## The keepers' colours: 0 the usual, 1 amber, blue, white and green (easier to tell apart).
+const PALETTES := ["Usual", "Easy to tell apart"]
+var palette := 0
+## How big the interface is.
+const UI_SCALES := [1.0, 1.25, 1.5]
+var ui_scale_idx := 0
 ## action -> "key:<keycode>" or "mouse:<button>"; only the ones changed from the defaults.
 var binds := {}
 
 var env: Environment
 var sun: DirectionalLight3D
 var _defaults := {}
+## Write a line to user://telemetry.jsonl for each event of a run (Telemetry). Off unless
+## turned on here or with --telemetry; nothing is sent anywhere.
+var telemetry := false
 
 func _ready() -> void:
 	# InputSetup has bound the defaults by now; remember them so they can be restored.
@@ -53,6 +76,7 @@ func _ready() -> void:
 	_load()
 	apply_audio()
 	apply_window()
+	apply_ui()
 	apply_binds()
 	apply_graphics()
 
@@ -68,7 +92,13 @@ func _load() -> void:
 	size_idx = clampi(int(cf.get_value("display", "size", size_idx)), 0, SIZES.size() - 1)
 	quality = clampi(int(cf.get_value("display", "quality", quality)), 0, QUALITY.size() - 1)
 	scale_idx = clampi(int(cf.get_value("display", "scale", scale_idx)), 0, SCALES.size() - 1)
-	shake = bool(cf.get_value("display", "shake", shake))
+	shake_level = clampi(int(cf.get_value("access", "shake_level", 2 if bool(cf.get_value("display", "shake", true)) else 0)), 0, 2)
+	hitstop = bool(cf.get_value("access", "hitstop", hitstop))
+	damage_numbers = bool(cf.get_value("access", "damage_numbers", damage_numbers))
+	calm_lights = bool(cf.get_value("access", "calm_lights", calm_lights))
+	palette = clampi(int(cf.get_value("access", "palette", palette)), 0, PALETTES.size() - 1)
+	ui_scale_idx = clampi(int(cf.get_value("access", "ui_scale", ui_scale_idx)), 0, UI_SCALES.size() - 1)
+	telemetry = bool(cf.get_value("access", "telemetry", telemetry))
 	if cf.has_section("controls"):
 		for a in cf.get_section_keys("controls"):
 			var code := str(cf.get_value("controls", a, ""))
@@ -83,7 +113,13 @@ func save() -> void:
 	cf.set_value("display", "size", size_idx)
 	cf.set_value("display", "quality", quality)
 	cf.set_value("display", "scale", scale_idx)
-	cf.set_value("display", "shake", shake)
+	cf.set_value("access", "shake_level", shake_level)
+	cf.set_value("access", "hitstop", hitstop)
+	cf.set_value("access", "damage_numbers", damage_numbers)
+	cf.set_value("access", "calm_lights", calm_lights)
+	cf.set_value("access", "palette", palette)
+	cf.set_value("access", "ui_scale", ui_scale_idx)
+	cf.set_value("access", "telemetry", telemetry)
 	for a in binds:
 		cf.set_value("controls", a, binds[a])
 	cf.save(PATH)
@@ -105,6 +141,12 @@ func apply_audio() -> void:
 		AudioServer.set_bus_volume_db(i, linear_to_db(maxf(v, 0.001)))
 
 # ---- the window ----
+
+## The interface's size (the whole canvas: the menus and the HUD).
+func apply_ui() -> void:
+	if DisplayServer.get_name() == "headless":
+		return
+	get_window().content_scale_factor = float(UI_SCALES[ui_scale_idx])
 
 func apply_window() -> void:
 	# Headless runs (the tests) and the editor's embedded game have no window to change.

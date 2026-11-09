@@ -301,15 +301,25 @@ func strike(on_rod: bool = false, show_watchers: bool = false) -> void:
 	_lightning.look_at_from_position(from, to, Vector3.UP)
 	Feel.shake(0.3 if close else 0.1)
 	var tw := create_tween()
-	tw.tween_property(_lightning, "light_energy", 3.0, 0.03)
-	tw.tween_property(_lightning, "light_energy", 0.3, 0.07)
-	tw.tween_property(_lightning, "light_energy", 2.4, 0.04)
-	tw.tween_property(_lightning, "light_energy", 0.0, 0.4)
+	# Reduced flashing (Settings): one slower, softer swell of light, not a stutter.
+	var calm := Settings.calm_lights
+	if calm:
+		tw.tween_property(_lightning, "light_energy", 1.2, 0.25)
+		tw.tween_property(_lightning, "light_energy", 0.0, 0.6)
+	else:
+		tw.tween_property(_lightning, "light_energy", 3.0, 0.03)
+		tw.tween_property(_lightning, "light_energy", 0.3, 0.07)
+		tw.tween_property(_lightning, "light_energy", 2.4, 0.04)
+		tw.tween_property(_lightning, "light_energy", 0.0, 0.4)
 	var ft := create_tween()
-	ft.tween_property(_flash, "color:a", 0.38 if close else 0.22, 0.03)
-	ft.tween_property(_flash, "color:a", 0.05, 0.07)
-	ft.tween_property(_flash, "color:a", 0.28 if close else 0.16, 0.04)
-	ft.tween_property(_flash, "color:a", 0.0, 0.45)
+	if calm:
+		ft.tween_property(_flash, "color:a", 0.08, 0.25)
+		ft.tween_property(_flash, "color:a", 0.0, 0.6)
+	else:
+		ft.tween_property(_flash, "color:a", 0.38 if close else 0.22, 0.03)
+		ft.tween_property(_flash, "color:a", 0.05, 0.07)
+		ft.tween_property(_flash, "color:a", 0.28 if close else 0.16, 0.04)
+		ft.tween_property(_flash, "color:a", 0.0, 0.45)
 	if show_watchers or (not close and randf() < WATCHER_CHANCE):
 		_place_watchers()
 		_watchers.visible = true

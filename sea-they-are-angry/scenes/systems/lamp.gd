@@ -261,7 +261,8 @@ func _flicker(delta: float) -> void:
 	var low_hp := lighthouse != null and lighthouse.health_ratio() < LOW_HP_FLICKER
 	if state == State.GUTTERING or low_hp:
 		var n := 0.8 + 0.2 * sin(_flicker_t * 37.0) * sin(_flicker_t * 13.0 + 1.3) + randf_range(-0.2, 0.2)
-		base *= clampf(n, 0.2, 1.2)
+		# Reduced flashing (Settings): a steady, dimmer light in place of the flicker.
+		base *= 0.7 if Settings.calm_lights else clampf(n, 0.2, 1.2)
 	if _boost_t > 0.0:
 		base *= BOOST_MULT
 	if is_smothered():

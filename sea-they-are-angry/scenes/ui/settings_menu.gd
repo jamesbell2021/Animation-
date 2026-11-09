@@ -39,54 +39,81 @@ func _ready() -> void:
 	_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_box.add_theme_constant_override("separation", 8)
 	_scroll.add_child(_box)
-	var t := _label(_box, "Settings", 52, GOLD)
+	var t := _label(_box, Strings.t("settings.title"), 52, GOLD)
 	Fonts.use_title(t)
 
-	_heading("Sound")
+	_heading(Strings.t("settings.sound"))
 	for bus in Settings.VOLUMES:
 		_slider(BUS_NAMES[bus], bus)
 
-	_heading("Display")
-	_cycler("Screen", func() -> String: return "Full screen" if Settings.fullscreen else "In a window",
+	_heading(Strings.t("settings.display"))
+	_cycler(Strings.t("settings.screen"), func() -> String: return Strings.t("settings.fullscreen") if Settings.fullscreen else Strings.t("settings.window"),
 		func(_d: int) -> void:
 			Settings.fullscreen = not Settings.fullscreen
 			Settings.apply_window())
-	_cycler("Window size", func() -> String:
+	_cycler(Strings.t("settings.window_size"), func() -> String:
 			var v: Vector2i = Settings.SIZES[Settings.size_idx]
 			return "%d × %d" % [v.x, v.y],
 		func(d: int) -> void:
 			Settings.size_idx = wrapi(Settings.size_idx + d, 0, Settings.SIZES.size())
 			Settings.apply_window())
-	_cycler("Graphics", func() -> String: return Settings.QUALITY[Settings.quality],
+	_cycler(Strings.t("settings.graphics"), func() -> String: return Settings.QUALITY[Settings.quality],
 		func(d: int) -> void:
 			Settings.quality = wrapi(Settings.quality + d, 0, Settings.QUALITY.size())
 			Settings.apply_graphics()
 			_note.text = Settings.QUALITY_BLURBS[Settings.quality])
 	_note = _label(_box, Settings.QUALITY_BLURBS[Settings.quality], 16, DIM)
-	_cycler("Render scale", func() -> String: return "%d%%" % roundi(Settings.SCALES[Settings.scale_idx] * 100.0),
+	_cycler(Strings.t("settings.render_scale"), func() -> String: return "%d%%" % roundi(Settings.SCALES[Settings.scale_idx] * 100.0),
 		func(d: int) -> void:
 			Settings.scale_idx = clampi(Settings.scale_idx + d, 0, Settings.SCALES.size() - 1)
 			Settings.apply_graphics())
-	_label(_box, "Below 100% the world is drawn smaller and sharpened up: faster, a little softer.", 16, DIM)
-	_cycler("Screen shake", func() -> String: return "On" if Settings.shake else "Off",
-		func(_d: int) -> void:
-			Settings.shake = not Settings.shake)
+	_label(_box, Strings.t("settings.render_note"), 16, DIM)
+	_cycler(Strings.t("settings.ui_scale"), func() -> String: return "%d%%" % roundi(Settings.UI_SCALES[Settings.ui_scale_idx] * 100.0),
+		func(d: int) -> void:
+			Settings.ui_scale_idx = wrapi(Settings.ui_scale_idx + d, 0, Settings.UI_SCALES.size())
+			Settings.apply_ui())
 
-	_heading("Keeper one's keys")
-	_label(_box, "Pick a control, then press the key or mouse button for it (Esc to leave it). Two controls can't share a key: they swap. Gamepads keep their own layout: A use, X or RT swing, Y lamp, B beam, LT flare, LB dirty fuel, RB sprint, the right stick aims.", 16, DIM)
+	_heading(Strings.t("settings.access"))
+	_cycler(Strings.t("settings.shake"), func() -> String: return Settings.SHAKE_LEVELS[Settings.shake_level],
+		func(d: int) -> void:
+			Settings.shake_level = wrapi(Settings.shake_level + d, 0, Settings.SHAKE_LEVELS.size()))
+	_cycler(Strings.t("settings.hitstop"), func() -> String: return _on_off(Settings.hitstop),
+		func(_d: int) -> void:
+			Settings.hitstop = not Settings.hitstop)
+	_cycler(Strings.t("settings.numbers"), func() -> String: return _on_off(Settings.damage_numbers),
+		func(_d: int) -> void:
+			Settings.damage_numbers = not Settings.damage_numbers)
+	_cycler(Strings.t("settings.calm"), func() -> String: return _on_off(Settings.calm_lights),
+		func(_d: int) -> void:
+			Settings.calm_lights = not Settings.calm_lights)
+	_label(_box, Strings.t("settings.calm_note"), 16, DIM)
+	_cycler(Strings.t("settings.palette"), func() -> String: return Settings.PALETTES[Settings.palette],
+		func(d: int) -> void:
+			Settings.palette = wrapi(Settings.palette + d, 0, Settings.PALETTES.size()))
+	_label(_box, Strings.t("settings.palette_note"), 16, DIM)
+	_cycler(Strings.t("settings.telemetry"), func() -> String: return _on_off(Settings.telemetry),
+		func(_d: int) -> void:
+			Settings.telemetry = not Settings.telemetry)
+	_label(_box, Strings.t("settings.telemetry_note"), 16, DIM)
+
+	_heading(Strings.t("settings.keys"))
+	_label(_box, Strings.t("settings.keys_note"), 16, DIM)
 	for row in Settings.REBINDABLE:
 		var a: String = row[0]
 		var b := _button(_box, "", _listen.bind(a), 24)
 		_bind_btns[a] = b
 	_refresh_binds()
-	_button(_box, "Put the keys back as they were", func() -> void:
+	_button(_box, Strings.t("settings.keys_reset"), func() -> void:
 		Settings.reset_controls()
 		_refresh_binds(), 24)
 	var gap := Control.new()
 	gap.custom_minimum_size = Vector2(0, 12)
 	_box.add_child(gap)
-	_button(_box, "Back", _close, 32)
+	_button(_box, Strings.t("settings.back"), _close, 32)
 	_first.grab_focus.call_deferred()
+
+func _on_off(v: bool) -> String:
+	return Strings.t("settings.on") if v else Strings.t("settings.off")
 
 func _label(parent: Node, text: String, size: int, color: Color) -> Label:
 	var l := Label.new()
