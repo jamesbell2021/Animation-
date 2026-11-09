@@ -23,7 +23,7 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	var shade := ColorRect.new()
-	shade.color = Color(0.02, 0.03, 0.06, 0.92)
+	shade.color = Color(0.02, 0.03, 0.06, 0.985)
 	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(shade)
 	_scroll = ScrollContainer.new()
