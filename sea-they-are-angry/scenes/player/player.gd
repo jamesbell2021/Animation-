@@ -1465,6 +1465,13 @@ func shove(v: Vector3) -> void:
 		return
 	_push = Vector3(v.x, 0.0, v.z)
 
+## A kick back that leaves the keeper on their feet (the shotgun's recoil). A shove
+## knocks them down; this only pushes them a step.
+func recoil(v: Vector3) -> void:
+	if _inside:
+		return
+	_push += Vector3(v.x, 0.0, v.z)
+
 ## Knocked off their feet: a ragdoll for `time` seconds, then they get back up.
 func knock(impulse: Vector3, time: float) -> void:
 	leave_light()

@@ -324,7 +324,8 @@ func fire_shot(aim: Vector3) -> void:
 	var tw := flash.create_tween()
 	tw.tween_property(flash, "light_energy", 0.0, 0.12)
 	tw.tween_callback(flash.queue_free)
-	keeper.shove(-aim * 1.5)
+	# Kicked back a step, not off their feet (a shove would ragdoll them every shot).
+	keeper.recoil(-aim * 1.5)
 	if keeper._clips():
 		keeper.rig.shot("flare")
 

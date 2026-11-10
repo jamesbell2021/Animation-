@@ -40,6 +40,9 @@ static var _ease_curve: Curve
 # Bodies that start against rock get shoved out hard: never let a limb fly.
 const MAX_SPEED := 7.0
 const MAX_SPIN := 14.0
+## Past these a ragdoll is flying apart, not falling (see _physics_process).
+const BLOWUP_SPEED := 40.0
+const BLOWUP_SPIN := 150.0
 # Per-bone physics for humanoids: capsule radius, cone swing and twist limits (degrees).
 const HUMANOID := {
 	"hips": [0.13, 0, 0], "spine": [0.12, 25, 10], "chest": [0.14, 25, 10], "neck": [0.06, 30, 20], "head": [0.1, 35, 25],
@@ -637,8 +640,24 @@ func _physics_process(delta: float) -> void:
 		_run_clips(delta)
 	if not _ragdoll:
 		return
+	# A body caught in the ground or wrenched by a joint can fling itself apart in one step
+	# (parts measured spinning at over 1,000 rad/s): then the whole ragdoll is stilled at
+	# once, before it is seen, and settles from there.
+	var wild := false
 	for b in _bodies.values():
 		var pb := b as PhysicalBone3D
+		if pb.linear_velocity.length() > BLOWUP_SPEED or pb.angular_velocity.length() > BLOWUP_SPIN:
+			wild = true
+			break
+	for b in _bodies.values():
+		var pb := b as PhysicalBone3D
+		if wild:
+			# Stop the whirling; let it keep falling (a body knocked off the lantern still
+			# has to reach the ground).
+			pb.angular_velocity = Vector3.ZERO
+			if pb.linear_velocity.length() > MAX_SPEED:
+				pb.linear_velocity = pb.linear_velocity.normalized() * MAX_SPEED
+			continue
 		if pb.linear_velocity.length() > MAX_SPEED:
 			pb.linear_velocity = pb.linear_velocity.normalized() * MAX_SPEED
 		if pb.angular_velocity.length() > MAX_SPIN:
@@ -820,12 +839,18 @@ func _build_bodies() -> void:
 		cap.height = maxf(length + cap.radius * 0.5, cap.radius * 2.05)
 		col.shape = cap
 		pb.add_child(col)
-		pb.mass = mass * (1.6 if bn in ["hips", "chest", "spine"] else 0.6)
+		var part := bn.split(".")[0]
+		# The small end parts (feet, hands) are light and thin, and against the trunk they
+		# spun out of control (over 800 rad/s, the foot whirling on the shin) when a body
+		# went down on paving: heavier and more damped they stay with the limb.
+		var end := part in ["foot", "hand", "fingers", "thumb", "toe"]
+		var mid := part in ["shin", "forearm"]
+		pb.mass = mass * (1.6 if part in ["hips", "chest", "spine"] else (1.0 if end else 0.8 if mid else 0.6))
 		pb.collision_layer = RAGDOLL_LAYER
 		pb.collision_mask = 1 | 4
 		pb.friction = 0.9
 		pb.linear_damp = 0.4
-		pb.angular_damp = 2.5
+		pb.angular_damp = 9.0 if end else (5.0 if mid else 2.5)
 		_bodies[bn] = pb
 
 # The nearest ancestor that has a body, or "" for the root of the ragdoll.

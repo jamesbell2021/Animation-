@@ -116,6 +116,7 @@ func _go() -> void:
 	arms.tick(0.016, true, true)
 	await _wait(2)
 	check(Run.barrels == 0, "the second barrel")
+	check(p.rig == null or not p.rig.is_ragdoll(), "the kick of two barrels leaves the keeper on their feet")
 	check(not is_instance_valid(b) or b.hp <= 0, "two barrels close in finish it")
 	for i in 120:
 		arms.tick(1.0 / 60.0, false, false)
