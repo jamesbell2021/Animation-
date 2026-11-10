@@ -166,9 +166,20 @@ func reset_view() -> void:
 	yaw_target = 0.0
 	zoom_target = 1.0
 
+## How long into a lone run the camera's keys are said (once a launch).
+const TELL_AFTER := 7.0
+static var _told := false
+var _free_for := 0.0
+
 func _free_camera(delta: float, people: Array) -> void:
 	free_on = Run.active and people.size() == 1 and not bool(people[0].get("ai"))
 	person = people[0] if people.size() == 1 else null
+	# The camera can be turned, and nobody finds that out from the keys line.
+	_free_for = _free_for + delta if free_on and not get_tree().paused else (_free_for if free_on else 0.0)
+	if free_on and not _told and _free_for > TELL_AFTER and absf(yaw_target) < 0.01:
+		_told = true
+		Events.message.emit("%s and %s turn the camera all the way round · the wheel zooms · %s puts it back" % [
+			Settings.key_name("cam_left"), Settings.key_name("cam_right"), Settings.key_name("cam_reset")])
 	if not free_on:
 		yaw_target = 0.0
 		zoom_target = 1.0
