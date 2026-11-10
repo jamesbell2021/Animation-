@@ -505,10 +505,10 @@ func begin_run(continue_save: bool, n: int) -> void:
 		p.hp = p.max_hp
 	Upgrades.apply(get_tree())
 	if d.is_empty():
-		hud.report("Kirkhaven. Wednesday, first light.", [
-			"The harbour light's clock stuck last night, and something came in with the fog. Seven of the town are left. By day they are about their doors; at dusk they shut themselves in the kirk.",
-			"Fill the generator at the west end of the quay and switch the street lamps in at their fuse boxes. The fog cannot lie in a burning lamp's light, and what stands in it is slowed and scorched.",
-			"At dusk they come up the slips and the strand. Work the harbour light ([R] at its door on the pier), keep the lamps burning, and keep them from the kirk doors.",
+		hud.report("Kirkhaven. First light.", [
+			"Seven of the town are left. At dusk they shut themselves in the kirk.",
+			"Fill the generator (west end of the quay) and switch the street lamps in: the fog cannot lie in a burning lamp's light.",
+			"At dusk they come up the slips and the strand. Work the harbour light ([R] at its door on the pier), and keep them from the kirk doors.",
 		], FIRST_DAY_TIP_TIME + 4.0)
 	else:
 		hud.report("Kirkhaven. Night %d to come." % Run.night, ["%d of %d lamps are switched in." % [_lamps_on(), lamps.size()]], 6.0)
@@ -935,11 +935,9 @@ func _after_town() -> void:
 	SaveSys.clear_run()
 	Run.carry = {"stock": Stock.all(), "arms": Run.arms.duplicate(true), "villagers": Run.villagers.duplicate(),
 		"lost": Run.lost.duplicate(), "difficulty": Run.difficulty}
-	var pages := "res://scenes/ui/story_pages.gd"
-	if ResourceLoader.exists(pages) and DisplayServer.get_name() != "headless":
+	if DisplayServer.get_name() != "headless":
 		hud.visible = false
-		var text = load("res://scenes/ui/story_text.gd")
-		var book = load(pages).open(self, text.crossing(Villagers.count(), Villagers.lost_names()), "")
+		var book := StoryPages.open(self, StoryText.crossing(Villagers.count(), Villagers.lost_names()), "")
 		book.finished.connect(_to_rock)
 	else:
 		_to_rock()

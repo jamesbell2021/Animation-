@@ -44,11 +44,11 @@ func _ready() -> void:
 	if saved == 0:
 		people = "None of Kirkhaven's seven saw the sky clear. The keepers did."
 	_label(box, people, 22, PALE)
-	_label(box, "%d nights on the rock, on an %s. %d of them sent back to the sea, and one that will not come again." % [nights, sea.to_lower(), kills], 20, DIM)
+	_label(box, "%d night%s on the rock, on an %s. %d of them sent back to the sea, and one that will not come again." % [nights, "" if nights == 1 else "s", sea.to_lower(), kills], 20, DIM)
 	var gap2 := Control.new()
 	gap2.custom_minimum_size = Vector2(0, 10)
 	box.add_child(gap2)
-	_label(box, "Fonts: IM FELL English by Igino Marini (SIL OFL 1.1) · Special Elite by Astigmatic (Apache 2.0)\nSound and music synthesised in code. Thank you for keeping the light.", 16, DIM)
+	_label(box, "Fonts: IM FELL English by Igino Marini (SIL OFL 1.1) · Special Elite by Astigmatic (Apache 2.0)\nSound and music synthesised in code · \"The Skye Boat Song\" (traditional air)\nThank you for keeping the light.", 16, DIM)
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	box.add_child(row)
@@ -58,6 +58,8 @@ func _ready() -> void:
 	tw.parallel().tween_property(box, "modulate:a", 1.0, 3.0).set_delay(0.8)
 	tw.tween_callback(first.grab_focus)
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	# The credits' air: the Skye Boat Song (traditional).
+	Audio.music("credits", 2.5)
 
 func _label(parent: Node, text: String, size: int, color: Color) -> Label:
 	var l := Label.new()

@@ -1433,6 +1433,7 @@ const MUSIC := {
 	"title": [-6.0, true], "day": [-11.0, true], "night": [-8.0, true], "finale": [-6.0, true],
 	"chapter_end": [-4.0, false], "game_over": [-4.0, false],
 	"harbour_day": [-11.0, true], "harbour_night": [-8.0, true], "ending": [-4.0, false],
+	"credits": [-5.0, false],
 }
 
 var _music: Array[AudioStreamPlayer] = []

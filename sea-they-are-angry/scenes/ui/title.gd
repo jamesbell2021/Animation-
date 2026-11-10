@@ -202,6 +202,7 @@ func _on_credits() -> void:
 	var c := preload("res://studio/credits.gd").open(self, "Sea They Are Angry", [
 		"Fonts: IM FELL English by Igino Marini (SIL OFL 1.1) · Special Elite by Astigmatic (Apache 2.0)",
 		"Sound and music synthesised in code",
+		"The credits' air is \"The Skye Boat Song\" (traditional)",
 	], Fonts.title())
 	c.closed.connect(func() -> void: _first.grab_focus())
 

@@ -829,7 +829,75 @@ def ending():
     return finish_synth(tr, False, -13.5, fade=6.0)
 
 
-PIECES = {"title": title, "day": day, "night": night, "finale": finale, "chapter_end": chapter_end, "game_over": game_over,
+# The credits: "The Skye Boat Song", a traditional air (collected in the 1870s; long out
+# of copyright), for a story about carrying people over the sea to a rock. In G, 6/8,
+# written here in quarter-note beats (three to a bar). The owner asked for "Flower of
+# Scotland", which is still in copyright (Roy Williamson, 1967) and so is not used; if a
+# licence is ever had, replace audio/music_credits.ogg.
+SKYE_CHORUS = [
+    [(62, 0.75), (64, 0.25), (62, 0.5), (67, 1.0), (67, 0.5)],
+    [(69, 0.75), (71, 0.25), (69, 0.5), (74, 1.5)],
+    [(71, 0.75), (69, 0.25), (71, 0.5), (64, 1.0), (64, 0.5)],
+    [(62, 3.0)],
+    [(62, 0.75), (64, 0.25), (62, 0.5), (67, 1.0), (67, 0.5)],
+    [(69, 0.75), (71, 0.25), (69, 0.5), (74, 1.5)],
+    [(71, 0.75), (69, 0.25), (71, 0.5), (64, 1.0), (64, 0.5)],
+    [(67, 3.0)],
+]
+SKYE_VERSE = [
+    [(71, 0.75), (67, 0.25), (71, 0.5), (71, 1.5)],
+    [(69, 0.75), (64, 0.25), (69, 0.5), (69, 1.5)],
+    [(67, 0.75), (64, 0.25), (67, 0.5), (67, 1.0), (67, 0.5)],
+    [(64, 3.0)],
+    [(71, 0.75), (67, 0.25), (71, 0.5), (71, 1.5)],
+    [(69, 0.75), (64, 0.25), (69, 0.5), (69, 1.5)],
+    [(67, 0.75), (64, 0.25), (67, 0.5), (67, 1.0), (67, 0.5)],
+    [(64, 3.0)],
+]
+SKYE_G = (43, [55, 59, 62])
+SKYE_D = (38, [57, 62, 66])
+SKYE_EM = (40, [55, 59, 64])
+SKYE_C = (36, [55, 60, 64])
+SKYE_AM = (45, [57, 60, 64])
+SKYE_CHORUS_CHORDS = [SKYE_G, SKYE_D, SKYE_EM, SKYE_D, SKYE_G, SKYE_D, SKYE_C, SKYE_G]
+SKYE_VERSE_CHORDS = [SKYE_EM, SKYE_AM, SKYE_C, SKYE_EM, SKYE_EM, SKYE_AM, SKYE_C, SKYE_EM]
+
+
+def credits():
+    bpm = 76
+    sections = [("chorus", whistle, None), ("verse", fiddle, None), ("chorus", fiddle, whistle),
+                ("verse", cello, None), ("chorus", whistle, fiddle)]
+    bars = 8 * len(sections)
+    tr = Track(bars * 3 * 60 / bpm + 6.0, bpm)
+    tr.put(drone([31, 43, 50], tr.n / SR), 0, 0.0, 0.7)
+    for k, (kind, lead, second) in enumerate(sections):
+        air = SKYE_CHORUS if kind == "chorus" else SKYE_VERSE
+        chords = SKYE_CHORUS_CHORDS if kind == "chorus" else SKYE_VERSE_CHORDS
+        start = k * 24
+        low = lead is cello
+        notes = [(m - 12 if low else m, d) for m, d in flat(air)]
+        last = k == len(sections) - 1
+        if last:
+            # The last note held, and the pace easing into it.
+            notes[-1] = (notes[-1][0], 6.0)
+        tr.line(lead, notes, start, -0.15, 1.0 if not low else 1.2)
+        if second is not None:
+            # A second voice a sixth below (a third above for the low end of the tune).
+            harmony = [(m - 9 if m - 9 >= 55 else m + 3, d) for m, d in notes]
+            tr.line(second, harmony, start, 0.3, 0.55)
+        for i, (root, tri) in enumerate(chords):
+            b = start + i * 3
+            final = last and i == len(chords) - 1
+            tr.put(pad(tri, (8 if final else 3) * tr.beat, 1.0 if k > 0 else 0.7), b, -0.2, 0.8)
+            if k > 0:
+                for j, m in enumerate([root + 12] + tri):
+                    tr.put(harp(m, tr.beat * 1.5), b + j * 0.75, 0.3, 0.7)
+            if k >= 2:
+                tr.put(cello(root + 12, 3 * tr.beat, 0.8), b, 0.1, 0.6)
+    return finish(tr, False)
+
+
+PIECES = {"credits": credits, "title": title, "day": day, "night": night, "finale": finale, "chapter_end": chapter_end, "game_over": game_over,
           "harbour_day": harbour_day, "harbour_night": harbour_night, "ending": ending}
 
 

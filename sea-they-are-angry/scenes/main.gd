@@ -256,14 +256,12 @@ func _camera_hint() -> void:
 
 ## A new run of the story: the keeper's log first, then Kirkhaven (Act One).
 func start_story(n: int) -> void:
-	var pages := "res://scenes/ui/story_pages.gd"
-	if not ResourceLoader.exists(pages) or DisplayServer.get_name() == "headless":
+	if DisplayServer.get_name() == "headless":
 		go_harbour(n, false)
 		return
 	if title != null:
 		title.visible = false
-	var text = load("res://scenes/ui/story_text.gd")
-	var book = load(pages).open(self, text.intro(), "")
+	var book := StoryPages.open(self, StoryText.intro(), "")
 	book.finished.connect(go_harbour.bind(n, false))
 
 ## The story, begun on the rock: the town is taken as read, all seven saved.

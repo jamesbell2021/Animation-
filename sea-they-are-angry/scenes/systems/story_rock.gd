@@ -22,6 +22,13 @@ var kraken: Kraken
 var done := false
 var _lost_tonight: Array = []
 var _end_t := -1.0
+## The last view: low over the sea, the lighthouse against the clearing sky.
+var _cine: Camera3D
+var _cine_t := 0.0
+const CINE_FROM := Vector3(-24.0, 5.0, 27.0)
+const CINE_TO := Vector3(-19.0, 12.0, 30.0)
+const CINE_LOOK := Vector3(3.0, 11.0, -4.0)
+const CINE_AFTER := 3.0
 
 func _ready() -> void:
 	name = "StoryRock"
@@ -132,6 +139,14 @@ func _on_wrecked(s: Node) -> void:
 	main.hud.warn("%s is wrecked. %s did not get out." % [nm.left(1).to_upper() + nm.substr(1), v.display_name()])
 
 func _process(delta: float) -> void:
+	if done:
+		_cine_t += delta
+		if _cine == null and _cine_t >= CINE_AFTER:
+			_look_up()
+		if _cine != null:
+			var k := smoothstep(0.0, 26.0, _cine_t - CINE_AFTER)
+			_cine.global_position = CINE_FROM.lerp(CINE_TO, k)
+			_cine.look_at(CINE_LOOK, Vector3.UP)
 	if _end_t >= 0.0:
 		_end_t -= delta
 		if _end_t < 0.0:
@@ -189,17 +204,28 @@ func _on_kraken_dead() -> void:
 	main.hud.report("It is over.", ["It went down at first light, and the fog went with it."], 9.0)
 	_end_t = END_AFTER
 
-func _pages(which: String) -> Node:
-	var path := "res://scenes/ui/story_pages.gd"
-	if not ResourceLoader.exists(path) or DisplayServer.get_name() == "headless":
+# The keepers' camera only ever looks down. For the end it lets go of them and looks up:
+# the lighthouse, the sea going calm, the sky clearing behind it.
+func _look_up() -> void:
+	if main.director != null:
+		main.director.process_mode = Node.PROCESS_MODE_DISABLED
+		main.director._overlay.visible = false
+	_cine = Camera3D.new()
+	_cine.fov = 48.0
+	main.add_child(_cine)
+	_cine.global_position = CINE_FROM
+	_cine.look_at(CINE_LOOK, Vector3.UP)
+	_cine.current = true
+
+func _pages(which: String) -> StoryPages:
+	if DisplayServer.get_name() == "headless":
 		return null
-	var text = load("res://scenes/ui/story_text.gd")
-	var list: Array = text.call(which)
-	return load(path).open(main, list, "")
+	var list: Array = StoryText.diary() if which == "diary" else StoryText.after()
+	return StoryPages.open(main, list, "")
 
 func _last_pages() -> void:
 	main.hud.visible = false
-	var book := _pages("after")
+	var book: StoryPages = _pages("after")
 	if book != null:
 		book.finished.connect(_end_card)
 	else:
