@@ -9,6 +9,8 @@ signal spoke(text: String)
 signal bell_rung
 
 const ROPE_COST := {"scrap": 2}
+## Oak, and barred from inside: the doors take more than the model's default.
+const DOORS_HP := 420
 const DOOR_MEND := 60
 ## What they say through the door, by night (the last is kept for the last night).
 const VOICES := [
@@ -22,6 +24,10 @@ const LAST_VOICE := "\"If the lamps hold tonight we will open these doors at fir
 
 ## Whether raiders make for the doors (the last night, or when no lamp is left burning).
 var besieged := false
+
+func _init() -> void:
+	super._init()
+	max_hp = DOORS_HP
 
 func display_name() -> String:
 	return "the kirk doors"

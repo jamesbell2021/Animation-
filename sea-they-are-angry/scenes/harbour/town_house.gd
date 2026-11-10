@@ -133,7 +133,9 @@ func _build() -> void:
 	if not shed:
 		var pick := rng.randf()
 		gable = 2 if pick < 0.3 else (1 if pick < 0.75 else 0)
-	var over := VERGE if gable == 0 else 0.0
+	# A verge oversails the gable; skews and crow steps sit on the roof's ends, so there
+	# it stops just short of the gable's face.
+	var over := VERGE if gable == 0 else -0.05
 	var b := HarbourProps.Batch.new()
 	# Walls on a stone footing, the gables filled in to the roof.
 	b.box("wall", size, Vector3(0.0, size.y * 0.5, 0.0))
@@ -141,11 +143,11 @@ func _build() -> void:
 	b.tri("wall", Vector3(-hw, size.y, -hd), Vector3(-hw, size.y, hd), Vector3(-hw, size.y + rise, 0.0))
 	b.box("stone", Vector3(size.x + 0.1, PLINTH, size.z + 0.1), Vector3(0.0, PLINTH * 0.5, 0.0), PLINTH_STONE)
 	var roof_key := "roof_" + covering
-	# Skews and crow steps sit on the roof's ends: it stops just short of the gable's face.
+	# Every roof has weathered a little differently.
 	var shade := rng.randf_range(0.8, 1.05)
 	_roof_tint = Color(shade, shade * rng.randf_range(0.96, 1.02), shade * rng.randf_range(0.92, 1.04))
-	HarbourProps.pitched_roof(b, roof_key, hw + (over if gable == 0 else -0.05), hd + EAVES, _ridge, _pitch, HarbourProps.roof_tile(covering), ROOF_T, _roof_tint)
-	_ridge_and_gutters(b, covering, hw + over, hd, rng)
+	HarbourProps.pitched_roof(b, roof_key, hw + over, hd + EAVES, _ridge, _pitch, HarbourProps.roof_tile(covering), ROOF_T, _roof_tint)
+	_ridge_and_gutters(b, covering, hw + maxf(over, 0.0), hd, rng)
 	if gable == 1:
 		_skews(b, hw, hd)
 	elif gable == 2:
@@ -251,7 +253,7 @@ func _chimney(b: HarbourProps.Batch, x: float, rng: RandomNumberGenerator) -> vo
 	var top := _ridge + 0.95
 	var low := _ridge - 0.75
 	var harled := rng.randf() < 0.5
-	b.box("wall" if harled else "stone", Vector3(0.62, top - low, 1.05), Vector3(x, (top + low) * 0.5, 0.0), Color(0.72, 0.69, 0.63))
+	b.box("wall" if harled else "stone", Vector3(0.62, top - low, 1.05), Vector3(x, (top + low) * 0.5, 0.0), Color(0.6, 0.58, 0.54))
 	b.box("dressed", Vector3(0.74, 0.1, 1.17), Vector3(x, top + 0.05, 0.0), SILL_STONE.darkened(0.1))
 	var pots := 1 + rng.randi() % 2 if _storeys == 1 else 2
 	var clay := Color(0.6, 0.34, 0.22) if rng.randf() < 0.6 else Color(0.7, 0.6, 0.44)
@@ -332,6 +334,11 @@ func _fascia(b: HarbourProps.Batch, x: float, y: float, width: float, height: fl
 	label.transform = b.xf * Transform3D(cant, at + cant * Vector3(0.0, 0.0, 0.032))
 	add_child(label)
 
+# A board as wide as its sign wants at that height of letter, up to `most`.
+func _name_board(b: HarbourProps.Batch, x: float, y: float, height: float, most: float, board: Color, letters: Color) -> void:
+	var width := clampf(height * 0.66 * HarbourProps.lettering_aspect(sign_text) / 0.9 + 0.2, 1.2, most)
+	_fascia(b, x, y, width, height, board, letters)
+
 # ---- fronts ----
 
 # Cottage or house: a door and sash windows, bay by bay, the same again upstairs.
@@ -352,6 +359,11 @@ func _house_front(b: HarbourProps.Batch, rng: RandomNumberGenerator) -> void:
 			_sash(b, x + rng.randf_range(-0.1, 0.1), SILL, w, h, rng.randf() < 0.8)
 		if _storeys == 2:
 			_sash(b, x, _upper_sill(), w, 1.2, rng.randf() < 0.65)
+	# A named house (a hall, a manse): its board over the door.
+	if sign_text.strip_edges() != "":
+		var over_door := STEP + DOOR_H + (0.32 if size.y >= STEP + DOOR_H + 0.6 else 0.0) + 0.2
+		var board_h := clampf((size.y if _storeys == 1 else _upper_sill()) - over_door + 0.05, 0.3, 0.45)
+		_name_board(b, _door_x, over_door + board_h * 0.5, board_h, size.x - 1.0, Color(0.84, 0.83, 0.77), Color(0.1, 0.1, 0.12))
 
 # A shop: one big window over a stall riser, the door beside it, pilasters, and the
 # fascia over all with the name on it.
@@ -440,7 +452,7 @@ func _shed_front(b: HarbourProps.Batch, rng: RandomNumberGenerator) -> void:
 	_wall_lamp(b, door_w * 0.5 + 0.5, minf(2.5, size.y - 0.35))
 	_door_x = 0.0
 	if sign_text.strip_edges() != "" and size.y - door_h > 0.75:
-		_fascia(b, 0.0, door_h + 0.2 + (size.y - door_h - 0.2) * 0.45, minf(door_w, 3.0), minf(0.55, size.y - door_h - 0.45), Color(0.8, 0.78, 0.7), Color(0.1, 0.12, 0.2))
+		_name_board(b, 0.0, door_h + 0.2 + (size.y - door_h - 0.2) * 0.45, minf(0.55, size.y - door_h - 0.45), size.x - 1.2, Color(0.8, 0.78, 0.7), Color(0.1, 0.12, 0.2))
 	# Louvred vents on the ridge.
 	b.xf = Transform3D.IDENTITY
 	for vx: float in [-size.x * 0.22, size.x * 0.22]:
@@ -468,10 +480,11 @@ func _office_front(b: HarbourProps.Batch, rng: RandomNumberGenerator) -> void:
 		var paper := Vector3(board_w * 0.36, rng.randf_range(0.2, 0.3), 0.01)
 		b.box("paint", paper, Vector3(board_x + (float(i % 2) - 0.5) * board_w * 0.46, 1.66 - 0.31 * float(i / 2) - paper.y * 0.5 + 0.14, 0.055), Color(0.86, 0.84, 0.74).darkened(0.1 * float(i)))
 	var over_door := STEP + DOOR_H + (0.32 if has_light else 0.0) + 0.15
-	var room := size.y - over_door - 0.25
-	if sign_text.strip_edges() != "" and room > 0.25:
+	# The board may stand as high as the eaves: it is out in front of them.
+	var room := size.y - over_door + 0.1
+	if sign_text.strip_edges() != "" and room > 0.3:
 		var board_h := minf(0.5, room)
-		_fascia(b, way * size.x * 0.06, over_door + 0.08 + board_h * 0.5, minf(size.x - 1.6, 3.4), board_h, Color(0.84, 0.83, 0.77), Color(0.08, 0.12, 0.26))
+		_name_board(b, way * size.x * 0.06, over_door + 0.08 + board_h * 0.5, board_h, size.x - 1.0, Color(0.84, 0.83, 0.77), Color(0.08, 0.12, 0.26))
 		_wall_lamp(b, door_x - way * (DOOR_W * 0.5 + 0.4), STEP + DOOR_H - 0.2)
 	else:
 		_wall_lamp(b, door_x, over_door + 0.15)

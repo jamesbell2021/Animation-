@@ -12,6 +12,9 @@ const IRON := Color(0.085, 0.085, 0.095)
 const BOAT_LEN := 7.0
 const BOAT_BEAM := 2.4
 ## Metres per repeat of each roof covering.
+## Sign lettering: the size its font is drawn at, and how much of a line is capitals.
+const SIGN_PX := 64
+const SIGN_CAPS := 0.72
 const ROOF_TILE := {"slate": 1.15, "pantile": 1.3, "corrugated": 1.7}
 
 # ---- one mesh per material ----
@@ -235,7 +238,7 @@ static func timber() -> StandardMaterial3D:
 
 ## Rubble stonework, tinted by the vertices (white: grey whinstone).
 static func rubble() -> StandardMaterial3D:
-	return _tinted("stone", "rubble", 2.0, 1.3, 0.92)
+	return _tinted("stone", "rubble", 2.0, 0.9, 0.92)
 
 ## Dressed and weathered stone (sills, steps, headstones), tinted by the vertices.
 static func dressed() -> StandardMaterial3D:
@@ -371,14 +374,11 @@ static func pitched_roof(b: Batch, key: String, half_len: float, half_span: floa
 ## like the wall it is on (it does not glow in the dark).
 static func lettering(text: String, width: float, height: float, color: Color, serif: bool = true) -> Label3D:
 	var label := Label3D.new()
-	var font := Fonts.title() if serif else Fonts.logbook()
-	if font == null:
-		font = ThemeDB.fallback_font
-	var px := 64
-	var extent := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, px)
+	var font := _sign_font(serif)
+	var extent := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, SIGN_PX)
 	label.font = font
-	label.font_size = px
-	label.pixel_size = minf(width / maxf(extent.x, 1.0), height / maxf(extent.y * 0.72, 1.0))
+	label.font_size = SIGN_PX
+	label.pixel_size = minf(width / maxf(extent.x, 1.0), height / maxf(extent.y * SIGN_CAPS, 1.0))
 	label.text = text
 	label.modulate = color
 	label.outline_size = 0
@@ -386,6 +386,16 @@ static func lettering(text: String, width: float, height: float, color: Color, s
 	label.double_sided = false
 	label.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
 	return label
+
+## How many times wider than its letters are tall a line of lettering runs: the width a
+## board needs for letters of a given height.
+static func lettering_aspect(text: String, serif: bool = true) -> float:
+	var extent := _sign_font(serif).get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, SIGN_PX)
+	return extent.x / maxf(extent.y * SIGN_CAPS, 1.0)
+
+static func _sign_font(serif: bool) -> Font:
+	var font := Fonts.title() if serif else Fonts.logbook()
+	return font if font != null else ThemeDB.fallback_font
 
 static func _rng(seed_value: int, salt: int = 0) -> RandomNumberGenerator:
 	var rng := RandomNumberGenerator.new()
@@ -640,7 +650,7 @@ static func fishing_boat(hull: Color, boat_name: String, seed_value: int) -> Nod
 	b.torus("paint", 0.2, 0.05, Vector3(-0.3, deck_y + 0.05, 0.25), Color(0.62, 0.52, 0.34), Basis.IDENTITY, 10, 5)
 	# Old tyres over the side for fenders.
 	for sx: float in [-1.0, 1.0]:
-		for i: int in [4, 8]:
+		for i: int in [6, 9]:
 			var at := rows[i][3] * Vector3(sx, 1.0, 1.0) + Vector3(sx * 0.09, -0.12, 0.0)
 			b.torus("paint", 0.2, 0.08, at, Color(0.04, 0.04, 0.04), Basis(Vector3.BACK, PI * 0.5), 10, 5)
 	b.build(root)

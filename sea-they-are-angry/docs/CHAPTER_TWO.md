@@ -47,10 +47,12 @@ toward the camera.
 - **The generator** is the camp's from Chapter One. It starts nearly dry. Each lit lamp
   draws diesel; a can a day is at the fuel berth by the pier.
 - **Landings.** A group picks a dark landing three times as readily as a lit one, and a
-  lit landing lets 60 % of a group through.
-- **Raiders.** Every other Bloated group, and every Crab, goes for the nearest burning
-  lamp, the generator, or (when no lamp burns) the kirk. From the third night one group a
-  night is sent at the kirk doors; on the last night, half of them.
+  lit landing lets 70 % of a group through. Every group is a third bigger than the same
+  row of the table brought to the rock.
+- **Raiders.** Two of every three Bloated groups, and every Crab, go for the nearest
+  burning lamp, the generator, or (when no lamp burns) the kirk; the third Bloated group
+  goes for the harbour light. From the third night the first raiding group of the night
+  is sent at the kirk doors; on the last night every other one is, and every other Crab.
 - **The kirk bell.** Two scrap splice its rope ([F] at the kirk door). Rung in the dark,
   once a night, every burning lamp flares white for eight seconds and burns what stands
   in it like the focused beam.
@@ -65,7 +67,10 @@ toward the camera.
   the shed, the garden, research, upgrades, the camp. The keepers arrive with a longbow
   each, the shotgun, petrol bombs, and a little of everything else.
 - **Helpers.** One works the harbour light from dusk; the other walks the lamps
-  (switches them in, mends them, feeds the generator, fetches the day's stores).
+  (switches them in, mends them, feeds the generator, keeps the harbour light mended and
+  fuelled, fetches the day's stores, splices the bell rope when there is scrap to spare).
+  On the last night that one keeps the kirk doors instead, and rings the bell once four
+  or more are ashore.
 - **Local play only.** LAN games are Chapter One's.
 
 ## How it is built
@@ -106,10 +111,28 @@ game over → title, the ending) goes back to `main.tscn`, where the title lives
 has been heading for, *A light kept is a promise*, the tallies, credits, and the way
 back to the title. `SaveSys.finish_chapter(2)` records it.
 
+## Runs played by the computer's keepers (2026-11-10)
+
+`tools/playtest_harbour.gd`: three computer keepers, nobody playing. One on the harbour
+light, two walking the lamps (the real game has one, and you).
+
+| Sea | Nights | Came ashore each night | Lamps smashed | End |
+|---|---|---|---|---|
+| Calm | 4 | 7, 11, 9, 20 | 1, 2, 0, 3 | Held: 8 of 11 lamps in, kirk untouched, bell rung |
+| Angry | 5 | 11, 15, 12, 18, 36 | 1, 1, 1, 3, 6 | Held: 5 of 11 lamps in, kirk untouched, bell rung |
+
+Earlier settings they lost to, and what was changed: groups half as big again with
+nothing to refill arrows or cartridges (every keeper down on the last night); the
+harbour light left damaged, which stops it being refuelled (it went dark); every Crab
+of the last night sent at 300-point kirk doors (the doors went). The first settings of
+all were the other way: the town was held without a lamp or the kirk coming under real
+threat. A raging sea has not been run.
+
 ## Not done
 
 - Nobody has played it. The numbers (lamp health, draw, landing weights, how many go
-  for the kirk) are first guesses checked only by scripted tests.
+  for the kirk) were set against scripted tests and runs played by the computer's keepers
+  alone (`tools/playtest_harbour.gd`), which is not the same as a person playing.
 - LAN play in Kirkhaven.
 - The townsfolk at the end are the keepers' models, walking.
 - The Eel has no part in it; a harbour-mouth version would suit the last night.

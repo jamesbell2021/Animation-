@@ -138,7 +138,7 @@ func _go() -> void:
 	if is_instance_valid(b2):
 		b2.queue_free()
 	check(not kirk.draws_raiders(), "while a lamp burns, raiders leave the kirk be")
-	kirk.take_damage(120)
+	kirk.take_damage(160)
 	check(main._status_line()[0].contains("kirk doors"), "the HUD shows the doors when they're hurt: %s" % main._status_line()[0])
 
 	# A helper walks the lamps.
@@ -178,6 +178,7 @@ func _go() -> void:
 	await _wait(90)
 	check(main.atmosphere.fog.flood > 0.0, "and the fog is coming over the town (%.3f)" % main.atmosphere.fog.flood)
 	var raider := Bloated.new()
+	main._raid_groups = 1
 	main._on_spawn(raider, "B", true)
 	check(raider.raid_goal == kirk, "the night's raiders are sent at the kirk doors")
 	raider.free()

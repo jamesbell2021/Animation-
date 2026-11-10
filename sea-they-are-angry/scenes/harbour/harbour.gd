@@ -45,7 +45,9 @@ var lamps: Array[StreetLamp] = []
 var houses: Array[TownHouse] = []
 var _ending := false
 var _ending_t := 0.0
-var _kirk_groups := 0
+## Tonight's raiding groups so far (the latest is the one now coming ashore).
+var _raid_groups := 0
+var _crabs := 0
 var _townsfolk: Array = []
 var _boats: Array = []
 var _bob := 0.0
@@ -377,7 +379,8 @@ func _build_dressing() -> void:
 		_put(HarbourProps.gravestone(30 + i), x, z, rng.randf_range(-12.0, 12.0))
 
 # What can be fetched each day: scrap at the chandler's and the fish shed, lamp fuel
-# at the chandler's, diesel at the fuel berth, driftwood off the strand.
+# at the chandler's, diesel at the fuel berth, driftwood off the strand, a little
+# ammunition.
 func _build_stores() -> void:
 	var rows := [
 		["scrap", 1, -6.4, -0.7], ["bio", 2, -2.6, -0.7], ["scrap", 1, -18.4, -0.6],
@@ -388,11 +391,14 @@ func _build_stores() -> void:
 		var sp := ScavengePoint.new(String(r[0]), int(r[1]))
 		sp.position = _ground(float(r[2]), float(r[3]))
 		add_child(sp)
-	# The harbour master's cartridges, once.
-	var tin := ScavengePoint.new("shells", 4)
-	tin.once = true
+	# Ammunition: cartridges from the harbour master's cabinet and arrows from the net
+	# loft's bench, a few each day (five nights would otherwise outlast what was carried).
+	var tin := ScavengePoint.new("shells", 3)
 	tin.position = _ground(-27.6, -0.9)
 	add_child(tin)
+	var sheaf := ScavengePoint.new("arrows", 6)
+	sheaf.position = _ground(31.6, -1.6)
+	add_child(sheaf)
 
 func _build_harbour_spawner() -> void:
 	spawner = SpawnerScript.new()
@@ -573,16 +579,24 @@ func _landing_scale(at: Vector3) -> float:
 	var k := SWELL * (LAST_SWELL if Rescue.is_last_night() else 1.0)
 	return k * (LIT_LANDING if landing_lit(HarbourMap.nearest_landing(at.x, at.z)) else 1.0)
 
-# Some of each night's raiders are sent at the kirk doors: one group from the third
-# night, every other group on the last.
+# Some of each night's raiders are sent at the kirk doors.
 func _on_spawn(e: Enemy, kind: String, raid: bool) -> void:
 	if kirk == null or kirk.is_destroyed() or not (kind == "B" or kind == "C"):
 		return
-	if Rescue.is_last_night():
-		if raid or kind == "C":
+	if kind == "C" and Rescue.is_last_night():
+		# Every other Crab of the last night.
+		_crabs += 1
+		if _crabs % 2 == 1:
 			e.raid_goal = kirk
-	elif Run.night >= KIRK_FROM_NIGHT and raid and _kirk_groups <= 1:
+	elif kind == "B" and raid and _for_kirk():
 		e.raid_goal = kirk
+
+# Whether the raiding group now coming ashore is for the kirk: the night's first from
+# the third night, every other one (and every other Crab) on the last.
+func _for_kirk() -> bool:
+	if Rescue.is_last_night():
+		return _raid_groups % 2 == 1
+	return Run.night >= KIRK_FROM_NIGHT and _raid_groups == 1
 
 func _on_group_warning(kind: String, points: Array, raid: bool) -> void:
 	Audio.horn([1.0] if points.size() == 1 else [1.0, 1.0], -5.0)
@@ -594,9 +608,8 @@ func _on_group_warning(kind: String, points: Array, raid: bool) -> void:
 			where.append(nm)
 	var text := "%s — %s." % [what, " and ".join(where)]
 	if raid:
-		if Run.night >= KIRK_FROM_NIGHT and not Rescue.is_last_night():
-			_kirk_groups += 1
-		text += "  They're making for the %s!" % ("kirk" if Rescue.is_last_night() or (Run.night >= KIRK_FROM_NIGHT and _kirk_groups == 1) else "lamps")
+		_raid_groups += 1
+		text += "  They're making for the %s!" % ("kirk" if _for_kirk() else "lamps")
 	hud.warn(text)
 
 func _on_smothered(on: bool) -> void:
@@ -655,7 +668,8 @@ func _on_phase_changed(p: int) -> void:
 		_warned_low = false
 	if p == Cycle.Phase.DUSK and Run.active:
 		_tally = {}
-		_kirk_groups = 0
+		_raid_groups = 0
+		_crabs = 0
 		kirk.besieged = Rescue.is_last_night()
 		if Rescue.is_last_night():
 			hud.warn("The last night. The fog is coming over the quay: every lamp that burns is a street they cannot have.")

@@ -81,7 +81,7 @@ const BUILDINGS := [
 	[21.5, -30.0, 8.0, 3.2, 6.0, "cottage", "KIRK HALL", "slate", 2],
 ]
 ## The kirk's footprint (nave and tower), for the pathfinding grid.
-const KIRK_RECT := Rect2(-5.0, -35.0, 8.6, 11.0)
+const KIRK_RECT := Rect2(-5.4, -34.1, 8.2, 9.5)
 ## The street lamps: [x, z, name]. The quay's from west to east, then the wynds and the
 ## kirk gate.
 const LAMPS := [

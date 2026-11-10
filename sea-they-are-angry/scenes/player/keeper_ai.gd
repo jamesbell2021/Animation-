@@ -194,6 +194,25 @@ func _harbour(night: bool) -> void:
 	if gen != null and gen.work_kind() == "can" and gen.fuel < Generator.FUEL_MAX - Generator.CAN_UNITS:
 		_set_task("generator", gen, gen.global_position + Vector3(0.0, 0.0, 2.4))
 		return
+	# The harbour light: mended when it's been hit (it can't be refuelled till it is),
+	# kept full by day, and never let run dry in the night.
+	if lamp != null and lamp.lighthouse.work_kind() == "hammer" and (not night or lamp.fuel < 40.0 or role == "lamps"):
+		_set_task("repair", lamp.lighthouse, KeeperNav.door_point())
+		return
+	if lamp != null and lamp.fuel < (25.0 if night else Lamp.FUEL_MAX - 15.0) and lamp.lighthouse.work_kind() == "can":
+		_set_task("refuel", lamp.lighthouse, KeeperNav.door_point())
+		return
+	# The last night, the one who walks the lamps keeps the kirk doors instead: mends
+	# them, and rings the bell once they're ashore in numbers.
+	var kirk := get_tree().get_first_node_in_group("kirk")
+	if night and role == "lamps" and kirk != null and kirk.besieged and not kirk.is_destroyed():
+		if kirk.can_ring() and _ashore() >= 4:
+			_set_task("bell", kirk, kirk.door_point())
+		elif kirk.work_kind() == "hammer":
+			_set_task("repair", kirk, kirk.door_point())
+		else:
+			_set_task("round", null, kirk.door_point() + Vector3(0.0, 0.0, 1.2))
+		return
 	var fix := _nearest_fixable(false)
 	if fix != null:
 		_set_task("repair", fix, _work_point(fix))
@@ -203,11 +222,7 @@ func _harbour(night: bool) -> void:
 		_set_task("switch", dark, dark.global_position + Vector3(0.0, 0.0, -0.9))
 		return
 	if not night:
-		if lamp != null and lamp.fuel < Lamp.FUEL_MAX - 30.0 and lamp.lighthouse.work_kind() == "can":
-			_set_task("refuel", lamp.lighthouse, KeeperNav.door_point())
-			return
 		# The bell rope, when there's scrap to spare beyond a lamp's mending.
-		var kirk := get_tree().get_first_node_in_group("kirk")
 		if kirk != null and role == "lamps" and not Run.bell_mended and Stock.get_amount("scrap") >= 3:
 			_set_task("bell", kirk, kirk.door_point())
 			return
@@ -221,6 +236,15 @@ func _harbour(night: bool) -> void:
 			return
 	var post: Vector2 = HARBOUR_POSTS[(_round + keeper.idx) % HARBOUR_POSTS.size()]
 	_set_task("round", null, Vector3(post.x, Terrain.height_at(post.x, post.y), post.y))
+
+# How many creatures are up out of the water in the town.
+func _ashore() -> int:
+	var n := 0
+	for e in get_tree().get_nodes_in_group("enemies"):
+		var st = e.get("state")
+		if st != &"Emerge" and st != &"Retreat" and e.global_position.z < HarbourMap.QUAY_Z:
+			n += 1
+	return n
 
 # The nearest street lamp that's whole and not yet switched in.
 func _dark_lamp() -> Node3D:
