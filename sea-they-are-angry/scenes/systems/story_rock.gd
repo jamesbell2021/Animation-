@@ -28,7 +28,7 @@ var _cine_t := 0.0
 const CINE_FROM := Vector3(-24.0, 5.0, 27.0)
 const CINE_TO := Vector3(-19.0, 12.0, 30.0)
 const CINE_LOOK := Vector3(3.0, 11.0, -4.0)
-const CINE_AFTER := 3.0
+const CINE_AFTER := 4.5
 
 func _ready() -> void:
 	name = "StoryRock"
@@ -220,6 +220,8 @@ func _look_up() -> void:
 	_cine.global_position = CINE_FROM
 	_cine.look_at(CINE_LOOK, Vector3.UP)
 	_cine.current = true
+	# Nothing on the screen now but the rock and the sky.
+	main.hud.visible = false
 
 func _pages(which: String) -> StoryPages:
 	if DisplayServer.get_name() == "headless":
