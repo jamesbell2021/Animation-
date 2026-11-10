@@ -57,7 +57,7 @@ var _burn_acc := {}
 var _models := {}
 var _tank: Node3D
 var _flame: GPUParticles3D
-## The flamer's jet of pixel fire (PixelFire), and how far out it reaches (0 to 1).
+## The flamer's jet of fire (PixelFire), and how far out it reaches (0 to 1).
 var _jet: MeshInstance3D
 var _jet_reach := 0.0
 var _flame_light: OmniLight3D

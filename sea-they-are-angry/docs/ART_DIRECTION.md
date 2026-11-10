@@ -126,7 +126,7 @@ The holm should read as a real North Sea islet beside the lighthouse's crag, and
 
 ## Fire
 
-- **The flamer, burning creatures and petrol fires are pixel fire:** chunky square pixels in a hard-stepped palette (white, yellow, orange, red, ember), licking and roaring, in the Doom-fire tradition. It's the one deliberately retro thing in the painted look, and it's meant to stand out as the hottest, angriest thing on screen.
+- **The flamer, burning creatures and petrol fires are real-looking fire** (since 10 November 2026; before that, chunky pixel fire): soft turbulent tongues, white-yellow only at the core, orange to deep red at the tips, a wisp of smoke, glowing without piling into white. It is meant to stand out as the hottest, angriest thing on screen.
 
 ## The wind turbine
 

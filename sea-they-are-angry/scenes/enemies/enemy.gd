@@ -524,7 +524,7 @@ const POISON_DPS := 3.5
 const POISON_SLOW := 0.7
 var _dot := 0.0
 var _dot_fx_t := 0.0
-## Pixel fire on it while it burns (PixelFire): a few flames together.
+## Fire on it while it burns (PixelFire): a few flames together.
 var _fire_fx: Array[MeshInstance3D] = []
 
 func set_alight(t: float) -> void:
@@ -533,7 +533,7 @@ func set_alight(t: float) -> void:
 func poison(t: float) -> void:
 	poisoned = maxf(poisoned, t)
 
-## Show it burning (or not): pixel flames licking up it, dying down as the fire does.
+## Show it burning (or not): flames licking up it, dying down as the fire does.
 func _show_fire(left: float) -> void:
 	if left <= 0.0:
 		for f in _fire_fx:

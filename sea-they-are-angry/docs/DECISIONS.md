@@ -967,3 +967,19 @@ The owner, having seen v1.0.0: the screen is crowded; is the story backwards, sh
 - **Cost:** the same quads and particles as before (no new draw calls, particles or
   lights; a pool still has its one small flickering light): a little more noise maths
   per pixel, and one depth read.
+
+## 2026-11-10 (later): what the owner found in v1.1.1 (v1.1.2)
+
+- **Gold patches on the keeper** were the see-through outline (Player.set_outline): its
+  shader decides "hidden" from screen depth and counted the keeper's own body as a wall.
+  It is now switched on only while a ray from a camera to the keeper's chest or head is
+  blocked (layers 1 and 4), or they are under a roof.
+- **A helper gives way to a person** (Player.give_way): the lamp, a searchlight, the
+  shotgun or the flamer. Another person keeps what they have.
+- **The shotgun's recoil** used Player.shove, which knocks a keeper down: it is
+  Player.recoil now, a push. Ragdoll end parts (feet, hands, shins, forearms) are heavier
+  and damped, and a ragdoll whose parts spin past 150 rad/s (or move past 40 m/s) has its
+  spin stopped at once (CharacterRig.BLOWUP_*); it keeps falling.
+- **The longbow** is one swept tube (Arsenal._bow_tube) with a drawn string.
+- **The shotgun recording** is driven into a soft clipper and limiter (+8 dB on average).
+
