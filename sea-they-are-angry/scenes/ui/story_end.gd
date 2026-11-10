@@ -48,7 +48,7 @@ func _ready() -> void:
 	var gap2 := Control.new()
 	gap2.custom_minimum_size = Vector2(0, 10)
 	box.add_child(gap2)
-	_label(box, "Fonts: IM FELL English by Igino Marini (SIL OFL 1.1) · Special Elite by Astigmatic (Apache 2.0)\nSound and music synthesised in code · \"The Skye Boat Song\" (traditional air)\nThank you for keeping the light.", 16, DIM)
+	_label(box, "Fonts: IM FELL English by Igino Marini (SIL OFL 1.1) · Special Elite by Astigmatic (Apache 2.0)\nMusic and most sounds synthesised in code · the sea, the gulls, the bells and other sounds are public-domain and CC0 recordings · \"The Skye Boat Song\" (traditional air)\nThank you for keeping the light.", 16, DIM)
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	box.add_child(row)
