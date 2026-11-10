@@ -600,6 +600,16 @@ def title():
     pads = [[62, 69, 76], [58, 65, 69, 74], [55, 58, 62, 69], [63, 67, 70], [57, 62, 64, 69]]
     for p, notes in enumerate(pads):
         tr.wide(lambda: saw_pad(notes, 11 * tr.beat, 1.0, 700.0, 500.0), p * 16 + 3, 0.7)
+    # The pulse (the nights' own, slower): eighths on each phrase's root under the whole
+    # piece, nearly shut at first, opening through the middle and closing for the turn
+    # round. It is what makes this a theme and not a wash of chords.
+    roots = [38, 34, 43, 39, 33]
+    opened = [0.12, 0.3, 0.45, 0.5, 0.3]
+    for bar in range(bars):
+        p = bar // 4
+        for e in range(8):
+            v = 1.0 if e == 0 else (0.85 if e == 4 else 0.7)
+            tr.put_dry(synth_bass(roots[p], 0.4 * tr.beat, v, opened[p]), bar * 4 + e * 0.5, 0.0, 0.8)
     # The figure alone; again with a low note under it; half of it lower down; then with
     # its second flattened; then only its middle bar, and room for the foghorn.
     figure(tr, felt_piano, 62, 0, hold=4.0, vel=0.9)
