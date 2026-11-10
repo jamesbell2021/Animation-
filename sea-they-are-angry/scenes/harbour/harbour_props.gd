@@ -63,6 +63,17 @@ class Batch:
 		for i: int in [0, 2, 1, 0, 3, 2]:
 			_corner(st, p[i], n[i], t, uvs[i], col)
 
+	## A flat four-sided face as quad(), shaded from `low` along a-b to `high` along d-c
+	## (damp rising up a wall).
+	func shaded_quad(key: String, a: Vector3, b: Vector3, c: Vector3, d: Vector3, low: Color, high: Color) -> void:
+		var n := (b - a).cross(d - a).normalized()
+		var t := (b - a).normalized()
+		var st := _tool(key)
+		var p: Array[Vector3] = [a, b, c, d]
+		var uvs := PackedVector2Array([Vector2.ZERO, Vector2.RIGHT, Vector2.ONE, Vector2.DOWN])
+		for i: int in [0, 2, 1, 0, 3, 2]:
+			_corner(st, p[i], n, t, uvs[i], low if i < 2 else high)
+
 	## A triangle, anticlockwise as seen from outside.
 	func tri(key: String, a: Vector3, b: Vector3, c: Vector3, col: Color = Color.WHITE, uvs: PackedVector2Array = PackedVector2Array()) -> void:
 		var n := (b - a).cross(c - a).normalized()
@@ -249,7 +260,11 @@ static func harl_mat(color: Color) -> StandardMaterial3D:
 	var key := "harl_" + color.to_html(false)
 	if not _shared.has(key):
 		# The harl texture is already near white: tint it to the colour asked for.
-		_shared[key] = Look.textured("harl", Color(color.r / 0.87, color.g / 0.86, color.b / 0.82), 1.6, 0.95, 0.8)
+		var m := Look.textured("harl", Color(color.r / 0.87, color.g / 0.86, color.b / 0.82), 1.6, 0.95, 0.8)
+		# The vertices darken it where a wall is damp (white leaves it as painted).
+		m.vertex_color_use_as_albedo = true
+		m.vertex_color_is_srgb = true
+		_shared[key] = m
 	return _shared[key]
 
 ## A roof covering, laid by the mesh's own UVs (courses along the eaves): "slate",
@@ -874,6 +889,19 @@ static func wall(length: float, height: float = 1.0) -> Node3D:
 	var rng := _rng(roundi(length * 100.0), 6)
 	var b := Batch.new()
 	var thick := 0.5
+	wall_into(b, length, height, thick, rng)
+	b.build(root)
+	var body := StaticBody3D.new()
+	body.name = "Body"
+	body.collision_layer = SOLID_LAYER
+	body.collision_mask = 0
+	root.add_child(body)
+	Geo.box_shape(body, Vector3(length, height, thick), Vector3(0.0, height * 0.5, 0.0))
+	return root
+
+## A rubble wall drawn into a batch (no collision): along the batch's x, centred, its
+## foot at y = 0, `thick` through, with a cope of stones set on edge.
+static func wall_into(b: Batch, length: float, height: float, thick: float, rng: RandomNumberGenerator) -> void:
 	var cope := minf(0.2, height * 0.3)
 	var grey := Color(0.6, 0.58, 0.54)
 	b.box("stone", Vector3(length, height - cope, thick), Vector3(0.0, (height - cope) * 0.5, 0.0), grey)
@@ -884,14 +912,6 @@ static func wall(length: float, height: float = 1.0) -> Node3D:
 		b.box("stone", Vector3(run - 0.015, tall, thick * rng.randf_range(0.8, 0.94)), Vector3(x + run * 0.5, height - cope + tall * 0.5, 0.0),
 			grey.darkened(rng.randf_range(0.0, 0.3)), Basis(Vector3.BACK, rng.randf_range(-0.12, 0.12)))
 		x += run
-	b.build(root)
-	var body := StaticBody3D.new()
-	body.name = "Body"
-	body.collision_layer = SOLID_LAYER
-	body.collision_mask = 0
-	root.add_child(body)
-	Geo.box_shape(body, Vector3(length, height, thick), Vector3(0.0, height * 0.5, 0.0))
-	return root
 
 ## An iron quay ladder: its foot at the origin, rising `height` to the quay's edge, the
 ## quay wall behind it (-Z). Its rails loop over the top and back onto the quay.

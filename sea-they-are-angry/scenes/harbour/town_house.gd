@@ -34,6 +34,10 @@ const GILT := Color(0.9, 0.78, 0.45)
 const SILL_STONE := Color(0.74, 0.71, 0.65)
 const PLINTH_STONE := Color(0.62, 0.6, 0.56)
 const BLACK := Color(0.07, 0.07, 0.08)
+## Rising damp on the harl: how high it stands (about), and its tint at the wall's foot.
+const DAMP_H := 1.0
+const DAMP := Color(0.62, 0.63, 0.56)
+const DAMP_NORTH := Color(0.5, 0.55, 0.45)
 
 ## Width along x, wall height to the eaves, depth along z. The origin is at ground
 ## level in the middle of the footprint.
@@ -138,10 +142,10 @@ func _build() -> void:
 	var over := VERGE if gable == 0 else -0.05
 	var b := HarbourProps.Batch.new()
 	# Walls on a stone footing, the gables filled in to the roof.
-	b.box("wall", size, Vector3(0.0, size.y * 0.5, 0.0))
+	_walls(b, hw, hd)
 	b.tri("wall", Vector3(hw, size.y, hd), Vector3(hw, size.y, -hd), Vector3(hw, size.y + rise, 0.0))
 	b.tri("wall", Vector3(-hw, size.y, -hd), Vector3(-hw, size.y, hd), Vector3(-hw, size.y + rise, 0.0))
-	b.box("stone", Vector3(size.x + 0.1, PLINTH, size.z + 0.1), Vector3(0.0, PLINTH * 0.5, 0.0), PLINTH_STONE)
+	b.box("stone", Vector3(size.x + 0.1, PLINTH, size.z + 0.1), Vector3(0.0, PLINTH * 0.5, 0.0), PLINTH_STONE.lerp(DAMP, 0.5))
 	var roof_key := "roof_" + covering
 	# Every roof has weathered a little differently.
 	var shade := rng.randf_range(0.8, 1.05)
@@ -202,6 +206,38 @@ func _build() -> void:
 	_lamp.position = Vector3(_door_x, 2.0, hd + 1.0)
 	add_child(_lamp)
 
+# The four walls, with the damp that has crept up the harl from the ground: a darker,
+# greener band along the foot, higher in some places than others, least on the sunny
+# front and worst at the back. (The colours tint the harl: see HarbourProps.harl_mat.)
+func _walls(b: HarbourProps.Batch, hw: float, hd: float) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash(seed_value * 131 + 7)
+	var corners: Array[Vector3] = [Vector3(-hw, 0.0, hd), Vector3(hw, 0.0, hd), Vector3(hw, 0.0, -hd), Vector3(-hw, 0.0, -hd)]
+	var worst := rng.randf_range(0.7, 1.2)
+	# How high the damp stands at each corner, shared by the two walls that meet there.
+	var at_corner: Array[float] = []
+	for i in 4:
+		at_corner.append(DAMP_H * worst * rng.randf_range(0.7, 1.3))
+	for side in 4:
+		var p0 := corners[side]
+		var p1 := corners[(side + 1) % 4]
+		var reach: float = [0.75, 1.0, 1.4, 1.0][side]
+		var foot := Color.WHITE.lerp(DAMP_NORTH if side == 2 else DAMP, clampf(worst * (0.75 if side == 0 else 1.0), 0.0, 1.0))
+		var half := Color.WHITE.lerp(foot, 0.7)
+		var n := maxi(2, roundi(p0.distance_to(p1) / 1.2))
+		var prev := at_corner[side] * reach
+		for k in n:
+			var a := p0.lerp(p1, float(k) / float(n))
+			var c := p0.lerp(p1, float(k + 1) / float(n))
+			var next := (at_corner[(side + 1) % 4] if k == n - 1 else DAMP_H * worst * rng.randf_range(0.6, 1.4)) * reach
+			var up0 := Vector3(0.0, minf(prev, size.y - 0.2), 0.0)
+			var up1 := Vector3(0.0, minf(next, size.y - 0.2), 0.0)
+			b.shaded_quad("wall", a, c, c + up1 * 0.5, a + up0 * 0.5, foot, half)
+			b.shaded_quad("wall", a + up0 * 0.5, c + up1 * 0.5, c + up1, a + up0, half, Color.WHITE)
+			b.quad("wall", a + up0, c + up1, c + Vector3(0.0, size.y, 0.0), a + Vector3(0.0, size.y, 0.0))
+			prev = next
+	b.quad("wall", Vector3(-hw, size.y, hd), Vector3(hw, size.y, hd), Vector3(hw, size.y, -hd), Vector3(-hw, size.y, -hd))
+
 func _upper_sill() -> float:
 	return maxf(size.y - 0.4 - 1.2, SILL + WIN_H + 0.45)
 
@@ -255,7 +291,7 @@ func _chimney(b: HarbourProps.Batch, x: float, rng: RandomNumberGenerator) -> vo
 	var top := _ridge + 0.95
 	var low := _ridge - 0.75
 	var harled := rng.randf() < 0.5
-	b.box("wall" if harled else "stone", Vector3(0.62, top - low, 1.05), Vector3(x, (top + low) * 0.5, 0.0), Color(0.6, 0.58, 0.54))
+	b.box("wall" if harled else "stone", Vector3(0.62, top - low, 1.05), Vector3(x, (top + low) * 0.5, 0.0), Color(0.9, 0.88, 0.84) if harled else Color(0.6, 0.58, 0.54))
 	b.box("dressed", Vector3(0.74, 0.1, 1.17), Vector3(x, top + 0.05, 0.0), SILL_STONE.darkened(0.1))
 	var pots := 1 + rng.randi() % 2 if _storeys == 1 else 2
 	var clay := Color(0.6, 0.34, 0.22) if rng.randf() < 0.6 else Color(0.7, 0.6, 0.44)

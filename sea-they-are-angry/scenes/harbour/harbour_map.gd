@@ -56,6 +56,14 @@ const SETTS := Color(0.33, 0.32, 0.31)
 const TURF_A := Color(0.19, 0.28, 0.11)
 const TURF_B := Color(0.28, 0.34, 0.14)
 const WEED := Color(0.14, 0.17, 0.10)
+## More paint: the earth under the paving, sour grass, bracken, the slips, the strand.
+const EARTH := Color(0.26, 0.22, 0.17)
+const EARTH_PALE := Color(0.37, 0.33, 0.26)
+const TURF_DRY := Color(0.36, 0.35, 0.16)
+const BRACKEN := Color(0.36, 0.25, 0.13)
+const SLIP_STONE := Color(0.41, 0.4, 0.37)
+const SLIME := Color(0.17, 0.22, 0.1)
+const SAND := Color(0.62, 0.56, 0.42)
 
 ## The two in the middle of the back row stand apart: the kirk wynd runs between them
 ## from the back street to the kirk gate.
@@ -248,22 +256,57 @@ static func place_name(p: Vector3) -> String:
 static func color_at(x: float, z: float, h: float, steep: float) -> Color:
 	_ensure_noise()
 	var n := _noise.get_noise_2d(x * 1.9 + 30.0, z * 1.9)
-	var c := FLAGS.lerp(SETTS, clampf(n * 0.8 + 0.5, 0.0, 1.0))
-	if z < RISE_1.x and z > RISE_2.y:
-		c = SETTS.lerp(Terrain.DIRT, clampf(n * 0.5 + 0.25, 0.0, 0.5))
-	if z <= RISE_2.y:
-		c = TURF_A.lerp(TURF_B, clampf(n * 0.9 + 0.5, 0.0, 1.0))
+	var fine := _noise.get_noise_2d(x * 7.0 - 12.0, z * 7.0 + 4.0)
+	var broad := _noise.get_noise_2d(x * 0.55 + 80.0, z * 0.55 - 60.0)
+	# The town is paved (Paving lays its setts and flags over this). What shows between
+	# them, in the worn hollows and at the town's ragged ends, is trodden earth and grit.
+	var c := EARTH.lerp(EARTH_PALE, clampf(n * 0.9 + 0.5, 0.0, 1.0)).lerp(Terrain.GRAVEL, clampf(fine * 0.9, 0.0, 0.4))
+	# The brae up from the back lane and the kirk green above it: rough grass, sour and
+	# yellow in places, worn through to the earth in others.
+	var grass := smoothstep(RISE_2.x - 0.35, RISE_2.x - 1.5, z + fine * 0.9)
+	if grass > 0.0:
+		var turf := TURF_A.lerp(TURF_B, clampf(n * 0.9 + 0.5, 0.0, 1.0))
+		turf = turf.lerp(TURF_DRY, clampf(broad * 1.7 + 0.1, 0.0, 0.55))
+		turf = turf.lerp(EARTH, clampf(fine * 1.6 - 0.5, 0.0, 0.45))
+		c = c.lerp(turf, grass)
 		if absf(x - KIRK_GATE.x) < 1.0 and z > KIRK_AT.y + 4.0:
 			c = Terrain.DIRT.lerp(Terrain.GRAVEL, 0.4)
-	if z < NORTH:
-		c = c.lerp(Terrain.HEATHER, 0.5)
+	# The hill behind: heather and bracken, with the rock coming through.
+	var hill := smoothstep(NORTH + 0.5, NORTH - 2.0, z)
+	if hill > 0.0:
+		var moor := Terrain.HEATHER.lerp(BRACKEN, clampf(n * 1.2 + 0.2, 0.0, 0.6)).lerp(TURF_DRY.lerp(TURF_A, 0.4), clampf(broad * 1.6 + 0.45, 0.0, 0.8))
+		c = c.lerp(moor * (0.85 + fine * 0.3), hill * 0.9)
+	# The strand: pale shingle and sand, dark where the last tide wetted it, a line of
+	# wrack at high water and an older one above it.
 	var shore := shore_weight(x, z)
 	if shore > 0.3 and x > STRAND_X:
-		c = c.lerp(Terrain.SHINGLE, smoothstep(0.3, 0.8, shore))
+		var beach := Terrain.SHINGLE.lerp(SAND, clampf(broad * 1.5 + 0.25, 0.0, 0.65)) * (0.9 + fine * 0.28)
+		beach = beach.lerp(Terrain.WET, smoothstep(0.5, -0.1, h) * 0.6)
+		beach = beach.lerp(Terrain.WRACK, (1.0 - smoothstep(0.02, 0.1, absf(h - 0.22 - n * 0.16))) * 0.85)
+		beach = beach.lerp(Terrain.WRACK, (1.0 - smoothstep(0.0, 0.06, absf(h - 0.72 - fine * 0.2))) * 0.5)
+		c = c.lerp(beach, smoothstep(0.3, 0.8, shore))
+	# The slipways: worn stone, wet lower down, green with slime toward the water.
+	if z > QUAY_Z:
+		var slip := maxf(_slip(0, x), _slip(1, x))
+		if slip > 0.0:
+			var ramp := SLIP_STONE * (0.92 + n * 0.22 + fine * 0.1)
+			ramp = ramp.lerp(Terrain.WET, smoothstep(1.1, 0.3, h) * 0.5)
+			ramp = ramp.lerp(SLIME, smoothstep(0.45, -0.15, h + fine * 0.35) * 0.8)
+			c = c.lerp(ramp, slip)
+	# Rock: on anything steep, and the arms at either end. Lichen on its dry tops, turf
+	# where a top is level enough to hold it.
 	var rock := Terrain.ROCK.lerp(Terrain.ROCK_DARK, clampf(_noise.get_noise_2d(x * 3.0, z * 3.0) + 0.5, 0.0, 1.0))
-	c = c.lerp(rock, smoothstep(0.25, 0.5, steep))
-	if x < WEST or x > EAST:
-		c = c.lerp(rock, 0.8)
+	rock = rock.lerp(Terrain.WHIN, clampf(broad * 1.4, 0.0, 0.5))
+	rock = rock.lerp(Terrain.LICHEN, clampf(fine * 1.8 - 0.3, 0.0, 0.4) * smoothstep(1.2, 2.6, h))
+	var crag := smoothstep(0.25, 0.5, steep)
+	# The hill is all steep: there the rock shows only in outcrops.
+	crag = lerpf(crag, maxf(smoothstep(0.62, 0.72, steep), smoothstep(0.12, 0.4, _noise.get_noise_2d(x * 1.1 - 7.0, z * 1.1 + 3.0)) * 0.9), hill)
+	c = c.lerp(rock, crag)
+	var arm := maxf(smoothstep(WEST + 0.6, WEST - 1.6, x + fine * 1.2), smoothstep(EAST - 0.6, EAST + 1.6, x + fine * 1.2))
+	if arm > 0.0:
+		var top := smoothstep(3.4, 4.4, h) * (1.0 - smoothstep(0.06, 0.2, steep)) * clampf(n * 2.0 + 0.9, 0.0, 1.0)
+		c = c.lerp(rock.lerp(TURF_DRY.lerp(TURF_A, 0.5), top * 0.8), 0.85 * arm)
+	# The tide's mark on everything it reaches.
 	if h < Terrain.SEA_LEVEL + 0.5:
 		c = c.lerp(WEED, clampf((Terrain.SEA_LEVEL + 0.5 - h) * 1.6, 0.0, 0.8))
 	if h < Terrain.SEA_LEVEL - 0.7:
@@ -271,33 +314,41 @@ static func color_at(x: float, z: float, h: float, steep: float) -> Color:
 	return c
 
 ## Texture layers for the terrain shader: x rock, y shingle, z dirt, w wet; grass is the
-## rest. The paved town is rock and shingle (flags and setts), the green is grass.
+## rest. Under the town's paving it is earth and grit; the brae and the green are grass.
 static func layers_at(x: float, z: float, h: float, steep: float) -> Vector4:
 	_ensure_noise()
-	var rock := 0.75
-	var shingle := 0.25
-	var dirt := 0.0
-	if z < RISE_1.x and z > RISE_2.y:
-		rock = 0.35
-		shingle = 0.5
-		dirt = 0.15
-	if z <= RISE_2.y:
-		rock = 0.0
-		shingle = 0.0
+	var fine := _noise.get_noise_2d(x * 7.0 - 12.0, z * 7.0 + 4.0)
+	var rock := 0.0
+	var shingle := 0.3
+	var dirt := 1.0
+	var wet := clampf((Terrain.SEA_LEVEL + 0.5 - h) * 2.0, 0.0, 1.0)
+	var grass := smoothstep(RISE_2.x - 0.35, RISE_2.x - 1.5, z + fine * 0.9)
+	if grass > 0.0:
+		shingle = lerpf(shingle, 0.0, grass)
+		dirt = lerpf(dirt, clampf(fine * 1.6 - 0.5, 0.0, 0.45), grass)
 		if absf(x - KIRK_GATE.x) < 1.0 and z > KIRK_AT.y + 4.0:
 			dirt = 0.9
+	var hill := smoothstep(NORTH + 0.5, NORTH - 2.0, z)
+	dirt = lerpf(dirt, 0.25, hill)
 	var shore := shore_weight(x, z)
 	if shore > 0.3 and x > STRAND_X:
 		var k := smoothstep(0.3, 0.8, shore)
-		rock = lerpf(rock, 0.0, k)
 		shingle = lerpf(shingle, 1.0, k)
-	rock = maxf(rock, smoothstep(0.25, 0.5, steep))
-	if x < WEST or x > EAST:
-		rock = maxf(rock, 0.8)
+		wet = maxf(wet, k * smoothstep(0.5, -0.1, h) * 0.6)
+	if z > QUAY_Z:
+		var slip := maxf(_slip(0, x), _slip(1, x))
+		rock = lerpf(rock, 0.8, slip)
+		wet = maxf(wet, slip * smoothstep(1.1, 0.2, h) * 0.8)
+	var crag := smoothstep(0.25, 0.5, steep)
+	crag = lerpf(crag, maxf(smoothstep(0.62, 0.72, steep), smoothstep(0.12, 0.4, _noise.get_noise_2d(x * 1.1 - 7.0, z * 1.1 + 3.0)) * 0.9), hill)
+	rock = maxf(rock, crag)
+	var arm := maxf(smoothstep(WEST + 0.6, WEST - 1.6, x + fine * 1.2), smoothstep(EAST - 0.6, EAST + 1.6, x + fine * 1.2))
+	if arm > 0.0:
+		var top := smoothstep(3.4, 4.4, h) * (1.0 - smoothstep(0.06, 0.2, steep))
+		rock = maxf(rock, 0.85 * arm * (1.0 - top * 0.8))
 	if h < Terrain.SEA_LEVEL - 0.7:
 		shingle = 1.0
 		rock *= 0.3
-	var wet := clampf((Terrain.SEA_LEVEL + 0.5 - h) * 2.0, 0.0, 1.0)
 	return Vector4(rock, shingle, dirt, wet)
 
 # ---- finding the way ----

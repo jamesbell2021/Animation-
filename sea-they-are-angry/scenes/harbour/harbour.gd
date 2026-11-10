@@ -194,6 +194,8 @@ func _build_harbour_ground() -> void:
 		_slab(Vector3(0.8, 0.14, pe - hf), Vector3(side * hh, top + 0.05, (pe + hf) * 0.5), cope)
 	_slab(Vector3(hh * 2.0 + 0.6, h, 0.6), Vector3(0.0, y, pe + 0.05), wall)
 	_slab(Vector3(hh * 2.0 + 0.8, 0.14, 0.8), Vector3(0.0, top + 0.05, pe), cope)
+	# Setts, flags and the pier's blocks, laid over the terrain (looks only).
+	Paving.lay(self)
 	_build_harbour_rocks()
 	_build_green()
 
@@ -401,6 +403,8 @@ func _build_dressing() -> void:
 		if HarbourMap.KIRK_RECT.grow(0.7).has_point(Vector2(x, z)) or absf(x - gate.x) < 1.3:
 			continue
 		_put(HarbourProps.gravestone(30 + i), x, z, rng.randf_range(-12.0, 12.0))
+	# Drains, mooring rings, rope ends, the kirk steps, weeds at the wall feet.
+	Paving.dress(self)
 
 # What can be fetched each day: scrap at the chandler's and the fish shed, lamp fuel
 # at the chandler's, diesel at the fuel berth, driftwood off the strand, a little
