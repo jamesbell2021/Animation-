@@ -33,6 +33,7 @@ const MSG_TIME := 2.5
 const MSG_FADE := 0.6
 const WARN_TIME := 3.0
 const REPORT_TIME := 7.0
+const REPORT_WIDTH := 880.0
 const RED := Color(1.0, 0.35, 0.3)
 const AMBER := Color(1.0, 0.8, 0.45)
 const PALE := Color(0.92, 0.94, 0.96)
@@ -249,9 +250,9 @@ func _ready() -> void:
 	_report_label.set_anchors_preset(Control.PRESET_CENTER)
 	_report_label.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_report_label.grow_vertical = Control.GROW_DIRECTION_BOTH
-	_report_label.custom_minimum_size = Vector2(880, 0)
-	_report_label.offset_left = -440.0
-	_report_label.offset_right = 440.0
+	_report_label.custom_minimum_size = Vector2(REPORT_WIDTH, 0)
+	_report_label.offset_left = -REPORT_WIDTH * 0.5
+	_report_label.offset_right = REPORT_WIDTH * 0.5
 	_report_label.offset_top = 70.0
 	_report_label.offset_bottom = 70.0
 	_report_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -259,8 +260,12 @@ func _ready() -> void:
 	_report_label.add_theme_stylebox_override("normal", _card_style(0.72, 18, 12))
 	_report_label.visible = false
 
-	# While the mouse is free: what a click and the key do, small under the top-left card.
-	_fold_hint = _label(root, FONT - 3)
+	# While the mouse is free: what a click and the key do, small under the top-left card
+	# (on a layer of its own, over the pause menu's shade, so it can be read).
+	var over_pause := CanvasLayer.new()
+	over_pause.layer = 26
+	add_child(over_pause)
+	_fold_hint = _label(over_pause, FONT - 3)
 	_fold_hint.offset_left = 18.0
 	_fold_hint.add_theme_color_override("font_color", DIM)
 	_fold_hint.visible = false
@@ -937,6 +942,13 @@ func _layout() -> void:
 		_keys_label.visible = keys_up
 		if keys_up:
 			_keys_label.text = _keys_text()
+	# The log in the middle keeps clear of the jobs while they're out in full.
+	var log_w := REPORT_WIDTH
+	if jobs_up and not folded("jobs"):
+		log_w = clampf(_jobs_panel.get_viewport_rect().size.x - 2.0 * (_jobs_panel.size.x + 28.0), 560.0, REPORT_WIDTH)
+	_report_label.custom_minimum_size.x = log_w
+	_report_label.offset_left = -log_w * 0.5
+	_report_label.offset_right = log_w * 0.5
 	# Bottom: the cards (their own rules are in _update_keepers) and the weapons.
 	_keepers_box.visible = m != OFF
 	weapon_bar.off = m == OFF

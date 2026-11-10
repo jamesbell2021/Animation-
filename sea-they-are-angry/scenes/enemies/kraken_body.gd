@@ -49,10 +49,13 @@ const RINGS := 24
 const SIDES := 7
 const HIT_POINTS := 8
 const SUCKERS := 7
+# The ground under an arm's point is asked of the terrain again only when the point has
+# moved this far (metres): asking is the dearest thing an arm does.
+const GROUND_STEP := 0.35
 
 # ---- timings, in seconds ----
 const SLAM_TIME := 0.25
-const SLAM_LIE := 0.8
+const SLAM_LIE := 1.2
 const SEVER_THRASH := 1.1
 const SEVER_WITHDRAW := 0.9
 const FLASH_TIME := 0.12
@@ -64,7 +67,7 @@ const EYE_PALE := 0.8
 const MILKY := Color(0.60, 0.64, 0.66)
 const ICHOR := Color(0.42, 0.58, 0.55)
 # Blinded, its hide blanches: every colour on it is multiplied toward this.
-const BLANCH := Color(2.3, 2.2, 2.0)
+const BLANCH := Color(2.0, 1.95, 1.8)
 
 # Degrees round from the way it faces, for each arm's root.
 const ARM_ANGLES := [-22.5, 22.5, -67.5, 67.5, -112.5, 112.5, -157.5, 157.5]
@@ -91,6 +94,9 @@ class Arm:
 	var spray_t := 0.0
 	var out := Vector3.FORWARD
 	var near_land := false
+	var ground := PackedFloat32Array()
+	var ground_at := PackedVector2Array()
+	var lag := 0.0
 	var drawn := false
 	var mesh: ArrayMesh
 	var inst: MeshInstance3D
@@ -108,7 +114,9 @@ var _landed: Array = []
 var _indices := PackedInt32Array()
 var _ring_cos := PackedFloat32Array()
 var _ring_sin := PackedFloat32Array()
+var _ring_u := PackedFloat32Array()
 var _t := 0.0
+var _frame := 0
 var _rise_dir := 0.0
 var _emerge := 0.0
 var _yaw := 0.0
@@ -152,6 +160,7 @@ func _ready() -> void:
 		var a := TAU * float(k) / float(SIDES)
 		_ring_cos.append(cos(a))
 		_ring_sin.append(sin(a))
+		_ring_u.append(float(k) / float(SIDES))
 	_build_head()
 	_build_arms()
 	_step(0.0)
@@ -488,8 +497,16 @@ func _build_eye(side: float) -> void:
 	_flash_meshes.append(turret)
 	_ball(rig, EYE_RADIUS, _eye_mat, Vector3.ZERO)
 	# The pupil is a bar right round the eye, as an octopus's is: a slot from any side.
-	var pupil := _ball(rig, EYE_RADIUS * 1.02, Geo.mat(Color(0.0, 0.0, 0.0), true), Vector3.ZERO)
-	pupil.scale = Vector3(1.0, 0.17, 1.0)
+	var pupil := MeshInstance3D.new()
+	var bar := CylinderMesh.new()
+	bar.top_radius = EYE_RADIUS * 1.012
+	bar.bottom_radius = EYE_RADIUS * 1.012
+	bar.height = EYE_RADIUS * 0.3
+	bar.radial_segments = 20
+	bar.rings = 1
+	pupil.mesh = bar
+	pupil.material_override = Geo.mat(Color(0.0, 0.0, 0.0), true)
+	rig.add_child(pupil)
 	_pupils.append(pupil)
 	_glints.append(Look.glint(rig, Vector3(0.0, 0.0, -EYE_RADIUS * 1.15), eye * 0.5, EYE_RADIUS * 2.2))
 	var pair: Array[Node3D] = []
@@ -559,6 +576,10 @@ func _build_arms() -> void:
 		a.from.resize(CTRL)
 		a.to.resize(CTRL)
 		a.centres.resize(RINGS)
+		a.ground.resize(CTRL)
+		a.ground.fill(-10.0)
+		a.ground_at.resize(CTRL)
+		a.ground_at.fill(Vector2(INF, INF))
 		a.phase = float(i) * 2.399
 		a.mesh = ArrayMesh.new()
 		a.inst = MeshInstance3D.new()
@@ -608,6 +629,7 @@ func _arm_texture() -> ImageTexture:
 
 func _step(delta: float) -> void:
 	_t += delta
+	_frame += 1
 	_step_rise(delta)
 	_step_die(delta)
 	_step_head(delta)
@@ -687,10 +709,11 @@ func _step_head(delta: float) -> void:
 		_blink_t = randf_range(4.0, 9.0)
 	var blink := sin(clampf(-_blink_t / 0.3, 0.0, 1.0) * PI)
 	var dull := maxf(_blind, smoothstep(0.1, 0.4, dying))
-	var shut := clampf(maxf(maxf(dull * 0.9, blink), 0.0) - 0.25 * _roar, -0.25, 1.0)
+	var shut := clampf(maxf(dull * 0.86, blink) - 0.25 * _roar, -0.25, 1.0)
 	for pair in _lids:
-		pair[0].rotation.x = lerpf(-0.42, -1.4, shut)
-		pair[1].rotation.x = lerpf(0.4, -1.25, shut)
+		# Each lid's edge, as an angle above the line of its gaze.
+		pair[0].rotation.x = lerpf(0.32, -0.17, shut)
+		pair[1].rotation.x = lerpf(-0.55, -0.1, shut)
 	_eye_mat.albedo_color = (eye * EYE_PALE).lerp(MILKY, dull)
 	_eye_mat.emission = eye.lerp(MILKY, dull)
 	_eye_mat.emission_energy_multiplier = lerpf(EYE_GLOW, 0.0, dull)
@@ -765,6 +788,13 @@ func _step_arm(i: int, delta: float) -> void:
 	a.inst.visible = true
 	var moved := 0.0
 	var slack := _blind_on or (_die_t >= 0.0 and _die_t >= _fall_at[i])
+	# An arm idling or holding a reach moves slowly: every other frame does for it.
+	if a.act == Act.NONE and not slack and _die_t < 0.0 and _roar <= 0.02 and a.drawn:
+		if (_frame + i) % 2 == 1:
+			a.lag = delta
+			return
+		delta += a.lag
+		a.lag = 0.0
 	if a.act == Act.THRASH:
 		_pose_thrash(a, root, out, share)
 		moved = _follow(a, root, 9.0, delta)
@@ -793,6 +823,7 @@ func _step_arm(i: int, delta: float) -> void:
 			# A whip: the root leads and the tip comes last and fastest.
 			var s := float(k) / float(CTRL - 1)
 			a.pts[k] = a.from[k].lerp(a.to[k], pow(k_t, lerpf(1.5, 3.2, s)))
+			_ground(a, k, a.pts[k])
 		moved = 1.0
 		if k_t >= 1.0:
 			a.act = Act.LIE
@@ -835,13 +866,21 @@ func _follow(a: Arm, root: Vector3, rate: float, delta: float) -> float:
 	for k in range(1, CTRL):
 		var s := float(k) / float(CTRL - 1)
 		var p := a.pts[k].lerp(_goal[k], 1.0 - exp(-rate * lerpf(1.5, 0.85, s) * delta))
-		var ground := Terrain.height_at(p.x, p.z)
+		var ground := _ground(a, k, p)
 		if ground > Terrain.SEA_LEVEL - 1.4:
 			a.near_land = true
 			p.y = maxf(p.y, ground + 0.5 * lerpf(ARM_THICK, ARM_TIP, s))
 		moved = maxf(moved, p.distance_squared_to(a.pts[k]))
 		a.pts[k] = p
 	return moved
+
+# The ground under one of an arm's points.
+func _ground(a: Arm, k: int, p: Vector3) -> float:
+	var at := a.ground_at[k]
+	if absf(p.x - at.x) + absf(p.z - at.y) > GROUND_STEP:
+		a.ground_at[k] = Vector2(p.x, p.z)
+		a.ground[k] = Terrain.height_at(p.x, p.z)
+	return a.ground[k]
 
 # Slack: every point falls where it is, onto the ground or to lie awash in the water.
 func _drop(a: Arm, root: Vector3, share: float, delta: float) -> float:
@@ -852,7 +891,7 @@ func _drop(a: Arm, root: Vector3, share: float, delta: float) -> float:
 	for k in range(1, CTRL):
 		var s := float(k) / float(CTRL - 1)
 		var p := a.pts[k]
-		var ground := Terrain.height_at(p.x, p.z)
+		var ground := _ground(a, k, p)
 		if ground > Terrain.SEA_LEVEL - 1.4:
 			a.near_land = true
 		var rest := maxf(ground, Terrain.SEA_LEVEL - 0.45) + 0.6 * _radius(a, s, share)
@@ -888,7 +927,8 @@ func _pose_idle(a: Arm, root: Vector3, out: Vector3, share: float) -> void:
 		var s := float(k) / float(CTRL - 1)
 		var sway := sin(s * 5.0 - _t * 0.55 + a.phase) * 3.2 * s + sin(_t * 0.23 + a.phase * 1.7) * 2.2 * s * s
 		var p := root + out * (s * IDLE_REACH * share) + lat * sway * share
-		p.y = Terrain.SEA_LEVEL + 0.1 + 0.7 * sin(s * 7.0 - _t * 0.9 + a.phase * 2.0) * (0.3 + 0.7 * s)
+		# Awash in the sea; where it lies ashore, the same humps over the ground.
+		p.y = maxf(Terrain.SEA_LEVEL, a.ground[k] + 0.4) + 0.1 + 0.7 * sin(s * 7.0 - _t * 0.9 + a.phase * 2.0) * (0.3 + 0.7 * s)
 		p.y += (0.8 + lift * 3.4) * smoothstep(0.6, 1.0, s) * share
 		p.y -= (1.0 - _emerge) * 2.0
 		_goal[k] = p
@@ -974,8 +1014,9 @@ func _draw_arm(a: Arm, share: float) -> void:
 		var p3 := a.pts[mini(i + 2, n)]
 		var c := 0.5 * ((2.0 * p1) + (-p0 + p2) * u + (2.0 * p0 - 5.0 * p1 + 4.0 * p2 - p3) * u * u + (-p0 + 3.0 * p1 - 3.0 * p2 + p3) * u * u * u)
 		if a.near_land:
-			# The curve between two points can dip into a cliff: lift it clear.
-			var ground := Terrain.height_at(c.x, c.z)
+			# The curve between two points can dip into a cliff: lift it clear of the
+			# higher ground of the two.
+			var ground := maxf(a.ground[i], a.ground[i + 1])
 			if ground > Terrain.SEA_LEVEL - 1.4:
 				c.y = maxf(c.y, ground + 0.5 * _radius(a, float(r) / float(RINGS - 1), share))
 		a.centres[r] = c
@@ -1006,12 +1047,17 @@ func _draw_arm(a: Arm, share: float) -> void:
 		if r > 0:
 			# So the suckers stay round and shrink with the arm toward its tip.
 			along += c.distance_to(a.centres[r - 1]) / (TAU * rad)
-		for k in SIDES + 1:
+		for k in SIDES:
 			var normal := side * _ring_cos[k] + up * _ring_sin[k]
 			verts[at] = c + normal * rad
 			norms[at] = normal
-			uvs[at] = Vector2(float(k) / float(SIDES), along)
+			uvs[at] = Vector2(_ring_u[k], along)
 			at += 1
+		# The seam: the first point again, at the texture's other edge.
+		verts[at] = verts[at - SIDES]
+		norms[at] = side
+		uvs[at] = Vector2(1.0, along)
+		at += 1
 	# The tip's cap (a stump's is the pale flesh of the cut).
 	verts[at] = a.centres[RINGS - 1] + tan * rad * 0.7
 	norms[at] = tan
@@ -1029,27 +1075,32 @@ func _draw_arm(a: Arm, share: float) -> void:
 # ---- water and spray ----
 # Every machine makes its own (the body is only looks), so none of it goes over the network.
 
+# Where spray and splashes are put: the world, not whatever is carrying the body about.
+func _fx_parent() -> Node:
+	var scene := get_tree().current_scene
+	return scene if scene != null else get_parent()
+
 func _fx_splash(at: Vector3, size: float) -> void:
 	if not is_inside_tree():
 		return
 	var was := FX.ambient
 	FX.ambient = true
-	FX.splash(get_parent(), at, size)
+	FX.splash(_fx_parent(), at, size)
 	FX.ambient = was
 
 func _fx_breaker(at: Vector3, size: float) -> void:
 	if is_inside_tree():
-		FX.breaker(get_parent(), Vector3(at.x, Terrain.SEA_LEVEL, at.z), size)
+		FX.breaker(_fx_parent(), Vector3(at.x, Terrain.SEA_LEVEL, at.z), size)
 
 func _fx_spray(at: Vector3, dir: Vector3) -> void:
 	if not is_inside_tree():
 		return
 	var was := FX.ambient
 	FX.ambient = true
-	FX.spray(get_parent(), at, dir, ICHOR)
+	FX.spray(_fx_parent(), at, dir, ICHOR)
 	FX.ambient = was
 	# Big enough to see from the lamp room.
-	FX.emitter(get_parent(), at, _drop_mesh, Color(ICHOR.r, ICHOR.g, ICHOR.b, 0.95), 16, 0.9, (dir + Vector3.UP).normalized(), 50.0, 3.0, 8.0, 9.0, 1.2, 2.6)
+	FX.emitter(_fx_parent(), at, _drop_mesh, Color(ICHOR.r, ICHOR.g, ICHOR.b, 0.95), 16, 0.9, (dir + Vector3.UP).normalized(), 50.0, 3.0, 8.0, 9.0, 1.2, 2.6)
 
 # The swell as it breaks the surface or goes under: a ring of white water round it.
 func _swell(size: float) -> void:
@@ -1064,7 +1115,7 @@ func _fx_impact(at: Vector3) -> void:
 	if Terrain.height_at(at.x, at.z) < Terrain.SEA_LEVEL:
 		_fx_breaker(at, 1.6)
 		return
-	var puff := FX.emitter(get_parent(), at + Vector3(0.0, 0.3, 0.0), FX._puff_mesh_ref(), Color(0.5, 0.46, 0.4, 0.5), 10, 1.2,
+	var puff := FX.emitter(_fx_parent(), at + Vector3(0.0, 0.3, 0.0), FX._puff_mesh_ref(), Color(0.5, 0.46, 0.4, 0.5), 10, 1.2,
 		Vector3.UP, 85.0, 1.5, 4.0, 0.5, 1.0, 2.2, true, true)
 	if puff != null:
 		puff.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF

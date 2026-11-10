@@ -99,6 +99,12 @@ func _decide() -> void:
 	if mate != null:
 		_set_task("revive", mate, mate.global_position)
 		return
+	# The lamp about to run dry under whoever is working it: that comes before any fight.
+	var lit := keeper.lamp
+	if lit != null and not keeper.operating and lit.is_lit() and lit.fuel < 20.0 and lit.operator != null and lit.lighthouse.work_kind() == "can" \
+			and Geo.flat_dist(keeper.global_position, lit.lighthouse.global_position) < 30.0:
+		_set_task("refuel", lit.lighthouse, KeeperNav.door_point())
+		return
 	# Something close: fight it (or get clear of a Bloated about to burst).
 	var e := _threat()
 	if e != null:
@@ -282,6 +288,10 @@ func _night_light() -> void:
 	var on_lamp := lamp != null and lamp.operator != null and is_instance_valid(lamp.operator) and lamp.operator != keeper
 	if not on_lamp and lamp != null:
 		_set_task("lamp", lamp, KeeperNav.door_point())
+		return
+	# Somebody else has the lamp: see it doesn't run dry under them.
+	if lamp != null and lamp.fuel < 30.0 and lamp.lighthouse.work_kind() == "can":
+		_set_task("refuel", lamp.lighthouse, KeeperNav.door_point())
 		return
 	_set_task("ledge", null, Terrain.ledge_point(POST_S))
 

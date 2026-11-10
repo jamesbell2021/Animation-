@@ -15,6 +15,8 @@ const GLASS_LIT := Color(1.0, 0.78, 0.45)
 const REFUEL_UNITS := 40.0
 const REFUEL_COST := {"bio": 1}
 const DIRTY_UNITS := 30.0
+## Below this the lamp is filled before the tower is mended: a dark lamp ends it all.
+const FUEL_FIRST := 25.0
 const BRASS := Color(0.78, 0.6, 0.28)
 const COPPER := Color(0.72, 0.4, 0.24)
 
@@ -189,9 +191,12 @@ func repair(amount: int) -> void:
 func _can_refuel() -> bool:
 	return lamp != null and lamp.fuel < Lamp.FUEL_MAX - 1.0 and Stock.can_afford(REFUEL_COST)
 
+func _fuel_first() -> bool:
+	return lamp != null and lamp.fuel < FUEL_FIRST and _can_refuel()
+
 func interact_prompt() -> String:
 	var parts: Array[String] = []
-	if is_damaged():
+	if is_damaged() and not _fuel_first():
 		parts.append(super.interact_prompt())
 	elif _can_refuel():
 		parts.append("[E] Refuel (1 bio)")
@@ -201,6 +206,8 @@ func interact_prompt() -> String:
 	return "   ".join(parts)
 
 func work_kind() -> String:
+	if _fuel_first():
+		return "can"
 	if is_damaged() and (Stock.can_afford(repair_cost()) or not _can_refuel()):
 		return super.work_kind()
 	if _can_refuel():
@@ -208,7 +215,7 @@ func work_kind() -> String:
 	return ""
 
 func interact(player: Node) -> bool:
-	if is_damaged():
+	if is_damaged() and not _fuel_first():
 		if Stock.can_afford(repair_cost()) or not _can_refuel():
 			return super.interact(player)
 	if _can_refuel():

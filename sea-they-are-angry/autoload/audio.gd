@@ -88,6 +88,16 @@ const SOUNDS := {
 	"lamp_off": ["_s_lamp_off", false],
 	"door_rattle": ["_s_door_rattle", false],
 	"heartbeat": ["_s_heartbeat", false],
+	"kraken_rise": ["_s_kraken_rise", false],
+	"kraken_roar": ["_s_kraken_roar", false],
+	"kraken_slam": ["_s_kraken_slam", false],
+	"kraken_blind": ["_s_kraken_blind", false],
+	"kraken_sever": ["_s_kraken_sever", false],
+	"kraken_die": ["_s_kraken_die", false],
+	"page_turn": ["_s_page_turn", false],
+	"pencil": ["_s_pencil", false],
+	"boat_horn": ["_s_boat_horn", false],
+	"scream": ["_s_scream", false],
 }
 
 func _ready() -> void:
@@ -1190,6 +1200,226 @@ func _s_heartbeat() -> PackedFloat32Array:
 		_mix(thump, _env(_lowpass(_noise(seg, 998 + k), 140.0), 0.01, 22.0), 1.5)
 		_mix(out, thump, 1.0 if k == 0 else 0.72, _n(0.04 + 0.33 * float(k)))
 	return _gain(out, 0.5)
+
+# The kraken coming up: a vast groan climbing out of the deep, with tons of water
+# pouring off it.
+func _s_kraken_rise() -> PackedFloat32Array:
+	var n := _n(5.0)
+	var b := PackedFloat32Array()
+	b.resize(n)
+	var wander := _lowpass(_noise(n, 2001), 4.0)
+	var ph := 0.0
+	for i in n:
+		var t := float(i) / float(n)
+		var f := lerpf(27.0, 66.0, t * t) * (1.0 + wander[i] * 1.2)
+		ph += TAU * f / RATE
+		# Throaty: the upper harmonics carry it where the fundamental is too low to hear.
+		var v := sin(ph) * 0.5 + sin(ph * 2.0) * 0.34 * (0.6 + 0.4 * sin(t * 31.0)) + sin(ph * 3.0) * 0.24 + sin(ph * 5.0) * 0.1
+		b[i] = v * smoothstep(0.0, 0.4, t) * (1.0 - smoothstep(0.86, 1.0, t)) * 0.8
+	# The water coming off it: a rush that swells as it clears the surface, then falls away.
+	var water := _highpass(_lowpass(_noise(n, 2002), 2600.0), 250.0)
+	var rush := _lowpass(_noise(n, 2003), 6.0)
+	var deep := _lowpass(_noise(n, 2004), 110.0)
+	for i in n:
+		var t := float(i) / float(n)
+		water[i] *= smoothstep(0.12, 0.6, t) * (1.0 - smoothstep(0.78, 1.0, t)) * (0.7 + rush[i] * 9.0)
+		deep[i] *= 3.2 * sin(t * PI)
+	_mix(b, water, 0.6)
+	return _mix(b, deep, 0.6)
+
+# The kraken's roar: an enormous low bellow, a rank of reeds sounding together like a
+# great organ, rasping in its throat. The biggest sound there is.
+func _s_kraken_roar() -> PackedFloat32Array:
+	var n := _n(3.5)
+	var b := PackedFloat32Array()
+	b.resize(n)
+	var grit := _lowpass(_noise(n, 2011), 60.0)
+	var breath := _highpass(_lowpass(_noise(n, 2012), 1800.0), 300.0)
+	var sub := _lowpass(_noise(n, 2013), 90.0)
+	var ph := 0.0
+	var fifth := 0.0
+	for i in n:
+		var t := float(i) / RATE
+		var k := t / 3.5
+		var f := 52.0 + 16.0 * sin(k * PI) - 14.0 * k * k + grit[i] * 30.0
+		ph += TAU * f / RATE
+		fifth += TAU * f * 1.498 / RATE
+		var v := sin(ph) * 0.5 + sin(ph * 2.0) * 0.38 + sin(ph * 3.0) * 0.3 + sin(ph * 4.0) * 0.2 + sin(ph * 5.0) * 0.16 \
+			+ sin(ph * 7.0) * 0.1 + sin(fifth) * 0.25 + sin(fifth * 2.0) * 0.14
+		# The rasp: its throat flapping, some thirty times a second and never evenly.
+		var rasp := 0.5 + 0.5 * pow(absf(sin(t * TAU * 14.0 + grit[i] * 8.0)), 0.6)
+		var env := smoothstep(0.0, 0.25, t) * (1.0 - smoothstep(2.6, 3.5, t))
+		# Driven hard, so it is flat-topped and harsh.
+		b[i] = (clampf(v * rasp * 1.6, -1.0, 1.0) * 0.8 + breath[i] * rasp * 0.5 + sub[i] * 2.4) * env
+	return _lowpass(b, 2800.0)
+
+# An arm coming down: a heavy wet impact, and timber or stone cracking under it.
+func _s_kraken_slam() -> PackedFloat32Array:
+	var n := _n(1.2)
+	var b := _env(_tone(n, 85.0, 26.0), 0.003, 5.0)
+	_mix(b, _gain(_env(_lowpass(_noise(n, 2021), 320.0), 0.004, 6.0), 2.6), 1.0)
+	# Wet: the slap of water and flesh.
+	_mix(b, _env(_highpass(_lowpass(_noise(_n(0.5), 2022), 3200.0), 400.0), 0.004, 9.0), 0.7)
+	# What was under it giving way: a few sharp breaks, close together.
+	for k in 4:
+		var crack := _env(_highpass(_noise(_n(0.05), 2023 + k), 1500.0), 0.0005, 90.0)
+		_mix(crack, _env(_tone(_n(0.05), 900.0 - 150.0 * float(k), 300.0), 0.0005, 70.0), 0.6)
+		_mix(b, crack, 0.75 - 0.12 * float(k), _n(0.012 + 0.045 * float(k) + 0.02 * float(k % 2)))
+	return _gain(b, 0.9)
+
+# The light in its eyes: a shriek of pain, high over a low moan.
+func _s_kraken_blind() -> PackedFloat32Array:
+	var n := _n(2.0)
+	var b := PackedFloat32Array()
+	b.resize(n)
+	var rough := _lowpass(_noise(n, 2031), 90.0)
+	var hiss := _highpass(_noise(n, 2032), 2500.0)
+	var ph := 0.0
+	var low := 0.0
+	for i in n:
+		var t := float(i) / float(n)
+		# The shriek leaps up, wavers, and falls away.
+		var f := lerpf(700.0, 1650.0, smoothstep(0.0, 0.12, t)) - 620.0 * smoothstep(0.35, 1.0, t) + 70.0 * sin(t * TAU * 13.0) + rough[i] * 900.0
+		ph += TAU * f / RATE
+		var cry := smoothstep(0.0, 0.05, t) * (1.0 - smoothstep(0.55, 0.95, t))
+		var hi := (sin(ph) * 0.55 + sin(ph * 2.0) * 0.25 + sin(ph * 3.0) * 0.12 + hiss[i] * 0.12) * cry
+		# The moan under it goes on after the shriek has gone.
+		var fl := 74.0 - 22.0 * t + 5.0 * sin(t * TAU * 3.0)
+		low += TAU * fl / RATE
+		var lo := (sin(low) * 0.5 + sin(low * 2.0) * 0.3 + sin(low * 3.0) * 0.2) * sin(t * PI)
+		b[i] = hi * 0.5 + lo * 0.6
+	return b
+
+# An arm cut through: a wet tearing, a snap, and what is left slopping back.
+func _s_kraken_sever() -> PackedFloat32Array:
+	var b := PackedFloat32Array()
+	b.resize(_n(1.0))
+	var r := RandomNumberGenerator.new()
+	r.seed = 2041
+	# The tear: a run of wet rips.
+	var at := 0.0
+	while at < 0.32:
+		var rip := _env(_lowpass(_noise(_n(0.03), r.randi()), r.randf_range(1200.0, 3000.0)), 0.0005, 110.0)
+		_mix(b, rip, r.randf_range(0.5, 1.0), _n(at))
+		at += r.randf_range(0.008, 0.03)
+	var snap := _env(_tone(_n(0.25), 240.0, 60.0), 0.001, 22.0)
+	_mix(snap, _env(_highpass(_noise(_n(0.08), 2042), 1000.0), 0.0005, 60.0), 1.0)
+	_mix(b, snap, 1.0, _n(0.33))
+	var slop := _env(_lowpass(_noise(_n(0.6), 2043), 700.0), 0.01, 7.0)
+	for i in slop.size():
+		slop[i] *= 0.6 + 0.4 * sin(float(i) / RATE * TAU * 21.0)
+	_mix(b, slop, 1.6, _n(0.34))
+	return _gain(b, 0.9)
+
+# The kraken dying: a long falling moan that breaks up, and the sea closing over it.
+func _s_kraken_die() -> PackedFloat32Array:
+	var n := _n(6.0)
+	var b := PackedFloat32Array()
+	b.resize(n)
+	var rough := _lowpass(_noise(n, 2051), 40.0)
+	var gate := _lowpass(_noise(n, 2052), 9.0)
+	var ph := 0.0
+	var y := 0.0
+	for i in n:
+		var t := float(i) / float(n)
+		var f := lerpf(96.0, 30.0, pow(t, 0.7)) + 6.0 * sin(t * TAU * 7.0) * (1.0 - t) + rough[i] * 40.0 * t
+		ph += TAU * f / RATE
+		var v := sin(ph) * 0.55 + sin(ph * 2.0) * 0.32 * (0.6 + 0.4 * sin(t * 37.0)) + sin(ph * 3.0) * 0.2 + sin(ph * 4.0) * 0.1
+		# Breaking up: its voice cuts in and out, more and more toward the end.
+		var broken := lerpf(1.0, clampf(0.5 + gate[i] * 30.0, 0.0, 1.0), smoothstep(0.35, 0.8, t))
+		v *= broken * smoothstep(0.0, 0.06, t) * (1.0 - smoothstep(0.7, 1.0, t)) * 0.85
+		# Going under: the water takes the top off the sound as it sinks.
+		var a := 1.0 - exp(-TAU * lerpf(1800.0, 140.0, smoothstep(0.4, 0.95, t)) / RATE)
+		y += a * (v - y)
+		b[i] = y
+	var sea := _lowpass(_noise(n, 2053), 300.0)
+	for i in n:
+		var t := float(i) / float(n)
+		sea[i] *= 2.2 * smoothstep(0.45, 0.8, t) * (1.0 - smoothstep(0.88, 1.0, t))
+	_mix(b, sea, 0.6)
+	# The last of its air coming up.
+	for k in 14:
+		var bubble := _env(_tone(_n(0.11), 150.0 + 35.0 * float(k), 360.0 + 45.0 * float(k)), 0.003, 26.0)
+		_mix(b, bubble, 0.16, _n(3.4 + 0.17 * float(k) + 0.05 * float(k % 3)))
+	return b
+
+# A page of the log turned: the sheet lifting, a flick at its corner, and it settling.
+func _s_page_turn() -> PackedFloat32Array:
+	var n := _n(0.5)
+	var b := _noise(n, 2061)
+	var flutter := _lowpass(_noise(n, 2062), 45.0)
+	var y := 0.0
+	for i in n:
+		var t := float(i) / float(n)
+		var a := 1.0 - exp(-TAU * (1500.0 + 3500.0 * sin(t * PI)) / RATE)
+		y += a * (b[i] - y)
+		b[i] = y * sin(pow(t, 0.7) * PI) * (0.55 + flutter[i] * 6.0) * 0.5
+	_highpass(b, 900.0)
+	_mix(b, _env(_highpass(_noise(_n(0.02), 2063), 2500.0), 0.0005, 180.0), 0.35, _n(0.06))
+	return _mix(b, _env(_highpass(_lowpass(_noise(_n(0.06), 2064), 3000.0), 600.0), 0.002, 60.0), 0.4, _n(0.4))
+
+# A pencil on paper: four strokes, each a dry grainy scratch, quickest in its middle.
+func _s_pencil() -> PackedFloat32Array:
+	var out := PackedFloat32Array()
+	out.resize(_n(1.2))
+	var starts := [0.03, 0.3, 0.52, 0.86]
+	var lengths := [0.2, 0.15, 0.26, 0.22]
+	for k in 4:
+		var n := _n(lengths[k])
+		var s := _noise(n, 2071 + k)
+		var grain := _lowpass(_noise(n, 2081 + k), 220.0)
+		var y := 0.0
+		for i in n:
+			var t := float(i) / float(n)
+			var a := 1.0 - exp(-TAU * (2200.0 + 2600.0 * sin(t * PI)) / RATE)
+			y += a * (s[i] - y)
+			s[i] = y * sin(t * PI) * (0.45 + absf(grain[i]) * 5.0)
+		_highpass(s, 1400.0)
+		_mix(out, s, 0.5 if k % 2 == 0 else 0.4, _n(starts[k]))
+		# The point touching down.
+		_mix(out, _env(_tone(_n(0.02), 900.0, 500.0), 0.0005, 150.0), 0.12, _n(starts[k]))
+	return out
+
+# The Mary Ann's horn: a small boat's reed horn, one flat nasal note (higher and
+# thinner than the foghorn).
+func _s_boat_horn() -> PackedFloat32Array:
+	var n := _n(1.6)
+	var b := PackedFloat32Array()
+	b.resize(n)
+	var air := _lowpass(_noise(n, 2091), 1500.0)
+	var ph := 0.0
+	for i in n:
+		var t := float(i) / RATE
+		# It speaks a shade flat, comes up to its note, and sags as the air goes.
+		var f := 233.0 * (1.0 - 0.02 * exp(-t * 18.0)) - 3.0 * smoothstep(1.2, 1.6, t)
+		ph += TAU * f / RATE
+		var v := sin(ph) * 0.45 + sin(ph * 2.0) * 0.18 + sin(ph * 3.0) * 0.3 + sin(ph * 4.0) * 0.08 + sin(ph * 5.0) * 0.16 + sin(ph * 7.0) * 0.07
+		var env := smoothstep(0.0, 0.05, t) * (1.0 - smoothstep(1.35, 1.6, t))
+		b[i] = (v * (0.94 + 0.06 * sin(t * TAU * 27.0)) * 0.62 + air[i] * 0.12) * env
+	return _lowpass(b, 2400.0)
+
+# Someone taken in the fog: a cry a long way off, cut short, and the rock giving it
+# back once.
+func _s_scream() -> PackedFloat32Array:
+	var n := _n(0.6)
+	var cry := PackedFloat32Array()
+	cry.resize(n)
+	var shake := _lowpass(_noise(n, 2101), 30.0)
+	var ph := 0.0
+	for i in n:
+		var t := float(i) / float(n)
+		var f := lerpf(430.0, 640.0, smoothstep(0.0, 0.3, t)) + 40.0 * t + shake[i] * 260.0
+		ph += TAU * f / RATE
+		# An open vowel. It does not die away: it stops.
+		var v := sin(ph) * 0.5 + sin(ph * 2.0) * 0.34 + sin(ph * 3.0) * 0.26 + sin(ph * 4.0) * 0.08
+		cry[i] = v * smoothstep(0.0, 0.08, t) * (1.0 - smoothstep(0.985, 1.0, t))
+	# Far off: thin and dull.
+	_highpass(_lowpass(cry, 1700.0), 300.0)
+	var out := PackedFloat32Array()
+	out.resize(_n(0.9))
+	_mix(out, cry, 0.3)
+	_mix(out, cry, 0.09, _n(0.14))
+	return _mix(out, cry, 0.04, _n(0.27))
 
 # ---- music ----
 

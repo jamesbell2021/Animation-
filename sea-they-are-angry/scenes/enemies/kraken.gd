@@ -13,20 +13,20 @@ extends Node3D
 signal died
 signal phase_changed(phase: String)
 
-const BASE_HP := 4200
-const ARM_HP := 80
+const BASE_HP := 5600
+const ARM_HP := 110
 ## What cutting an arm back costs it.
-const SEVER_DAMAGE := 160
+const SEVER_DAMAGE := 110
 const ARM_REGROW := 15.0
 const ARM_REACH := 24.0
 ## Seconds between slams while it has its sight, by phase.
-const SLAM_EVERY_CAMP := 1.7
+const SLAM_EVERY_CAMP := 2.4
 const SLAM_EVERY_LIGHT := 2.3
 const SLAM_WINDUP := 1.25
 const SLAM_RADIUS := 2.7
 const SLAM_KEEPER := 32
-const SLAM_STRUCTURE := 75
-const SLAM_LIGHTHOUSE := 9
+const SLAM_STRUCTURE := 55
+const SLAM_LIGHTHOUSE := 18
 ## One slam in this many, at the lighthouse, is for the tower itself.
 const TOWER_SHARE := 3
 ## The focused beam held on its eyes this long blinds it, for this long; then it keeps
@@ -38,7 +38,7 @@ const BLIND_MULT := 2.5
 ## What the beam itself does to it, a second, blind and still lit.
 const BEAM_DPS := 22.0
 const FIRE_DPS := 9.0
-const MOVE_SPEED := 4.2
+const MOVE_SPEED := 3.2
 ## Where it rises, where it lies to reach each half of the camp, its way round the
 ## north of the holm, and where it lies for the lighthouse: hauled half up the east
 ## beach, near enough that the lamp can look down into its eyes.
@@ -53,7 +53,7 @@ const HEAD_SPOT_R := 4.4
 const HEAD_SPOT_Y := 1.0
 ## Kirkhaven's people on the crag: how often each looses at it, and what it does.
 const FIGHTER_EVERY := 4.5
-const FIGHTER_DMG := 9
+const FIGHTER_DMG := 6
 const FIGHTER_RANGE := 34.0
 
 var lighthouse: Lighthouse
@@ -178,11 +178,16 @@ func is_blind() -> bool:
 func lit(mode: int, delta: float) -> void:
 	if phase == "dying" or phase == "dead" or phase == "rise":
 		return
-	_lit_t = 0.2
-	if mode != Lamp.Mode.FOCUSED:
-		# A wide beam worries it: it is slower to strike.
+	# Only the lighthouse lamp is strong enough to blind it, and only focused and within
+	# its reach; a searchlight, a flare or the wide beam just worries it (it is slower
+	# to strike).
+	var lamp := lighthouse.lamp
+	var strong := mode == Lamp.Mode.FOCUSED and lamp != null and lamp.is_lit() and lamp.mode == Lamp.Mode.FOCUSED \
+		and Geo.flat_dist(lighthouse.global_position, global_position) <= Lamp.FOCUS_RANGE + 4.0
+	if not strong:
 		_slow = 0.4
 		return
+	_lit_t = 0.2
 	if blinded > 0.0 or _rest > 0.0:
 		return
 	_dazzle += delta * 2.0

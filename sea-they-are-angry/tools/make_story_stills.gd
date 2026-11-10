@@ -14,8 +14,14 @@ extends SceneTree
 ##
 ## To add a still: add a row to STILLS (its id, which scene, the time of day, where the
 ## camera stands and what it looks at), and, if anything has to be posed for it, a
-## method named in the row's "stage" that takes the scene. Stage methods should ask
-## before they touch (has_method, get): the scenes are still being built.
+## method named in the row's "stage" that takes the scene. Say, for the kraken:
+##   {"id": "kraken_1", "scene": "rock", "phase": NIGHT, "from": Vector3(20.0, 6.0, 40.0),
+##    "at": Vector3(48.0, 8.0, 3.0), "fov": 46.0, "stage": "_kraken_1"},
+##   func _kraken_1(main: Node) -> void:    # pose it; keep what you add in _props
+## A method called <stage>_late, if there is one, runs after the scene has settled and
+## been frozen, just before the shot. Stage methods should ask before they touch
+## (has_method, get): the scenes are still being built. Then make just that still
+## ("-- kraken_1") and name it in scenes/ui/story_text.gd.
 ##
 ## Your own Continue save and profile are backed up first and put back afterwards.
 
@@ -43,10 +49,10 @@ const STILLS := [
 	{"id": "intro_1", "scene": "harbour", "phase": DUSK, "from": Vector3(-12.0, 2.6, 45.0), "at": Vector3(0.5, 6.0, 18.0), "fov": 40.0, "stage": "_intro_1"},
 	{"id": "intro_2", "scene": "harbour", "phase": DAY, "from": Vector3(-0.8, 1.6, 4.0), "at": Vector3(4.2, 3.0, -1.5), "fov": 60.0, "stage": "_intro_2"},
 	{"id": "intro_3", "scene": "harbour", "phase": NIGHT, "from": Vector3(-9.0, 6.0, 1.0), "at": Vector3(0.5, 4.0, 26.0), "fov": 46.0, "stage": "_intro_3"},
-	{"id": "intro_4", "scene": "harbour", "phase": NIGHT, "from": Vector3(-16.7, 2.9, 4.0), "at": Vector3(-14.9, 0.5, 12.0), "fov": 42.0, "stage": "_intro_4", "wait": 14},
+	{"id": "intro_4", "scene": "harbour", "phase": NIGHT, "from": Vector3(-16.9, 3.1, 3.2), "at": Vector3(-14.9, 0.6, 12.0), "fov": 40.0, "stage": "_intro_4", "wait": 14},
 	{"id": "intro_5", "scene": "harbour", "phase": NIGHT, "from": Vector3(10.5, 10.0, -8.0), "at": Vector3(-1.0, 8.0, -29.5), "fov": 40.0, "stage": "_intro_5"},
 	{"id": "intro_6", "scene": "harbour", "phase": DAWN, "from": Vector3(8.2, 3.3, 0.2), "at": Vector3(5.2, 2.3, 20.0), "fov": 44.0, "stage": "_intro_6"},
-	{"id": "crossing_1", "scene": "harbour", "phase": NIGHT, "from": Vector3(-18.0, 9.0, 22.0), "at": Vector3(0.0, 3.0, -6.0), "fov": 48.0, "stage": "_crossing_1"},
+	{"id": "crossing_1", "scene": "harbour", "phase": NIGHT, "from": Vector3(-18.0, 9.0, 22.0), "at": Vector3(0.0, 3.0, -6.0), "fov": 48.0, "stage": "_crossing_1", "key": 0.33, "lines": 1.6},
 	{"id": "crossing_2", "scene": "harbour", "phase": NIGHT, "from": Vector3(15.5, 3.8, 28.5), "at": Vector3(5.2, 2.0, 21.0), "fov": 46.0, "stage": "_crossing_2"},
 	{"id": "crossing_3", "scene": "rock", "phase": DAWN, "from": Vector3(-53.0, 2.6, 61.5), "at": Vector3(-22.0, 9.5, 30.0), "fov": 50.0, "stage": "_crossing_3"},
 	{"id": "crossing_4", "scene": "rock", "phase": DAY, "from": Vector3(-26.0, 5.0, 40.0), "at": Vector3(3.0, 7.5, 0.0), "fov": 42.0},
@@ -227,6 +233,7 @@ func _reset(main: Node) -> void:
 	_props.clear()
 	for k in _keepers(main):
 		k.visible = false
+	_bloom(main, true)
 	# Kirkhaven's people keep indoors unless a stage brings them out.
 	for v in get_nodes_in_group("villagers"):
 		if v is Node3D:
@@ -451,6 +458,13 @@ func _lamp(main: Node, lit: bool) -> void:
 	if lh != null and lh.get("lamp") != null:
 		lh.lamp._set_state(1 if lit else 0)
 
+## The glow round bright things (the environment's bloom). Off, a light keeps its own
+## shape instead of swallowing what stands next to it.
+func _bloom(main: Node, on: bool) -> void:
+	var env = main.get("_env")
+	if env is Environment:
+		env.glow_enabled = on
+
 ## Kirkhaven's street lamps: the ones in `which` (indices into HarbourMap.LAMPS) burn.
 func _street_lamps(main: Node, which: Array) -> void:
 	if main.get("lamps") == null:
@@ -497,6 +511,8 @@ func _intro_3(main: Node) -> void:
 # Night: creatures standing on the west slip, dark against the fog's glow.
 func _intro_4(main: Node) -> void:
 	_lamp(main, false)
+	# Their lit bellies would bloom over their own heads and shoulders.
+	_bloom(main, false)
 	var up := HarbourMap.landing_point(0, 1.0)
 	for spot in [[0.74, -1.3], [0.64, 1.0], [0.56, -0.2], [0.48, 1.7], [0.42, -1.6]]:
 		_creature(main, HarbourMap.landing_point(0, float(spot[0]), float(spot[1])), up + Vector3(float(spot[1]) * 0.3, 0.0, -4.0))
@@ -513,9 +529,9 @@ func _intro_5(main: Node) -> void:
 # Dawn: the three keepers on the quay, looking out to sea.
 func _intro_6(main: Node) -> void:
 	_lamp(main, false)
-	_stand(main, 0, Vector3(5.6, 0.0, 4.9), Vector3(4.0, 0.0, 30.0))
-	_stand(main, 1, Vector3(6.8, 0.0, 5.1), Vector3(6.0, 0.0, 30.0))
-	_stand(main, 2, Vector3(4.4, 0.0, 5.0), Vector3(3.0, 0.0, 30.0))
+	_stand(main, 0, Vector3(7.5, 0.0, 5.1), Vector3(5.0, 0.0, 30.0))
+	_stand(main, 1, Vector3(8.7, 0.0, 5.0), Vector3(7.0, 0.0, 30.0))
+	_stand(main, 2, Vector3(6.3, 0.0, 4.9), Vector3(3.0, 0.0, 30.0))
 
 # Night: the fog over the quay and up the streets, a few lamps holding.
 func _crossing_1(main: Node) -> void:
@@ -568,5 +584,5 @@ func _dusk_1(main: Node) -> void:
 	_stand(main, 0, Terrain.beach_point(2, 0.58, -0.2), sea)
 	_stand(main, 1, Terrain.beach_point(2, 0.64, 1.1), sea)
 	_stand(main, 2, Terrain.beach_point(2, 0.55, -1.5), sea)
-	_from = Terrain.beach_point(2, 0.84, 2.0) + Vector3(0.0, 1.9, 0.0)
-	_at = Terrain.beach_point(2, 0.25, -0.5) + Vector3(0.0, 1.5, 0.0)
+	_from = Terrain.beach_point(2, 0.95, 2.2) + Vector3(0.0, 2.2, 0.0)
+	_at = Terrain.beach_point(2, 0.25, -0.5) + Vector3(0.0, 1.2, 0.0)

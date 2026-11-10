@@ -38,9 +38,10 @@ func salvage() -> Array:
 	return []
 
 func light_probe_points() -> Array:
+	# Only its eyes are worth the lamp: an arm's tip is nothing to aim a beam at.
 	if arm < 0 and kraken != null and is_instance_valid(kraken):
 		return kraken.eye_points()
-	return [global_position + Vector3(0.0, 0.5, 0.0)]
+	return []
 
 func in_light(mode: int, delta: float) -> void:
 	if arm < 0 and kraken != null and is_instance_valid(kraken):
