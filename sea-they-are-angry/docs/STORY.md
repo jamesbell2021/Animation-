@@ -62,8 +62,10 @@ holm", on the ninth night, and that "it cannot abide the light in its eyes". The
 are for arming: the shotgun, the longbows, petrol bombs, the flamer, the camp's
 searchlights fuelled.
 
-**The last night: the kraken.** It rises off the holm, tears down the wire, the huts
-and the towers, then comes round for the lighthouse. Its arms can be cut back. The
+**The last night: the kraken.** A sea titan in the manner of the great stop-motion
+monsters: it rears upright out of the water and moves in held, stepped poses. (Our own
+creature; no film's design is copied.) It rises off the holm, tears down the wire, the
+huts and the towers, then comes round for the lighthouse. Its arms can be cut back. The
 focused beam in its eyes blinds it: it stops, its arms go slack, and it can be hurt.
 When it dies, the fog rolls out, the storm ends, the sky clears blue.
 
@@ -112,6 +114,13 @@ person of the head keeper. Dated entries. Plain words.
 3. The Board's man came out in the spring with his tin box. We showed him this log. He
    took the box back with him.
 4. *A light kept is a promise.*
+
+## The credits
+
+Over the end card plays an arrangement of "The Skye Boat Song", a traditional air long
+out of copyright: a song about carrying someone over the sea to an island. The owner
+asked for "Flower of Scotland"; it is in copyright (Roy Williamson, 1967) and cannot be
+shipped without a licence. If one is had, replace `audio/music_credits.ogg`.
 
 ## What is not in it
 

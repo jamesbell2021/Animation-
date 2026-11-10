@@ -119,7 +119,11 @@ func _read_diary() -> void:
 		"\"The lamp was all that stopped it. It cannot abide the light in its eyes.\"",
 		"It will come again, on the last of these nights. Arm for it: bombs, cartridges, arrows, the flamer, and the lamp full.",
 	], 16.0)
-	_pages("diary")
+	# The world waits while the pages are read.
+	var book: StoryPages = _pages("diary")
+	if book != null:
+		get_tree().paused = true
+		book.finished.connect(func() -> void: get_tree().paused = false)
 
 # One of the huts down in the night, with people in it.
 func _on_wrecked(s: Node) -> void:

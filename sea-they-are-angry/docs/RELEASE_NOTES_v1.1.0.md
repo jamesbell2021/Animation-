@@ -33,6 +33,9 @@ the harbour master, the net-mender) are in the town and can be lost.
 
 ## The kraken
 
+- A sea titan in the manner of the great stop-motion monsters: it rears upright out of
+  the sea and moves in held, stepped poses, twelve to the second. It is the game's own
+  creature; no film's design is copied.
 - It rises off the east of the holm on the last night and tears the camp down, from the
   east and then from the north.
 - Then it comes round to the east beach for the lighthouse.
@@ -40,8 +43,13 @@ the harbour master, the net-mender) are in the town and can be lost.
   back, which hurts it.
 - **The focused beam held in its eyes blinds it.** Blind, it cannot strike, its arms drop,
   and everything that hits it counts for two and a half times as much.
-- When it dies the fog goes out, the storm ends, the sky clears blue, and the credits
-  roll.
+- When it dies the fog goes out, the storm ends, and the camera looks up from the
+  keepers to the lighthouse against a sky clearing blue. Then the last pages of the log,
+  and the credits.
+- **The credits' music** is an arrangement of the traditional Skye Boat Song. Flower of
+  Scotland was asked for, but it is in copyright (Roy Williamson, 1967) and cannot be
+  shipped without a licence; `audio/music_credits.ogg` is the one file to replace if a
+  licence is had.
 
 ## The keeper's log
 
