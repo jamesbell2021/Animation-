@@ -182,6 +182,7 @@ func tick(delta: float, pressed: bool, held: bool) -> void:
 	match weapon:
 		"bow":
 			_bow(delta, pressed, held)
+			_pose_bow()
 		"shotgun":
 			_shotgun(delta, pressed)
 		"flamer":
@@ -190,9 +191,83 @@ func tick(delta: float, pressed: bool, held: bool) -> void:
 			if pressed and _cd <= 0.0:
 				_throw_bomb()
 
+# ---- the longbow's shape ----
+
+## The stave's length (tip to tip, before BOW_SCALE), how far its tips stand back from the
+## grip when strung, and how far a full draw brings the string back.
+const BOW_LENGTH := 1.5
+const BOW_BEND := 0.15
+const BOW_DRAW := 0.5
+const BOW_SCALE := 1.15
+var _bow_string: Array[MeshInstance3D] = []
+var _bow_drawn := -1.0
+
+## A point on the stave's middle line, t from -1 (lower tip) to 1 (upper tip). The grip
+## is at the hand (the origin); the limbs curve back toward the keeper (+Z).
+static func _bow_at(t: float) -> Vector3:
+	return Vector3(0.0, t * BOW_LENGTH * 0.5, BOW_BEND * t * t)
+
+## The stave from t0 to t1, `proud` standing out from its surface (the grip's binding):
+## an oval section, deep at the grip and tapering to the tips.
+static func _bow_tube(t0: float, t1: float, proud: float) -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var segs := maxi(2, roundi((t1 - t0) * 18.0))
+	var sides := 10
+	for i in segs + 1:
+		var t := lerpf(t0, t1, float(i) / float(segs))
+		var c := _bow_at(t)
+		var along := Vector3(0.0, BOW_LENGTH * 0.5, 2.0 * BOW_BEND * t).normalized()
+		var across := Vector3.RIGHT
+		var deep := across.cross(along).normalized()
+		var k := pow(1.0 - absf(t), 0.8)
+		var w := lerpf(0.009, 0.019, k) + proud
+		var d := lerpf(0.007, 0.022, k) + proud
+		for j in sides + 1:
+			var a := TAU * float(j) / float(sides)
+			st.set_uv(Vector2(float(j) / float(sides), t))
+			st.add_vertex(c + across * cos(a) * w + deep * sin(a) * d)
+	for i in segs:
+		for j in sides:
+			var a := i * (sides + 1) + j
+			var b := a + sides + 1
+			st.add_index(a)
+			st.add_index(b)
+			st.add_index(a + 1)
+			st.add_index(a + 1)
+			st.add_index(b)
+			st.add_index(b + 1)
+	st.generate_normals()
+	return st.commit()
+
+## The string from tip to tip, pulled back toward the keeper as far as the bow is drawn.
+func _pose_bow() -> void:
+	if _bow_string.size() < 2:
+		return
+	var k := clampf(draw, 0.0, 1.0)
+	if is_equal_approx(k, _bow_drawn):
+		return
+	_bow_drawn = k
+	var top := _bow_at(0.97)
+	var bottom := _bow_at(-0.97)
+	var nock := Vector3(0.0, 0.0, BOW_BEND + 0.01 + BOW_DRAW * k)
+	_line(_bow_string[0], bottom, nock)
+	_line(_bow_string[1], nock, top)
+
+static func _line(mi: MeshInstance3D, a: Vector3, b: Vector3) -> void:
+	var d := b - a
+	var y := d.normalized()
+	var x := y.cross(Vector3.BACK)
+	if x.length() < 0.01:
+		x = Vector3.RIGHT
+	x = x.normalized()
+	var z := x.cross(y)
+	mi.transform = Transform3D(Basis(x, y * d.length(), z), (a + b) * 0.5)
+
 ## Stop anything going on (knocked down, gone in, a job).
 func cease() -> void:
 	draw = -1.0
+	_pose_bow()
 	_stop_flame()
 
 func _face() -> void:
@@ -542,18 +617,47 @@ func _build_models() -> void:
 	var wood := Look.wood(WOOD, 0.6)
 	var steel := Look.flat_mat(STEEL, 0.35)
 	steel.metallic = 0.7
-	# A longbow: a driftwood stave bent in an arc, kelp-cord string.
+	# A longbow: one driftwood stave, thick at the grip and tapering to horn tips, bent in
+	# a shallow arc, with a leather-bound grip in the hand and a kelp-cord string that
+	# comes back to the keeper as they draw (_pose_bow).
 	var bow := Node3D.new()
-	bow.scale = Vector3.ONE * 1.4
+	bow.scale = Vector3.ONE * BOW_SCALE
 	pivot.add_child(bow)
-	for i in 8:
-		var t := -1.0 + 2.0 * (float(i) + 0.5) / 8.0
-		var seg := Geo.box(bow, Vector3(0.035, 0.18, 0.035), Color.WHITE, Vector3(0.0, t * 0.66, -0.12 - 0.12 * (1.0 - t * t)))
-		seg.rotation.x = -t * 0.55
-		seg.material_override = wood
-	var string := Geo.box(bow, Vector3(0.008, 1.32, 0.008), Color.WHITE, Vector3(0.0, 0.0, -0.1))
-	string.material_override = Look.flat_mat(Color(0.5, 0.45, 0.3))
+	var stave := MeshInstance3D.new()
+	stave.mesh = _bow_tube(-1.0, 1.0, 0.0)
+	stave.material_override = wood
+	bow.add_child(stave)
+	var grip := MeshInstance3D.new()
+	grip.mesh = _bow_tube(-0.09, 0.09, 0.006)
+	grip.material_override = Look.flat_mat(Color(0.2, 0.12, 0.07), 0.85)
+	bow.add_child(grip)
+	var horn := Look.flat_mat(Color(0.82, 0.76, 0.6), 0.5)
+	for t: float in [-1.0, 1.0]:
+		var tip := MeshInstance3D.new()
+		var cone := CylinderMesh.new()
+		cone.bottom_radius = 0.011
+		cone.top_radius = 0.004
+		cone.height = 0.06
+		cone.radial_segments = 8
+		tip.mesh = cone
+		tip.material_override = horn
+		tip.position = _bow_at(t * 0.985)
+		tip.rotation.x = 0.0 if t > 0.0 else PI
+		bow.add_child(tip)
+	var cord := Look.flat_mat(Color(0.55, 0.5, 0.36), 0.9)
+	for i in 2:
+		var half := MeshInstance3D.new()
+		var line := CylinderMesh.new()
+		line.top_radius = 0.0035
+		line.bottom_radius = 0.0035
+		line.height = 1.0
+		line.radial_segments = 5
+		half.mesh = line
+		half.material_override = cord
+		bow.add_child(half)
+		_bow_string.append(half)
 	_models["bow"] = bow
+	_pose_bow()
 	# The double-barrelled shotgun: walnut stock, two blued barrels side by side.
 	var gun := Node3D.new()
 	gun.scale = Vector3.ONE * 1.5
