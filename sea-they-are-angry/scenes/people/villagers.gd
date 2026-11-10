@@ -4,16 +4,17 @@ extends RefCounted
 ## does for the keepers while they live. Run.villagers holds the ids of the living;
 ## Run.lost the ids of the lost, in the order they were lost.
 
-## id, the name the game uses, their trade, the keeper model they borrow, where they are
-## by day in the town (x, z), and where they stand in the camp on the rock (from its centre).
+## id, the name the game uses, their trade, the keeper model they borrow (an index into
+## Players.MODELS; Outfits.LOOKS, by id, dresses it as their own), where they are by day
+## in the town (x, z), and where they stand in the camp on the rock (from its centre).
 const ROSTER := [
-	{"id": "baird", "name": "Mr Baird", "full": "the Rev. Alasdair Baird", "trade": "minister", "model": 1, "home": Vector2(-1.6, -19.6), "camp": Vector2(-3.0, 1.2)},
+	{"id": "baird", "name": "Mr Baird", "full": "the Rev. Alasdair Baird", "trade": "minister", "model": 3, "home": Vector2(-1.6, -19.6), "camp": Vector2(-3.0, 1.2)},
 	{"id": "rennie", "name": "Isla Rennie", "full": "Isla Rennie", "trade": "chandler", "model": 2, "home": Vector2(-3.4, -0.5), "camp": Vector2(-1.0, 2.6)},
-	{"id": "coull", "name": "Sandy Coull", "full": "Sandy Coull", "trade": "engineer", "model": 3, "home": Vector2(-28.6, 4.0), "camp": Vector2(6.0, 1.4)},
+	{"id": "coull", "name": "Sandy Coull", "full": "Sandy Coull", "trade": "engineer", "model": 1, "home": Vector2(-28.6, 4.0), "camp": Vector2(6.0, 1.4)},
 	{"id": "duthie", "name": "Morag Duthie", "full": "Morag Duthie", "trade": "publican", "model": 2, "home": Vector2(5.2, -0.5), "camp": Vector2(3.4, -0.8)},
 	{"id": "buchan", "name": "Nurse Buchan", "full": "Nurse Jean Buchan", "trade": "nurse", "model": 2, "home": Vector2(15.0, -0.6), "camp": Vector2(-4.6, -1.2)},
-	{"id": "geddes", "name": "Tam Geddes", "full": "Tam Geddes", "trade": "harbour master", "model": 0, "home": Vector2(-29.6, -0.6), "camp": Vector2(0.6, -1.6)},
-	{"id": "main", "name": "Peter Main", "full": "Peter Main", "trade": "net-mender", "model": 3, "home": Vector2(28.6, -1.4), "camp": Vector2(5.0, 2.8)},
+	{"id": "geddes", "name": "Tam Geddes", "full": "Tam Geddes", "trade": "harbour master", "model": 3, "home": Vector2(-29.6, -0.6), "camp": Vector2(0.6, -1.6)},
+	{"id": "main", "name": "Peter Main", "full": "Peter Main", "trade": "net-mender", "model": 0, "home": Vector2(28.6, -1.4), "camp": Vector2(5.0, 2.8)},
 ]
 ## What the engineer puts in the generator each dusk.
 const TOP_UP := 20.0

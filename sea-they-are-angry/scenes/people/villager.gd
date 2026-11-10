@@ -38,15 +38,18 @@ func _ready() -> void:
 	rig = CharacterRig.create(Players.MODELS[int(w.get("model", 0)) % Players.MODELS.size()])
 	if rig != null:
 		add_child(rig)
+		# Their own clothes over the borrowed keeper's model.
+		Outfits.dress(rig, id)
+	# The name is small: who they are shows in what they wear.
 	_label = Label3D.new()
 	_label.text = String(w.get("name", id))
 	_label.font_size = 30
-	_label.pixel_size = 0.008
+	_label.pixel_size = 0.007
 	_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	_label.no_depth_test = true
-	_label.modulate = Color(0.95, 0.9, 0.75, 0.9)
-	_label.outline_modulate = Color(0.0, 0.0, 0.0, 0.8)
-	_label.position = Vector3(0.0, 2.3, 0.0)
+	_label.modulate = Outfits.label_colour(id)
+	_label.outline_modulate = Color(0.0, 0.0, 0.0, 0.7)
+	_label.position = Vector3(0.0, 2.15, 0.0)
 	var f := Fonts.title()
 	if f != null:
 		_label.font = f
