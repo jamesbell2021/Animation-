@@ -1,6 +1,6 @@
 # Handoff: Sea They Are Angry
 
-**v1.0.0 (both chapters, and the ending) is the current build** (`docs/RELEASE_NOTES_v1.0.0.md`; earlier notes are `RELEASE_NOTES_v0.1.4.md` and `RELEASE_NOTES_v0.1.0.md`). The cloud session can't push tags: make `sea-v1.0.0`, or a release, on GitHub's Releases page. Read this first, then `docs/DESIGN.md` (the rock as it is), `docs/CHAPTER_TWO.md` (Kirkhaven), `docs/DECISIONS.md` (why, newest last) and `git log`. Brought up to date 2026-11-10.
+**v1.0.0 (both chapters, and the ending) is the current build** (`docs/RELEASE_NOTES_v1.0.0.md`; earlier notes are `RELEASE_NOTES_v0.1.4.md` and `RELEASE_NOTES_v0.1.0.md`). The cloud session can't push tags: make `sea-v1.0.0`, or a release, on GitHub's Releases page. Read this first, then `docs/DESIGN.md` (the rock as it is), `docs/KIRKHAVEN.md` (Kirkhaven), `docs/DECISIONS.md` (why, newest last) and `git log`. Brought up to date 2026-11-10.
 
 ## Where things stand
 
@@ -13,7 +13,7 @@ Both chapters are built and tested by script; neither has been played through by
 | 3. Phases H to L (`03_phases_H-L.md`) | Done: the design docs (`docs/DESIGN.md`, `ENEMIES.md`, `ARCHITECTURE.md`, `BALANCING.md`), game feel (shake, hit-stop, hit flash, damage numbers, the morning card), accessibility (shake levels, steady lights, a second keeper palette, interface size; rebinding is keeper one only), the strings table (the menus only), the local play log, F12, the playtest script, the export scripts, `LICENSE`, `CREDITS.md`, `docs/ITCH_PAGE.md`. |
 | 4. Roadmap (`04_after_v0.2_roadmap.md`) | **Not started, on purpose.** It says to do these after playtests: the daily rock, unlockable keepers, run modifiers, special nights, dawn wrecks, lamp mastery. Build none of them until a person has played v0.1.4 and the six checks (`docs/BALANCING.md`) say what's wrong. |
 
-**Chapter Two, The Harbour** (2026-11-10) is built: Kirkhaven, its own scene (`scenes/harbour.tscn`, `scenes/harbour/`), reached from the title or from Chapter One's end card, with an ending that closes the story. `docs/CHAPTER_TWO.md` says how it plays and how it is built (the harbour scene's script extends `scenes/main.gd`; `Terrain` hands over to `HarbourMap` while `Terrain.chapter == 2`). It is local play only.
+**Chapter Two, The Harbour** (2026-11-10) is built: Kirkhaven, its own scene (`scenes/harbour.tscn`, `scenes/harbour/`), reached from the title or from Chapter One's end card, with an ending that closes the story. `docs/KIRKHAVEN.md` says how it plays and how it is built (the harbour scene's script extends `scenes/main.gd`; `Terrain` hands over to `HarbourMap` while `Terrain.chapter == 2`). It is local play only.
 
 **The fog** (same date): a glowing bank (`scenes/world/fog_bank.gd`, `shaders/fog_bank.gdshader`) on both maps, a synthesiser score (`art/source/music/build_music.py`), and night events (`scenes/world/night_events.gd`): the wireless, the knock, lights dipping, a far foghorn.
 

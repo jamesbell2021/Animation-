@@ -2,8 +2,10 @@ extends CanvasLayer
 ## Start menu over the island at dusk. Keyboard, mouse and gamepad navigable.
 
 signal start_requested(continue_save: bool, players: int)
-## Chapter Two, from its first day.
-signal harbour_requested(players: int)
+## A new run of the story, from the night the lights went out.
+signal story_requested(players: int)
+## The story begun on the rock (the town taken as read).
+signal rock_requested(players: int)
 
 const GOLD := Color(1.0, 0.78, 0.42)
 const PALE := Color(0.9, 0.92, 0.95)
@@ -49,8 +51,8 @@ func _ready() -> void:
 	var new_btn := _button(box, Strings.t("title.new_run"), _on_new)
 	if _first == null:
 		_first = new_btn
-	var harbour_btn := _button(box, Strings.t("title.harbour"), func() -> void: harbour_requested.emit(_keepers))
-	harbour_btn.tooltip_text = Strings.t("title.harbour_note")
+	var rock_btn := _button(box, Strings.t("title.rock"), func() -> void: rock_requested.emit(_keepers))
+	rock_btn.tooltip_text = Strings.t("title.rock_note")
 	_keepers_btn = _button(box, "", _cycle_keepers)
 	_keepers_btn.gui_input.connect(_on_keepers_input)
 	_sea_btn = _button(box, "", _cycle_sea)
@@ -73,10 +75,9 @@ func _ready() -> void:
 		record.append("Best: night %d." % best)
 	if SaveSys.chapter_done(1):
 		var seas: int = int(SaveSys.load_profile().get("chapters", {}).get("1", 0))
-		record.append("Chapter One: the light held (%s)." % Difficulty.NAMES[clampi(seas, 0, 2)].to_lower())
-	if SaveSys.chapter_done(2):
-		var seas2: int = int(SaveSys.load_profile().get("chapters", {}).get("2", 0))
-		record.append("Chapter Two: Kirkhaven's lights burn (%s)." % Difficulty.NAMES[clampi(seas2, 0, 2)].to_lower())
+		record.append("The story finished (%s)." % Difficulty.NAMES[clampi(seas, 0, 2)].to_lower())
+	elif SaveSys.chapter_done(2):
+		record.append("Kirkhaven left behind. The rock is next.")
 	if not record.is_empty():
 		_label(box, "  ".join(record), 18, GOLD)
 	_hint = _label(root, "", 15, Color(0.8, 0.84, 0.9, 0.8))
@@ -171,7 +172,7 @@ func _on_continue() -> void:
 
 func _on_new() -> void:
 	SaveSys.clear_run()
-	start_requested.emit(false, _keepers)
+	story_requested.emit(_keepers)
 
 func _on_lan() -> void:
 	var lan := preload("res://scenes/ui/lan_lobby.gd").new()

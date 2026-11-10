@@ -68,6 +68,21 @@ func arrive(p_shore: Vector3, p_mooring: Vector3) -> void:
 	tw.tween_callback(_on_arrived)
 	Audio.sfx("foghorn", global_position, 2.0, 0.0)
 
+## Lying at a berth already (Kirkhaven's pier), plank in, nobody boarding yet.
+func lie_at(p_shore: Vector3, p_mooring: Vector3) -> void:
+	shore = p_shore
+	mooring = p_mooring
+	global_position = mooring
+	var side := shore - mooring
+	_heading = atan2(-side.x, -side.z)
+	rotation.y = _heading
+
+## Run the plank out: keepers can go aboard.
+func open_plank() -> void:
+	if waiting:
+		return
+	_on_arrived()
+
 func _on_arrived() -> void:
 	_moving = false
 	waiting = true

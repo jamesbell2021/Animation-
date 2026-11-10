@@ -77,7 +77,7 @@ One 45-degree camera framing a whole island from the south (offset 38 up, 26 bac
 
 ## Chapter Two (`scenes/harbour/`)
 
-Kirkhaven is the rock's code on a different map. `scenes/harbour.tscn` runs `harbour/harbour.gd`, which **extends `scenes/main.gd`** and builds its own world in `_ready` (the ground, the quay's stone face, the town from `HarbourMap.BUILDINGS`, the generator, the street lamps, the kirk, the stores, a spawner with the three landings). `Terrain.chapter` (set to 2 there, back to 1 by `main.gd`) makes `Terrain`, `Nav` and `KeeperNav` hand over to `HarbourMap`: height, walkable ground, paint, landings, and paths on an `AStarGrid2D`. See `docs/CHAPTER_TWO.md` for the rules and the list of hooks in shared systems.
+Kirkhaven is the rock's code on a different map. `scenes/harbour.tscn` runs `harbour/harbour.gd`, which **extends `scenes/main.gd`** and builds its own world in `_ready` (the ground, the quay's stone face, the town from `HarbourMap.BUILDINGS`, the generator, the street lamps, the kirk, the stores, a spawner with the three landings). `Terrain.chapter` (set to 2 there, back to 1 by `main.gd`) makes `Terrain`, `Nav` and `KeeperNav` hand over to `HarbourMap`: height, walkable ground, paint, landings, and paths on an `AStarGrid2D`. See `docs/KIRKHAVEN.md` for the rules and the list of hooks in shared systems.
 
 | File | What |
 |---|---|

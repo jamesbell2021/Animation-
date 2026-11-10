@@ -56,7 +56,7 @@ The Harbour**, or go on from the end of Chapter One.
   come with you: one on the harbour light, one walking the lamps.
 - Chapter Two is for one to three people on one machine. LAN games are Chapter One's.
 
-How it is built, and why, is in [CHAPTER_TWO.md](CHAPTER_TWO.md).
+How it is built, and why, is in [KIRKHAVEN.md](KIRKHAVEN.md).
 
 ## Also
 

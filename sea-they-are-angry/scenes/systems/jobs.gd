@@ -21,7 +21,7 @@ const LIST := [
 const HARBOUR := [
 	["generator", "Fill the harbour's generator with diesel: the west end of the quay"],
 	["lamp_on", "Switch in a street lamp at its fuse box [E]"],
-	["kirk", "Knock at the kirk door, up the wynds [E]"],
+	["kirk", "Knock at the kirk door, up the wynds [E]: the seven shelter there at night"],
 	["gather", "Fetch stores: the chandler's door, the fuel berth, the strand"],
 	["lamp", "At dusk, work the harbour light: [R] at its door, out on the pier"],
 	["bell", "Mend the kirk bell's rope, and ring it when they come [F]"],

@@ -1,8 +1,9 @@
 extends SceneTree
-## Balance playtest for Chapter Two: the computer's keepers hold Kirkhaven on their own
-## (one on the harbour light, two walking the lamps) and each dawn prints what happened.
+## Balance playtest for Act One: the computer's keepers hold Kirkhaven on their own (one
+## on the harbour light, two walking the lamps), each dawn prints what happened, and on
+## the last night they bring the seven down to the boat.
 ##   godot --headless --path sea-they-are-angry --script res://tools/playtest_harbour.gd -- [calm|angry|raging] [speed]
-## It stops at the ending, or when the run is lost. Your own Continue save and profile
+## It stops when the Mary Ann has sailed, or when the run is lost. Your own Continue save and profile
 ## are backed up first and put back afterwards.
 
 var sea := 1
@@ -10,6 +11,7 @@ var speed := 6.0
 var _ended := ""
 var _killed := {}
 var _smashed := 0
+var _told := false
 
 func _init() -> void:
 	_go.call_deferred()
@@ -73,15 +75,20 @@ func _go() -> void:
 	Engine.time_scale = speed
 	var night_seen := 1
 	var last_phase := -1
-	while _ended == "" and not main._ending:
+	while _ended == "" and current_scene == main:
 		await physics_frame
+		if not is_instance_valid(main) or current_scene != main:
+			break
+		if main._evac == 1 and not _told:
+			_told = true
+			print("  the horn: %d in the kirk, %d of %d lamps lit, kirk %d/%d" % [main._inside().size(), main._lamps_lit(), main.lamps.size(), main.kirk.hp, main.kirk.max_hp])
 		if cyc.phase != last_phase:
 			last_phase = cyc.phase
 			if cyc.phase == cyc.Phase.DUSK:
 				print("  dusk %d: %d of %d lamps in, generator %d%%, store %s" % [run.night, main._lamps_on(), main.lamps.size(), roundi(main.generator.fuel), JSON.stringify(root.get_node("Stock").all())])
 			if cyc.phase == cyc.Phase.DAWN:
-				print("night %d: ashore %d · killed %s · lamps smashed %d, in %d · generator %s · kirk %d/%d · light %d/%d fuel %d%% · bell %s" % [
-					night_seen, int(main._tally.get("ashore", 0)), JSON.stringify(_killed), _smashed, main._lamps_on(),
+				print("night %d: ashore %d · killed %s · the seven %d · lamps smashed %d, in %d · generator %s · kirk %d/%d · light %d/%d fuel %d%% · bell %s" % [
+					night_seen, int(main._tally.get("ashore", 0)), JSON.stringify(_killed), run.villagers.size(), _smashed, main._lamps_on(),
 					"wrecked" if main.generator.is_destroyed() else "%d%%" % roundi(main.generator.fuel),
 					main.kirk.hp, main.kirk.max_hp, main.lighthouse.hp, main.lighthouse.max_hp, roundi(main.lighthouse.lamp.fuel),
 					"rung" if int(main._tally.get("bell", 0)) > 0 else ("ready" if run.bell_mended else "not mended")])
@@ -89,8 +96,8 @@ func _go() -> void:
 				_killed = {}
 				_smashed = 0
 	Engine.time_scale = 1.0
-	if main._ending:
-		print("RESULT: held. The lights of Kirkhaven: %d of %d lamps in at the end." % [main._lamps_on(), main.lamps.size()])
+	if _ended == "":
+		print("RESULT: away on the Mary Ann with %d of the seven (lost: %s)." % [run.villagers.size(), ", ".join(Villagers.lost_names())])
 	else:
 		print("RESULT: lost on night %d: %s" % [run.night, _ended])
 	_restore(saved)

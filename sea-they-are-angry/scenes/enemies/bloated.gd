@@ -105,6 +105,9 @@ func _build_primitive() -> void:
 var raid := false
 
 func pick_target() -> Node3D:
+	var prey := Enemy.nearest_prey(global_position)
+	if prey != null:
+		return prey
 	if _goal_standing():
 		return raid_goal
 	if camp_raid:
@@ -248,6 +251,9 @@ func _enter_Burst() -> void:
 	for p in get_tree().get_nodes_in_group("player"):
 		if p is Node3D and Geo.flat_dist(c, p.global_position) <= BURST_RADIUS:
 			p.take_damage(BURST_PLAYER_DMG, c)
+	for v in get_tree().get_nodes_in_group("prey"):
+		if Geo.flat_dist(c, (v as Node3D).global_position) <= BURST_RADIUS:
+			v.take()
 	FX.burst(get_parent(), c + Vector3(0.0, 0.9, 0.0))
 	Audio.sfx("burst", c, 0.0)
 	if last_hit == "beam":

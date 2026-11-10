@@ -89,6 +89,7 @@ var _in_water := true
 var _detour_dir := Vector3.ZERO
 var _attack_t := 0.0
 var _repath_t := 0.0
+var _prey_t := 0.0
 var _sink_t := 0.0
 var _fall_top := -INF
 var _last_wp := Vector3.INF
@@ -372,6 +373,9 @@ func in_light(_mode: int, _delta: float) -> void:
 	pass
 
 func pick_target() -> Node3D:
+	var prey := Enemy.nearest_prey(global_position)
+	if prey != null:
+		return prey
 	if _goal_standing():
 		return raid_goal
 	if camp_raid:
@@ -415,6 +419,22 @@ static func nearest_camp(from: Vector3) -> Structure:
 ## Whether two points are on the same island (the holm, or the main island).
 static func same_island(a: Vector3, b: Vector3) -> bool:
 	return Terrain.island_of(a.x, a.z) == Terrain.island_of(b.x, b.z)
+
+## How far off a creature will turn aside for someone out in the open.
+const PREY_RANGE := 16.0
+
+## The nearest of Kirkhaven's people out of doors in the dark (group "prey"), within
+## PREY_RANGE, or null. They are easier meat than a lamp.
+static func nearest_prey(from: Vector3) -> Node3D:
+	var best: Node3D = null
+	var best_d := PREY_RANGE
+	var tree := Engine.get_main_loop() as SceneTree
+	for v in tree.get_nodes_in_group("prey"):
+		var d := Geo.flat_dist(from, (v as Node3D).global_position)
+		if d < best_d:
+			best_d = d
+			best = v
+	return best
 
 ## The nearest standing building of the homestead, or null if all are wrecked.
 static func nearest_home(from: Vector3) -> Structure:
@@ -713,6 +733,14 @@ func _check_route(delta: float) -> void:
 		replan()
 
 func _tick_Approach(delta: float) -> void:
+	if target != null and is_instance_valid(target) and target.is_in_group("villagers"):
+		# Someone on foot: keep after them as they move, and let them go once they're safe.
+		_prey_t -= delta
+		if not target.is_in_group("prey"):
+			target = null
+		elif _prey_t <= 0.0:
+			_prey_t = 1.2
+			replan()
 	if target == null or not is_instance_valid(target) or (target is Structure and target != lighthouse and target.is_destroyed()):
 		# Its building is already wrecked: on to the next thing.
 		target = pick_target()

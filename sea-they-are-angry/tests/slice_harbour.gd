@@ -1,6 +1,7 @@
 extends SceneTree
-## Chapter Two, Kirkhaven harbour: the map and its paths, the generator and the street
-## lamps, lit landings, raiders and the kirk, the bell, the last night's fog, the ending.
+## Act One, Kirkhaven: the map and its paths, the generator and the street lamps, lit
+## landings, raiders and the kirk, the bell, the seven, the last night's flight to the
+## boat, and the crossing to the rock.
 ##   godot --headless --path . --script res://tests/slice_harbour.gd
 
 var fails := 0
@@ -40,13 +41,16 @@ func _go() -> void:
 	cyc.running = false
 	main.spawner.process_mode = Node.PROCESS_MODE_DISABLED
 	events.run_ended.connect(func(reason: String, _n: int) -> void: _ended = reason)
+	# The seven keep indoors until their own part of this test.
+	for v in main.villagers:
+		v.go_inside()
 
 	# The place.
 	check(Terrain.chapter == 2 and run.chapter == 2, "the ground is Kirkhaven's")
 	check(main.players.size() == 3 and main.lamps.size() == HarbourMap.LAMPS.size() and main.houses.size() == HarbourMap.BUILDINGS.size(),
 		"three keepers, %d lamps, %d houses" % [main.lamps.size(), main.houses.size()])
 	var p: Player = main.player
-	check(HarbourMap.place_name(p.global_position) == "the pier" and absf(p.global_position.y - HarbourMap.QUAY_H) < 0.6, "the keepers are put ashore on the pier")
+	check(HarbourMap.place_name(p.global_position) == "the quay" and absf(p.global_position.y - HarbourMap.QUAY_H) < 0.6, "the keepers begin on the quay, outside The Creel")
 	check(Terrain.walkable(-20.0, 2.0) and Terrain.walkable(0.0, 20.0) and not Terrain.walkable(-8.0, 12.0) and not Terrain.walkable(-20.0, 6.2),
 		"the quay and the pier can be walked; the basin and the quay's lip can't")
 	check(Terrain.height_at(-15.0, 17.5) < Terrain.SEA_LEVEL - 1.0 and Terrain.height_at(-15.0, 6.5) > 1.0, "a slip runs from the quay down under the water")
@@ -117,7 +121,7 @@ func _go() -> void:
 	# The kirk and its bell.
 	var kirk = main.kirk
 	kirk.spoke.connect(func(t: String) -> void: _said = t)
-	check(kirk.interact_prompt().contains("Knock") and kirk.interact(p) and _said.contains("Keepers"), "a knock at the kirk door is answered")
+	check(kirk.interact_prompt().contains("Knock") and kirk.interact(p) and _said.contains("Mr Baird"), "a knock at the kirk door is answered")
 	stock.set_amount("scrap", 0)
 	kirk.alt_use(p)
 	check(not run.bell_mended, "the bell rope wants scrap")
@@ -157,21 +161,77 @@ func _go() -> void:
 	check(main._lamps_on() > before, "the helper who walks the lamps switches one in")
 	helper.get_node("KeeperAI").process_mode = Node.PROCESS_MODE_DISABLED
 
-	# Dawn: the night is counted and the run saved, in Kirkhaven.
+	# The seven.
+	for v in main.villagers:
+		v.place(main._home_of(v), "about")
+	check(main.villagers.size() == 7 and run.villagers.size() == 7 and run.story, "seven of Kirkhaven are left, and this is the story")
+	var isla: Villager = null
+	for v in main.villagers:
+		if v.id == "rennie":
+			isla = v
+	check(isla != null and isla.state == "about" and isla.visible and not isla.is_in_group("prey"), "by day they are about their doors, and nothing's prey")
+	main._call_in()
+	check(isla.state == "walking", "late in the day they make for the kirk")
+	for v in main.villagers:
+		v.go_inside()
+	check(main._inside().size() == 7 and not isla.visible, "and shut themselves in")
+
+	# The kirk doors down in the night: those inside are taken one by one.
 	cyc._enter(cyc.Phase.NIGHT)
 	cyc.running = false
 	await _wait(3)
+	kirk.take_damage(1000)
+	check(run.active and _ended == "", "the kirk doors down does not end it")
+	main._breach_t = main.BREACH_EVERY
+	await _wait(4)
+	check(run.villagers.size() == 6 and run.lost.size() == 1 and main._inside().size() == 6, "but one of those inside is taken (%s)" % str(run.lost))
+	kirk.repair(1000)
+	main._breach_t = main.BREACH_EVERY
+	await _wait(4)
+	check(run.villagers.size() == 6, "mended, the doors hold")
+
+	# Out of doors in the dark, within a creature's reach.
+	var out: Villager = main._inside()[0]
+	out.place(Vector3(-20.0, 0.0, 2.0), "about")
+	await _wait(3)
+	check(out.is_in_group("prey"), "one of them out of doors in the dark is prey")
+	var hunter := Bloated.new()
+	hunter.lighthouse = main.lighthouse
+	hunter.position = out.global_position + Vector3(6.0, 0.0, 0.0)
+	main.get_node("Enemies").add_child(hunter)
+	await _wait(3)
+	check(hunter.pick_target() == out, "a creature turns aside for them")
+	hunter.global_position = out.global_position + Vector3(0.8, 0.0, 0.0)
+	hunter.state = &"Approach"
+	hunter.process_mode = Node.PROCESS_MODE_DISABLED
+	await _wait(50)
+	check(out.state == "lost" and run.villagers.size() == 5, "and anything that gets within reach takes them")
+	hunter.queue_free()
+
+	# Dawn: the night is counted, the living bring what they can, the run is saved.
+	stock.set_amount("scrap", 0)
+	stock.set_amount("food", 0)
+	p.hp = 40
 	cyc._enter(cyc.Phase.DAWN)
 	cyc.running = false
 	await _wait(3)
 	var save: Dictionary = root.get_node("SaveSys").load_run()
-	check(run.night == 2 and int(save.get("chapter", 0)) == 2 and (save.get("lamps_on", []) as Array).size() == main._lamps_on() and bool(save.get("bell_mended", false)),
-		"dawn: night 2 to come, saved with its lamps and the bell")
+	check(run.night == 2 and int(save.get("chapter", 0)) == 2 and (save.get("villagers", []) as Array).size() == 5 and bool(save.get("story", false)),
+		"dawn: night 2 to come, saved with who is left")
+	check(stock.get_amount("scrap") == (1 if run.villagers.has("rennie") else 0) and stock.get_amount("food") == (1 if run.villagers.has("duthie") else 0), "the chandler and the publican bring what they can")
+	check(p.hp == p.max_hp or not run.villagers.has("buchan"), "the nurse sees to the keepers")
+	var abroad := 0
+	for v in main.villagers:
+		if v.state == "walking" or v.state == "about":
+			abroad += 1
+	check(abroad == 5, "and the five come out of the kirk")
 
-	# The last night: the fog comes over the quay, and they go for the kirk.
+	# The last night: the fog over the quay, the skipper's horn, down to the boat.
 	run.night = Rescue.night()
 	cyc._enter(cyc.Phase.DUSK)
 	cyc.running = false
+	for v in main.villagers:
+		v.go_inside()
 	check(kirk.besieged and kirk.draws_raiders(), "the last night, the kirk is besieged")
 	cyc._enter(cyc.Phase.NIGHT)
 	cyc.running = false
@@ -182,27 +242,37 @@ func _go() -> void:
 	main._on_spawn(raider, "B", true)
 	check(raider.raid_goal == kirk, "the night's raiders are sent at the kirk doors")
 	raider.free()
-
-	# If the doors go, it's over.
-	kirk.take_damage(1000)
-	check(_ended == "They got into the kirk." and not run.active, "the kirk doors down ends it: %s" % _ended)
-
-	# Held to the last dawn: the ending.
-	run.active = true
-	kirk.repair(1000)
-	cyc._enter(cyc.Phase.DAWN)
+	check(not main.boat.waiting and main.boat.interact_prompt() == "", "the Mary Ann lies at the pier, her plank in")
+	main._begin_evacuation()
+	check(main._evac == 1 and not cyc.running, "the horn: the night holds while they come down")
+	main._trickle_t = 9999.0
+	Engine.time_scale = 6.0
+	for i in 4000:
+		await physics_frame
+		if main._evac == 2:
+			break
+	Engine.time_scale = 1.0
+	var aboard := 0
+	for v in main.villagers:
+		if v.state == "aboard":
+			aboard += 1
+	check(main._evac == 2 and aboard == run.villagers.size() and aboard >= 1, "they come down through the streets and go aboard (%d of the five)" % aboard)
+	check(main.boat.waiting and main.boat.interact_prompt().contains("Go aboard"), "then her plank is out for the keepers")
+	stock.set_amount("scrap", 3)
+	for k in main.players:
+		main.boat.take_aboard(k)
+	Engine.time_scale = 8.0
+	for i in 6000:
+		await process_frame
+		if current_scene != null and current_scene != main and current_scene.get("player") != null and current_scene.player != null:
+			break
+	Engine.time_scale = 1.0
 	await _wait(5)
-	check(main._ending and not run.active and root.get_node("SaveSys").chapter_done(2), "the last dawn: the chapter is finished")
-	check(main._townsfolk.size() > 0, "the people come out of the kirk (%d)" % main._townsfolk.size())
-	main._ending_t = main.ENDING_SECONDS - 0.1
-	await _wait(200)
-	var card = main.get_node_or_null("HarbourEnd")
-	check(card != null, "and the last card comes up")
-	var lit := 0
-	for h in main.houses:
-		if h.lit:
-			lit += 1
-	check(lit > 0, "the windows of Kirkhaven are lighting (%d so far)" % lit)
+	var rock = current_scene
+	check(rock != main and Terrain.chapter == 1 and run.chapter == 1 and root.get_node("SaveSys").chapter_done(2), "she sails, and the rock is next")
+	check(run.active and run.story and run.night == 1 and run.villagers.size() == aboard, "Act Two begins with those who were saved (%d)" % run.villagers.size())
+	check(rock.story != null and rock.story.people.size() == aboard, "and they are in the old camp")
+	check(stock.get_amount("scrap") >= 3 and run.arms[0].has("shotgun"), "what the keepers carried came with them")
 	print("ALL PASS" if fails == 0 else "FAILED: %d" % fails)
 	Terrain.chapter = 1
 	quit(1 if fails > 0 else 0)

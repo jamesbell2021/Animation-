@@ -55,9 +55,26 @@ var harbour_continue := false
 var lamps_on: Array = []
 var bell_mended := false
 var bell_rung_night := 0
+## The story (docs/STORY.md): the town falls, then the rock, then the kraken. False for
+## the rock played alone with the relief boat at the end (LAN games and the old tests).
+var story := false
+## Who of Kirkhaven's seven still lives (Villagers ids), and who was lost (ids, in order).
+var villagers: Array = []
+var lost: Array = []
+## Set by the town as the Mary Ann sails: the rock begins a run with this carried over
+## ({"stock": ..., "arms": ...}). Cleared once read.
+var carry := {}
+## Set by the title for a run that starts on the rock but is still the story.
+var story_next := false
+## The diary's last pages have been read (the rock, in the story).
+var diary_read := false
 
 func start_new() -> void:
 	night = 1
+	story = false
+	diary_read = false
+	villagers = []
+	lost = []
 	lamps_on = []
 	bell_mended = false
 	bell_rung_night = 0
@@ -95,6 +112,14 @@ func start_loaded(d: Dictionary) -> void:
 		lamps_on.append(int(l))
 	bell_mended = bool(d.get("bell_mended", false))
 	bell_rung_night = 0
+	story = bool(d.get("story", false))
+	diary_read = bool(d.get("diary_read", false))
+	villagers = []
+	for v in d.get("villagers", []):
+		villagers.append(String(v))
+	lost = []
+	for v in d.get("lost", []):
+		lost.append(String(v))
 	difficulty = clampi(int(d.get("difficulty", 1)), 0, 2)
 	endless = bool(d.get("endless", false))
 	jobs = []

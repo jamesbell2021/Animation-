@@ -1,18 +1,20 @@
 extends "res://scenes/main.gd"
-## Chapter Two: Kirkhaven harbour. The Mary Ann puts the three keepers on the pier of a
-## town whose lights went out three nights ago. Its people are shut in the kirk; the fog
-## lies off the harbour mouth and comes in at dusk with what the sea sends. The keepers
-## feed the harbour's generator, switch the street lamps in, work the harbour light on
-## the pier, and hold the town for Rescue.night() nights. On the last the fog comes over
-## the quay. At the dawn after it the kirk doors open.
+## Act One: Kirkhaven (docs/STORY.md). The harbour light was put on a clock, the clock
+## stuck, and the fog came in with something in it. Three keepers paid off that week
+## try to put the town's lights back and keep its seven people alive: they feed the
+## generator, switch the street lamps in, work the harbour light on the pier, and keep
+## the kirk doors, behind which the seven shelter at night. The town cannot be held.
+## On the third night the fog comes over the quay, the Mary Ann's skipper sounds his
+## horn, and the seven have to be brought down through the streets to the boat. Then the
+## keepers board and she sails for the rock (Act Two, main.gd).
 ##
 ## This scene is the rock's (main.gd) with a different world built in _ready: the same
 ## keepers, creatures, lamp, HUD, weather and fog, on HarbourMap's ground (Terrain hands
 ## over to it while Terrain.chapter is 2). Local play only: there is no LAN in Kirkhaven.
 
 const MAIN_SCENE := "res://scenes/main.tscn"
-## Where the keepers come ashore: the pier's stem, below the light.
-const LANDING_SPOTS := [Vector3(0.6, 0.0, 15.0), Vector3(-1.0, 0.0, 13.2), Vector3(1.2, 0.0, 11.6)]
+## Where the keepers begin: outside The Creel, where they had rooms.
+const LANDING_SPOTS := [Vector3(3.2, 0.0, 1.4), Vector3(1.6, 0.0, 2.4), Vector3(4.8, 0.0, 2.6)]
 ## What the three carried off the rock.
 const KIT := {"driftwood": 4, "scrap": 3, "bio": 2, "diesel": 1, "arrows": 18, "bombs": 3}
 const GENERATOR_START := 12.0
@@ -37,18 +39,35 @@ const FLOOD_TIME := 70.0
 ## From this night, one raiding group a night goes for the kirk doors; on the last, half.
 const KIRK_FROM_NIGHT := 3
 const HARLS := [Color(0.84, 0.82, 0.76), Color(0.74, 0.74, 0.72), Color(0.80, 0.74, 0.64), Color(0.60, 0.60, 0.58)]
-const ENDING_SECONDS := 22.0
+## The last night: how far through it the skipper sounds his horn.
+const EVAC_AT := 0.34
+## Seconds between each of the seven leaving the kirk.
+const EVAC_GAP := 1.7
+## While they come down, something more comes up a landing this often.
+const EVAC_TRICKLE := 12.0
+## With the kirk doors down, how often one of those inside is taken.
+const BREACH_EVERY := 7.0
+## By day the seven make for the kirk when this much of the day is left.
+const CALL_IN := 22.0
+## Where the Mary Ann lies, and the pier at her plank.
+const BOARD_AT := Vector2(4.3, 21.0)
+const MOOR_AT := Vector2(7.2, 21.0)
 
 var generator: Generator
 var kirk: KirkKeep
 var lamps: Array[StreetLamp] = []
 var houses: Array[TownHouse] = []
-var _ending := false
-var _ending_t := 0.0
+var villagers: Array[Villager] = []
+## The last night's flight: 0 not yet, 1 the seven coming down, 2 the keepers to board,
+## 3 away.
+var _evac := 0
+var _trickle_t := 0.0
+var _breach_t := 0.0
+var _called_in := false
+var _lost_tonight: Array = []
 ## Tonight's raiding groups so far (the latest is the one now coming ashore).
 var _raid_groups := 0
 var _crabs := 0
-var _townsfolk: Array = []
 var _boats: Array = []
 var _bob := 0.0
 
@@ -340,9 +359,8 @@ func _build_dressing() -> void:
 	_put(HarbourProps.lifebelt_stand(), 4.4, 30.0, 0.0)
 	for at in [[-27.5, 1.6], [-27.9, 0.8], [12.6, -1.0], [-1.6, -0.8]]:
 		_put(HarbourProps.barrel(), float(at[0]), float(at[1]))
-	# Boats: the Mary Ann alongside the pier, two at moorings, two hauled up the strand.
+	# Boats: two at moorings, two hauled up the strand.
 	var boats := [
-		[Color(0.16, 0.26, 0.42), "MARY ANN", 4.2, 21.0, 0.0, true],
 		[Color(0.55, 0.16, 0.12), "ROSEHEARTY LASS", -9.0, 11.5, 82.0, true],
 		[Color(0.14, 0.34, 0.28), "GUIDING STAR", 9.2, 12.5, 96.0, true],
 		[Color(0.70, 0.62, 0.30), "BRAW LAD", 29.0, 6.4, 14.0, false],
@@ -350,17 +368,20 @@ func _build_dressing() -> void:
 	]
 	for i in boats.size():
 		var bt: Array = boats[i]
-		var boat := HarbourProps.fishing_boat(bt[0], String(bt[1]), 20 + i)
-		boat.rotation.y = deg_to_rad(float(bt[4]))
+		var craft := HarbourProps.fishing_boat(bt[0], String(bt[1]), 21 + i)
+		craft.rotation.y = deg_to_rad(float(bt[4]))
 		if bool(bt[5]):
-			# Afloat: beside the pier's head (clear of its wall), or out in the basin.
-			var x := float(bt[2]) + (HarbourMap.PIER_HEAD_HALF + 0.9 if i == 0 else 0.0)
-			boat.position = Vector3(x, Terrain.SEA_LEVEL - 0.25, float(bt[3]))
-			_boats.append(boat)
+			craft.position = Vector3(float(bt[2]), Terrain.SEA_LEVEL - 0.25, float(bt[3]))
+			_boats.append(craft)
 		else:
-			boat.position = _ground(float(bt[2]), float(bt[3])) + Vector3(0.0, 0.25, 0.0)
-			boat.rotation.z = deg_to_rad(9.0 if i % 2 == 0 else -11.0)
-		add_child(boat)
+			craft.position = _ground(float(bt[2]), float(bt[3])) + Vector3(0.0, 0.25, 0.0)
+			craft.rotation.z = deg_to_rad(9.0 if i % 2 == 1 else -11.0)
+		add_child(craft)
+	# The Mary Ann herself lies beside the pier head, plank in, till the last night.
+	boat = ReliefBoat.new()
+	boat.add_to_group("relief_boat")
+	add_child(boat)
+	boat.lie_at(_ground(BOARD_AT.x, BOARD_AT.y), Vector3(MOOR_AT.x, Terrain.SEA_LEVEL, MOOR_AT.y))
 	# The kirkyard: a wall round the green with a gap at the gate, and the stones.
 	var gate := HarbourMap.KIRK_GATE
 	var yard := HarbourMap.KIRKYARD
@@ -469,6 +490,12 @@ func begin_run(continue_save: bool, n: int) -> void:
 		for i in Run.arms.size():
 			Run.arms[i] = ["bow", "shotgun"] if i == 0 else ["bow"]
 	Run.chapter = 2
+	# The town is only ever played as the story's first act.
+	Run.story = true
+	if d.is_empty():
+		Run.villagers = Villagers.all_ids()
+		Run.lost = []
+	_spawn_villagers()
 	lighthouse.lamp.fuel = Run.lamp_fuel
 	generator.fuel = Run.camp_fuel
 	for i in lamps.size():
@@ -478,10 +505,10 @@ func begin_run(continue_save: bool, n: int) -> void:
 		p.hp = p.max_hp
 	Upgrades.apply(get_tree())
 	if d.is_empty():
-		hud.report("Kirkhaven. The first day.", [
-			"The Mary Ann put you on the pier at first light. Nobody came down to meet her. The town's lamps are out, and the fog lies off the harbour mouth.",
-			"Fill the generator at the west end of the quay, switch the street lamps in at their fuse boxes, and find the people. Hold the town for %d nights." % Rescue.night(),
-			"At dusk they come up the slips and the strand. Work the harbour light ([R] at its door on the pier). A burning lamp slows and scorches them, and the fog cannot lie in its light.",
+		hud.report("Kirkhaven. Wednesday, first light.", [
+			"The harbour light's clock stuck last night, and something came in with the fog. Seven of the town are left. By day they are about their doors; at dusk they shut themselves in the kirk.",
+			"Fill the generator at the west end of the quay and switch the street lamps in at their fuse boxes. The fog cannot lie in a burning lamp's light, and what stands in it is slowed and scorched.",
+			"At dusk they come up the slips and the strand. Work the harbour light ([R] at its door on the pier), keep the lamps burning, and keep them from the kirk doors.",
 		], FIRST_DAY_TIP_TIME + 4.0)
 	else:
 		hud.report("Kirkhaven. Night %d to come." % Run.night, ["%d of %d lamps are switched in." % [_lamps_on(), lamps.size()]], 6.0)
@@ -502,12 +529,14 @@ func _process(delta: float) -> void:
 		var b: Node3D = _boats[i]
 		b.position.y = Terrain.SEA_LEVEL - 0.25 + sin(_bob * 0.9 + float(i) * 1.7) * 0.07
 		b.rotation.z = sin(_bob * 0.7 + float(i) * 2.3) * 0.035
-	if _ending:
-		_ending_step(delta)
+	_rescue_step(delta)
+	_cine_step(delta)
+	if not Run.active:
 		return
-	if Run.active and Input.is_action_just_pressed("skip"):
+	if _evac == 0 and Input.is_action_just_pressed("skip"):
 		Cycle.skip()
 	_alarms(delta)
+	_people_step(delta)
 
 func _unhandled_input(_event: InputEvent) -> void:
 	pass
@@ -629,8 +658,14 @@ func _on_bell() -> void:
 	hud.warn("The kirk bell! Every lamp in Kirkhaven burns white.")
 
 func _on_kirk_fallen() -> void:
-	if Run.active:
-		Run.end_run("They got into the kirk.")
+	if not Run.active:
+		return
+	_count("kirk")
+	_breach_t = BREACH_EVERY * 0.5
+	if _inside().is_empty():
+		hud.warn("The kirk doors are down.")
+	else:
+		hud.warn("The kirk doors are down! They are in among them: mend the doors!")
 
 func _on_structure_destroyed(s: Node) -> void:
 	if s is StreetLamp:
@@ -661,30 +696,44 @@ func _alarms(delta: float) -> void:
 # ---- the day and the night ----
 
 func _on_phase_changed(p: int) -> void:
-	if _ending:
+	if _evac > 0:
 		return
 	_apply_lighting(p, LIGHT_TWEEN)
 	if p == Cycle.Phase.DAWN:
 		_warned_low = false
+	if p == Cycle.Phase.DAY:
+		_called_in = false
 	if p == Cycle.Phase.DUSK and Run.active:
 		_tally = {}
 		_raid_groups = 0
 		_crabs = 0
+		_lost_tonight = []
+		_call_in()
 		kirk.besieged = Rescue.is_last_night()
+		if Villagers.dusk_engineer(generator):
+			Events.message.emit("Sandy Coull has put what diesel he had in the generator  (%d%%)" % roundi(generator.fuel))
 		if Rescue.is_last_night():
-			hud.warn("The last night. The fog is coming over the quay: every lamp that burns is a street they cannot have.")
+			hud.warn("The third night. The fog is coming over the quay: every lamp that burns is a street they cannot have.")
 		elif generator.fuel <= 0.0 or generator.is_destroyed():
 			hud.warn("Dusk, and the generator is %s: not a lamp will light!" % ("wrecked" if generator.is_destroyed() else "dry"))
 		else:
 			hud.warn("Dusk. %d of %d lamps are switched in." % [_lamps_on(), lamps.size()])
 		_wireless()
 	if p == Cycle.Phase.NIGHT and Run.active:
+		# Whoever is still out of doors is out of time.
+		for v in villagers:
+			if v.state == "walking" or v.state == "about":
+				v.walk_to(kirk.door_point(), "inside", true)
 		Audio.music("finale" if Rescue.is_last_night() else "harbour_night", 4.0)
 		if Rescue.is_last_night():
 			# The fog comes over the town.
 			create_tween().tween_property(atmosphere.fog, "flood", LAST_FLOOD, FLOOD_TIME).set_trans(Tween.TRANS_SINE)
 	if p == Cycle.Phase.DAWN and Run.active:
 		create_tween().tween_property(atmosphere.fog, "flood", 0.0, 6.0)
+		for v in villagers:
+			if v.state == "inside":
+				v.place(kirk.door_point() + Vector3(randf_range(-0.8, 0.8), 0.0, randf_range(0.0, 1.0)), "about")
+				v.walk_to(_home_of(v), "about")
 		_dawn_report()
 		var damaged := 0
 		for s in get_tree().get_nodes_in_group("structures"):
@@ -692,28 +741,19 @@ func _on_phase_changed(p: int) -> void:
 				damaged += 1
 		Run.lamp_fuel = lighthouse.lamp.fuel
 		Run.camp_fuel = generator.fuel
-		var held := Run.night
 		Run.advance_night(damaged)
-		if held >= Rescue.night():
-			_begin_ending()
-		else:
-			Audio.music("harbour_day", 8.0)
+		Audio.music("harbour_day", 8.0)
 	if p == Cycle.Phase.DAY and Run.active:
 		Audio.music("harbour_day", 8.0)
 
 const WIRELESS := [
-	"Wireless: \"...Kirkhaven harbour office... if anyone is receiving... the front is dark from the pier to the strand...\"",
-	"Wireless: \"...coastguard to Mary Ann, you are standing too far in. The bank is moving against the wind. Repeat, against the wind...\"",
-	"Wireless: \"...they don't come where it's lit. Tell the keepers. They don't come where it's lit...\"",
-	"Wireless: only the carrier wave, and under it, somebody counting lamps.",
-	"Wireless: \"...Mary Ann to the pier. We can see your light. We can see three of your lamps. Hold on to them...\"",
+	"\"...Kirkhaven harbour office to any vessel. The harbour light is dark. Repeat, dark. Stand off the pier...\"",
+	"\"...coastguard to Mary Ann. The bank is moving against the wind. If you mean to lie at that pier, do not lie there long...\"",
 ]
+const WIRELESS_LAST := "\"...Mary Ann to the keepers. I can give you till the ebb and not a minute past it. Listen for my horn...\""
 
 func _wireless() -> void:
-	var line: String = WIRELESS[(Run.night - 1) % WIRELESS.size()]
-	if Rescue.is_last_night():
-		line = "Wireless: \"...all vessels. The bank is closing on Kirkhaven. If there is a light still burning there, God help whoever keeps it...\""
-	events.wireless(line.trim_prefix("Wireless: "))
+	events.wireless(WIRELESS_LAST if Rescue.is_last_night() else WIRELESS[(Run.night - 1) % WIRELESS.size()])
 
 # The keeper's log for a night in the town.
 func _dawn_report() -> void:
@@ -746,7 +786,7 @@ func _dawn_report() -> void:
 	elif _lamps_on() < lamps.size():
 		tip = "There are lamps still dark. Each one switched in is a pool the fog can't lie in, and a landing with a lamp at its head lets fewer through."
 	elif kirk.is_damaged():
-		tip = "Mend the kirk doors with driftwood off the strand."
+		tip = "Mend the kirk doors with driftwood off the strand: the seven are behind them every night."
 	elif not Run.bell_mended:
 		tip = "Splice the kirk bell's rope ([F] at the kirk door, 2 scrap). Rung in the dark, it makes every burning lamp flare white."
 	elif lighthouse.lamp.fuel < 30.0:
@@ -754,94 +794,160 @@ func _dawn_report() -> void:
 	if tip != "":
 		lines.append("")
 		lines.append(tip)
+	if _lost_tonight.is_empty():
+		lines.append("All %s of Kirkhaven's people saw the morning." % ["none", "one", "two", "three", "four", "five", "six", "seven"][clampi(Villagers.count(), 0, 7)] if Villagers.count() > 0 else "There is nobody left in Kirkhaven but ourselves.")
+	else:
+		lines.append("Lost in the night: %s. %d of the seven are left." % [", ".join(_lost_tonight), Villagers.count()])
+	var gifts := Villagers.dawn_gifts()
+	if gifts != "":
+		lines.append(gifts)
+	if Villagers.dawn_nursing(players):
+		lines.append("Nurse Buchan has seen to the keepers.")
 	var left := Rescue.night() - Run.night
 	if left == 1:
-		lines.append("One more night. They will all come.")
+		lines.append("One more night. The skipper says the town cannot be held past it: when he sounds his horn, bring them down to the boat.")
 	elif left > 1:
-		lines.append("%d more nights to hold." % left)
+		lines.append("%d more nights." % left)
 	hud.report("Night %d held." % Run.night, lines)
 
-# ---- the ending ----
+# ---- the seven ----
 
-# The fog goes out, the kirk doors open, and the windows of Kirkhaven light one by one.
-func _begin_ending() -> void:
-	_ending = true
-	_ending_t = 0.0
+func _spawn_villagers() -> void:
+	for id in Run.villagers:
+		var v := Villager.new(String(id))
+		add_child(v)
+		v.place(_home_of(v), "about")
+		v.taken.connect(_on_villager_taken)
+		v.arrived.connect(_on_villager_arrived)
+		villagers.append(v)
+
+func _home_of(v: Villager) -> Vector3:
+	var h: Vector2 = Villagers.who(v.id).get("home", Vector2.ZERO)
+	return _ground(h.x, h.y)
+
+## Those shut in the kirk now.
+func _inside() -> Array:
+	var out := []
+	for v in villagers:
+		if v.state == "inside":
+			out.append(v)
+	return out
+
+# Late in the day they make for the kirk.
+func _call_in() -> void:
+	if _called_in:
+		return
+	_called_in = true
+	var any := false
+	for v in villagers:
+		if v.state == "about" or v.state == "walking":
+			v.walk_to(kirk.door_point(), "inside", true)
+			any = true
+	if any and Run.active:
+		Events.message.emit("The seven are making for the kirk." if Villagers.count() == 7 else "Kirkhaven's people are making for the kirk.")
+
+func _on_villager_taken(v: Villager) -> void:
+	_count("lost")
+	_lost_tonight.append(v.display_name())
+	hud.warn("They have taken %s." % v.display_name())
+
+func _on_villager_arrived(v: Villager) -> void:
+	if v.state == "aboard":
+		Events.message.emit("%s is aboard the Mary Ann." % v.display_name())
+
+# The seven by day and night, the kirk when its doors are down, and the last night.
+func _people_step(delta: float) -> void:
+	if Cycle.phase == Cycle.Phase.DAY and Cycle.time_left < CALL_IN:
+		_call_in()
+	var dark := Cycle.phase == Cycle.Phase.NIGHT or Cycle.phase == Cycle.Phase.DUSK
+	if _evac == 0 and dark and kirk.is_destroyed():
+		if Rescue.is_last_night():
+			# Nothing to keep them there now: they run for the boat.
+			_begin_evacuation()
+		else:
+			_breach_t += delta
+			if _breach_t >= BREACH_EVERY:
+				_breach_t = 0.0
+				var inside := _inside()
+				if not inside.is_empty():
+					(inside[randi() % inside.size()] as Villager).take()
+	if _evac == 0 and Rescue.is_last_night() and Cycle.phase == Cycle.Phase.NIGHT and Cycle.progress() >= EVAC_AT:
+		_begin_evacuation()
+	if _evac == 1:
+		_trickle_t -= delta
+		if _trickle_t <= 0.0:
+			_trickle_t = EVAC_TRICKLE
+			spawner._queue_group({"kind": "B" if randf() < 0.6 else "S", "count": 2, "point": -1, "opp": false})
+		var ashore := false
+		for v in villagers:
+			ashore = ashore or (v.state != "aboard" and v.state != "lost")
+		if not ashore:
+			_evac = 2
+			boat.open_plank()
+			Audio.sfx("boat_horn", boat.global_position, 4.0, 0.0)
+			if Villagers.count() > 0:
+				hud.warn("They are aboard. Now yourselves: down the pier to the Mary Ann!  [E] at her plank.")
+			else:
+				hud.warn("There is nobody left to bring. Down the pier to the Mary Ann!  [E] at her plank.")
+
+# ---- the last night: down to the boat ----
+
+# The skipper's horn: the kirk doors open and the seven come down through the streets.
+func _begin_evacuation() -> void:
+	if _evac > 0:
+		return
+	_evac = 1
+	_trickle_t = EVAC_TRICKLE
+	# The night holds until she sails.
+	Cycle.running = false
+	kirk.besieged = false
+	Audio.sfx("boat_horn", boat.global_position, 6.0, 0.0)
+	get_tree().create_timer(1.9).timeout.connect(func() -> void: Audio.sfx("boat_horn", boat.global_position, 6.0, 0.0))
+	var inside := _inside()
+	if inside.is_empty() and Villagers.count() == 0:
+		return
+	hud.report("The Mary Ann's horn!", [
+		"Dod Wiseman cannot lie at the pier past the ebb. The kirk doors are open.",
+		"Bring them down through the streets to the boat at the pier head. Stay by them, and keep the way lit: anything that gets within reach of one of them takes them.",
+		"When they are aboard, go aboard yourselves.",
+	], 14.0)
+	var door := kirk.door_point()
+	var to := _ground(BOARD_AT.x, BOARD_AT.y)
+	for i in inside.size():
+		var v: Villager = inside[i]
+		get_tree().create_timer(0.6 + float(i) * EVAC_GAP).timeout.connect(func() -> void:
+			if is_instance_valid(v) and v.state == "inside":
+				v.place(door + Vector3(randf_range(-0.5, 0.5), 0.0, randf_range(0.0, 0.6)), "about")
+				v.walk_to(to, "aboard", true))
+
+func _sail() -> void:
+	_evac = 3
+	Audio.music("chapter_end", 3.0)
+	boat.depart()
+	boat.departed.connect(_after_town)
+	_follow_boat()
+
+# Away. What was saved goes with them to the rock (Act Two).
+func _after_town() -> void:
 	Run.active = false
 	Cycle.stop()
 	SaveSys.finish_chapter(2)
 	SaveSys.clear_run()
-	Audio.music("ending", 3.0)
-	hud.visible = false
-	for e in get_tree().get_nodes_in_group("enemies"):
-		if e.has_method("on_dawn"):
-			e.on_dawn()
-	atmosphere.fog.apply(Cycle.Phase.DAY, 9.0)
-	kirk.set_glow(1.0, 4.0)
-	kirk.toll(5)
-	var order := houses.duplicate()
-	order.shuffle()
-	for i in order.size():
-		get_tree().create_timer(1.5 + float(i) * 0.55).timeout.connect(order[i].set_lit.bind(true, 2.0))
-	_cine = Camera3D.new()
-	_cine.fov = 42.0
-	add_child(_cine)
-	_cine.global_position = Vector3(-16.0, 13.0, 36.0)
-	_cine.look_at(Vector3(0.0, 3.0, -8.0), Vector3.UP)
-	_cine.current = true
-	_send_townsfolk()
+	Run.carry = {"stock": Stock.all(), "arms": Run.arms.duplicate(true), "villagers": Run.villagers.duplicate(),
+		"lost": Run.lost.duplicate(), "difficulty": Run.difficulty}
+	var pages := "res://scenes/ui/story_pages.gd"
+	if ResourceLoader.exists(pages) and DisplayServer.get_name() != "headless":
+		hud.visible = false
+		var text = load("res://scenes/ui/story_text.gd")
+		var book = load(pages).open(self, text.crossing(Villagers.count(), Villagers.lost_names()), "")
+		book.finished.connect(_to_rock)
+	else:
+		_to_rock()
 
-# The people come down from the kirk to the quay.
-func _send_townsfolk() -> void:
-	var door := kirk.door_point()
-	for i in 7:
-		var rig := CharacterRig.create(Players.MODELS[(i + 1) % Players.MODELS.size()])
-		if rig == null:
-			return
-		add_child(rig)
-		rig.global_position = door + Vector3(randf_range(-0.6, 0.6), 0.0, randf_range(0.0, 0.8))
-		var wynd := -10.0 if i % 2 == 0 else 10.0
-		var way: Array[Vector3] = [
-			_ground(HarbourMap.KIRK_GATE.x, HarbourMap.KIRK_GATE.y + 1.0),
-			_ground(wynd + randf_range(-0.8, 0.8), -12.0),
-			_ground(wynd + randf_range(-0.8, 0.8), -1.0),
-			_ground(wynd * 0.6 + randf_range(-5.0, 5.0), randf_range(1.5, 4.2)),
-		]
-		_townsfolk.append({"rig": rig, "way": way, "wait": 2.5 + float(i) * 1.3})
-
-func _ending_step(delta: float) -> void:
-	_ending_t += delta
-	for f in _townsfolk:
-		var rig: CharacterRig = f["rig"]
-		var way: Array = f["way"]
-		f["wait"] = float(f["wait"]) - delta
-		if float(f["wait"]) > 0.0 or way.is_empty():
-			rig.locomote(0.0)
-			continue
-		var to: Vector3 = way[0] - rig.global_position
-		to.y = 0.0
-		if to.length() < 0.4:
-			way.pop_front()
-			continue
-		var step := to.normalized() * 1.7 * delta
-		var p := rig.global_position + step
-		rig.global_position = Vector3(p.x, Terrain.height_at(p.x, p.z), p.z)
-		rig.rotation.y = lerp_angle(rig.rotation.y, atan2(to.x, to.z), 1.0 - exp(-delta * 6.0))
-		rig.locomote(1.7)
-	if _cine != null:
-		var k := smoothstep(0.0, ENDING_SECONDS, _ending_t)
-		_cine.global_position = Vector3(-16.0, 13.0, 36.0).lerp(Vector3(6.0, 9.0, 17.0), k)
-		_cine.look_at(Vector3(0.0, 3.0, -8.0).lerp(Vector3(0.0, 5.0, -22.0), k), Vector3.UP)
-	if _ending_t >= ENDING_SECONDS and not has_node("HarbourEnd"):
-		var card := preload("res://scenes/ui/harbour_end.gd").new()
-		card.name = "HarbourEnd"
-		card.nights = Rescue.night()
-		card.kills = _total_kills
-		card.sea = Difficulty.name()
-		card.lamps = _lamps_on()
-		card.lamps_total = lamps.size()
-		card.back_to_title.connect(_to_title)
-		add_child(card)
+func _to_rock() -> void:
+	Run.chapter = 1
+	Terrain.chapter = 1
+	get_tree().change_scene_to_file(MAIN_SCENE)
 
 func _to_title() -> void:
 	Run.active = false

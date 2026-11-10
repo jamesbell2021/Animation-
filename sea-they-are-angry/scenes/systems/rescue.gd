@@ -9,7 +9,10 @@ extends RefCounted
 
 const NIGHTS := [8, 10, 12]
 ## Chapter Two: the nights Kirkhaven has to be held (by the sea's mood).
-const HARBOUR_NIGHTS := [4, 5, 6]
+const HARBOUR_NIGHTS := [3, 3, 3]
+## In the story nothing takes the keepers off: the last night on the rock is the
+## kraken's, this many nights sooner than the boat would have come.
+const STORY_SOONER := 2
 const WIRELESS_SOONER := 2
 ## The last night's landings are this much bigger.
 const LAST_NIGHT_SURGE := 1.3
@@ -19,6 +22,8 @@ static func night() -> int:
 	if Run.chapter == 2:
 		return HARBOUR_NIGHTS[Difficulty.level()]
 	var n: int = NIGHTS[Difficulty.level()]
+	if Run.story:
+		return n - STORY_SOONER
 	if Research.has("wireless"):
 		n -= WIRELESS_SOONER
 	return n
@@ -41,6 +46,10 @@ static func countdown() -> String:
 		if n <= 0:
 			return "the town is held"
 		return "the last night" if n == 1 else "%d nights to hold" % n
+	if Run.story:
+		if n <= 0:
+			return ""
+		return "it comes tonight" if n == 1 else "it comes in %d nights" % n
 	if n <= 0:
 		return "the boat is here"
 	if n == 1:

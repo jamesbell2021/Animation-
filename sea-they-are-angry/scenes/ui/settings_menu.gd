@@ -72,6 +72,10 @@ func _ready() -> void:
 		func(d: int) -> void:
 			Settings.ui_scale_idx = wrapi(Settings.ui_scale_idx + d, 0, Settings.UI_SCALES.size())
 			Settings.apply_ui())
+	_cycler(Strings.t("settings.hud_mode"), func() -> String: return Settings.HUD_MODES[Settings.hud_mode],
+		func(d: int) -> void:
+			Settings.hud_mode = wrapi(Settings.hud_mode + d, 0, Settings.HUD_MODES.size()))
+	_label(_box, Strings.t("settings.hud_note"), 16, DIM)
 
 	_heading(Strings.t("settings.access"))
 	_cycler(Strings.t("settings.shake"), func() -> String: return Settings.SHAKE_LEVELS[Settings.shake_level],

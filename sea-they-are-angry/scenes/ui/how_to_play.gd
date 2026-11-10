@@ -76,6 +76,7 @@ func pages() -> Array:
 			["Middle mouse, %s %s" % [k.call("cam_left"), k.call("cam_right")], "Playing alone: hold the middle button and drag, or the keys, to turn the camera round the island"],
 			["Wheel, %s %s" % [k.call("cam_zoom_in"), k.call("cam_zoom_out")], "Playing alone: zoom in toward your keeper and out again"],
 			[k.call("cam_reset"), "Camera back to the usual view"],
+			[k.call("hud_mode"), "Show more or less on screen: full, slim, off (hold it to bring everything back)"],
 			["Esc", "Pause"],
 			"",
 			"Keys can be changed in Settings. A gamepad works too: left stick walks, right stick aims, A use (or jump, with nothing to use), X or right trigger attack, Y lamp, B beam, left trigger flare, left shoulder dirty fuel, right shoulder sprint, d-pad left and right change what's in hand, d-pad up and down zoom, a stick pressed in turns the camera, Start pauses.",
@@ -93,19 +94,25 @@ func pages() -> Array:
 			"Work the lamp: its wide beam slows them, its focused beam burns them on the beaches. Out on the rock, hold them off with the boathook and whatever the shed gave you.",
 			"If the lamp goes dark, or every keeper is down, it's over. A downed keeper gets up if a mate holds Use beside them, and everyone gets up at dawn.",
 			"Something will climb the tower and smother the lamp: throw your boathook up at it from the crag top, then fetch the hook.",
-			"Hold out until the relief boat comes, and get everyone aboard.",
+			"In the story, hold out and arm for the last night. (On the LAN, the rock is played alone: hold out until the relief boat comes, and get everyone aboard.)",
 		]],
 		["The camp", "The holm, its camp, and Gull Rock", [
 			"Across the rope bridge is the holm and the old wartime camp: a diesel generator for its searchlights and huts, a wind turbine for the lights round its wire, crops in its beds and greenhouse, research at the mess.",
 			"Creatures raid it from the second night. Climb a tower and work its searchlight; mend what they wreck. The turbine down means a dark camp.",
 			"From the east beach's jetty a rowing boat goes out to Gull Rock, by day and not in a storm. Take the gulls' eggs there; the cottage boils three into a meal. The gulls won't thank you.",
 		]],
-		["Kirkhaven", "Chapter Two: the harbour", [
-			"The town's lamps are out and its people are shut in the kirk. Hold Kirkhaven for a few nights and put its lights back.",
+		["Kirkhaven", "Act One: Kirkhaven", [
+			"The harbour light's clock stuck and the town's lamps are out. Seven of its people are left: by day they are about their doors, and at dusk they shut themselves in the kirk. Each brings something every dawn while they live.",
 			"Fill the generator at the west end of the quay with diesel (a can a day at the fuel berth by the pier). Switch each street lamp in at its fuse box; they burn from dusk while the generator runs.",
 			"The fog cannot lie in a burning lamp's light, and what stands in it is slowed and scorched. They would sooner come up a dark landing, so they make for the lamps and break them. One scrap mends a lamp.",
-			"Work the harbour light on the pier as you did the rock's. It reaches both slips, but not the strand.",
-			"Knock at the kirk. Splice its bell rope (%s, two scrap) and ring it in the dark, once a night: every burning lamp flares white. If the kirk doors go, or the harbour light goes dark, it's over." % k.call("use_dirty"),
+			"Work the harbour light on the pier. Keep the kirk doors mended: if they go down in the night, those inside are taken one by one. Splice the kirk's bell rope (%s, two scrap) and ring it in the dark, once a night: every burning lamp flares white." % k.call("use_dirty"),
+			"The town cannot be held. On the third night, when the Mary Ann sounds her horn, the seven come out of the kirk and run for the boat at the pier head. Stay by them and keep their way lit: anything that gets within reach of one takes them. Then go aboard yourselves.",
+		]],
+		["The last night", "Act Two: the rock, and what is coming", [
+			"The survivors shelter in the old camp over the bridge. A hut wrecked in the night can cost one of them.",
+			"Nothing is coming to take you off. The diary in the camp says what came in 1944 and when it will come again: use the days to arm. Petrol bombs, cartridges, arrows, the flamer, the lamp full.",
+			"On the last night it rises off the holm, takes the camp, then comes to the east beach for the lighthouse. An arm reared over you is about to come down: move. An arm lying ashore can be cut back.",
+			"Hold the focused beam in its eyes and it goes blind: it cannot strike, and everything that hits it counts for more. That is when to throw all you have.",
 		]],
 		["Together", "Keepers together", [
 			"There are always three keepers. Any nobody plays are the computer's helpers: one keeps the light, one the camp.",

@@ -1,9 +1,10 @@
 class_name KirkKeep
 extends Kirk
-## The kirk as the game plays it: Kirkhaven's people are shut inside. Knock, and
-## somebody answers through the door. If the doors go, the run is over. Its bell, once
-## the rope is spliced, can be rung once a night: every lamp burning in the town flares
-## white for a few seconds and burns what stands in it.
+## The kirk as the game plays it: Kirkhaven's seven shut themselves in here at night.
+## Knock, and the minister answers through the door (while he lives). If the doors go,
+## those inside are taken one by one until the doors are mended. Its bell, once the rope
+## is spliced, can be rung once a night: every lamp burning in the town flares white for
+## a few seconds and burns what stands in it.
 
 signal spoke(text: String)
 signal bell_rung
@@ -12,15 +13,13 @@ const ROPE_COST := {"scrap": 2}
 ## Oak, and barred from inside: the doors take more than the model's default.
 const DOORS_HP := 420
 const DOOR_MEND := 60
-## What they say through the door, by night (the last is kept for the last night).
+## What is said through the door, by night (the last is kept for the last night).
 const VOICES := [
-	"A voice behind the door: \"Keepers? Off the rock? Then you know what light does to them. The lamps went out on Tuesday. We have been in here since.\"",
-	"\"There are forty of us, and the bairns. They don't like the bell. Its rope is cut through; splice it and ring it when they're in among the lamps.\"",
-	"\"The generator is at the west end of the quay. There's diesel at the fuel berth by the pier. Keep it fed and the front stays lit.\"",
-	"\"They took the harbour master off the pier the first night. He'd gone out to see why the light had stopped. Keep out of the fog.\"",
-	"\"We can hear them at the lamps. Every one you keep burning is a street they can't have.\"",
+	"Mr Baird, behind the door: \"Is that the keepers? Thank God. The lamps went out west to east on Tuesday night. There are seven of us left that I can count.\"",
+	"\"They do not like the bell. Its rope is cut through. Splice it, and ring it when they are in among the lamps.\"",
 ]
-const LAST_VOICE := "\"If the lamps hold tonight we will open these doors at first light. All of us. God keep you till then.\""
+const LAST_VOICE := "\"When the skipper sounds his horn we will open these doors and come down. Have the way lit, and stay by us.\""
+const NO_ANSWER := "You knock. Nobody answers."
 
 ## Whether raiders make for the doors (the last night, or when no lamp is left burning).
 var besieged := false
@@ -73,6 +72,8 @@ func interact(player: Node) -> bool:
 		return super.interact(player)
 	Audio.sfx("knock", door_point() + Vector3(0.0, 1.2, 0.0), -2.0, 0.0)
 	var line: String = LAST_VOICE if Rescue.is_last_night() else VOICES[(Run.night - 1) % VOICES.size()]
+	if not Villagers.alive("baird"):
+		line = NO_ANSWER if Villagers.count() == 0 else "A voice behind the door: \"Mr Baird is gone. The rest of us are here. Keep the lamps burning.\""
 	spoke.emit(line)
 	Events.did.emit("kirk", player)
 	return true

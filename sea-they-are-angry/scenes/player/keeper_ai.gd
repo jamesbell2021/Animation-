@@ -213,6 +213,12 @@ func _harbour(night: bool) -> void:
 		else:
 			_set_task("round", null, kirk.door_point() + Vector3(0.0, 0.0, 1.2))
 		return
+	# The last night's flight: stay by whoever is still on their way down to the boat.
+	if night and role == "lamps":
+		var walker := _someone_abroad()
+		if walker != null:
+			_set_task("escort", walker, walker.global_position + Vector3(0.0, 0.0, 1.2))
+			return
 	var fix := _nearest_fixable(false)
 	if fix != null:
 		_set_task("repair", fix, _work_point(fix))
@@ -236,6 +242,18 @@ func _harbour(night: bool) -> void:
 			return
 	var post: Vector2 = HARBOUR_POSTS[(_round + keeper.idx) % HARBOUR_POSTS.size()]
 	_set_task("round", null, Vector3(post.x, Terrain.height_at(post.x, post.y), post.y))
+
+# One of Kirkhaven's people out of doors in the dark: the one furthest from the boat
+# (the last of the file), or null.
+func _someone_abroad() -> Node3D:
+	var best: Node3D = null
+	var best_z := INF
+	for v in get_tree().get_nodes_in_group("prey"):
+		var n := v as Node3D
+		if n.global_position.z < best_z:
+			best_z = n.global_position.z
+			best = n
+	return best
 
 # How many creatures are up out of the water in the town.
 func _ashore() -> int:
@@ -514,7 +532,7 @@ func _work_lamp(delta: float) -> void:
 	if lamp == null:
 		return
 	var night := Cycle.phase == Cycle.Phase.DUSK or Cycle.phase == Cycle.Phase.NIGHT
-	if not night or _climber_up():
+	if not night or _climber_up() or _task == "board":
 		keeper._toggle_operate()
 		return
 	_lamp_think -= delta

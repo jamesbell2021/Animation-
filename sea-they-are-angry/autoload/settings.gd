@@ -23,7 +23,7 @@ const REBINDABLE := [
 	["attack", "Swing / fire"], ["interact", "Use / pick up / repair"], ["operate", "Lamp on and off"],
 	["beam_mode", "Beam: wide or narrow"], ["sprint", "Sprint"], ["jump", "Jump"], ["flare", "Flare gun"],
 	["use_dirty", "Pour dirty fuel"], ["weapon_next", "Next weapon"], ["weapon_prev", "Previous weapon"],
-	["skip", "Skip the day"],
+	["skip", "Skip the day"], ["hud_mode", "Show more or less on screen"],
 	["cam_left", "Turn the camera left"], ["cam_right", "Turn the camera right"], ["cam_reset", "Camera back to the usual view"],
 	["cam_zoom_in", "Zoom in"], ["cam_zoom_out", "Zoom out"],
 ]
@@ -59,6 +59,10 @@ var palette := 0
 ## How big the interface is.
 const UI_SCALES := [1.0, 1.25, 1.5]
 var ui_scale_idx := 0
+## How much the HUD shows in play: 0 everything, 1 the clock, the light and your health,
+## 2 nothing but prompts, messages and warnings. The hud_mode key steps through them.
+const HUD_MODES := ["Full", "Slim", "Off"]
+var hud_mode := 0
 ## action -> "key:<keycode>" or "mouse:<button>"; only the ones changed from the defaults.
 var binds := {}
 
@@ -92,6 +96,7 @@ func _load() -> void:
 	size_idx = clampi(int(cf.get_value("display", "size", size_idx)), 0, SIZES.size() - 1)
 	quality = clampi(int(cf.get_value("display", "quality", quality)), 0, QUALITY.size() - 1)
 	scale_idx = clampi(int(cf.get_value("display", "scale", scale_idx)), 0, SCALES.size() - 1)
+	hud_mode = clampi(int(cf.get_value("display", "hud_mode", hud_mode)), 0, HUD_MODES.size() - 1)
 	shake_level = clampi(int(cf.get_value("access", "shake_level", 2 if bool(cf.get_value("display", "shake", true)) else 0)), 0, 2)
 	hitstop = bool(cf.get_value("access", "hitstop", hitstop))
 	damage_numbers = bool(cf.get_value("access", "damage_numbers", damage_numbers))
@@ -113,6 +118,7 @@ func save() -> void:
 	cf.set_value("display", "size", size_idx)
 	cf.set_value("display", "quality", quality)
 	cf.set_value("display", "scale", scale_idx)
+	cf.set_value("display", "hud_mode", hud_mode)
 	cf.set_value("access", "shake_level", shake_level)
 	cf.set_value("access", "hitstop", hitstop)
 	cf.set_value("access", "damage_numbers", damage_numbers)

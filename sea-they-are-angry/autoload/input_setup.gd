@@ -21,6 +21,9 @@ func _ready() -> void:
 	_key("jump", KEY_SPACE)
 	_key("skip", KEY_ENTER)
 	_key("use_dirty", KEY_F)
+	# How much the HUD shows: tap to step through full, slim and off; hold to put it all back.
+	# Keyboard only: a pad has no button to spare (the Settings menu has the same choice).
+	_key("hud_mode", KEY_H)
 	_mouse("attack", MOUSE_BUTTON_LEFT)
 	_mouse("flare", MOUSE_BUTTON_RIGHT)
 	# What's in hand: Tab or the wheel to change it, 1 to 5 to pick it. (Playing alone

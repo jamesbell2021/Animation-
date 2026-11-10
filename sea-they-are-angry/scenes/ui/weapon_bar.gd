@@ -12,6 +12,8 @@ const DIM := Color(0.68, 0.73, 0.78)
 const FLAME := Color(1.0, 0.55, 0.2)
 
 var player: Player
+## Put away with the rest of the HUD (its "off").
+var off := false
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -31,7 +33,7 @@ func _process(_delta: float) -> void:
 		queue_redraw()
 
 func shown() -> bool:
-	return Run.active and player != null and is_instance_valid(player) and not player.ai \
+	return not off and Run.active and player != null and is_instance_valid(player) and not player.ai \
 		and player.arsenal != null and player.riding == null and not player.boarded
 
 ## What a slot says under its icon.

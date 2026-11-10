@@ -120,6 +120,8 @@ var _sea_mat: ShaderMaterial
 var atmosphere: Atmosphere
 ## The night's small uncanny things: the wireless, the knock, lights dipping (NightEvents).
 var events: NightEvents
+## Act Two as the story tells it: the survivors, the diary, the kraken (when Run.story).
+var story: StoryRock
 var _sun: DirectionalLight3D
 ## Gull Rock's boat, and the gulls.
 var rowing_boat: RowingBoat
@@ -185,6 +187,9 @@ func _ready() -> void:
 		else:
 			_show_title()
 	# Tests and CI run headless and start straight away; so does New Run from game over.
+	elif not Run.carry.is_empty():
+		# Off the Mary Ann from Kirkhaven: Act Two begins.
+		begin_run(false, Players.wanted)
 	elif DisplayServer.get_name() == "headless" or Run.quick_start:
 		Run.quick_start = false
 		begin_run(true, Players.wanted)
@@ -205,7 +210,8 @@ func _show_title() -> void:
 	lighthouse.lamp._set_state(Lamp.State.BURNING)
 	title = TitleScript.new()
 	title.start_requested.connect(begin_run)
-	title.harbour_requested.connect(go_harbour.bind(false))
+	title.story_requested.connect(start_story)
+	title.rock_requested.connect(start_on_rock)
 	add_child(title)
 
 ## A LAN game, begun on every machine together (Net.start_game): `humans` keepers, one
@@ -248,7 +254,24 @@ func _camera_hint() -> void:
 	else:
 		Events.message.emit("Camera: middle mouse drag or %s %s to turn it · wheel or %s %s to zoom · %s back to the usual view" % [k.call("cam_left"), k.call("cam_right"), k.call("cam_zoom_in"), k.call("cam_zoom_out"), k.call("cam_reset")])
 
-## On to Chapter Two: Kirkhaven harbour, its own scene (scenes/harbour/harbour.gd).
+## A new run of the story: the keeper's log first, then Kirkhaven (Act One).
+func start_story(n: int) -> void:
+	var pages := "res://scenes/ui/story_pages.gd"
+	if not ResourceLoader.exists(pages) or DisplayServer.get_name() == "headless":
+		go_harbour(n, false)
+		return
+	if title != null:
+		title.visible = false
+	var text = load("res://scenes/ui/story_text.gd")
+	var book = load(pages).open(self, text.intro(), "")
+	book.finished.connect(go_harbour.bind(n, false))
+
+## The story, begun on the rock: the town is taken as read, all seven saved.
+func start_on_rock(n: int) -> void:
+	Run.story_next = true
+	begin_run(false, n)
+
+## To Kirkhaven, the story's first act: its own scene (scenes/harbour/harbour.gd).
 func go_harbour(n: int, continue_save: bool) -> void:
 	Net.leave()
 	Players.wanted = clampi(n, 1, Players.MAX)
@@ -256,6 +279,20 @@ func go_harbour(n: int, continue_save: bool) -> void:
 	Run.enter_harbour = true
 	Run.harbour_continue = continue_save
 	get_tree().change_scene_to_file("res://scenes/harbour.tscn")
+
+# What came over from Kirkhaven on the Mary Ann: who lived, what was in the store, what
+# the keepers were carrying.
+func _unpack_carry() -> void:
+	var c := Run.carry
+	Run.story = true
+	Run.villagers = (c.get("villagers", []) as Array).duplicate()
+	Run.lost = (c.get("lost", []) as Array).duplicate()
+	var stock: Dictionary = c.get("stock", {})
+	for k in stock:
+		Stock.set_amount(k, maxi(Stock.get_amount(k), int(stock[k])))
+	var arms: Array = c.get("arms", [])
+	for i in mini(arms.size(), Run.arms.size()):
+		Run.arms[i] = (arms[i] as Array).duplicate()
 
 func begin_run(continue_save: bool, n: int) -> void:
 	# A saved run in Kirkhaven continues there.
@@ -314,10 +351,24 @@ func begin_run(continue_save: bool, n: int) -> void:
 	hud.run_tally = run_tally
 	hud.visible = true
 	var d := SaveSys.load_run() if continue_save and not Net.is_client() else {}
+	var from_town := not Run.carry.is_empty()
 	if not d.is_empty():
 		Run.start_loaded(d)
 	else:
 		Run.start_new()
+		if from_town:
+			_unpack_carry()
+		elif Run.story_next:
+			Run.story = true
+			Run.villagers = Villagers.all_ids()
+	Run.story_next = false
+	Run.carry = {}
+	if Run.story and not Net.online():
+		story = StoryRock.new()
+		story.main = self
+		add_child(story)
+	else:
+		Run.story = false
 	lighthouse.lamp.fuel = Run.lamp_fuel
 	for p in players:
 		p.max_hp = Player.BASE_HP + int(Run.max_hp_bonus[p.idx])
@@ -329,7 +380,16 @@ func begin_run(continue_save: bool, n: int) -> void:
 		_add_scavenge(SCAVENGE_CROWD)
 	for i in NOTES_LYING:
 		_place_notes()
-	if d.is_empty():
+	if d.is_empty() and Run.story:
+		var who := "The seven of Kirkhaven are" if Villagers.count() == 7 else ("%d of Kirkhaven's people are" % Villagers.count() if Villagers.count() > 1 else ("One of Kirkhaven's people is" if Villagers.count() == 1 else "Nobody from Kirkhaven is"))
+		hud.report("The rock. The first day.", [
+			"%s in the old camp over the bridge. Nobody is coming to take us off: keep the light, keep the camp, and gather everything that might hurt what is following." % who,
+			"The jobs on the right show you round: the beaches, the camp, the shed and its weapons.",
+			"At dusk they come ashore and climb the ledge. Work the lamp ([R] at the door); [Q] focuses the beam to burn them, and on the ledge a blow aimed outward knocks them over the edge.",
+		], FIRST_DAY_TIP_TIME + 2.0)
+		# Kept from here if the game is left before the first dawn.
+		SaveSys.save_run()
+	elif d.is_empty():
 		hud.report("The first day.", [
 			"Keep the light burning until the relief boat comes for you: %d nights." % Rescue.night(),
 			"The jobs on the right show you round: the beaches, the camp over the bridge, the shed.",
@@ -441,9 +501,6 @@ func _chapter_end() -> void:
 	card.host_decides = Net.is_client()
 	card.back_to_title.connect(_after_chapter.bind(false))
 	card.stay_on.connect(_after_chapter.bind(true))
-	card.go_on.connect(func() -> void:
-		SaveSys.clear_run()
-		go_harbour(Players.wanted, false))
 	add_child(card)
 	Run.active = false
 
@@ -534,7 +591,7 @@ func _on_group_warning(kind: String, points: Array, raid: bool) -> void:
 func _on_holm_warning(kind: String, points: Array) -> void:
 	_count("camp_raid")
 	var beach := compass(points[0] - Vector3(Terrain.HOLM_C.x, 0.0, Terrain.HOLM_C.y))
-	if Research.has("bell"):
+	if Research.has("bell") or (Run.story and Villagers.alive("baird")):
 		Audio.sfx("camp_bell", camp.generator.global_position, 2.0, 0.0)
 		hud.warn("The camp's bell! Something's coming up the holm's %s beach, for the camp." % beach)
 		return
@@ -1296,7 +1353,7 @@ func _on_phase_changed(p: int) -> void:
 		_warned_low = false
 	if p == Cycle.Phase.DUSK:
 		_tally = {}
-		if Run.active and Rescue.is_last_night() and not Net.is_client():
+		if Run.active and Rescue.is_last_night() and not Net.is_client() and not Run.story:
 			hud.warn("The last night. The relief boat comes at dawn: hold the light!")
 		if Run.active and not Net.is_client():
 			for k in players:
@@ -1320,7 +1377,8 @@ func _on_phase_changed(p: int) -> void:
 				Run.warmth[k.idx] = k.warmth
 		var held := Run.night
 		Run.advance_night(damaged)
-		if not Run.endless and held >= Rescue.night():
+		# In the story nothing comes for them: the last night is the kraken's (StoryRock).
+		if not Run.endless and held >= Rescue.night() and not Run.story:
 			_begin_rescue()
 
 # The keeper's log: what came, what stopped it, what it cost, and one thing to try next.
@@ -1391,7 +1449,14 @@ func _dawn_report() -> void:
 	if _researched != "":
 		lines.append("Worked out overnight at the camp: %s." % Research.title(_researched))
 	# The relief boat: how long to hold out (Run.night is still the night just held).
-	if not Run.endless:
+	if story != null:
+		lines.append_array(story.dawn_lines())
+		var to_go := Rescue.night() - Run.night
+		if to_go == 1:
+			lines.append("Tomorrow night it comes.")
+		elif to_go > 1:
+			lines.append("It comes in %d nights." % to_go)
+	elif not Run.endless:
 		var left := Rescue.night() - Run.night
 		if left == 1:
 			lines.append("One more night: the relief boat comes the dawn after.")

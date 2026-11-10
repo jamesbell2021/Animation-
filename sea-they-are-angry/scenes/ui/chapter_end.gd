@@ -5,8 +5,6 @@ extends CanvasLayer
 
 signal back_to_title
 signal stay_on
-## On to Chapter Two.
-signal go_on
 
 const GOLD := Color(1.0, 0.78, 0.42)
 const PALE := Color(0.9, 0.92, 0.95)
@@ -33,23 +31,19 @@ func _ready() -> void:
 	box.add_theme_constant_override("separation", 14)
 	box.modulate.a = 0.0
 	center.add_child(box)
-	var over := _label(box, "Chapter One", 30, DIM)
+	# The rock played alone (LAN games): the relief boat's ending. The story proper ends
+	# with the kraken (scenes/ui/story_end.gd).
+	var over := _label(box, "The Rock", 30, DIM)
 	Fonts.use_title(over)
 	var title := _label(box, "The Light Held", 72, GOLD)
 	Fonts.use_title(title)
 	var body := _label(box, ("%d nights on the rock, on an %s. The relief boat took the keepers off at dawn, the internees' diary " +
-		"buttoned inside Callum's coat. Behind them the lamp still turned, with nobody to tend it.") % [nights, sea.to_lower()], 22, PALE)
+		"buttoned inside Callum's coat.") % [nights, sea.to_lower()], 22, PALE)
 	Fonts.use_serif(body)
 	_label(box, "%d of them sent back to the sea." % kills, 20, DIM)
 	var gap := Control.new()
 	gap.custom_minimum_size = Vector2(0, 18)
 	box.add_child(gap)
-	var next := _label(box, "Chapter Two — The Harbour", 30, GOLD)
-	Fonts.use_title(next)
-	var tease := _label(box, "Halfway to Kirkhaven the skipper came down from the wheelhouse. The harbour lights had gone out " +
-		"three nights since, he said, and nobody had answered the wireless from the town since Tuesday. " +
-		"The sea was angry there too.", 20, PALE)
-	Fonts.use_serif(tease)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 40)
 	box.add_child(row)
@@ -57,8 +51,7 @@ func _ready() -> void:
 	if host_decides:
 		_label(box, "The host decides what's next.", 18, DIM)
 	else:
-		first = _button(row, "On to Kirkhaven", func() -> void: go_on.emit())
-		_button(row, "Back to the title", func() -> void: back_to_title.emit())
+		first = _button(row, "Back to the title", func() -> void: back_to_title.emit())
 		_button(row, "Stay on the rock (endless nights)", func() -> void: stay_on.emit())
 	var tw := create_tween()
 	tw.tween_property(shade, "color:a", 0.72, 2.5)

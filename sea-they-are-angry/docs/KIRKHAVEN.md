@@ -1,13 +1,15 @@
-# Chapter Two: The Harbour
+# Act One: Kirkhaven
 
-Kirkhaven, the fishing town the relief boat was making for. Its lights went out on a
-Tuesday; nobody has answered the wireless since. The *Mary Ann* puts the three keepers
-on the pier at first light and stands off.
+The story's first act (see [STORY.md](STORY.md)). The harbour light was put on a clock,
+the clock stuck, and the fog came in with something in it. Three keepers paid off that
+week try to put the town's lights back and keep its seven people alive. They cannot hold
+it: on the third night they bring whoever is left down to the *Mary Ann* and sail for
+the rock.
 
-This is the second half of the game and the end of its story. It plays on the same
-rules as the rock (day, dusk, night, dawn; the lamp burns what comes out of the sea)
-in a different place with a different job: not one light to keep, but a town's worth
-to put back.
+Until v1.0.0 this was "Chapter Two", played after the rock, with an ending in which the
+town was relit. The owner turned the story round on 2026-11-10: the town falls first.
+The map, the lamps, the generator, the kirk and the fog are as they were; what changed
+is who is in it and how it ends.
 
 ## The idea
 
@@ -15,8 +17,13 @@ to put back.
 off the harbour mouth all night. Every street lamp that burns keeps a pool the fog
 cannot lie in; a landing with a lamp at its head lets fewer creatures through, and they
 would sooner come up a dark one. What stands in lamplight is slowed and scorched. So
-they make for the lamps and break them, and the keepers' night is spent keeping lamps
-burning under attack.
+they make for the lamps and break them.
+
+And now there is somebody to keep alive. **The seven** (the minister, the chandler, the
+engineer, the publican, the nurse, the harbour master, the net-mender) are about their
+doors by day and shut in the kirk at night. Each brings something every dawn while they
+live, here and later on the rock. The lamps you keep burning on the third night are the
+lit road they run down to the boat.
 
 The mood is John Carpenter's *The Fog* (1980): a small harbour, a glowing bank coming in
 against the wind, shapes in it, a voice on the wireless, a bell. Nothing of that film's
@@ -38,40 +45,50 @@ toward the camera.
 | The wynds and the back street | Two lanes up from the quay, a lamp at the head of each. |
 | The kirk, on its green | The townsfolk are shut inside. Knock, and someone answers. If the doors go, the run ends. Its bell is the keepers' one big help. |
 
-## The rules that are new
+## The rules that are particular to it
 
 - **Street lamps** (`street_lamp.gd`). Switched in at the fuse box ([E]); they light at
   dusk while the generator runs. 60 health; one scrap mends a smashed one, and it relights
   by itself. A lit lamp: a fog hole 8.5 m across, and creatures within 6 m are in "wide
   beam" light (slowed, scorched).
-- **The generator** is the camp's from Chapter One. It starts nearly dry. Each lit lamp
-  draws diesel; a can a day is at the fuel berth by the pier.
+- **The generator** is the camp's from the rock. It starts nearly dry. Each lit lamp
+  draws diesel; a can a day is at the fuel berth by the pier, and Sandy Coull tops it up
+  each dusk while he lives.
 - **Landings.** A group picks a dark landing three times as readily as a lit one, and a
   lit landing lets 70 % of a group through. Every group is a third bigger than the same
-  row of the table brought to the rock.
+  row of the table brings to the rock.
 - **Raiders.** Two of every three Bloated groups, and every Crab, go for the nearest
   burning lamp, the generator, or (when no lamp burns) the kirk; the third Bloated group
-  goes for the harbour light. From the third night the first raiding group of the night
-  is sent at the kirk doors; on the last night every other one is, and every other Crab.
+  goes for the harbour light. On the last night every other raiding group and every
+  other Crab is sent at the kirk doors.
+- **The seven** (`scenes/people/`). By day about their doors; with 22 seconds of the day
+  left they make for the kirk and shut themselves in. Out of doors in the dark they are
+  **prey**: a creature within 16 m turns aside for them, and anything that gets within
+  reach of one for half a second takes them. `Run.villagers` holds the living.
+- **The kirk doors.** If they are broken down in the night, one of those inside is taken
+  every seven seconds until the doors are mended (driftwood). It does not end the run.
 - **The kirk bell.** Two scrap splice its rope ([F] at the kirk door). Rung in the dark,
   once a night, every burning lamp flares white for eight seconds and burns what stands
   in it like the focused beam.
-- **The last night.** The fog comes over the quay and into the streets
-  (`FogBank.flood`); only lamplight holds it off. At the dawn after, the fog goes out,
-  the kirk doors open, the people come down to the quay, and the windows light one by
-  one.
-- **Nights:** 4 on a calm sea, 5 on an angry one, 6 raging. They start two rows further
-  down the rock's table of landings (Crabs and Squid from the first night). The Eel does
-  not come into the harbour. Smotherers climb the harbour light as they did the rock's.
-- **Not here:** hunger and warmth (the town feeds its keepers through the kirk door),
-  the shed, the garden, research, upgrades, the camp. The keepers arrive with a longbow
-  each, the shotgun, petrol bombs, and a little of everything else.
-- **Helpers.** One works the harbour light from dusk; the other walks the lamps
-  (switches them in, mends them, feeds the generator, keeps the harbour light mended and
-  fuelled, fetches the day's stores, splices the bell rope when there is scrap to spare).
-  On the last night that one keeps the kirk doors instead, and rings the bell once four
-  or more are ashore.
-- **Local play only.** LAN games are Chapter One's.
+- **The last night (the third).** The fog comes over the quay and into the streets
+  (`FogBank.flood`). A third of the way through, the skipper sounds his horn: the night
+  holds, the kirk doors open, and the seven come out one after another and run down
+  through the streets to the boat at the pier head. More comes up the landings while they
+  do. When each is aboard or lost, her plank goes out and the keepers board ([E]); then
+  she sails, and Act Two begins on the rock with whoever was saved and whatever the
+  keepers were carrying.
+- **What ends the run here:** the harbour light going dark, or every keeper down. Losing
+  all seven does not: the keepers still sail, alone.
+- **Nights:** three, whatever the sea's mood (the mood sets how many come). They start
+  two rows down the rock's table of landings. The Eel does not come into the harbour.
+- **Not here:** hunger and warmth, the shed, the garden, research, upgrades. The keepers
+  begin with a longbow each, the shotgun, petrol bombs, and a little of everything else.
+- **Helpers.** One works the harbour light from dusk; the other walks the lamps (switches
+  them in, mends them, feeds the generator, keeps the harbour light mended and fuelled,
+  fetches the day's stores, splices the bell rope). On the last night that one keeps the
+  kirk doors, rings the bell, and when the horn sounds stays by whoever is last down the
+  street.
+- **Local play only.** LAN games are the rock alone.
 
 ## How it is built
 
@@ -101,38 +118,14 @@ Small hooks added to shared systems for this chapter:
 | `Player` | [F] calls `alt_use()` on whatever is to hand that has it (the bell) |
 | `KeeperAI` | `_harbour()`: the two helper roles above |
 
-Getting there: the title has "Chapter Two: The Harbour"; Chapter One's end card has "On
-to Kirkhaven"; a saved Kirkhaven run continues from the title. Leaving (pause → quit,
-game over → title, the ending) goes back to `main.tscn`, where the title lives.
-
-## The ending
-
-"The Lights of Kirkhaven": three short pages over the lit town, then the line the story
-has been heading for, *A light kept is a promise*, the tallies, credits, and the way
-back to the title. `SaveSys.finish_chapter(2)` records it.
-
-## Runs played by the computer's keepers (2026-11-10)
-
-`tools/playtest_harbour.gd`: three computer keepers, nobody playing. One on the harbour
-light, two walking the lamps (the real game has one, and you).
-
-| Sea | Nights | Came ashore each night | Lamps smashed | End |
-|---|---|---|---|---|
-| Calm | 4 | 7, 11, 9, 20 | 1, 2, 0, 3 | Held: 8 of 11 lamps in, kirk untouched, bell rung |
-| Angry | 5 | 11, 15, 12, 18, 36 | 1, 1, 1, 3, 6 | Held: 5 of 11 lamps in, kirk untouched, bell rung |
-
-Earlier settings they lost to, and what was changed: groups half as big again with
-nothing to refill arrows or cartridges (every keeper down on the last night); the
-harbour light left damaged, which stops it being refuelled (it went dark); every Crab
-of the last night sent at 300-point kirk doors (the doors went). The first settings of
-all were the other way: the town was held without a lamp or the kirk coming under real
-threat. A raging sea has not been run.
+Getting there: the title's New Run shows the keeper's log and then starts here; a saved
+Kirkhaven run continues from the title. Leaving (pause → quit, game over → title) goes
+back to `main.tscn`, where the title lives; the Mary Ann sailing goes there too, with
+`Run.carry` holding what came across.
 
 ## Not done
 
-- Nobody has played it. The numbers (lamp health, draw, landing weights, how many go
-  for the kirk) were set against scripted tests and runs played by the computer's keepers
-  alone (`tools/playtest_harbour.gd`), which is not the same as a person playing.
+- Nobody has played it. The numbers were set against scripted tests and runs played by
+  the computer's keepers alone (`tools/playtest_harbour.gd`).
 - LAN play in Kirkhaven.
-- The townsfolk at the end are the keepers' models, walking.
-- The Eel has no part in it; a harbour-mouth version would suit the last night.
+- The seven borrow the keepers' models.
