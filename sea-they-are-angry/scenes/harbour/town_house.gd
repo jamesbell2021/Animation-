@@ -191,7 +191,9 @@ func _build() -> void:
 	b.xf = Transform3D.IDENTITY
 	_glass = Look.glow_mat(WINDOW_DARK, 0.0)
 	_glass.emission = _lit_col
-	_glass.roughness = 0.2
+	# Not mirror-smooth: a rooflight would throw the moon back as a white glare.
+	_glass.roughness = 0.45
+	_glass.metallic_specular = 0.25
 	b.build(self, {"wall": HarbourProps.harl_mat(harl), "glass": _glass})
 	_lamp = OmniLight3D.new()
 	_lamp.light_color = _lit_col

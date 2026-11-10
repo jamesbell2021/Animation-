@@ -287,7 +287,9 @@ static func roof_tile(kind: String) -> float:
 ## Unlit window glass.
 static func dark_glass() -> StandardMaterial3D:
 	if not _shared.has("glass_off"):
-		_shared["glass_off"] = Look.flat_mat(Color(0.05, 0.06, 0.08), 0.15)
+		var g := Look.flat_mat(Color(0.05, 0.06, 0.08), 0.45)
+		g.metallic_specular = 0.25
+		_shared["glass_off"] = g
 	return _shared["glass_off"]
 
 ## The dark of an open doorway.
