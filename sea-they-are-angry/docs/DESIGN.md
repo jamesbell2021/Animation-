@@ -55,7 +55,7 @@ Scavenge points (`Main.SCAVENGE`) on the main island's beaches are 8 (a ninth ap
 
 The lamp lights at dusk if there is fuel and goes out at dawn. States: `OFF`, `BURNING`, `GUTTERING`, `DARK`. Fuel is 0 to 100. Burn per second: 0.35 wide, 1.0 focused, times 0.8 when nobody is on the lamp (it then sweeps by itself at 20 degrees a second), times the lighthouse upgrade (1.0, 0.85, 0.7). At zero fuel it gutters for 25 s; refuelling (1 bio, +40) or repairing the tower while it gutters relights it; at 25 s it is dark and the run ends.
 
-Working the lamp: walk to the lighthouse door (within 3.8 m) and press R; the keeper goes in and aims with the mouse or stick; Q switches wide (35 degree half-angle, 26 m) and focused (10 degrees, 29 m). Range grows by 3 and 6 m at upgrade levels 2 and 3. Only one keeper can work it. Dirty fuel: +30 fuel, the beam burns 1.5 times harder and the light is 1.3 times brighter for 30 s, and Anger +1. A Smotherer on the lantern cuts the beam's range to 30% and brightness to 12%. A badly damaged lighthouse (under 30%) makes the light flicker and the screen pulse red.
+Working the lamp: walk to the lighthouse door (within 3.8 m) and press R; the keeper goes in and aims with the mouse or stick; B switches wide (35 degree half-angle, 26 m) and focused (10 degrees, 29 m). Range grows by 3 and 6 m at upgrade levels 2 and 3. Only one keeper can work it. Dirty fuel: +30 fuel, the beam burns 1.5 times harder and the light is 1.3 times brighter for 30 s, and Anger +1. A Smotherer on the lantern cuts the beam's range to 30% and brightness to 12%. A badly damaged lighthouse (under 30%) makes the light flicker and the screen pulse red.
 
 The beam is also how you slow and burn creatures; effects per creature are in `docs/ENEMIES.md`. 
 
@@ -92,7 +92,7 @@ Food: five garden beds in the cottage garden (3/4/5 open; 1 kelp plants one, rip
 
 ## The camp and the holm
 
-The generator (`scenes/structures/generator.gd`) runs from dusk to dawn: fuel 100, 35 per jerrycan, 0.03 a second idle plus each searchlight 0.1 wide or 0.2 focused and each lit hut 0.015 (about 0.45 a second with four wide lights, computed, not measured); the governor research cuts it by a third. It powers four searchlights and the huts' lights; dry or wrecked, the camp is dark. Searchlights (`scenes/systems/searchlight.gd`) sweep by themselves, or a keeper climbs a tower's ladder and presses E to aim one (16 degree half-angle wide beam, 6 degree focused, 34 m); tracking and reflectors are research. The turbine lights the strings round the wire from dusk to dawn while it stands (creatures inside the lit wire go 15% slower); wrecked, the compound goes dark.
+The generator (`scenes/structures/generator.gd`) runs from dusk to dawn: fuel 100, 35 per jerrycan, 0.03 a second idle plus each searchlight 0.1 wide or 0.2 focused and each lit hut 0.015 (about 0.45 a second with four wide lights, computed, not measured); the governor research cuts it by a third. It powers four searchlights and the huts' lights; dry or wrecked, the camp is dark. Searchlights (`scenes/systems/searchlight.gd`) sweep by themselves, or a keeper climbs a tower's ladder and presses F to aim one (16 degree half-angle wide beam, 6 degree focused, 34 m); tracking and reflectors are research. The turbine lights the strings round the wire from dusk to dawn while it stands (creatures inside the lit wire go 15% slower); wrecked, the compound goes dark.
 
 Raids: from night 2 some groups land on the holm and make for the generator, quarters, mess and greenhouse (details in `docs/ENEMIES.md`). With the generator and all three buildings wrecked "the camp has fallen" and nothing more is sent there. This does not end the run. Research (the desk in the mess, one project at a time, begun by day and done by dawn): ten projects (`scenes/systems/research.gd`): clockwork tracking, silvered reflectors (+5 m, burn x1.6), generator governor, barbed-wire coils, tripwire flares, sandbag walls, cold frames, tinning, alarm bell, and the wireless (relief boat two nights sooner). Each costs one page of notes and a few scrap, bio or driftwood.
 
@@ -128,14 +128,14 @@ There are always three keepers. Pick 1 to 3 people on the title; the rest are he
 | Move / aim | WASD / mouse | arrows / facing | left / right stick |
 | Attack with what is in hand | left mouse | Ctrl | X or right trigger |
 | Change weapon | Tab, wheel, 1 to 5 | [ and ] | d-pad left and right |
-| Use (gather, mend, climb, row, revive: hold) | E | M | A |
+| Use (gather, mend, climb, row, revive: hold) | F | M | A |
 | Lamp (at the door) | R | / | Y |
-| Beam wide or focused | Q | . | B |
+| Beam wide or focused | B | . | B |
 | Flare | right mouse | ; | left trigger |
-| Dirty fuel | F | ' | left shoulder |
+| Dirty fuel | G | ' | left shoulder |
 | Sprint / jump | Shift / Space | , / numpad Enter | right shoulder / A with nothing to use |
 | Skip the day or dawn | Enter | | Back |
-| Camera (alone only) | Z, C turn, X reset, wheel or - and = zoom, middle drag | | d-pad up and down zoom, a stick pressed in turns |
+| Camera (alone only) | Q, E turn (all the way round), X reset, wheel or - and = zoom, middle drag | | d-pad up and down zoom, a stick pressed in turns |
 | Pause | Esc | | Start |
 
 Keeper one's keys, except 1 to 5 and Esc, can be rebound in Settings (any key or mouse button; clashes swap). Code diverges from the docs here: `README.md` lists Sprint as Space, but `InputSetup` binds Sprint to Shift and Jump to Space; and `Settings.ARROW_NAMES` names the arrow-key player's Use key as Shift while `Players.bind_device` binds M, so in-game hints for that player name the wrong key.

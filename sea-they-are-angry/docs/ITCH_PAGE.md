@@ -44,7 +44,7 @@ The nights are made in the spirit of John Carpenter's *The Fog*: the bank rollin
 
 ## Controls
 
-Keyboard and mouse: WASD move, mouse aims, left mouse attacks, E uses, R works the lamp, Q switches the beam, F pours dirty fuel, Shift sprints, Space jumps, Tab or 1 to 5 change weapon. Playing alone, hold the middle mouse button and drag (or Z and C) to turn the camera, and use the wheel to zoom. A gamepad works too. Full layout in the game's How to Play and Settings.
+Keyboard and mouse: WASD move, mouse aims, left mouse attacks, F uses, R works the lamp, B switches the beam, G pours dirty fuel, Shift sprints, Space jumps, Tab or 1 to 5 change weapon. Playing alone, Q and E (or the middle mouse button, dragged) turn the camera all the way round, and use the wheel to zoom. A gamepad works too. Full layout in the game's How to Play and Settings.
 
 ## Co-op
 

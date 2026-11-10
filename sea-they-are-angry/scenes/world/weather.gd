@@ -241,7 +241,7 @@ func _apply_storm() -> void:
 	if _audio_t <= 0.0:
 		_audio_t = 0.25
 		Audio.loop_volume("rain", lerpf(-60.0, -8.0, rain))
-		Audio.loop_volume("wind", lerpf(-18.0, -5.0, clampf(storm + _gust * 0.4, 0.0, 1.0)))
+		Audio.loop_volume("wind", lerpf(Audio.WIND_CALM, Audio.WIND_STORM, clampf(storm + _gust * 0.4, 0.0, 1.0)))
 
 # Waves breaking on the cliffs and rolling up the beaches, more and bigger in a storm.
 func _breakers(delta: float) -> void:

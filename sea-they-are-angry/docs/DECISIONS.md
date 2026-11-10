@@ -909,3 +909,23 @@ The owner, having seen v1.0.0: the screen is crowded; is the story backwards, sh
 - **The kraken's look (owner, same day).** The owner wondered about a stop-motion sea titan in the manner of 1980s fantasy films, saw a first pass at one, and preferred the octopus. The octopus stays; the titan was dropped and is not in the repository.
 - **The credits' music (owner):** "Flower of Scotland" was asked for. It is not traditional: Roy Williamson wrote it in 1967 and it is in copyright, so it is not in the game. The credits play an arrangement of the Skye Boat Song instead (a traditional air, and a song about carrying someone over the sea to an island). One file, `audio/music_credits.ogg`, to replace if a licence is ever had.
 - **The end looks up.** The keepers' camera only looks down, so a clear sky could not be seen. When the kraken dies the camera lets go and looks up at the lighthouse against the sky.
+
+## 2026-11-10: Q and E turn the camera; the score stands clear of the sea (v1.1.1)
+
+- **The owner expected Q and E to turn the camera** and did not find Z and C. Q and E
+  now turn it (all the way round, playing alone); X still puts it back. To free them,
+  Use moved from E to F, the beam from Q to B, and dirty fuel (and the kirk bell) from
+  F to G. All can be changed in Settings. The game's text still writes `[E]`, `[Q]` and
+  `[F]`: those are tokens for Use, the beam and dirty fuel, and `Settings.keys_in` puts
+  today's keys in their place (in two passes, so one key's name is never read as
+  another's token).
+- **The owner heard no music.** It was playing, but measured in the game's own mix it sat
+  5 to 9 dB under the sea and wind. The pieces are 5 to 6 dB louder, the fair-weather
+  sea and wind 5 dB quieter (`Audio.WAVES`, `WIND_CALM`), a piece fades in from -28 dB
+  and not from silence, and a limiter on the Master bus keeps a loud night from
+  clipping. Measured after: the score about 4 dB over the bed by day, level with a
+  busy night.
+- **The title's turn** is one round in eighty seconds (it was twenty).
+- **Recordings may stand in for made sounds:** `res://audio/<key>.ogg` replaces the
+  synthesised sound of that key. Only CC0 or public-domain recordings, each listed in
+  `docs/SOUND_CREDITS.md`.

@@ -129,6 +129,14 @@ func _ensure_buses() -> void:
 			var i := AudioServer.bus_count - 1
 			AudioServer.set_bus_name(i, bus)
 			AudioServer.set_bus_send(i, "Master")
+	# The score and a loud night together must not clip: a limiter on everything.
+	var master := AudioServer.get_bus_index("Master")
+	for i in AudioServer.get_bus_effect_count(master):
+		if AudioServer.get_bus_effect(master, i) is AudioEffectHardLimiter:
+			return
+	var lim := AudioEffectHardLimiter.new()
+	lim.ceiling_db = -0.5
+	AudioServer.add_bus_effect(master, lim)
 
 # ---- playback ----
 
@@ -191,9 +199,14 @@ func loop(key: String, on: bool, volume_db: float = -10.0, fade: float = 2.0) ->
 		tw.tween_property(p, "volume_db", -60.0, fade)
 		tw.tween_callback(p.stop)
 
+## The sea and the wind in fair weather: a bed under the score, not over it.
+const WAVES := -17.0
+const WIND_CALM := -21.0
+const WIND_STORM := -8.0
+
 func start_ambience() -> void:
-	loop("wind", true, -16.0, 3.0)
-	loop("waves", true, -12.0, 3.0)
+	loop("wind", true, WIND_CALM, 3.0)
+	loop("waves", true, WAVES, 3.0)
 	loop("rain", true, -60.0, 0.1)
 
 ## Set a running loop's volume straight away (the weather drives rain and wind this way).
@@ -240,7 +253,11 @@ func _build_all() -> void:
 	for key in SOUNDS:
 		var file := "res://audio/%s.ogg" % key
 		if ResourceLoader.exists(file):
-			_streams[key] = load(file)
+			# A recording in place of the made sound (docs/SOUND_CREDITS.md).
+			var rec = load(file)
+			if rec is AudioStreamOggVorbis:
+				(rec as AudioStreamOggVorbis).loop = bool(SOUNDS[key][1])
+			_streams[key] = rec
 			continue
 		var cache := "%s/%s.pcm" % [CACHE_DIR, key]
 		var data: PackedByteArray
@@ -1429,12 +1446,17 @@ func _s_scream() -> PackedFloat32Array:
 
 ## The score (audio/music_*.ogg, made by art/source/music/build_music.py): the piece's
 ## level, and whether it loops.
+## (Raised at v1.1.1: the score measured 5 to 9 dB under the sea and wind, and could not
+## be heard. The days stay under the nights, but both now stand clear of the weather.)
 const MUSIC := {
-	"title": [-6.0, true], "day": [-11.0, true], "night": [-8.0, true], "finale": [-6.0, true],
-	"chapter_end": [-4.0, false], "game_over": [-4.0, false],
-	"harbour_day": [-11.0, true], "harbour_night": [-8.0, true], "ending": [-4.0, false],
-	"credits": [-5.0, false],
+	"title": [-1.0, true], "day": [-6.0, true], "night": [-2.5, true], "finale": [-1.0, true],
+	"chapter_end": [-2.0, false], "game_over": [-2.0, false],
+	"harbour_day": [-6.0, true], "harbour_night": [-2.5, true], "ending": [-2.0, false],
+	"credits": [-2.0, false],
 }
+## A piece fades in from here, not from silence: a fade in decibels spends most of its
+## time below hearing.
+const MUSIC_FROM := -28.0
 
 var _music: Array[AudioStreamPlayer] = []
 var _music_on := 0
@@ -1469,7 +1491,7 @@ func music(key: String, fade: float = 3.0) -> void:
 	_music_on = 1 - _music_on
 	var p := _music[_music_on]
 	p.stream = stream
-	p.volume_db = -60.0
+	p.volume_db = MUSIC_FROM
 	p.play()
 	var t2 := create_tween()
 	t2.tween_property(p, "volume_db", float(MUSIC[key][0]), maxf(fade, 0.05))

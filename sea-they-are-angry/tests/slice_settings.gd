@@ -45,13 +45,14 @@ func _go() -> void:
 	St.reset_controls()
 
 	# Keys.
-	check(St.key_name("interact") == "E" and St.key_name("attack") == "Left mouse", "defaults: E to use, left mouse to swing")
-	check(St.keys_in("[E] Repair the fence") == "[E] Repair the fence", "the default key's hint is left alone")
-	St.rebind("interact", "key:%d" % KEY_G)
-	check(_has_key("interact", KEY_G) and not _has_key("interact", KEY_E), "use moved to G: on G, off E")
-	check(St.keys_in("[E] Repair the fence") == "[G] Repair the fence", "hints name the new key")
+	check(St.key_name("interact") == "F" and St.key_name("attack") == "Left mouse", "defaults: F to use, left mouse to swing")
+	check(St.key_name("cam_left") == "Q" and St.key_name("cam_right") == "E" and St.key_name("beam_mode") == "B" and St.key_name("use_dirty") == "G", "Q and E turn the camera; the beam is on B, dirty fuel on G")
+	check(St.keys_in("[E] Repair the fence") == "[F] Repair the fence" and St.keys_in("[Q] switch") == "[B] switch", "the hints name the keys as they are")
+	St.rebind("interact", "key:%d" % KEY_T)
+	check(_has_key("interact", KEY_T) and not _has_key("interact", KEY_F), "use moved to T: on T, off F")
+	check(St.keys_in("[E] Repair the fence") == "[T] Repair the fence", "hints name the new key")
 	St.rebind("interact", "key:%d" % KEY_R)
-	check(_has_key("interact", KEY_R) and _has_key("operate", KEY_G) and not _has_key("operate", KEY_R), "use onto the lamp's R: the lamp takes G (they swap)")
+	check(_has_key("interact", KEY_R) and _has_key("operate", KEY_T) and not _has_key("operate", KEY_R), "use onto the lamp's R: the lamp takes T (they swap)")
 	St.rebind("weapon_next", "key:%d" % KEY_V)
 	var wheel := false
 	for ev in InputMap.action_get_events("weapon_next"):
@@ -61,10 +62,10 @@ func _go() -> void:
 	var fresh = load("res://autoload/settings.gd").new()
 	fresh._defaults = St._defaults.duplicate()
 	fresh._load()
-	check(fresh.binds.get("interact", "") == "key:%d" % KEY_R and fresh.binds.get("operate", "") == "key:%d" % KEY_G, "the keys are saved and read back")
+	check(fresh.binds.get("interact", "") == "key:%d" % KEY_R and fresh.binds.get("operate", "") == "key:%d" % KEY_T, "the keys are saved and read back")
 	fresh.free()
 	St.reset_controls()
-	check(_has_key("interact", KEY_E) and _has_key("operate", KEY_R) and _has_key("weapon_next", KEY_TAB) and St.binds.is_empty(), "put back: E, R and Tab again")
+	check(_has_key("interact", KEY_F) and _has_key("operate", KEY_R) and _has_key("weapon_next", KEY_TAB) and St.binds.is_empty(), "put back: F, R and Tab again")
 
 	# Sound.
 	St.set_volume("Music", 0.5)

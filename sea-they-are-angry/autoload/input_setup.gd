@@ -14,13 +14,14 @@ func _ready() -> void:
 	_key("move_right", KEY_D)
 	_key("move_up", KEY_W)
 	_key("move_down", KEY_S)
-	_key("interact", KEY_E)
+	# Q and E turn the camera (below), so Use is on F, the beam on B, dirty fuel on G.
+	_key("interact", KEY_F)
 	_key("operate", KEY_R)
-	_key("beam_mode", KEY_Q)
+	_key("beam_mode", KEY_B)
 	_key("sprint", KEY_SHIFT)
 	_key("jump", KEY_SPACE)
 	_key("skip", KEY_ENTER)
-	_key("use_dirty", KEY_F)
+	_key("use_dirty", KEY_G)
 	# How much the HUD shows: tap to step through full, slim and off; hold to put it all back.
 	# Keyboard only: a pad has no button to spare (the Settings menu has the same choice).
 	_key("hud_mode", KEY_H)
@@ -33,10 +34,10 @@ func _ready() -> void:
 	_mouse("weapon_prev", MOUSE_BUTTON_WHEEL_UP)
 	for i in 5:
 		_key("weapon_%d" % (i + 1), KEY_1 + i)
-	# The camera, playing alone: Z and C turn it, X puts it back (and the middle mouse
-	# button dragged, and the wheel to zoom: CameraDirector).
-	_key("cam_left", KEY_Z)
-	_key("cam_right", KEY_C)
+	# The camera, playing alone: Q and E turn it all the way round, X puts it back (and
+	# the middle mouse button dragged, and the wheel to zoom: CameraDirector).
+	_key("cam_left", KEY_Q)
+	_key("cam_right", KEY_E)
 	_key("cam_reset", KEY_X)
 	# Zoom by keys too, for a trackpad with no wheel.
 	_key("cam_zoom_in", KEY_EQUAL)

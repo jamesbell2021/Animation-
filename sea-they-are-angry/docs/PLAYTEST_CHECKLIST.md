@@ -7,7 +7,7 @@ Start from the title screen with **New Run**. One keeper is enough for most of i
 ## Before you start
 
 - [ ] **Settings** (title screen): set the volume, try full screen and a window, and pick the graphics. On a laptop, does Low (or a render scale of 77% or 85%) make it smooth? Does it still look like the game?
-- [ ] **Change a key**, for example Use from E to G. Do the prompts in the game now say [G]? Does putting Use on R swap it with the lamp's key?
+- [ ] **Change a key**, for example Use from F to T. Do the prompts in the game now say [T]? Does putting Use on R swap it with the lamp's key?
 - [ ] **A gamepad**, playing alone: does it work as keeper one straight away? Does the right stick aim, and does moving the mouse take aim back?
 
 ## The first three days
@@ -60,7 +60,7 @@ Everything here has passed the tests but not a person.
 
 - [ ] **The music.** Does the title's air, the day's piece, the night's, and the last night's reel fit what's happening? Too loud, too long, too repetitive? Does the sound level in Settings reach the music?
 - [ ] **The HUD.** The night card top left, the keepers' cards bottom left, the store top right, the weapon bar along the bottom. Can you read it all at a glance, in a storm and at night? Does anything get in the way of the play?
-- [ ] **The camera, playing alone:** hold the middle mouse button and drag, or Z and C, to turn it; the wheel or = and - to zoom; X to put it back. Does the turn feel right? Does it come in close enough, and not too close? Do W, A, S, D follow the camera however it's turned?
+- [ ] **The camera, playing alone:** Q and E (or the middle mouse button, dragged) turn it, all the way round; the wheel or = and - to zoom; X to put it back. Does the turn feel right? Does it come in close enough, and not too close? Do W, A, S, D follow the camera however it's turned?
 - [ ] **The weapon bar and 1 to 5.** Does the number take the weapon up? What does it say when you press the number for one you don't have yet?
 - [ ] **Walk into the cottage, the shed and the huts.** Does the roof lift only when you're clearly inside, and not flicker at the door? Is the room worth seeing? With two people playing, does the keeper's outline show through the roof?
 - [ ] **A jump (Space), and walking into a fence to climb it.** Can you get back up from the beach? Does the climb feel like a move, or like a glitch?

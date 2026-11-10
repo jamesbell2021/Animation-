@@ -5,7 +5,8 @@ const SpawnerScript := preload("res://scenes/systems/spawner.gd")
 const HudScript := preload("res://scenes/ui/hud.gd")
 const TitleScript := preload("res://scenes/ui/title.gd")
 const PauseScript := preload("res://scenes/ui/pause.gd")
-const TITLE_ORBIT_SPEED := 0.05
+## Turns of the island a second on the title: once round in eighty seconds.
+const TITLE_ORBIT_SPEED := 0.0125
 # Where each keeper appears when a run starts: the crag top, round the lighthouse door.
 const SPAWNS := [Vector3(-1.6, 0.0, 2.7), Vector3(-2.9, 0.0, 0.8), Vector3(0.4, 0.0, 3.2)]
 

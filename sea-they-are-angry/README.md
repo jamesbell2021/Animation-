@@ -52,15 +52,15 @@ Or Play on the LAN: one keeper to a machine, each on a screen of its own (host f
 | Aim | Mouse | Facing direction | Right stick |
 | Attack with what's in hand: swing, shoot, burn, throw (hold to draw the bow or keep the flamer going) | Left mouse | Ctrl | X or right trigger |
 | Change what's in hand: boathook, longbow, shotgun, flamer, petrol bombs | Tab or 1 to 5 (the wheel too, with two on one screen) | [ ] | D-pad left / right |
-| Use: gather, repair, refuel, climb a ladder, revive (hold) | E | M | A |
+| Use: gather, repair, refuel, climb a ladder, revive (hold) | F | M | A |
 | Work the lamp (walk in at the door) / leave it | R (within 3.8 m of the lighthouse) | / | Y |
-| Take a camp searchlight (up a tower) / let it go | E (R also lets go) | M | A |
-| Switch beam: wide slows, focused burns | Q | . | B |
+| Take a camp searchlight (up a tower) / let it go | F (R also lets go) | M | A |
+| Switch beam: wide slows, focused burns | B | . | B |
 | Fire a flare (lobbed to the cursor) | Right mouse | ; | Left trigger |
-| Pour dirty fuel (at the lighthouse) | F | ' | Left shoulder |
+| Pour dirty fuel (at the lighthouse) | G | ' | Left shoulder |
 | Sprint | Shift | , | Right shoulder |
 | Jump (up a bank or rock); walking on into a fence climbs over it | Space | Enter (numpad) | A, when there's nothing to use |
-| The camera, playing alone: turn / zoom / back to the usual view | Middle mouse drag or Z C / wheel or = - / X | | A stick pressed in / d-pad up and down |
+| The camera, playing alone: turn / zoom / back to the usual view | Q E or middle mouse drag (all the way round) / wheel or = - / X | | A stick pressed in / d-pad up and down |
 | Skip the rest of the day or dawn | Enter | | |
 | Pause | Esc | | Start |
 
@@ -77,7 +77,7 @@ Keepers face the way they walk and turn to their aim to swing. Each carries a pa
 - The island, after Bad North: a meadow ringed by cliffs, three beaches where the sea comes ashore, and the lighthouse on a crag in the middle. The only way up is a ledge path that winds round the crag. Day/dusk/night/dawn lighting with fog.
 - The holm to the east, over an 18 m rope bridge that sags, bounces under footsteps and swings in the wind (after Carrick-a-Rede). Its shore is ragged, with coves at its two beaches, stepped sandstone cliffs and a wave-cut shelf at their foot, skerries, a sea stack and boulders; turf knolls and bare outcrops on top. The camp is dressed as a Second World War internment camp left to the weather: corrugated-iron Nissen huts on concrete bases, felted tower roofs, a brick and concrete generator house, rust, sandbags, duckboards, a water tank, oil drums, a coal bunker, a washing line, a flag that flies in the wind and a No. 7 Camp sign. A camera that follows the keepers between the islands, and a split screen when people are apart.
 - Hunger and warmth: keepers get hungry, and cold outdoors at night (worse in rain and storms). Eat at the cottage or the camp's mess; warm up by the campfire, the cottage door or the quarters' stove (a driftwood lights it). The camp's three beds and greenhouse grow kale, cabbages, tomatoes and beans from seed; a storm can flatten the beds, never the greenhouse.
-- The camp's power: a diesel generator runs the four searchlights and the huts' lights from dusk to dawn, burning faster the more it runs; jerrycans of diesel wash up on the holm's beaches. Climb a tower's ladder and take its searchlight (E): aim it, Q for a focused beam that burns. Left alone, the lights sweep the ground outside the wire.
+- The camp's power: a diesel generator runs the four searchlights and the huts' lights from dusk to dawn, burning faster the more it runs; jerrycans of diesel wash up on the holm's beaches. Climb a tower's ladder and take its searchlight (F): aim it, B for a focused beam that burns. Left alone, the lights sweep the ground outside the wire.
 - Research at the camp: tins of the internees' papers turn up about the camp, a page of their 1940s diary at a time. At the desk in front of the mess, a page and some of the store work out a project overnight: searchlights that track on their own, silvered reflectors, a governor for the generator, cold frames, tinning, and three new defences for the cairns (barbed wire that slows and cuts, tripwire flares, sandbag walls that creatures must batter down). The holm has four defence posts of its own.
 - Raids on the camp: groups land on the holm's two beaches and tear through the wire (scrap mends it). They go for the generator, the quarters (their stove), the mess (meals and the research desk) and the greenhouse (its crop); wrecked, each stops working until mended with driftwood and scrap. With the generator and all three wrecked, the camp has fallen. The alarm bell (research) rings when they land and says where; without it, nobody on the main island hears them come.
 - The shed's workbench (`scenes/structures/shed.gd`, `scenes/player/arsenal.gd`):
@@ -107,7 +107,7 @@ Keepers face the way they walk and turn to their aim to swing. Each carries a pa
   - **The rowing boat:** a clinker-built yoal kept at the east beach's jetty. Press E at the jetty's foot and that keeper rows out, with anyone else who presses E in the next moment aboard too. It lands them at the rock's slip about 12 seconds later; E there rows back.
   - **When:** out by day only, and not when the sea's rough. Back at any time.
   - **The hauling line:** the boat runs on one, so from either end E hauls it across to you.
-- **Gull eggs:** six nests on the rock, fresh eggs each dawn. Take them (E) into the store, and the cottage boils 3 into a meal. The colony doesn't like it: they go up and mob you (no harm done).
+- **Gull eggs:** six nests on the rock, fresh eggs each dawn. Take them (F) into the store, and the cottage boils 3 into a meal. The colony doesn't like it: they go up and mob you (no harm done).
 - **The gulls:** herring gulls everywhere by day. A colony on Gull Rock, loafers on the beaches, and flocks wheeling over the islands, calling. They put up when a keeper walks close, fly off out to sea at dusk, stay away at night and in a storm, and come back at dawn.
 - **Chapter One's end** (`scenes/systems/rescue.gd`, `scenes/world/relief_boat.gd`): the HUD counts down the nights to the relief boat. The last night the sea sends more than ever. At that dawn the *Mary Ann* steams in to a beach (the message names it) and waits; everyone goes down to the shingle and aboard (E at her plank; helpers make their own way), and she takes them off. A card ends the chapter and points to Chapter Two, The Harbour: back to the title, or stay on the rock for endless nights. Mending the camp's wireless (research) calls her two nights sooner.
 - **The first days' jobs** (`scenes/systems/jobs.gd`): a list down the right of the screen on the first three days that teaches the rock as you go (gather, mend, eat, cross the bridge, fill the generator, take a weapon, sow, work the lamp), each ticked off when a person's keeper does it. Kept with the save.

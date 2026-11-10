@@ -219,8 +219,10 @@ static func describe(code: String) -> String:
 			var b: return "Mouse %d" % b
 	return "—"
 
-## The game's text names keeper one's default keys ("[E] Repair"). Put the keys this
-## keeper really uses in their place: changed keys, the arrow-key layout, or a pad's.
+## The game's text marks what to press with a token ("[E] Repair": [E] is Use, [R] the
+## lamp, [Q] the beam, [F] dirty fuel; the letters are the tokens' names, from the first
+## layout, not today's keys). Put the keys this keeper really uses in their place: the
+## defaults, changed keys, the arrow-key layout, or a pad's.
 const HINT_ACTIONS := {"[E]": "interact", "[R]": "operate", "[Q]": "beam_mode", "[F]": "use_dirty",
 	"[LMB]": "attack", "[RMB]": "flare", "[Tab]": "weapon_next"}
 const PAD_NAMES := {"interact": "A", "operate": "Y", "beam_mode": "B", "use_dirty": "LB", "attack": "X / RT", "flare": "LT", "weapon_next": "D-pad"}
@@ -232,6 +234,8 @@ func keys_in(text: String, keeper_idx: int = 0) -> String:
 	# On the LAN every machine's own keeper plays on its keyboard, mouse or pad.
 	var first := keeper_idx == 0 or Net.online()
 	var device: int = Players.KEYBOARD_MOUSE if first or keeper_idx >= Players.devices.size() else Players.devices[keeper_idx]
+	# In two passes, so a key's name is never taken for another token ([E] is on F now).
+	var names: Array[String] = []
 	for token in HINT_ACTIONS:
 		if text.find(token) == -1:
 			continue
@@ -243,7 +247,10 @@ func keys_in(text: String, keeper_idx: int = 0) -> String:
 			named = ARROW_NAMES[a]
 		else:
 			named = _short(key_name(a))
-		text = text.replace(token, "[%s]" % named)
+		text = text.replace(token, "\u0001%d\u0002" % names.size())
+		names.append(named)
+	for i in names.size():
+		text = text.replace("\u0001%d\u0002" % i, "[%s]" % names[i])
 	return text
 
 static func _short(n: String) -> String:
