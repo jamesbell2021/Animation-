@@ -237,13 +237,23 @@ func _sweep(delta: float, r: float, a: float) -> void:
 
 func interact_prompt() -> String:
 	if operator != null:
+		# A helper on it stands aside for a person (Player.give_way).
+		if _helper_on():
+			return "[E] Take over the searchlight from %s" % Players.NAMES[int(operator.get("idx")) % Players.NAMES.size()]
 		return ""
 	if not _on:
 		return "[E] Take the searchlight  (dark: it needs the generator, from dusk)"
 	return "[E] Take the searchlight"
 
+func _helper_on() -> bool:
+	return operator != null and is_instance_valid(operator) and bool(operator.get("ai")) and operator.has_method("give_way")
+
 func interact(player: Node) -> bool:
-	if operator != null or not player.has_method("man"):
+	if not player.has_method("man"):
 		return false
+	if operator != null:
+		if not (_helper_on() and not bool(player.get("ai"))):
+			return false
+		operator.give_way()
 	player.man(self)
 	return true

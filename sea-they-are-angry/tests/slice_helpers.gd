@@ -184,5 +184,46 @@ func _go() -> void:
 		await physics_frame
 	check(cooked and Stk.get_amount("seaweed") <= 5, "no food in the store: %s boils a kelp broth (+1 food, kelp %d)" % [h.keeper_name(), Stk.get_amount("seaweed")])
 
+	# A person wants what a helper is working: the helper stands aside.
+	var lamp: Lamp = main.lighthouse.lamp
+	if p.operating:
+		p._toggle_operate()
+	h.global_position = main.lighthouse.global_position + Vector3(0.0, 0.3, 3.0)
+	p.global_position = main.lighthouse.global_position + Vector3(1.0, 0.3, 3.0)
+	await _wait(5)
+	if not h.operating:
+		h._toggle_operate()
+	await _wait(5)
+	check(h.operating and lamp.operator == h, "the helper is on the lamp")
+	p._toggle_operate()
+	await _wait(5)
+	check(p.operating and lamp.operator == p and not h.operating, "the person goes to the lamp: the helper hands it over and comes out")
+	p._toggle_operate()
+	await _wait(30)
+	var sl: Searchlight = null
+	for n in get_nodes_in_group("searchlights"):
+		sl = n
+	if sl == null:
+		for n in main.find_children("*", "Node3D", true, false):
+			if n is Searchlight:
+				sl = n
+				break
+	if sl != null:
+		if sl.operator != null:
+			sl.operator.give_way()
+		h.man(sl)
+		check(sl.operator == h and sl.interact_prompt().begins_with("[E] Take over the searchlight from"), "a helper on a searchlight: the prompt offers to take it over")
+		check(sl.interact(p) and sl.operator == p and h.manning == null and p.manning == sl, "the person takes the searchlight; the helper lets go")
+		p.leave_light()
+	else:
+		check(false, "found a searchlight to test")
+	Run.arms[h.idx].append("shotgun")
+	for i in Run.arms.size():
+		if i != h.idx:
+			Run.arms[i].erase("shotgun")
+	h.arsenal.select("shotgun")
+	check(p.arsenal.take_from_helper("shotgun") and p.arsenal.carries("shotgun") and not h.arsenal.carries("shotgun") and h.arsenal.weapon != "shotgun", "the person asks for the shotgun a helper has: it changes hands")
+	check(not h.arsenal.take_from_helper("shotgun"), "a helper never takes it back from a person that way")
+
 	print("\n%s" % ("ALL PASS" if fails == 0 else "%d FAILED" % fails))
 	quit(1 if fails > 0 else 0)

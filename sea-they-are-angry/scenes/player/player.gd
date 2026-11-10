@@ -1009,7 +1009,7 @@ func _switch_weapon() -> void:
 			var a := "weapon_%d" % (i + 1)
 			if (remote and _just(a)) or (not remote and InputMap.has_action(a) and Input.is_action_just_pressed(a)):
 				var w: String = Arsenal.ORDER[i]
-				if not arsenal.available(w) and not remote:
+				if not arsenal.available(w) and not remote and not arsenal.take_from_helper(w):
 					Events.message.emit(arsenal.why_not(w))
 				arsenal.select(w)
 
@@ -1163,8 +1163,15 @@ func _toggle_operate() -> void:
 		Events.message.emit("Get closer to the lighthouse to operate the lamp.")
 		return
 	if lamp.operator != null and lamp.operator != self and is_instance_valid(lamp.operator):
-		Events.message.emit("Someone is already on the lamp.")
-		return
+		# A helper stands aside for a person; another person keeps it.
+		if not ai and lamp.operator is Player and (lamp.operator as Player).ai:
+			var helper := lamp.operator as Player
+			helper.give_way()
+			Events.message.emit("%s hands you the lamp." % Players.NAMES[helper.idx % Players.NAMES.size()])
+		else:
+			if not ai:
+				Events.message.emit("Someone is already on the lamp.")
+			return
 	operating = true
 	lamp.set_operator(self)
 	_go_in()
@@ -1185,6 +1192,23 @@ func man(light: Searchlight) -> void:
 	light.set_operator(self)
 	velocity = Vector3.ZERO
 	Events.message.emit("On the searchlight.  Aim it, [Q] beam, [E] or [R] leave")
+
+## A helper stands aside for a person who wants what it is working: off the lamp (and
+## out of the door) or off a searchlight.
+func give_way() -> void:
+	if manning != null:
+		leave_light()
+	if operating:
+		_stop_operating()
+		if _inside or _walking_in:
+			_come_out()
+
+## The keeper with this slot, if they are in the game.
+func keeper_at(slot: int) -> Player:
+	for k in get_tree().get_nodes_in_group("player"):
+		if k is Player and (k as Player).idx == slot:
+			return k
+	return null
 
 func leave_light() -> void:
 	if manning != null and is_instance_valid(manning) and manning.operator == self:

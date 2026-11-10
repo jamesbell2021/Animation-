@@ -93,6 +93,23 @@ static func holder(w: String) -> int:
 			return i
 	return -1
 
+## The shotgun or the flamer from a helper who has it, for a person who asked for it by
+## its number. True if it changed hands.
+func take_from_helper(w: String) -> bool:
+	if keeper == null or keeper.ai or not (w in ["shotgun", "flamer"]):
+		return false
+	var h := holder(w)
+	if h < 0 or h == keeper.idx:
+		return false
+	var other := keeper.keeper_at(h)
+	if other == null or not other.ai or other.arsenal == null:
+		return false
+	other.arsenal.take_away(w)
+	if not carries(w):
+		Run.arms[keeper.idx].append(w)
+	Events.message.emit("%s hands you the %s." % [Players.NAMES[h % Players.NAMES.size()], w])
+	return true
+
 func give(w: String) -> void:
 	if not carries(w):
 		Run.arms[keeper.idx].append(w)
