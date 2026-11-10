@@ -929,3 +929,9 @@ The owner, having seen v1.0.0: the screen is crowded; is the story backwards, sh
 - **Recordings may stand in for made sounds:** `res://audio/<key>.ogg` replaces the
   synthesised sound of that key. Only CC0 or public-domain recordings, each listed in
   `docs/SOUND_CREDITS.md`.
+- **Twenty recordings went in** (the sea, wind, rain, gulls, bells, horns, shotgun,
+  hammer, glass, splash, step, knock, generator), each levelled against the made sound
+  it replaces. The fair-weather sea and wind are set at -14 and -19 dB for them. The
+  thunder recording was prepared and left out: marked public domain, but uploaded "in
+  the name of" its recordist by someone else. Creatures, the kraken and fire stay made
+  in code: nothing suitable was found under CC0 or the public domain.

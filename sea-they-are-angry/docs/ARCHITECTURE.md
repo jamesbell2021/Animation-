@@ -88,8 +88,10 @@ One 45-degree camera framing a whole island from the south (offset 38 up, 26 bac
 | `harbour/street_lamp.gd` | `StreetLamp` (a `Structure`): switched in, lit by the generator, a fog hole, lamplight on creatures |
 | `harbour/kirk.gd`, `kirk_keep.gd` | the kirk's model (`Kirk`) and its play (`KirkKeep`): knock, the doors, the bell |
 | `harbour/town_house.gd`, `harbour_props.gd` | the town's buildings and furniture, built in code |
+| `harbour/paving.gd` | `Paving`: the town's setts, flags, kerbs, pier blocks, wear, puddles, drains, rings, steps and weeds, laid over the terrain. Looks only: no collisions, and `HarbourMap` still decides heights and paths |
 | `people/villagers.gd` | `Villagers`: the roster of the seven, what each brings, who lives (`Run.villagers`, `Run.lost`) |
 | `people/villager.gd` | `Villager`: one of them on their feet; in the group "prey" when out of doors in the dark (`Enemy.nearest_prey`) |
+| `people/outfits.gd` | `Outfits`: dresses a villager's borrowed keeper model as their own (the texture repainted by part, parts cut away, a skirt and props hung on the bones). `LOOKS` by villager id; the keepers' materials are not touched |
 | `systems/story_rock.gd` | `StoryRock`: Act Two's story. Survivors in the camp, dawn gifts, the diary, raising the kraken, its death, the clear sky, the last pages |
 | `enemies/kraken.gd` | `Kraken`: the fight's rules (phases, slams, blinding, hurt, death) |
 | `enemies/kraken_body.gd` | `KrakenBody`: the creature (head, eyes, eight arms as tubes rebuilt each frame, like the Eel) |

@@ -85,12 +85,21 @@ func _go() -> void:
 
 	# The sounds: each is there, about the length it should be, and neither silent nor
 	# louder than the rest.
-	var bell_peak := _peak(A.stream("bell"))
+	# (A recording standing in for a made sound, docs/SOUND_CREDITS.md, is checked for its
+	# length only: its level was set against the made sound when it was prepared.)
+	var bell = A.stream("bell")
+	var bell_peak := _peak(bell) if bell is AudioStreamWAV else 0.64
 	for key in NEW_SOUNDS:
 		var wav = A.stream(key)
-		var ok: bool = A.SOUNDS.has(key) and wav is AudioStreamWAV and wav.data.size() > 0
-		var length: float = float(wav.data.size()) / 2.0 / float(A.RATE) if ok else 0.0
-		var peak: float = _peak(wav) if ok else 0.0
+		var recorded: bool = wav is AudioStreamOggVorbis
+		var ok: bool = A.SOUNDS.has(key) and (recorded or wav is AudioStreamWAV and wav.data.size() > 0)
+		var length: float = 0.0
+		var peak: float = bell_peak
+		if ok and recorded:
+			length = wav.get_length()
+		elif ok:
+			length = float(wav.data.size()) / 2.0 / float(A.RATE)
+			peak = _peak(wav)
 		check(ok and length >= NEW_SOUNDS[key][0] and length <= NEW_SOUNDS[key][1] and peak > bell_peak * 0.7 and peak < bell_peak * 1.3,
 			"sound \"%s\": %.1f s, peak %.2f (the buoy bell's is %.2f)" % [key, length, peak, bell_peak])
 

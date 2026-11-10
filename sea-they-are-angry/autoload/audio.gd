@@ -9,7 +9,7 @@ extends Node
 const RATE := 16000
 const CACHE_DIR := "user://audio_cache_v5"
 const POOL_3D := 14
-const POOL_2D := 6
+const POOL_2D := 8
 
 var _streams := {}
 var _pool3d: Array[AudioStreamPlayer3D] = []
@@ -200,9 +200,9 @@ func loop(key: String, on: bool, volume_db: float = -10.0, fade: float = 2.0) ->
 		tw.tween_callback(p.stop)
 
 ## The sea and the wind in fair weather: a bed under the score, not over it.
-const WAVES := -17.0
-const WIND_CALM := -21.0
-const WIND_STORM := -8.0
+const WAVES := -14.0
+const WIND_CALM := -19.0
+const WIND_STORM := -6.0
 
 func start_ambience() -> void:
 	loop("wind", true, WIND_CALM, 3.0)

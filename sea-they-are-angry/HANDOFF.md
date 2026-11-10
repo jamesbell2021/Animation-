@@ -1,6 +1,6 @@
 # Handoff: Sea They Are Angry
 
-**v1.1.0 (the story turned round: Kirkhaven, the rock, the kraken) is the current build** (`docs/RELEASE_NOTES_v1.1.0.md`; earlier notes are v1.0.0, v0.1.4 and v0.1.0). The cloud session can't push tags: make `sea-v1.1.0`, or a release, on GitHub's Releases page. Read this first, then `docs/STORY.md` (the story, which everything written for players must agree with), `docs/DESIGN.md` (the rock), `docs/KIRKHAVEN.md` (the town), `docs/DECISIONS.md` (why, newest last) and `git log`. Brought up to date 2026-11-10.
+**v1.1.1 (v1.1.0, the story turned round, with its sound and looks put right) is the current build** (`docs/RELEASE_NOTES_v1.1.1.md`; earlier notes are v1.1.0, v1.0.0, v0.1.4 and v0.1.0). The cloud session can't push tags: make `sea-v1.1.1`, or a release, on GitHub's Releases page. Read this first, then `docs/STORY.md` (the story, which everything written for players must agree with), `docs/DESIGN.md` (the rock), `docs/KIRKHAVEN.md` (the town), `docs/DECISIONS.md` (why, newest last) and `git log`. Brought up to date 2026-11-10.
 
 ## Where things stand
 

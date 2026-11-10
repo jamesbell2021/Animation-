@@ -1,6 +1,6 @@
 # itch.io page: draft copy
 
-For when there's a page to put it on. Facts are as of v1.1.0 (see `docs/DESIGN.md` and `docs/KIRKHAVEN.md`); change a line here when the game changes.
+For when there's a page to put it on. Facts are as of v1.1.1 (see `docs/DESIGN.md` and `docs/KIRKHAVEN.md`); change a line here when the game changes.
 
 ## Title
 

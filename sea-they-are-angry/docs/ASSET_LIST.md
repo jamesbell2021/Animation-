@@ -71,19 +71,46 @@ Made offline by `art/source/music/build_music.py` (numpy synthesis, ffmpeg to Og
 | `audio/music_harbour_day.ogg` | 602 KB |
 | `audio/music_harbour_night.ogg` | 640 KB |
 | `audio/music_night.ogg` | 789 KB |
-| `audio/music_title.ogg` | 903 KB |
+| `audio/music_title.ogg` | 879 KB |
+
+## Recorded sounds
+
+CC0 or public-domain recordings that stand in for the made sound of the same key. Where each came from, and its licence, is in `docs/SOUND_CREDITS.md`.
+
+| File | Size |
+|---|---|
+| `audio/bell.ogg` | 25 KB |
+| `audio/boat_horn.ogg` | 11 KB |
+| `audio/camp_bell.ogg` | 32 KB |
+| `audio/foghorn.ogg` | 31 KB |
+| `audio/foghorn_short.ogg` | 14 KB |
+| `audio/generator.ogg` | 94 KB |
+| `audio/glass.ogg` | 12 KB |
+| `audio/gull_alarm.ogg` | 19 KB |
+| `audio/gull_call.ogg` | 13 KB |
+| `audio/gull_laugh.ogg` | 28 KB |
+| `audio/hammer.ogg` | 7 KB |
+| `audio/kirk_bell.ogg` | 23 KB |
+| `audio/knock.ogg` | 14 KB |
+| `audio/rain.ogg` | 204 KB |
+| `audio/shotgun.ogg` | 18 KB |
+| `audio/splash.ogg` | 19 KB |
+| `audio/step.ogg` | 8 KB |
+| `audio/wave_crash.ogg` | 44 KB |
+| `audio/waves.ogg` | 207 KB |
+| `audio/wind.ogg` | 169 KB |
 
 ## Sound effects
 
-Synthesised in code (`autoload/audio.gd`, cached in `user://`). To replace one, drop a recording at `res://audio/<key>.ogg`.
+Synthesised in code (`autoload/audio.gd`, cached in `user://`), unless a recording at `res://audio/<key>.ogg` stands in (add its row to `docs/SOUND_CREDITS.md` first).
 
 | Key | Loops |
 |---|---|
-| `step` | no |
+| `step` | no (recording present) |
 | `swing` | no |
 | `hit` | no |
 | `burst` | no |
-| `splash` | no |
+| `splash` | no (recording present) |
 | `groan` | no |
 | `sizzle` | no |
 | `crackle` | no |
@@ -95,17 +122,17 @@ Synthesised in code (`autoload/audio.gd`, cached in `user://`). To replace one, 
 | `ignite` | no |
 | `gutter` | no |
 | `dark` | no |
-| `foghorn` | no |
-| `foghorn_short` | no |
+| `foghorn` | no (recording present) |
+| `foghorn_short` | no (recording present) |
 | `night_sting` | no |
 | `hurt` | no |
 | `ui_move` | no |
 | `ui_accept` | no |
-| `bell` | no |
+| `bell` | no (recording present) |
 | `creak` | no |
 | `whisper` | no |
 | `thunder` | no |
-| `hammer` | no |
+| `hammer` | no (recording present) |
 | `squid_click` | no |
 | `squid_squeal` | no |
 | `squid_ink` | no |
@@ -116,32 +143,32 @@ Synthesised in code (`autoload/audio.gd`, cached in `user://`). To replace one, 
 | `eel_surge` | no |
 | `eel_coil` | no |
 | `eel_hiss` | no |
-| `wind` | yes |
-| `waves` | yes |
+| `wind` | yes (recording present) |
+| `waves` | yes (recording present) |
 | `drone` | yes |
-| `rain` | yes |
+| `rain` | yes (recording present) |
 | `gust` | no |
-| `wave_crash` | no |
+| `wave_crash` | no (recording present) |
 | `flare_shot` | no |
 | `trap_snap` | no |
-| `generator` | yes |
+| `generator` | yes (recording present) |
 | `searchlight` | no |
-| `camp_bell` | no |
-| `shotgun` | no |
+| `camp_bell` | no (recording present) |
+| `shotgun` | no (recording present) |
 | `bow` | no |
 | `arrow_hit` | no |
 | `flamer` | yes |
-| `glass` | no |
-| `gull_call` | no |
-| `gull_laugh` | no |
-| `gull_alarm` | no |
+| `glass` | no (recording present) |
+| `gull_call` | no (recording present) |
+| `gull_laugh` | no (recording present) |
+| `gull_alarm` | no (recording present) |
 | `oar` | no |
 | `turbine` | yes |
-| `knock` | no |
+| `knock` | no (recording present) |
 | `radio` | no |
 | `radio_voice` | no |
 | `fog_roll` | no |
-| `kirk_bell` | no |
+| `kirk_bell` | no (recording present) |
 | `lamp_on` | no |
 | `lamp_off` | no |
 | `door_rattle` | no |
@@ -154,7 +181,7 @@ Synthesised in code (`autoload/audio.gd`, cached in `user://`). To replace one, 
 | `kraken_die` | no |
 | `page_turn` | no |
 | `pencil` | no |
-| `boat_horn` | no |
+| `boat_horn` | no (recording present) |
 | `scream` | no |
 
-77 sound effects, 12 models, 30 textures, 10 pieces of music.
+77 sound effects (20 of them recordings), 12 models, 30 textures, 10 pieces of music.

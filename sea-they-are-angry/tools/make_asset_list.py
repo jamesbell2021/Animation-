@@ -66,12 +66,20 @@ out.append("Made offline by `art/source/music/build_music.py` (numpy synthesis, 
 out.append("| File | Size |\n|---|---|")
 adir = os.path.join(ROOT, "audio")
 for fn in sorted(os.listdir(adir)):
-    if fn.endswith(".ogg"):
+    if fn.endswith(".ogg") and fn.startswith("music_"):
+        out.append("| `audio/%s` | %s |" % (fn, size(os.path.join(adir, fn))))
+out.append("")
+
+out.append("## Recorded sounds\n")
+out.append("CC0 or public-domain recordings that stand in for the made sound of the same key. Where each came from, and its licence, is in `docs/SOUND_CREDITS.md`.\n")
+out.append("| File | Size |\n|---|---|")
+for fn in sorted(os.listdir(adir)):
+    if fn.endswith(".ogg") and not fn.startswith("music_"):
         out.append("| `audio/%s` | %s |" % (fn, size(os.path.join(adir, fn))))
 out.append("")
 
 out.append("## Sound effects\n")
-out.append("Synthesised in code (`autoload/audio.gd`, cached in `user://`). To replace one, drop a recording at `res://audio/<key>.ogg`.\n")
+out.append("Synthesised in code (`autoload/audio.gd`, cached in `user://`), unless a recording at `res://audio/<key>.ogg` stands in (add its row to `docs/SOUND_CREDITS.md` first).\n")
 src = open(os.path.join(ROOT, "autoload/audio.gd")).read()
 m = re.search(r"const SOUNDS := \{(.*?)\n\}", src, re.S)
 keys = re.findall(r'"([a-z0-9_]+)":\s*\["(_s_[a-z0-9_]+)",\s*(true|false)\]', m.group(1)) if m else []
@@ -80,11 +88,12 @@ for k, _fn, loops in keys:
     over = os.path.exists(os.path.join(adir, k + ".ogg"))
     out.append("| `%s` | %s%s |" % (k, "yes" if loops == "true" else "no", " (recording present)" if over else ""))
 out.append("")
-out.append("%d sound effects, %d models, %d textures, %d pieces of music." % (
+out.append("%d sound effects (%d of them recordings), %d models, %d textures, %d pieces of music." % (
     len(keys),
+    sum(1 for f in os.listdir(adir) if f.endswith(".ogg") and not f.startswith("music_")),
     sum(1 for d in ("art/characters","art/props","art/environment") for f in os.listdir(os.path.join(ROOT, d)) if f.endswith(".glb")),
     sum(1 for f in os.listdir(tdir) if f.endswith(".png")),
-    sum(1 for f in os.listdir(adir) if f.endswith(".ogg")),
+    sum(1 for f in os.listdir(adir) if f.endswith(".ogg") and f.startswith("music_")),
 ))
 open(os.path.join(ROOT, "docs/ASSET_LIST.md"), "w").write("\n".join(out) + "\n")
 print("wrote docs/ASSET_LIST.md")

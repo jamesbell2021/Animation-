@@ -133,3 +133,14 @@ Chapter Two (from the title: "Chapter Two: The Harbour"):
 - [ ] **How long:** too long, too short? Did you run out of everything?
 - [ ] **The ending:** the fog going, the sky clearing, the last pages. Does it land?
 - [ ] **The HUD:** H for Full, Slim, Off. Which do you settle on? Is anything you needed missing in Slim? With the game paused, click a panel's heading to fold it.
+
+## Added in v1.1.1: heard and seen
+
+- [ ] **The music.** Can you hear it now: on the title, by day, at night? Is it too loud against the sea, or still too quiet? Does the title theme sound like the right film?
+- [ ] **The sounds.** Which still sound made-up or wrong? Name them (the sea, the wind, the gulls, the bell, a creature) and they can be replaced one at a time.
+- [ ] **Q and E** turn the camera, playing alone. Does it turn the right way for each key? Fast enough? Did the line on screen tell you in time?
+- [ ] **Use on F, the beam on B, dirty fuel on G.** Do your hands find them, or would you rather have Use back on E and the camera somewhere else? (Settings changes any of them.)
+- [ ] **The title.** Is the island's turn slow enough now?
+- [ ] **The seven.** Can you tell who is who at the game's usual distance, without reading the names?
+- [ ] **The town's ground.** Does the paving look right from above, and close in? Is anything too busy, or shimmering as the camera moves?
+
