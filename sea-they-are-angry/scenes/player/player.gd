@@ -529,8 +529,20 @@ func _air_pose(force: bool = false) -> void:
 
 ## A person's keeper shows as an outline in their colour through whatever hides them (the
 ## lighthouse, a tower, a hut's roof). Alone, inside a building, the roof is cut away instead.
+## It is on only while something really stands between a camera and the keeper (a ray to
+## their chest or head is blocked, or they are under a roof): the shader alone cannot tell
+## a wall from the keeper's own body, and from the high camera it lit their boot tops,
+## belt and shoulders in their colour (Callum's is gold) out in the open.
 var _outline_mat: ShaderMaterial
 var _outlined := false
+const OUTLINE_CHECK := 0.1
+const OUTLINE_LINGER := 0.3
+## What can hide a keeper: the ground and the world's buildings (layer 1) and the town's
+## solid props (HarbourProps.SOLID_LAYER). Keepers, creatures and ragdolls are not walls.
+const HIDE_MASK := 1 | 4
+var _outline_t := 0.0
+var _seen_for := 0.0
+var _blocked := false
 
 ## Inside a building's room: weapons put by, no room to swing.
 var indoors := false
@@ -540,6 +552,20 @@ func _process(delta: float) -> void:
 	# A person's keeper shows through whatever hides them. Alone, the room's roof lifts
 	# instead while they're inside it (Interior), so no outline there.
 	var want := Run.active and not ai and visible and not (Interior.cutaway_mode() and indoors)
+	if want:
+		_outline_t -= delta
+		if _outline_t <= 0.0:
+			_outline_t = OUTLINE_CHECK
+			if indoors or _hidden_from_view():
+				_blocked = true
+				_seen_for = 0.0
+			else:
+				_seen_for += OUTLINE_CHECK
+				if _seen_for >= OUTLINE_LINGER:
+					_blocked = false
+		want = _blocked
+	else:
+		_blocked = false
 	if want != _outlined:
 		set_outline(want)
 	_indoors_t -= delta
@@ -552,6 +578,24 @@ func _process(delta: float) -> void:
 				if indoors:
 					arsenal.cease()
 				arsenal.refresh()
+
+## Is something between a camera that shows this keeper and their chest or head?
+func _hidden_from_view() -> bool:
+	if not is_inside_tree():
+		return false
+	var space := get_world_3d().direct_space_state
+	var cams: Array = Feel._cams.duplicate()
+	if cams.is_empty() and get_viewport().get_camera_3d() != null:
+		cams.append(get_viewport().get_camera_3d())
+	for cam in cams:
+		if not is_instance_valid(cam) or not (cam as Camera3D).is_inside_tree():
+			continue
+		var from := (cam as Camera3D).global_position
+		for h: float in [1.0, 1.5]:
+			var q := PhysicsRayQueryParameters3D.create(from, global_position + Vector3(0.0, h, 0.0), HIDE_MASK, [get_rid()])
+			if not space.intersect_ray(q).is_empty():
+				return true
+	return false
 
 func set_outline(on: bool) -> void:
 	_outlined = on

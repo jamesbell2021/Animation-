@@ -153,7 +153,16 @@ func _go() -> void:
 	check(not p.outlined(), "playing alone, inside a room: the roof is cut away, no outline")
 	p.global_position = Terrain.at_angle(60.0, 9.0) + Vector3(0.0, 0.3, 0.0)
 	await _wait(30)
-	check(p.outlined(), "alone out of doors: the outline is on (it only draws where something hides the keeper)")
+	check(not p.outlined(), "alone out in the open: no outline (nothing hides the keeper)")
+	var lh: Node3D = main.lighthouse
+	var cam: Camera3D = main.director.main_camera
+	var away := Vector3(lh.global_position.x - cam.global_position.x, 0.0, lh.global_position.z - cam.global_position.z).normalized()
+	p.global_position = Vector3(lh.global_position.x, 0.0, lh.global_position.z) + away * 2.6
+	p.global_position.y = Terrain.height_at(p.global_position.x, p.global_position.z) + 0.3
+	main.director.process_mode = Node.PROCESS_MODE_DISABLED
+	await _wait(20)
+	check(p.outlined(), "behind the lighthouse from the camera: the outline is on")
+	main.director.process_mode = Node.PROCESS_MODE_INHERIT
 	p.global_position = hut.to_global(Vector3(-1.0, 0.0, 0.0)) + Vector3(0.0, 0.3, 0.0)
 	await _wait(60)
 	var d: CameraDirector = main.director
