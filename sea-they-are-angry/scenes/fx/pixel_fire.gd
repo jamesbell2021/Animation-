@@ -1,8 +1,10 @@
 class_name PixelFire
 extends RefCounted
-## The game's fire, drawn in coarse pixels with a stepped palette (shaders/pixel_fire.gdshader):
-## the flamer's roaring jet and the billows it throws off, creatures burning, and the
-## pools of burning bio a petrol bomb leaves.
+## The game's fire (shaders/fire.gdshader): soft, turbulent flames that glow, coloured by
+## heat from a yellow-white core to deep red tips, for the flamer's roaring jet and the
+## billows it throws off, creatures burning, and the pools of burning bio a petrol bomb
+## leaves. It was pixel fire once (hence the name, kept so callers needn't change); the
+## `pixels` argument of material() is still taken but no longer does anything.
 
 static var _mats := {}
 static var _quad: QuadMesh
@@ -12,7 +14,7 @@ static func material(mode: int, pixels: Vector2 = Vector2(14.0, 22.0)) -> Shader
 	if _mats.has(key):
 		return _mats[key]
 	var m := ShaderMaterial.new()
-	m.shader = load("res://shaders/pixel_fire.gdshader")
+	m.shader = load("res://shaders/fire.gdshader")
 	m.set_shader_parameter("mode", mode)
 	m.set_shader_parameter("pixels", pixels)
 	_mats[key] = m
@@ -41,7 +43,7 @@ static func jet(parent: Node) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
 	mi.mesh = _quad_mesh()
 	var m := material(1, Vector2(12.0, 30.0)).duplicate() as ShaderMaterial
-	m.set_shader_parameter("speed", 3.0)
+	m.set_shader_parameter("speed", 1.0)
 	mi.material_override = m
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	mi.top_level = true

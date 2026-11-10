@@ -935,3 +935,35 @@ The owner, having seen v1.0.0: the screen is crowded; is the story backwards, sh
   thunder recording was prepared and left out: marked public domain, but uploaded "in
   the name of" its recordist by someone else. Creatures, the kraken and fire stay made
   in code: nothing suitable was found under CC0 or the public domain.
+
+## 2026-11-10: fire that matches the new graphics (pixel fire replaced)
+
+- **The owner's request (2026-11-10):** "fire doesn't match new graphics". With the
+  textured streets and houses and real lighting, the blocky orange-white pixel flames
+  (see "Pixel fire" above) looked flat, too white and out of place. All the game's fire
+  is now smooth fire: the flamer's jet and its billows, burning creatures, and the
+  petrol bombs' pools.
+- **How it's drawn** (`shaders/fire.gdshader`, replacing `pixel_fire.gdshader`; the
+  `PixelFire` helper keeps its name and calls, so nothing else changed):
+  - **Shape:** layered value noise rising through each flame warps it sideways into
+    licking tongues and eats it away towards the tip, so the flame has a wide, hot foot
+    and breaks into flickering tongues above. No two flames match (each has a seed).
+  - **Colour by heat:** yellow-white only at the core and base, then yellow, orange and
+    deep red at the tips, the cooler parts dimmer, with a thin dark smoke where the
+    tongues break up. The billows burn down to smoke as they go.
+  - **Glow without a white blob:** unshaded and nearly additive (it adds light, and
+    covers what's behind it only a little), so overlapping flames don't pile up into
+    white. The hottest parts go a little over 1.0, enough for the glow to bloom them.
+    It's blended so the fog dims it with distance like everything else, and no fogged
+    rectangle shows round a flame.
+  - **No hard edges:** every edge of the quad fades out, and a standing flame fades where
+    it meets the ground (proximity fade, from the depth buffer), so there is no line on
+    the paving.
+  - **Facing:** standing flames turn about the vertical to face the camera and lean back
+    by half the camera's pitch, so from the high game camera they aren't squashed short
+    but still stand upright on screen. They are drawn a little towards the camera, so a
+    burning creature's flames lick up its front and aren't hidden in its body. The jet
+    keeps lying along the stream.
+- **Cost:** the same quads and particles as before (no new draw calls, particles or
+  lights; a pool still has its one small flickering light): a little more noise maths
+  per pixel, and one depth read.

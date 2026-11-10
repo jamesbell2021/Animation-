@@ -41,9 +41,9 @@ Most classes have a `class_name`; `main.gd` and the UI screens other than `Choic
 
 **`scenes/ui/`**: `hud.gd` (+ `ThreatMarkers`, `WeaponBar`), `title.gd`, `pause.gd`, `settings_menu.gd`, `how_to_play.gd`, `ChoiceMenu` (cottage, shed and trap menus), `lan_lobby.gd`, `chapter_end.gd`, `debug_overlay.gd` (debug builds only).
 
-**`scenes/util/` and `scenes/fx/`**: `Geo` (box/cylinder/shape helpers), `Look` (materials, textured surfaces), `Props`, `Fonts`, `CharacterRig` (loads a GLB, plays baked clips through an AnimationTree, layers code poses, ragdoll and get-up), `Nav` (creatures' waypoint graph, main island and holm kept separate), `KeeperNav` (the same plus ladders and the bridge), `Pendulum`, `FX` (code-built particles), `PixelFire` (the stepped-palette fire shader sprites).
+**`scenes/util/` and `scenes/fx/`**: `Geo` (box/cylinder/shape helpers), `Look` (materials, textured surfaces), `Props`, `Fonts`, `CharacterRig` (loads a GLB, plays baked clips through an AnimationTree, layers code poses, ragdoll and get-up), `Nav` (creatures' waypoint graph, main island and holm kept separate), `KeeperNav` (the same plus ladders and the bridge), `Pendulum`, `FX` (code-built particles), `PixelFire` (the fire: soft, glowing flame sprites, the flamer's jet and its billows, drawn by `shaders/fire.gdshader`; named for the pixel fire it replaced).
 
-Shaders: `shaders/` has `sea`, `terrain`, `grass`, `beam`, `mist_sheet`, `keeper_outline`, `pixel_fire`, `split_screen`. The global shader parameter `storm` (project.godot) is driven by `Weather`.
+Shaders: `shaders/` has `sea`, `terrain`, `grass`, `beam`, `mist_sheet`, `keeper_outline`, `fire`, `split_screen`. The global shader parameter `storm` (project.godot) is driven by `Weather`.
 
 Groups the code relies on: `player`, `enemies`, `structures`, `interactable`, `trap_slots`, `salvage`, `searchlights`, `smotherers`, `eel`, `camp_root`, `camp_wire`, `barricades`, `heat`, `harpoons`, `gull_nests`, `relief_boat`, `rowing_boat`.
 
