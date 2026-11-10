@@ -18,8 +18,10 @@ extends SceneTree
 ##   {"id": "kraken_1", "scene": "rock", "phase": NIGHT, "from": Vector3(20.0, 6.0, 40.0),
 ##    "at": Vector3(48.0, 8.0, 3.0), "fov": 46.0, "stage": "_kraken_1"},
 ##   func _kraken_1(main: Node) -> void:    # pose it; keep what you add in _props
-## A method called <stage>_late, if there is one, runs after the scene has settled and
-## been frozen, just before the shot. Stage methods should ask before they touch
+## A method called <stage>_each(main, frame), if there is one, runs every frame while the
+## scene settles (for what has to be held, like the lamp's aim, or done part-way, like
+## an arm raised once the kraken is up); <stage>_late runs after it has settled and been
+## frozen, just before the shot. Stage methods should ask before they touch
 ## (has_method, get): the scenes are still being built. Then make just that still
 ## ("-- kraken_1") and name it in scenes/ui/story_text.gd.
 ##
@@ -43,8 +45,9 @@ const SETTLE := 6
 
 ## The stills. id · scene ("harbour" or "rock") · phase · from, at, fov: the camera ·
 ## stage: a method here that poses the scene (optional) · wait: frames to settle
-## (optional) · key: how light (optional) · lines, hatch, reach: the sketch's weights
-## (optional; see the shader).
+## (optional) · key: how light (optional) · even: how far the tones are evened out
+## (optional; less for a frame that is mostly black sky, or its greys all go pale) ·
+## lines, hatch, reach: the sketch's weights (optional; see the shader).
 const STILLS := [
 	{"id": "intro_1", "scene": "harbour", "phase": DUSK, "from": Vector3(-12.0, 2.6, 45.0), "at": Vector3(0.5, 6.0, 18.0), "fov": 40.0, "stage": "_intro_1"},
 	{"id": "intro_2", "scene": "harbour", "phase": DAY, "from": Vector3(-0.8, 1.6, 4.0), "at": Vector3(4.2, 3.0, -1.5), "fov": 60.0, "stage": "_intro_2"},
@@ -56,10 +59,10 @@ const STILLS := [
 	{"id": "crossing_2", "scene": "harbour", "phase": NIGHT, "from": Vector3(15.5, 3.8, 28.5), "at": Vector3(5.2, 2.0, 21.0), "fov": 46.0, "stage": "_crossing_2"},
 	{"id": "crossing_3", "scene": "rock", "phase": DAWN, "from": Vector3(-53.0, 2.6, 61.5), "at": Vector3(-22.0, 9.5, 30.0), "fov": 50.0, "stage": "_crossing_3"},
 	{"id": "crossing_4", "scene": "rock", "phase": DAY, "from": Vector3(-26.0, 5.0, 40.0), "at": Vector3(3.0, 7.5, 0.0), "fov": 42.0},
-	{"id": "diary_1", "scene": "rock", "phase": DAY, "from": Vector3(27.0, 9.5, 22.0), "at": Vector3(48.0, 2.0, 2.0), "fov": 46.0, "stage": "_diary_1"},
-	{"id": "diary_2", "scene": "rock", "phase": NIGHT, "from": Vector3(9.5, 12.0, 13.5), "at": Vector3(-1.8, 15.6, 0.0), "fov": 42.0, "stage": "_diary_2", "key": 0.33},
+	{"id": "diary_1", "scene": "rock", "phase": DUSK, "from": Vector3(39.0, 7.5, 13.5), "at": Vector3(64.0, 5.0, 3.5), "fov": 58.0, "stage": "_diary_1", "wait": 30, "key": 0.46},
+	{"id": "diary_2", "scene": "rock", "phase": NIGHT, "from": Vector3(-6.0, 13.0, 20.0), "at": Vector3(6.5, 11.0, 0.0), "fov": 45.0, "stage": "_diary_2", "wait": 30, "even": 0.2, "key": 0.3},
 	{"id": "dusk_1", "scene": "rock", "phase": DUSK, "from": Vector3.ZERO, "at": Vector3.ZERO, "fov": 46.0, "stage": "_dusk_1"},
-	{"id": "after_1", "scene": "rock", "phase": DAWN, "from": Vector3(31.0, 2.6, 33.0), "at": Vector3(0.0, 8.5, 0.0), "fov": 44.0},
+	{"id": "after_1", "scene": "rock", "phase": DAWN, "from": Vector3(34.0, 5.0, 34.0), "at": Vector3(8.0, 3.2, 2.0), "fov": 46.0, "stage": "_after_1", "wait": 26},
 	{"id": "after_2", "scene": "rock", "phase": DAY, "from": Vector3(-56.0, 4.0, 72.0), "at": Vector3(6.0, 34.0, 0.0), "fov": 55.0},
 	{"id": "after_3", "scene": "rock", "phase": DAY, "from": Vector3(1.5, 7.5, 6.4), "at": Vector3(0.0, 8.0, 1.5), "fov": 40.0},
 ]
@@ -247,6 +250,10 @@ func _reset(main: Node) -> void:
 	var lh: Node = main.get("lighthouse")
 	if lh != null and lh.get("lamp") != null and lh.lamp.has_method("set_tilt"):
 		lh.lamp.set_tilt(_tilt)
+		lh.lamp.set_physics_process(true)
+		if lh.lamp.get("mode") != null and lh.lamp.has_method("_apply_mode"):
+			lh.lamp.mode = 0
+			lh.lamp._apply_mode()
 	if main.get("lamps") != null:
 		for l in main.lamps:
 			l.on = false
@@ -287,7 +294,12 @@ func _still(main: Node, row: Dictionary) -> void:
 	_cam.fov = float(row.get("fov", 45.0))
 	_cam.look_at_from_position(_from, _at, Vector3.UP)
 	_cam.current = true
-	await _frames(int(row.get("wait", SETTLE)))
+	var each := stage + "_each"
+	for i in int(row.get("wait", SETTLE)):
+		if has_method(each):
+			call(each, main, i)
+		_cam.look_at_from_position(_from, _at, Vector3.UP)
+		await process_frame
 	_freeze(main)
 	if has_method(stage + "_late"):
 		call(stage + "_late", main)
@@ -334,7 +346,7 @@ func _build_sketcher() -> void:
 ## (out, 0 black to 1 white). Part plain stretch between its darkest and lightest, part
 ## evening-out, so a night frame's crowded darks are pulled apart; `key` is where the
 ## middle of the frame ends up.
-func _levels(img: Image, key: float) -> Array:
+func _levels(img: Image, key: float, even_by: float) -> Array:
 	var small: Image = img.duplicate()
 	small.resize(240, 152, Image.INTERPOLATE_BILINEAR)
 	var ls := PackedFloat32Array()
@@ -357,7 +369,7 @@ func _levels(img: Image, key: float) -> Array:
 		var plain := clampf((v - lo) / (hi - lo), 0.0, 1.0)
 		var even := pow(float(marks[i]), bend)
 		ins.append(v)
-		outs.append(lerpf(plain, even, EVEN))
+		outs.append(lerpf(plain, even, even_by))
 	outs[0] = 0.0
 	outs[4] = 1.0
 	return [ins, outs]
@@ -366,7 +378,7 @@ func _levels(img: Image, key: float) -> Array:
 func _draw(img: Image, row: Dictionary) -> void:
 	var id := String(row["id"])
 	img.convert(Image.FORMAT_RGB8)
-	var lv := _levels(img, float(row.get("key", KEYS[int(row["phase"])])))
+	var lv := _levels(img, float(row.get("key", KEYS[int(row["phase"])])), float(row.get("even", EVEN)))
 	img.generate_mipmaps()
 	var tex := ImageTexture.create_from_image(img)
 	# A frame of another shape is cropped about its middle, never squashed.
@@ -452,6 +464,49 @@ func _replace_creatures() -> void:
 			var d: Vector3 = n.get_meta("still_toward") - at
 			n.global_position = at
 			n.rotation.y = atan2(-d.x, -d.z)
+
+## The kraken (KrakenBody: its looks only), up out of the sea at a spot and facing a point.
+func _kraken(main: Node, at: Vector3, toward: Vector3) -> Node3D:
+	var path := "res://scenes/enemies/kraken_body.gd"
+	if not ResourceLoader.exists(path):
+		return null
+	var k: Node3D = load(path).new()
+	main.add_child(k)
+	_props.append(k)
+	k.global_position = Vector3(at.x, Terrain.SEA_LEVEL, at.z)
+	k.face(toward)
+	# Round at once: it would otherwise ease its head about for the first few frames.
+	if k.get("_yaw_goal") != null:
+		k.set("_yaw", k.get("_yaw_goal"))
+	k.rise(0.1)
+	return k
+
+## The first kraken a stage put in the scene (or null).
+func _the_kraken() -> Node3D:
+	for n in _props:
+		if is_instance_valid(n) and n.has_method("arm_reach"):
+			return n
+	return null
+
+## Turn the lamp's beam on a point and hold it there (the lamp sweeps by itself).
+func _aim_lamp(main: Node, at: Vector3) -> void:
+	var lh: Node = main.get("lighthouse")
+	if lh == null or lh.get("lamp") == null:
+		return
+	var lamp: Node3D = lh.lamp
+	var d := at - lamp.global_position
+	lamp.showcase = false
+	# The narrow beam, as a keeper turns on what he means to burn.
+	if lamp.get("mode") != null and lamp.has_method("_apply_mode"):
+		lamp.mode = 1
+		lamp._apply_mode()
+	lamp.yaw = atan2(-d.x, -d.z)
+	if lamp.has_method("set_tilt"):
+		lamp.set_tilt(-rad_to_deg(atan2(-d.y, Vector2(d.x, d.z).length())))
+	var pivot = lamp.get("_pivot")
+	if pivot is Node3D:
+		pivot.rotation.y = lamp.yaw
+	lamp.set_physics_process(false)
 
 func _lamp(main: Node, lit: bool) -> void:
 	var lh: Node = main.get("lighthouse")
@@ -563,19 +618,86 @@ func _crossing_3(main: Node) -> void:
 	# Her bow (local +X) to the rock.
 	boat.rotation.y = atan2(at.z, -at.x)
 
-# The old camp on the holm: huts, wire, a tower.
+# 1944: the kraken risen off the east of the holm, over the camp's huts and wire. Lit as
+# dusk and drawn dark: by the night's own light its arms and the huts ran into one mass.
 func _diary_1(main: Node) -> void:
 	_lamp(main, false)
+	var c := Terrain.CAMP_C
+	var k := _kraken(main, Vector3(68.5, 0.0, 4.0), Vector3(c.x, 0.0, c.y))
+	if k == null:
+		return
+	k.roar_pose(600.0)
+	# Arms over the huts (north side: its right, the odd arms) and down into the yard.
+	k.arm_reach(1, Vector3(c.x + 4.4, 4.6, c.y - 5.0))
+	k.arm_reach(3, Vector3(c.x - 4.6, 4.2, c.y - 5.0))
+	k.arm_reach(0, Vector3(c.x - 1.0, 2.6, c.y + 2.5))
+	k.arm_reach(2, Vector3(c.x + 4.6, 3.6, c.y + 6.0))
 
-# The lantern close, lit, its beam going out over the sea.
+func _diary_1_each(_main: Node, frame: int) -> void:
+	var k := _the_kraken()
+	if k == null or frame != 8:
+		return
+	# Once it is up: two arms reared high over the wire, held there.
+	var c := Terrain.CAMP_C
+	k.arm_slam(4, Vector3(c.x + 9.0, 1.5, c.y + 9.0), 600.0)
+	k.arm_slam(5, Vector3(c.x + 9.0, 1.5, c.y - 7.0), 600.0)
+
+# The beam going down from the lantern onto the kraken at the east beach, reared back
+# with the light in its eyes, dark against the fog; its arms up the shingle and thrown high.
+const KRAKEN_BEACH := Vector3(18.3, 0.0, -3.2)
+
 func _diary_2(main: Node) -> void:
 	_lamp(main, true)
-	var lh: Node = main.get("lighthouse")
-	if lh != null and lh.get("lamp") != null:
-		if lh.lamp.has_method("set_tilt"):
-			lh.lamp.set_tilt(-7.0)
-		lh.lamp.showcase = false
-		lh.lamp.yaw = deg_to_rad(110.0)
+	# The lantern keeps its glazing bars, not a ball of glare.
+	_bloom(main, false)
+	var k := _kraken(main, KRAKEN_BEACH, Vector3(0.0, 0.0, 5.0))
+	if k == null:
+		return
+	k.roar_pose(600.0)
+	k.arm_reach(1, Vector3(8.0, 5.0, -7.0))
+	k.arm_reach(2, Vector3(9.0, 3.0, 9.0))
+	# The arm that would rear up across its face from here is one the keepers have
+	# already cut back (it goes under in a moment).
+	if k.has_method("sever"):
+		k.sever(0)
+
+func _diary_2_each(main: Node, frame: int) -> void:
+	var k := _the_kraken()
+	if k == null:
+		return
+	var eyes: Array = k.eye_points() if k.has_method("eye_points") else []
+	var at: Vector3 = k.global_position + Vector3(0.0, 4.0, 0.0)
+	if eyes.size() >= 2:
+		at = ((eyes[0] as Vector3) + (eyes[1] as Vector3)) * 0.5
+	_aim_lamp(main, at)
+	if frame == 8:
+		# Recoiling: arms flung up on its far side (the near side would hide its face),
+		# held at the top of the throw.
+		k.arm_slam(3, Vector3(12.0, 2.0, -14.0), 600.0)
+		k.arm_slam(5, Vector3(24.0, 0.0, -14.0), 600.0)
+
+# Dawn, a calm sea, the lighthouse; off the rock's south-east shore the last of it going
+# under, its eyes at the waterline.
+const GOING_UNDER := 0.62
+
+func _after_1(main: Node) -> void:
+	_lamp(main, false)
+	# Its eyes as eyes, not two balls of glare.
+	_bloom(main, false)
+	var k := _kraken(main, Vector3(21.5, 0.0, 18.5), _from)
+	if k == null:
+		return
+	k.arm_reach(2, Vector3(30.0, 8.0, 17.0))
+	k.arm_reach(5, Vector3(15.0, 9.0, 12.0))
+	k.arm_reach(7, Vector3(17.0, 8.0, 9.0))
+
+func _after_1_each(_main: Node, frame: int) -> void:
+	var k := _the_kraken()
+	if k == null or frame < 8:
+		return
+	# Held part-way down: the water at its eyes, the arms drawing in after it.
+	k.set("_rise_dir", 0.0)
+	k.set("risen", lerpf(1.0, GOING_UNDER, clampf(float(frame - 8) / 8.0, 0.0, 1.0)))
 
 # Dusk on the rock: the keepers on the west beach, looking out.
 func _dusk_1(main: Node) -> void:
