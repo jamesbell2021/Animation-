@@ -73,8 +73,9 @@ toward the camera.
 - **The last night (the third).** The fog comes over the quay and into the streets
   (`FogBank.flood`). A third of the way through, the skipper sounds his horn: the night
   holds, the kirk doors open, and the seven come out one after another and run down
-  through the streets to the boat at the pier head. More comes up the landings while they
-  do. When each is aboard or lost, her plank goes out and the keepers board ([E]); then
+  through the streets to the boat at the pier head. Three Bloated come up each slip as
+  the horn sounds (the way to the pier runs between the slips), and more every nine
+  seconds while anyone is still ashore. When each is aboard or lost, her plank goes out and the keepers board ([E]); then
   she sails, and Act Two begins on the rock with whoever was saved and whatever the
   keepers were carrying.
 - **What ends the run here:** the harbour light going dark, or every keeper down. Losing
@@ -122,6 +123,22 @@ Getting there: the title's New Run shows the keeper's log and then starts here; 
 Kirkhaven run continues from the title. Leaving (pause → quit, game over → title) goes
 back to `main.tscn`, where the title lives; the Mary Ann sailing goes there too, with
 `Run.carry` holding what came across.
+
+## Runs played by the computer's keepers (2026-11-10)
+
+`tools/playtest_harbour.gd` (three computer keepers, nobody playing) on an angry sea:
+nights of 11 and 16 ashore with one to three lamps smashed each, all eleven lamps
+burning at the horn, and all seven brought to the boat.
+
+The last night alone, set up two ways, shows what the lamps are worth:
+
+| The town at the horn | Brought to the boat |
+|---|---|
+| Every lamp burning | 7 of 7 |
+| Every lamp dark, the generator dry | 3 of 7 |
+
+So the evacuation is as dangerous as the town is dark. The computer's keepers are better
+at keeping every lamp lit than a person is likely to be on a first play.
 
 ## Not done
 

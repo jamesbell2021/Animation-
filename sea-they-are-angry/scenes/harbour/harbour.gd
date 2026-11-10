@@ -42,9 +42,11 @@ const HARLS := [Color(0.84, 0.82, 0.76), Color(0.74, 0.74, 0.72), Color(0.80, 0.
 ## The last night: how far through it the skipper sounds his horn.
 const EVAC_AT := 0.34
 ## Seconds between each of the seven leaving the kirk.
-const EVAC_GAP := 1.7
+const EVAC_GAP := 2.4
 ## While they come down, something more comes up a landing this often.
-const EVAC_TRICKLE := 12.0
+const EVAC_TRICKLE := 9.0
+## What comes up each slip as the horn sounds: the way to the pier runs between them.
+const EVAC_RUSH := 3
 ## With the kirk doors down, how often one of those inside is taken.
 const BREACH_EVERY := 7.0
 ## By day the seven make for the kirk when this much of the day is left.
@@ -62,6 +64,7 @@ var villagers: Array[Villager] = []
 ## 3 away.
 var _evac := 0
 var _trickle_t := 0.0
+var _trickles := 0
 var _breach_t := 0.0
 var _called_in := false
 var _lost_tonight: Array = []
@@ -877,7 +880,9 @@ func _people_step(delta: float) -> void:
 		_trickle_t -= delta
 		if _trickle_t <= 0.0:
 			_trickle_t = EVAC_TRICKLE
-			spawner._queue_group({"kind": "B" if randf() < 0.6 else "S", "count": 2, "point": -1, "opp": false})
+			_trickles += 1
+			# Up one slip, then the other, either side of the pier's foot.
+			spawner._queue_group({"kind": "B" if _trickles % 3 != 0 else "S", "count": 2, "point": (_trickles % 2) * 2 + randi() % 2, "opp": false})
 		var ashore := false
 		for v in villagers:
 			ashore = ashore or (v.state != "aboard" and v.state != "lost")
@@ -911,6 +916,8 @@ func _begin_evacuation() -> void:
 		"Bring them down through the streets to the boat at the pier head. Stay by them, and keep the way lit: anything that gets within reach of one of them takes them.",
 		"When they are aboard, go aboard yourselves.",
 	], 14.0)
+	for slip in 2:
+		spawner._queue_group({"kind": "B", "count": EVAC_RUSH, "point": slip * 2, "opp": false})
 	var door := kirk.door_point()
 	var to := _ground(BOARD_AT.x, BOARD_AT.y)
 	for i in inside.size():

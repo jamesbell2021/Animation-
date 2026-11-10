@@ -10,7 +10,7 @@ signal taken(v: Villager)
 signal arrived(v: Villager)
 
 const WALK := 2.5
-const RUN := 3.4
+const RUN := 3.0
 ## How near a creature has to come, and for how long, to take someone.
 const TAKE_RANGE := 1.35
 const TAKE_TIME := 0.45
