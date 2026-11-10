@@ -887,3 +887,22 @@ The owner asked for the rest of the game, finished, "really atmospheric like the
 - **No LAN in Kirkhaven.** The network layer mirrors the rock's particular objects (the camp's searchlights, the rowing boat). Extending it is a job of its own.
 - **The ending** closes on the theme the diary set up in Chapter One ("do not let the lights go out"): the Board gives up automating the rock's lamp. "A light kept is a promise."
 - **Version 1.0.0**, because the game now has a beginning, a middle and an end. It has not been played through by a person in this state.
+
+## 2026-11-10 (later): the story turned round; villagers; the kraken; the log; v1.1.0
+
+The owner, having seen v1.0.0: the screen is crowded; is the story backwards, should the town come first and the keepers flee to the lighthouse; the town should be about protecting villagers; the end should be a kraken that wrecks the camp and goes for the lighthouse, blinded by the lamp while everyone attacks, then clear blue sky and credits; and cut scenes as pencil sketches in a keeper's log. All of it was taken up. `docs/STORY.md` is the result.
+
+- **The town first.** It was the weaker half as an epilogue; as a first act that is lost, it gives the rock its stakes. The relit-town ending is gone.
+- **Flee with the living, not when all are dead.** The owner's first thought was that the keepers flee once every villager has died. Built instead: the town falls on the third night whatever happens, and the number brought to the boat is what matters afterwards. If all died there would be nobody to flee with and nothing gained by playing well.
+- **Seven named people, not a crowd.** Each has a trade and brings something each dawn while they live, in the town and on the rock, so a loss costs something that can be felt. They borrow the keepers' models.
+- **How they die.** They are safe indoors unless the door is broken (the kirk in the town, a hut on the rock). Out of doors in the dark they are "prey": creatures within 16 m turn aside for them and anything within reach for half a second takes them. No health bars: taken is taken.
+- **The evacuation is the town's set piece.** It reuses what was built for the old last night (the fog over the quay) and makes the lamps matter a second way: as the lit road down to the boat.
+- **The sea's reason.** The Board's clock on the harbour light. It ties the start to the last line, "a light kept is a promise", and makes keepers the people who would know what to do.
+- **No relief boat in the story.** The rock's nights now count down to the kraken ("it comes in N nights"), two nights sooner than the boat would have come. The boat's ending stays for the rock played alone (LAN), so the network code and its tests are untouched.
+- **The kraken is rules plus a body.** `Kraken` holds the fight; `KrakenBody` is only looks. Weapons were not changed: they all look for an `Enemy` near where they strike, so the kraken sets `KrakenPart`s about itself (seven across its head, one at the tip of each arm lying ashore) that pass hits on.
+- **Blinding.** Only the lighthouse lamp, focused, within its reach, held on the eyes for about a second. Blind for 7.5 s: no slams, arms slack, damage times 2.5, and the beam itself burns it. Then it cannot be blinded for 5 s. Searchlights and the wide beam only slow it. It lies half up the east beach for the lighthouse because from further out the lamp cannot look down steeply enough to reach its eyes with the focused beam.
+- **A lamp about to run dry is refuelled before the tower is mended** (below 25 %). Found by the bot runs: a damaged tower blocked refuelling and the lamp went dark mid-fight. True for players too.
+- **The survivors fight on the last night.** They stand on the crag behind the tower and loose at it; each is worth damage. The bot run with none of them lost; with five it won. Saving people in the town is therefore worth something at the end.
+- **The log's drawings are a shader's.** Nobody here can draw; the stills are the game's scenes through `shaders/sketch.gdshader`. They are files (`art/story/`), so an artist's drawings can replace them one for one.
+- **The HUD** quietens itself and has three modes on one key, rather than relying on clicking panels, because the mouse is the player's aim and attack. Click-to-fold works when the mouse is free.
+- **Not done:** LAN play for the town or the kraken; a harbour-mouth Eel; distinct models for the villagers; any of the roadmap.

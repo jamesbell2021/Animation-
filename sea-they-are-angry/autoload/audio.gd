@@ -1251,7 +1251,11 @@ func _s_kraken_roar() -> PackedFloat32Array:
 		var env := smoothstep(0.0, 0.25, t) * (1.0 - smoothstep(2.6, 3.5, t))
 		# Driven hard, so it is flat-topped and harsh.
 		b[i] = (clampf(v * rasp * 1.6, -1.0, 1.0) * 0.8 + breath[i] * rasp * 0.5 + sub[i] * 2.4) * env
-	return _lowpass(b, 2800.0)
+	_lowpass(b, 2800.0)
+	# As loud as a sound can be without breaking up: pressed against the ceiling.
+	for i in n:
+		b[i] = tanh(b[i] * 1.3) * 0.97
+	return b
 
 # An arm coming down: a heavy wet impact, and timber or stone cracking under it.
 func _s_kraken_slam() -> PackedFloat32Array:

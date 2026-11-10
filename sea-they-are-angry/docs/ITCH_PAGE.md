@@ -1,6 +1,6 @@
 # itch.io page: draft copy
 
-For when there's a page to put it on. Facts are as of v1.0.0 (see `docs/DESIGN.md` and `docs/KIRKHAVEN.md`); change a line here when the game changes.
+For when there's a page to put it on. Facts are as of v1.1.0 (see `docs/DESIGN.md` and `docs/KIRKHAVEN.md`); change a line here when the game changes.
 
 ## Title
 
@@ -22,13 +22,14 @@ Across a swaying rope bridge is the holm, with the huts, wire and searchlights o
 
 The sea has moods. Its anger builds as the nights go on, and the lamp's wide beam slows what comes while its focused beam burns them, at the price of oil. Anything that falls in the water washes ashore at dawn; whatever is left lying at dusk, the sea takes back.
 
-Then the relief boat takes you to Kirkhaven, the harbour town that stopped answering the wireless. Its lamps are out, its people are shut in the kirk, and a bank of fog that glows lies off the harbour mouth. Put the town's lights back, one lamp at a time, with the things from the sea coming up the slips to break them. Hold it to the last dawn and the story ends.
+It begins in Kirkhaven, the harbour town where the Board put the light on a clock. The clock stuck, the fog came in against the wind, and something came with it. For three nights you put the town's lamps back one at a time and try to keep seven of its people alive; then you run for the boat with whoever is left, to the one light on the coast still kept by hand. On the rock you arm, because the old camp's diary says what is coming. On the last night it comes.
 
-The nights are made in the spirit of John Carpenter's *The Fog*: the bank rolling in against the wind, shapes in it, a cold synthesiser score, a voice on the wireless, a knock at the door.
+The nights are made in the spirit of John Carpenter's *The Fog*: the bank rolling in against the wind, shapes in it, a cold synthesiser score, a voice on the wireless, a knock at the door. The story is told in a keeper's log, drawn in pencil.
 
 ## Features
 
-- Two chapters and an ending: the rock, then the harbour town of Kirkhaven.
+- A story in two acts with an ending: the fall of Kirkhaven, the rock, and the kraken.
+- Seven named townspeople to keep alive, each of whom helps while they live.
 - A fog bank that glows, comes ashore ahead of each landing, and is held off by light.
 
 - Gather, repair, plant and cook by day; defend a lighthouse and a camp by night

@@ -1,6 +1,6 @@
 # Handoff: Sea They Are Angry
 
-**v1.0.0 (both chapters, and the ending) is the current build** (`docs/RELEASE_NOTES_v1.0.0.md`; earlier notes are `RELEASE_NOTES_v0.1.4.md` and `RELEASE_NOTES_v0.1.0.md`). The cloud session can't push tags: make `sea-v1.0.0`, or a release, on GitHub's Releases page. Read this first, then `docs/DESIGN.md` (the rock as it is), `docs/KIRKHAVEN.md` (Kirkhaven), `docs/DECISIONS.md` (why, newest last) and `git log`. Brought up to date 2026-11-10.
+**v1.1.0 (the story turned round: Kirkhaven, the rock, the kraken) is the current build** (`docs/RELEASE_NOTES_v1.1.0.md`; earlier notes are v1.0.0, v0.1.4 and v0.1.0). The cloud session can't push tags: make `sea-v1.1.0`, or a release, on GitHub's Releases page. Read this first, then `docs/STORY.md` (the story, which everything written for players must agree with), `docs/DESIGN.md` (the rock), `docs/KIRKHAVEN.md` (the town), `docs/DECISIONS.md` (why, newest last) and `git log`. Brought up to date 2026-11-10.
 
 ## Where things stand
 
@@ -13,15 +13,22 @@ Both chapters are built and tested by script; neither has been played through by
 | 3. Phases H to L (`03_phases_H-L.md`) | Done: the design docs (`docs/DESIGN.md`, `ENEMIES.md`, `ARCHITECTURE.md`, `BALANCING.md`), game feel (shake, hit-stop, hit flash, damage numbers, the morning card), accessibility (shake levels, steady lights, a second keeper palette, interface size; rebinding is keeper one only), the strings table (the menus only), the local play log, F12, the playtest script, the export scripts, `LICENSE`, `CREDITS.md`, `docs/ITCH_PAGE.md`. |
 | 4. Roadmap (`04_after_v0.2_roadmap.md`) | **Not started, on purpose.** It says to do these after playtests: the daily rock, unlockable keepers, run modifiers, special nights, dawn wrecks, lamp mastery. Build none of them until a person has played v0.1.4 and the six checks (`docs/BALANCING.md`) say what's wrong. |
 
-**Chapter Two, The Harbour** (2026-11-10) is built: Kirkhaven, its own scene (`scenes/harbour.tscn`, `scenes/harbour/`), reached from the title or from Chapter One's end card, with an ending that closes the story. `docs/KIRKHAVEN.md` says how it plays and how it is built (the harbour scene's script extends `scenes/main.gd`; `Terrain` hands over to `HarbourMap` while `Terrain.chapter == 2`). It is local play only.
+**The story was turned round on 2026-11-10** at the owner's direction (`docs/STORY.md`):
 
-**The fog** (same date): a glowing bank (`scenes/world/fog_bank.gd`, `shaders/fog_bank.gdshader`) on both maps, a synthesiser score (`art/source/music/build_music.py`), and night events (`scenes/world/night_events.gd`): the wireless, the knock, lights dipping, a far foghorn.
+- **Act One, Kirkhaven** (`scenes/harbour.tscn`, `scenes/harbour/`, `docs/KIRKHAVEN.md`): New Run starts here. Three nights; seven named villagers (`scenes/people/`) to keep alive; the town falls and they are brought down to the *Mary Ann* on the third night. Local play only.
+- **Act Two, the rock** (`scenes/main.gd` with `scenes/systems/story_rock.gd` when `Run.story`): the survivors in the camp, the diary, no relief boat.
+- **The kraken** (`scenes/enemies/kraken.gd` the rules, `kraken_body.gd` the creature, `kraken_part.gd` what weapons hit): the last night; its death is the end (`scenes/ui/story_end.gd`).
+- **The keeper's log** (`scenes/ui/story_pages.gd`, `story_text.gd`, stills in `art/story/` made by `tools/make_story_stills.gd` with `shaders/sketch.gdshader`): before Act One, on the crossing, at the diary, after the end.
+- **A quieter HUD**: H cycles Full / Slim / Off; panels shrink themselves; click a header to fold it when the mouse is free.
+- `Run.story` false is the rock alone with the relief boat at the end: LAN games, and what most of the older tests exercise.
 
-**What is next:** the owner plays it (`docs/PLAYTEST_CHECKLIST.md`, and `docs/PLAYTEST.md` for watching someone else). The things only a person can judge: the new music and sounds (made and measured, never heard), whether the nights are now too dark, Chapter Two's balance and length (first guesses, checked by `tests/slice_harbour.gd` and `tools/playtest_harbour.gd` only), the shake and the hit pause, the jump and the fence climb, when the roof lifts, the free camera, and the Windows build, which has never been run on Windows.
+**The fog** (v1.0.0): a glowing bank (`scenes/world/fog_bank.gd`, `shaders/fog_bank.gdshader`) on both maps, a synthesiser score (`art/source/music/build_music.py`), and night events (`scenes/world/night_events.gd`).
+
+**What is next:** the owner plays it (`docs/PLAYTEST_CHECKLIST.md`, and `docs/PLAYTEST.md` for watching someone else). The things only a person can judge: the new music and sounds (made and measured, never heard), whether the nights are now too dark, the town's and the kraken's balance (set against `tools/playtest_harbour.gd` and `tools/playtest_kraken.gd`, where the computer's keepers play alone), whether the evacuation and the kraken read on screen, whether the pencil pages pass for hand-drawn, the shake and the hit pause, the jump and the fence climb, when the roof lifts, the free camera, and the Windows build, which has never been run on Windows.
 
 The work lives on branch `claude/windows-build-omarchy-d2b94k` of `jamesbell2021/Animation-`, in the `sea-they-are-angry/` folder. The repo also holds other projects (`neon-mega-tank/`, `animation-principles/`); leave them alone.
 
-`tools/tour.gd` renders a computer-played run frame by frame, with the HUD, for reviewing how it looks; `tools/screenshot.gd` takes a still; `tools/playtest.gd` plays nights with a bot for balance (`tools/playtest_harbour.gd` does Kirkhaven); `tools/make_asset_list.py` rewrites `docs/ASSET_LIST.md`.
+`tools/tour.gd` renders a computer-played run frame by frame, with the HUD, for reviewing how it looks; `tools/screenshot.gd` takes a still; `tools/playtest.gd` plays nights with a bot for balance (`tools/playtest_harbour.gd` does Kirkhaven, `tools/playtest_kraken.gd` the last night); `tools/make_asset_list.py` rewrites `docs/ASSET_LIST.md`.
 
 To start the next session, open Claude Code in `sea-they-are-angry/` and say what you want; `docs/DESIGN.md` and this file are the map.
 
@@ -58,6 +65,8 @@ godot --headless --path sea-they-are-angry --script res://tests/slice_join.gd
 godot --headless --path sea-they-are-angry --script res://tests/slice_access.gd
 godot --headless --path sea-they-are-angry --script res://tests/slice_events.gd
 godot --headless --path sea-they-are-angry --script res://tests/slice_harbour.gd
+godot --headless --path sea-they-are-angry --script res://tests/slice_kraken.gd
+godot --headless --path sea-they-are-angry --script res://tests/slice_story.gd
 godot --headless --path sea-they-are-angry --script res://tests/smoke.gd    # a whole run at 20x, about half a minute
 GODOT=godot sea-they-are-angry/tests/run_lan.sh   # the LAN test: a host and a client, two processes
 ```

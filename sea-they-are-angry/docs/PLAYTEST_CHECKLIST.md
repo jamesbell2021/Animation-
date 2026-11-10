@@ -115,3 +115,21 @@ Chapter Two (from the title: "Chapter Two: The Harbour"):
 - [ ] **The ending.** The fog going out, the people coming down, the windows lighting, the three pages. Does it land? Too long?
 - [ ] **The length.** Five nights on the normal sea. Too short for a chapter?
 - [ ] **Leaving and coming back.** Quit to the title from the pause menu and Continue: are you back in Kirkhaven with your lamps as you left them?
+
+## Added in v1.1.0: the story turned round
+
+- [ ] **The keeper's log** before the game starts: do the pencil pages read as drawings? Is each one recognisable? Too many, too slow, too fast? Does holding Esc skip them?
+- [ ] **Starting in Kirkhaven:** is it clear who you are, who the seven are, and what to do first?
+- [ ] **The seven by day:** do you notice them at their doors? Do their names stay readable? Do they get to the kirk before dark?
+- [ ] **A night in the town:** does keeping the kirk doors feel like protecting people? When the doors go down, do you understand why someone was lost?
+- [ ] **What they bring at dawn:** do you notice it in the log, and miss it when one is gone?
+- [ ] **The third night:** the horn, the kirk doors opening, the file of people running for the pier. Is it clear what to do? Does a lit street feel safer for them than a dark one? Is losing someone your fault, or the game's?
+- [ ] **Boarding and the crossing:** obvious when to go aboard? Do the log's pages name who was lost?
+- [ ] **On the rock:** do you find the survivors in the camp? Does "it comes in N nights" change how you spend the days?
+- [ ] **The diary's last pages:** do they tell you enough about the kraken to prepare?
+- [ ] **The kraken rising:** frightening? Can you see all of it? Does the camp coming down read from the main island?
+- [ ] **At the lighthouse:** is the reared arm enough warning to get clear? Can you tell when it is blind, and that blind is the time to attack? Is cutting an arm back worth doing?
+- [ ] **The lamp in the fight:** can you hold the focused beam on its eyes? Does the lamp running low mid-fight feel like tension or like a trap?
+- [ ] **How long:** too long, too short? Did you run out of everything?
+- [ ] **The ending:** the fog going, the sky clearing, the last pages. Does it land?
+- [ ] **The HUD:** H for Full, Slim, Off. Which do you settle on? Is anything you needed missing in Slim? With the game paused, click a panel's heading to fold it.

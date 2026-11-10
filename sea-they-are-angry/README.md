@@ -1,14 +1,14 @@
 # Sea They Are Angry
 
-**Version 1.0.0: both chapters, and an ending.** See [docs/RELEASE_NOTES_v1.0.0.md](docs/RELEASE_NOTES_v1.0.0.md); earlier notes are [v0.1.4](docs/RELEASE_NOTES_v0.1.4.md) and [v0.1.0](docs/RELEASE_NOTES_v0.1.0.md).
+**Version 1.1.0: the story turned round, and a kraken at the end of it.** See [docs/RELEASE_NOTES_v1.1.0.md](docs/RELEASE_NOTES_v1.1.0.md) and [docs/STORY.md](docs/STORY.md); earlier notes are [v1.0.0](docs/RELEASE_NOTES_v1.0.0.md), [v0.1.4](docs/RELEASE_NOTES_v0.1.4.md) and [v0.1.0](docs/RELEASE_NOTES_v0.1.0.md).
 
 A lighthouse keeper on a tiny North Sea rock, late 1980s. By day you gather driftwood, scrap, kelp and bioluminescent matter from the shoreline, mend the fences, plant the garden, set traps and refuel the lamp. At dusk the fog and the storm roll in. At night things walk up out of the water toward the light. The lamp's beam slows them; your boathook does the rest. If the lamp goes dark, the run is over. Hold it until the relief boat comes (10 nights on the normal sea, 8 on a calm one, 12 on a raging one) and the keepers sail away: the end of Chapter One. Or stay on the rock for endless nights.
 
 Across a rope bridge from the lighthouse lies the holm, a low islet of sandstone shelves and turf with an old wartime camp on it: fenced with barbed wire, a guard tower and searchlight at each corner, Nissen huts, vegetable beds and a greenhouse. Out past them to the north-east is Gull Rock, a little stack of rock where the gulls nest; the keepers row out to it from the east beach's jetty to take their eggs. There are always three keepers: any that people don't play are helpers run by the computer, one keeping the light and one the camp. Losing the lighthouse ends the run. Losing the camp doesn't, but it makes everything harder: from night 2 some of each night's creatures land on the holm instead and tear through the wire at the generator, the huts and the greenhouse, and whatever's wrecked stops working until it's mended.
 
-**Chapter Two, The Harbour**, takes the keepers to Kirkhaven, the fishing town the relief boat was making for. Its lights went out on a Tuesday and its people are shut in the kirk. A glowing fog bank lies off the harbour mouth, and what the sea sends is in it. The keepers feed the harbour's generator, switch the street lamps in one by one, work the harbour light on the pier, and hold the town for four to six nights; the fog cannot lie in a burning lamp's light, so the lamps are what the creatures come for. On the last night the fog comes over the quay. Hold to the dawn after and the story ends. How it works is in [docs/KIRKHAVEN.md](docs/KIRKHAVEN.md).
+**The story** has two acts and an ending ([docs/STORY.md](docs/STORY.md)). **Act One is Kirkhaven**, a fishing town whose harbour light was put on a clock; the clock stuck, and the fog came in with something in it. Three keepers paid off that week feed the harbour's generator, switch the street lamps in, work the harbour light, and try to keep seven named townspeople alive. The fog cannot lie in a burning lamp's light, so the lamps are what the creatures come for. The town cannot be held: on the third night the *Mary Ann* sounds her horn and whoever is left has to be brought down through the streets to the boat ([docs/KIRKHAVEN.md](docs/KIRKHAVEN.md)). **Act Two is the rock** described above, with the survivors sheltering in the old camp and nobody coming to take anyone off: the days are for arming, because the camp's diary says what is coming. **On the last night the kraken rises**, wrecks the camp, and comes for the lighthouse. The focused beam held in its eyes blinds it while everyone hits it with everything; when it dies the fog goes out and the sky clears. LAN games are the rock alone, with the relief boat's ending.
 
-The nights are made in the spirit of John Carpenter's *The Fog*: the bank that glows, shapes against it, a synthesiser score, a voice on the wireless, a knock at the door. None of the film's story, words or music is used.
+The story is told between acts in pages of a keeper's log: pencil drawings made from the game's own scenes by a sketch shader. The nights are made in the spirit of John Carpenter's *The Fog*: the bank that glows, shapes against it, a synthesiser score, a voice on the wireless, a knock at the door. None of the film's story, words or music is used.
 
 The island, the town, buildings and effects are built in code. The characters are rigged models built by a Blender script. Sound is synthesised at start-up.
 
@@ -25,9 +25,10 @@ Balance playtest: a bot plays several nights and prints what happened, with `--`
 ```
 godot --headless --path sea-they-are-angry --script res://tools/playtest.gd -- 6 bot 1
 godot --headless --path sea-they-are-angry --script res://tools/playtest_harbour.gd -- angry
+godot --headless --path sea-they-are-angry --script res://tools/playtest_kraken.gd -- angry 5
 ```
 
-The second has the computer's keepers hold Kirkhaven (Chapter Two) on their own.
+The second has the computer's keepers hold Kirkhaven (Act One) and bring its people away; the third runs the last night against the kraken with that many survivors.
 
 Gameplay reel: `tools/reel/make_reel.sh` records 16 captioned shots of the main gameplay with Godot's Movie Maker and joins them into one MP4 (needs ffmpeg, and `xvfb-run` with no display; set `GODOT=` to the binary). It takes about an hour, since every frame is fully rendered.
 

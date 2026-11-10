@@ -75,18 +75,28 @@ Host-authoritative, up to 3 machines, one keeper each. ENet on UDP 24686; discov
 
 One 45-degree camera framing a whole island from the south (offset 38 up, 26 back). Each island has its focus (`MAIN_FOCUS`, `HOLM_FOCUS`, `ISLET_FOCUS` with zoom 0.62); the bridge blends from one to the other and a keeper in the rowing boat slides to Gull Rock. People (not helpers) are grouped by which island they are on. When two groups are 9 m or more apart the screen splits along a line square to the line between them (rejoin under 4 m, 0.7 s to open or close); up to three views. View 1 is the main camera (mouse aiming goes through it); views 2 and 3 are `SubViewport`s sharing the world, laid over by `shaders/split_screen.gdshader` on a CanvasLayer at layer -1. Helpers get no view. Alone, or one person per machine on a LAN, the camera is free (`CameraDirector.free_on`): middle-mouse drag or Z/C turn it, wheel or `-`/`=` zoom (0.36 to 1.3), X resets, and movement keys follow `CameraDirector.yaw`. `Feel` shakes the cameras the director registers with `use_cameras`.
 
-## Chapter Two (`scenes/harbour/`)
+## The story: Kirkhaven, the survivors, the kraken
 
-Kirkhaven is the rock's code on a different map. `scenes/harbour.tscn` runs `harbour/harbour.gd`, which **extends `scenes/main.gd`** and builds its own world in `_ready` (the ground, the quay's stone face, the town from `HarbourMap.BUILDINGS`, the generator, the street lamps, the kirk, the stores, a spawner with the three landings). `Terrain.chapter` (set to 2 there, back to 1 by `main.gd`) makes `Terrain`, `Nav` and `KeeperNav` hand over to `HarbourMap`: height, walkable ground, paint, landings, and paths on an `AStarGrid2D`. See `docs/KIRKHAVEN.md` for the rules and the list of hooks in shared systems.
+`Run.story` marks a run as the story (docs/STORY.md): Act One in the town, Act Two on the rock, the kraken at the end. Without it the rock is played alone and ends with the relief boat (LAN, most older tests). `Run.chapter` is still 2 in the town and 1 on the rock (the ids date from when the town came second).
+
+**Act One** is the rock's code on a different map. `scenes/harbour.tscn` runs `harbour/harbour.gd`, which **extends `scenes/main.gd`** and builds its own world in `_ready`. `Terrain.chapter` (2 there, back to 1 in `main.gd`) makes `Terrain`, `Nav` and `KeeperNav` hand over to `HarbourMap`: height, walkable ground, paint, landings, and paths on an `AStarGrid2D`. See `docs/KIRKHAVEN.md` for the rules and the hooks in shared systems. When the *Mary Ann* sails, `Run.carry` takes the living, the store and the keepers' weapons across, and `main.gd` begins Act Two from it.
 
 | File | What |
 |---|---|
-| `harbour_map.gd` | `HarbourMap`: the plan (buildings, lamps, landings), height and paint, the pathfinding grids |
-| `harbour.gd` | the scene: world building, the run, landings, warnings, the dawn log, the last night, the ending |
-| `street_lamp.gd` | `StreetLamp` (a `Structure`): switched in, lit by the generator, a fog hole, lamplight on creatures |
-| `kirk.gd`, `kirk_keep.gd` | the kirk's model (`Kirk`) and its play (`KirkKeep`): knock, the doors, the bell |
-| `town_house.gd`, `harbour_props.gd` | the town's buildings and furniture, built in code |
-| `scenes/ui/harbour_end.gd` | the ending |
+| `harbour/harbour_map.gd` | `HarbourMap`: the plan (buildings, lamps, landings), height and paint, the pathfinding grids |
+| `harbour/harbour.gd` | the scene: world building, the run, landings, the seven by day and night, the kirk breach, the last night's flight to the boat, the sailing |
+| `harbour/street_lamp.gd` | `StreetLamp` (a `Structure`): switched in, lit by the generator, a fog hole, lamplight on creatures |
+| `harbour/kirk.gd`, `kirk_keep.gd` | the kirk's model (`Kirk`) and its play (`KirkKeep`): knock, the doors, the bell |
+| `harbour/town_house.gd`, `harbour_props.gd` | the town's buildings and furniture, built in code |
+| `people/villagers.gd` | `Villagers`: the roster of the seven, what each brings, who lives (`Run.villagers`, `Run.lost`) |
+| `people/villager.gd` | `Villager`: one of them on their feet; in the group "prey" when out of doors in the dark (`Enemy.nearest_prey`) |
+| `systems/story_rock.gd` | `StoryRock`: Act Two's story. Survivors in the camp, dawn gifts, the diary, raising the kraken, its death, the clear sky, the last pages |
+| `enemies/kraken.gd` | `Kraken`: the fight's rules (phases, slams, blinding, hurt, death) |
+| `enemies/kraken_body.gd` | `KrakenBody`: the creature (head, eyes, eight arms as tubes rebuilt each frame, like the Eel) |
+| `enemies/kraken_part.gd` | `KrakenPart` (an `Enemy`): the places on it that weapons find, which pass hits on to `Kraken.struck` |
+| `ui/story_pages.gd`, `ui/story_text.gd` | the keeper's log: the page player, and the pages' words |
+| `ui/story_end.gd` | the end card |
+| `tools/make_story_stills.gd`, `shaders/sketch.gdshader` | renders the log's drawings from the game's scenes into `art/story/` |
 
 The fog on both maps is `scenes/world/fog_bank.gd` (`FogBank`, owned by `Atmosphere`); the night's small events are `scenes/world/night_events.gd`.
 
@@ -106,7 +116,8 @@ Each prints `PASS`/`FAIL` lines and a `RESULT` line. Most `quit(1)` on failure; 
 ## Tools
 
 - `tools/playtest.gd`: balance bot. `-- [nights] [bot|idle] [keepers] [helpers] [calm|angry|raging]` (the README also names an `eco` mode that plants, eats, buys upgrades and sets traps). Backs up and restores your save and best night; stops when the boat comes.
-- `tools/playtest_harbour.gd`: the same for Chapter Two. `-- [calm|angry|raging] [speed]`: three computer keepers hold Kirkhaven with nobody playing, and each dawn prints what came, what was lost and what is left.
+- `tools/playtest_harbour.gd`: the same for Act One. `-- [calm|angry|raging] [speed]`: three computer keepers hold Kirkhaven with nobody playing, each dawn prints what came, what was lost and who is left, and on the last night they bring the seven to the boat.
+- `tools/playtest_kraken.gd`: the last night. `-- [calm|angry|raging] [survivors] [speed]`: the computer's keepers against the kraken, with a line every few seconds and the result.
 - `tools/tour.gd`: renders a run played entirely by computer keepers, saving a frame every few seconds of game time (`xvfb-run`, `--fixed-fps 20`).
 - `tools/screenshot.gd`: one PNG of a chosen phase, beam mode, or close or homestead view.
 - `tools/reel/`: `make_reel.sh` records 16 captioned shots from `reel_director.gd` with Movie Maker and `assemble.py` joins them with crossfades (needs ffmpeg; about an hour).
