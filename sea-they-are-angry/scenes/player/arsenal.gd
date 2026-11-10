@@ -310,7 +310,7 @@ func fire_shot(aim: Vector3) -> void:
 		var dir: Vector3 = e.global_position - keeper.global_position
 		dir.y = 0.0
 		strike(e, roundi(hits[e]), dir.normalized(), keeper, "shot")
-	Audio.sfx("shotgun", from, 2.0, 0.06)
+	Audio.sfx("shotgun", from, 5.0, 0.06)
 	if not keeper.ai:
 		Feel.shake(0.2)
 	FX.sparks(keeper.get_parent(), from)

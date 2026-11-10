@@ -70,7 +70,9 @@ All of it with ffmpeg; nothing was added that is not in the table.
   speed, set 0.8 s apart.
 - `generator`: the mower's engine at 0.55 times speed, which makes it a slower,
   heavier engine.
-- `shotgun`: a little more bass (3 dB at 140 Hz).
+- `shotgun`: more bass (5 dB at 110 Hz), then driven 14 dB into a soft clipper and a
+  limiter, so its body is as loud as its crack (made louder on 10 November 2026: the owner
+  found it too quiet).
 - `glass`, `hammer`: the two files named in the table laid over each other.
 - Highest peaks limited (a few dB) on `waves`, `wave_crash`, `wind`, `rain`,
   `camp_bell`, `splash`, `hammer`, `step` and `shotgun`.
