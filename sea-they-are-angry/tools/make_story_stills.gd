@@ -55,7 +55,7 @@ const STILLS := [
 	{"id": "intro_4", "scene": "harbour", "phase": NIGHT, "from": Vector3(-16.9, 3.1, 3.2), "at": Vector3(-14.9, 0.6, 12.0), "fov": 40.0, "stage": "_intro_4", "wait": 14},
 	{"id": "intro_5", "scene": "harbour", "phase": NIGHT, "from": Vector3(10.5, 10.0, -8.0), "at": Vector3(-1.0, 8.0, -29.5), "fov": 40.0, "stage": "_intro_5"},
 	{"id": "intro_6", "scene": "harbour", "phase": DAWN, "from": Vector3(8.2, 3.3, 0.2), "at": Vector3(5.2, 2.3, 20.0), "fov": 44.0, "stage": "_intro_6"},
-	{"id": "crossing_1", "scene": "harbour", "phase": NIGHT, "from": Vector3(-18.0, 9.0, 22.0), "at": Vector3(0.0, 3.0, -6.0), "fov": 48.0, "stage": "_crossing_1", "key": 0.33, "lines": 1.6},
+	{"id": "crossing_1", "scene": "harbour", "phase": DUSK, "from": Vector3(10.5, 3.1, 0.9), "at": Vector3(-1.5, 2.1, 9.0), "fov": 56.0, "stage": "_crossing_1", "wait": 14, "key": 0.42},
 	{"id": "crossing_2", "scene": "harbour", "phase": NIGHT, "from": Vector3(15.5, 3.8, 28.5), "at": Vector3(5.2, 2.0, 21.0), "fov": 46.0, "stage": "_crossing_2"},
 	{"id": "crossing_3", "scene": "rock", "phase": DAWN, "from": Vector3(-53.0, 2.6, 61.5), "at": Vector3(-22.0, 9.5, 30.0), "fov": 50.0, "stage": "_crossing_3"},
 	{"id": "crossing_4", "scene": "rock", "phase": DAY, "from": Vector3(-26.0, 5.0, 40.0), "at": Vector3(3.0, 7.5, 0.0), "fov": 42.0},
@@ -442,6 +442,13 @@ func _figure(main: Node, model: int, at: Vector3, toward: Vector3) -> Node3D:
 	rig.locomote(0.0)
 	return rig
 
+## One of the seven of Kirkhaven, in their own clothes (Outfits).
+func _villager(main: Node, id: String, at: Vector3, toward: Vector3) -> Node3D:
+	var rig := _figure(main, int(Villagers.who(id).get("model", 0)), at, toward)
+	if rig != null:
+		Outfits.dress(rig, id)
+	return rig
+
 ## One of the Bloated Dead at a spot, facing a point. Held still once it has stood up.
 func _creature(main: Node, at: Vector3, toward: Vector3) -> Node3D:
 	var enemies: Node = main.get_node_or_null("Enemies")
@@ -588,13 +595,20 @@ func _intro_6(main: Node) -> void:
 	_stand(main, 1, Vector3(8.7, 0.0, 5.0), Vector3(7.0, 0.0, 30.0))
 	_stand(main, 2, Vector3(6.3, 0.0, 4.9), Vector3(3.0, 0.0, 30.0))
 
-# Night: the fog over the quay and up the streets, a few lamps holding.
+# The third night, from the door of The Creel: they are coming over the quay wall, dark
+# against the fog on the harbour, the pier and its dead light behind them, every lamp
+# out. Lit as dusk and drawn dark, so the shapes and the fog stay apart.
 func _crossing_1(main: Node) -> void:
 	_lamp(main, false)
-	_street_lamps(main, [3, 4, 9, 10])
-	_flood(main, 0.7)
-	if main.get("kirk") != null and main.kirk.has_method("set_glow"):
-		main.kirk.set_glow(1.0, 0.0)
+	_bloom(main, false)
+	_street_lamps(main, [])
+	_flood(main, 0.45)
+	var door := Vector3(8.0, 0.0, 0.0)
+	for spot in [[6.6, 5.5], [3.9, 5.2], [1.3, 5.6], [-1.6, 5.3], [-4.6, 5.5], [4.6, 3.3], [0.2, 3.6]]:
+		_creature(main, _ground(float(spot[0]), float(spot[1])), door)
+
+func _crossing_1_late(_main: Node) -> void:
+	_replace_creatures()
 
 # The Mary Ann at the pier head, the people of the town and the keepers on the pier.
 func _crossing_2(main: Node) -> void:
@@ -604,8 +618,9 @@ func _crossing_2(main: Node) -> void:
 	_stand(main, 1, Vector3(3.2, 0.0, 18.9), Vector3(0.0, 0.0, 6.0))
 	_stand(main, 2, Vector3(2.6, 0.0, 25.0), boat)
 	var spots := [Vector3(4.4, 0.0, 21.6), Vector3(4.2, 0.0, 20.3), Vector3(3.4, 0.0, 22.4), Vector3(3.0, 0.0, 20.9), Vector3(4.5, 0.0, 19.2)]
+	var folk := ["baird", "duthie", "buchan", "geddes", "rennie"]
 	for i in spots.size():
-		_figure(main, i + 1, spots[i], boat + Vector3(0.0, 0.0, float(i) * 0.4 - 0.8))
+		_villager(main, folk[i], spots[i], boat + Vector3(0.0, 0.0, float(i) * 0.4 - 0.8))
 
 # A small boat on the open sea under a big sky, the lighthouse small on the horizon.
 func _crossing_3(main: Node) -> void:
