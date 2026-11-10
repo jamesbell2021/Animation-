@@ -62,10 +62,9 @@ holm", on the ninth night, and that "it cannot abide the light in its eyes". The
 are for arming: the shotgun, the longbows, petrol bombs, the flamer, the camp's
 searchlights fuelled.
 
-**The last night: the kraken.** A sea titan in the manner of the great stop-motion
-monsters: it rears upright out of the water and moves in held, stepped poses. (Our own
-creature; no film's design is copied.) It rises off the holm, tears down the wire, the
-huts and the towers, then comes round for the lighthouse. Its arms can be cut back. The
+**The last night: the kraken.** Vast, dark and many-armed, with two great pale eyes: an
+octopus the size of the holm. It rises off the holm, tears down the wire, the huts and
+the towers, then comes round for the lighthouse. Its arms can be cut back. The
 focused beam in its eyes blinds it: it stops, its arms go slack, and it can be hurt.
 When it dies, the fog rolls out, the storm ends, the sky clears blue.
 

@@ -33,9 +33,7 @@ the harbour master, the net-mender) are in the town and can be lost.
 
 ## The kraken
 
-- A sea titan in the manner of the great stop-motion monsters: it rears upright out of
-  the sea and moves in held, stepped poses, twelve to the second. It is the game's own
-  creature; no film's design is copied.
+- Vast, dark and many-armed, with two great pale eyes: an octopus the size of the holm.
 - It rises off the east of the holm on the last night and tears the camp down, from the
   east and then from the north.
 - Then it comes round to the east beach for the lighthouse.
