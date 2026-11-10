@@ -106,6 +106,7 @@ Each prints `PASS`/`FAIL` lines and a `RESULT` line. Most `quit(1)` on failure; 
 ## Tools
 
 - `tools/playtest.gd`: balance bot. `-- [nights] [bot|idle] [keepers] [helpers] [calm|angry|raging]` (the README also names an `eco` mode that plants, eats, buys upgrades and sets traps). Backs up and restores your save and best night; stops when the boat comes.
+- `tools/playtest_harbour.gd`: the same for Chapter Two. `-- [calm|angry|raging] [speed]`: three computer keepers hold Kirkhaven with nobody playing, and each dawn prints what came, what was lost and what is left.
 - `tools/tour.gd`: renders a run played entirely by computer keepers, saving a frame every few seconds of game time (`xvfb-run`, `--fixed-fps 20`).
 - `tools/screenshot.gd`: one PNG of a chosen phase, beam mode, or close or homestead view.
 - `tools/reel/`: `make_reel.sh` records 16 captioned shots from `reel_director.gd` with Movie Maker and `assemble.py` joins them with crossfades (needs ffmpeg; about an hour).

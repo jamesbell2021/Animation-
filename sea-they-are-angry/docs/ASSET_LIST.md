@@ -64,10 +64,13 @@ Made offline by `art/source/music/build_music.py` (numpy synthesis, ffmpeg to Og
 |---|---|
 | `audio/music_chapter_end.ogg` | 612 KB |
 | `audio/music_day.ogg` | 531 KB |
-| `audio/music_finale.ogg` | 587 KB |
-| `audio/music_game_over.ogg` | 153 KB |
-| `audio/music_night.ogg` | 802 KB |
-| `audio/music_title.ogg` | 904 KB |
+| `audio/music_ending.ogg` | 768 KB |
+| `audio/music_finale.ogg` | 550 KB |
+| `audio/music_game_over.ogg` | 168 KB |
+| `audio/music_harbour_day.ogg` | 602 KB |
+| `audio/music_harbour_night.ogg` | 640 KB |
+| `audio/music_night.ogg` | 789 KB |
+| `audio/music_title.ogg` | 903 KB |
 
 ## Sound effects
 
@@ -133,5 +136,14 @@ Synthesised in code (`autoload/audio.gd`, cached in `user://`). To replace one, 
 | `gull_alarm` | no |
 | `oar` | no |
 | `turbine` | yes |
+| `knock` | no |
+| `radio` | no |
+| `radio_voice` | no |
+| `fog_roll` | no |
+| `kirk_bell` | no |
+| `lamp_on` | no |
+| `lamp_off` | no |
+| `door_rattle` | no |
+| `heartbeat` | no |
 
-58 sound effects, 12 models, 30 textures, 6 pieces of music.
+67 sound effects, 12 models, 30 textures, 9 pieces of music.

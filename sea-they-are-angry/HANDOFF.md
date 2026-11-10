@@ -56,6 +56,8 @@ godot --headless --path sea-they-are-angry --script res://tests/slice_camera.gd
 godot --headless --path sea-they-are-angry --script res://tests/slice_interior.gd
 godot --headless --path sea-they-are-angry --script res://tests/slice_join.gd
 godot --headless --path sea-they-are-angry --script res://tests/slice_access.gd
+godot --headless --path sea-they-are-angry --script res://tests/slice_events.gd
+godot --headless --path sea-they-are-angry --script res://tests/slice_harbour.gd
 godot --headless --path sea-they-are-angry --script res://tests/smoke.gd    # a whole run at 20x, about half a minute
 GODOT=godot sea-they-are-angry/tests/run_lan.sh   # the LAN test: a host and a client, two processes
 ```

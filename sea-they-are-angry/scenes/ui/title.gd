@@ -73,7 +73,10 @@ func _ready() -> void:
 		record.append("Best: night %d." % best)
 	if SaveSys.chapter_done(1):
 		var seas: int = int(SaveSys.load_profile().get("chapters", {}).get("1", 0))
-		record.append("Chapter One: the light held (%s). Chapter Two, The Harbour, is coming." % Difficulty.NAMES[clampi(seas, 0, 2)].to_lower())
+		record.append("Chapter One: the light held (%s)." % Difficulty.NAMES[clampi(seas, 0, 2)].to_lower())
+	if SaveSys.chapter_done(2):
+		var seas2: int = int(SaveSys.load_profile().get("chapters", {}).get("2", 0))
+		record.append("Chapter Two: Kirkhaven's lights burn (%s)." % Difficulty.NAMES[clampi(seas2, 0, 2)].to_lower())
 	if not record.is_empty():
 		_label(box, "  ".join(record), 18, GOLD)
 	_hint = _label(root, "", 15, Color(0.8, 0.84, 0.9, 0.8))
