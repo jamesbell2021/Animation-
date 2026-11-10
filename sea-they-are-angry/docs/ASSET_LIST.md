@@ -63,6 +63,7 @@ Made offline by `art/source/music/build_music.py` (numpy synthesis, ffmpeg to Og
 | File | Size |
 |---|---|
 | `audio/music_chapter_end.ogg` | 612 KB |
+| `audio/music_credits.ogg` | 1.2 MB |
 | `audio/music_day.ogg` | 531 KB |
 | `audio/music_ending.ogg` | 768 KB |
 | `audio/music_finale.ogg` | 550 KB |
@@ -145,5 +146,15 @@ Synthesised in code (`autoload/audio.gd`, cached in `user://`). To replace one, 
 | `lamp_off` | no |
 | `door_rattle` | no |
 | `heartbeat` | no |
+| `kraken_rise` | no |
+| `kraken_roar` | no |
+| `kraken_slam` | no |
+| `kraken_blind` | no |
+| `kraken_sever` | no |
+| `kraken_die` | no |
+| `page_turn` | no |
+| `pencil` | no |
+| `boat_horn` | no |
+| `scream` | no |
 
-67 sound effects, 12 models, 30 textures, 9 pieces of music.
+77 sound effects, 12 models, 30 textures, 10 pieces of music.
