@@ -168,8 +168,9 @@ func _go() -> void:
 	root.get_node("Stock").set_amount("arrows", 7)
 	await process_frame
 	check(bar.shown() and bar.ammo_text("bow") == "7" and bar.ammo_text("shotgun") == "", "the weapon bar: the longbow with 7 arrows, no shotgun yet")
+	# Every line said (the camera's keys can be said in the same moment, playing alone).
 	var said := [""]
-	var on_msg := func(t: String) -> void: said[0] = t
+	var on_msg := func(t: String) -> void: said[0] = (said[0] + " | " + t) if t.contains("shotgun") or said[0] == "" else said[0]
 	root.get_node("Events").message.connect(on_msg)
 	Input.action_press("weapon_3")
 	await physics_frame
