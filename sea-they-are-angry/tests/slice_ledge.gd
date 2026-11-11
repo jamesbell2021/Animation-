@@ -53,6 +53,7 @@ func _run() -> void:
 	player.global_position = b.global_position - out * 1.2 + Vector3(0.0, 0.1, 0.0)
 	await frames(2)
 	player._aim = out
+	player.facing = atan2(-player._aim.x, -player._aim.z)
 	player._attack_cd = 0.0
 	player._attack()
 	var top_y: float = b.global_position.y
@@ -80,6 +81,7 @@ func _run() -> void:
 	player.global_position = b2.global_position + out2 * 1.0 + Vector3(0.0, 0.1, 0.0)
 	await frames(2)
 	player._aim = -out2
+	player.facing = atan2(-player._aim.x, -player._aim.z)
 	player._attack_cd = 0.0
 	player._attack()
 	await frames(40)
@@ -152,6 +154,7 @@ func _run() -> void:
 	b3.speed = 0.0
 	# What _update_aim would set from the mouse; the keeper's own aim points elsewhere.
 	player._aim = Vector3(-1.0, 0.0, 0.0)
+	player.facing = atan2(-player._aim.x, -player._aim.z)
 	player.set_physics_process(false)
 	player._lamp_point = spot
 	if lamp.mode != Lamp.Mode.FOCUSED:
@@ -170,6 +173,7 @@ func _run() -> void:
 	player.global_position = Terrain.at_angle(a, Terrain.coast_radius(a) - 2.0) + Vector3(0.0, 0.2, 0.0)
 	await frames(3)
 	player._aim = Vector3(sin(deg_to_rad(a)), 0.0, cos(deg_to_rad(a)))
+	player.facing = atan2(-player._aim.x, -player._aim.z)
 	var key := "move_right"
 	Input.action_press(key)
 	Input.action_press("move_down")

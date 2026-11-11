@@ -1037,3 +1037,12 @@ crossing pages 2 and 3 of the log, after the Mary Ann leaves Kirkhaven's pier.
   Smotherer's and the Bloated's models; the arm is a tube built in code; the sounds are
   the existing horn, wave crash, splash, groan and creak. The log's stills are unchanged;
   page 3's words gain a sentence about the crossing.
+
+## 2026-11-11: the boathook swings the way the keeper faces
+
+- **The owner asked** for the boathook to swing in the direction the keeper is facing,
+  not at the mouse. A person's keeper now swings the way they face (the way they last
+  walked); the bow, the shotgun, the flamer, bombs, flares and the lamp still aim with
+  the mouse or the stick. Helpers still swing where their brain aims them (they turn to
+  it first).
+

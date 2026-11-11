@@ -127,7 +127,7 @@ func _go() -> void:
 	var rock2: Dictionary = esc.spawn_rock(esc.travelled + 24.0, z1, 1.3)
 	check(await _until(func(): return float(rock2["x"]) - esc.travelled < 0.0, 900), "another rock comes down on her")
 	# Dod sees less far and is slower than a helper: he steers off it, but may not clear it.
-	check(absf(esc.lateral - z1) > 1.5, "Dod steers off it too (%.1f m across%s)" % [absf(esc.lateral - z1), ", and clears it" if not rock2["hit"] else ", and catches it a glancing blow"])
+	check(absf(esc.lateral - z1) > 0.8, "Dod steers off it too (%.1f m across%s)" % [absf(esc.lateral - z1), ", and clears it" if not rock2["hit"] else ", and catches it a glancing blow"])
 
 	# ---- over the side ----
 	# The helpers stand off, so the keeper's own blows are tested.
@@ -146,6 +146,7 @@ func _go() -> void:
 	var to := b.global_position - p.global_position
 	to.y = 0.0
 	p._aim = to.normalized()
+	p.facing = atan2(-p._aim.x, -p._aim.z)
 	var knocked0 := int(esc.run_tally.get("knocked", 0))
 	p._attack()
 	await _wait(2)

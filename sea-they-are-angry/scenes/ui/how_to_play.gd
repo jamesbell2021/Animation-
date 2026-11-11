@@ -63,7 +63,7 @@ func pages() -> Array:
 		["Controls", "Keeper one's keys", [
 			["%s %s %s %s" % [k.call("move_up"), k.call("move_left"), k.call("move_down"), k.call("move_right")], "Walk"],
 			["Mouse", "Aim"],
-			[k.call("attack"), "Swing the boathook, or fire what's in hand (hold to draw the bow or keep the flamer going)"],
+			[k.call("attack"), "Swing the boathook the way you face, or fire what's in hand at the aim (hold to draw the bow or keep the flamer going)"],
 			["%s, 1 to 5" % k.call("weapon_next"), "Change what's in hand: boathook, longbow, shotgun, flamer, petrol bombs (the wheel too, with two on one screen)"],
 			[k.call("interact"), "Use: gather, mend, refuel, climb, row, take eggs; hold beside a downed keeper to revive them"],
 			[k.call("operate"), "Work the lamp (walk in at the lighthouse door), or leave it"],

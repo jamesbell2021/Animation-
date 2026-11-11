@@ -452,6 +452,10 @@ func aim_yaw() -> float:
 func aim_dir() -> Vector3:
 	return _aim
 
+## The way the keeper's body faces, flat.
+func facing_dir() -> Vector3:
+	return Vector3(-sin(facing), 0.0, -cos(facing))
+
 # ---- jumping, and climbing over fences ----
 
 var _vy := 0.0
@@ -1032,9 +1036,15 @@ func _attack() -> void:
 		return
 	_attack_cd = ATTACK_CD * (1.25 if warmth < LOW_NEED else 1.0)
 	_swing_t = SWING_TIME
-	_aim_face_t = AIM_FACE_TIME
-	facing = aim_yaw()
-	rotation.y = facing
+	# A person's keeper swings the way they face (the way they last walked), not at the
+	# mouse; a helper still swings where its brain aims it.
+	var swing_dir := _aim
+	if ai:
+		_aim_face_t = AIM_FACE_TIME
+		facing = aim_yaw()
+		rotation.y = facing
+	else:
+		swing_dir = facing_dir()
 	if _clips():
 		rig.shot("swing")
 	Audio.sfx("swing", global_position)
@@ -1048,8 +1058,8 @@ func _attack() -> void:
 		var d := to.length()
 		if d > ATTACK_RANGE:
 			continue
-		var dir_to := _aim if d < 0.01 else to / d
-		if rad_to_deg(_aim.angle_to(dir_to)) > ATTACK_ARC_DEG:
+		var dir_to := swing_dir if d < 0.01 else to / d
+		if rad_to_deg(swing_dir.angle_to(dir_to)) > ATTACK_ARC_DEG:
 			continue
 		e.take_damage(ATTACK_DMG, dir_to, self)
 
