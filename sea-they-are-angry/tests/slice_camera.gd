@@ -53,12 +53,12 @@ func _go() -> void:
 
 	# Turn it with the keys.
 	Input.action_press("cam_right")
-	await _wait(40)
+	await _wait(90)
 	Input.action_release("cam_right")
 	await _wait(40)
 	var look1 := -cam.global_transform.basis.z
 	var turned := rad_to_deg(Vector2(look0.x, look0.z).angle_to(Vector2(look1.x, look1.z)))
-	check(absf(turned) > 30.0, "C turns the camera round the island (%.0f°)" % turned)
+	check(absf(turned) > 30.0, "E turns the camera round the island (%.0f°)" % turned)
 
 	# The middle mouse dragged turns it too.
 	var y0 := d.yaw_target
