@@ -9,6 +9,8 @@ const ATTACK_RANGE := 2.5
 const ATTACK_DMG := 20
 const ATTACK_CD := 0.6
 const ATTACK_ARC_DEG := 60.0
+## The step forward into a swing (m/s, fading with PUSH_DECAY: about a quarter of a metre).
+const LUNGE := 2.2
 const SWING_TIME := 0.2
 const INTERACT_RANGE := 2.2
 # The boathook and interactions only reach things on roughly the keeper's own level,
@@ -163,6 +165,9 @@ var has_hook := true
 var arsenal: Arsenal
 ## What a blow from this keeper is, for the dawn tally ("hook", "arrow", "shot", ...).
 var hit_kind := "hook"
+## How hard the blow being dealt shoves (Enemy.take_damage): 1 a boathook blow, more for
+## a full-draw arrow or a point-blank barrel; the weapon sets it for the blow, then puts it back.
+var hit_push := 1.0
 ## LAN, on the host: this keeper's person plays on another machine; its controls come
 ## over the network (Net.input_for).
 var remote := false
@@ -834,9 +839,9 @@ func _drive_clips(speed: float) -> void:
 		rig.activity("climb", v / natural)
 		return
 	if _job_tool == "hammer":
-		rig.activity("hammer", rig.clip_length("hammer") / STRIKE_TIME)
+		rig.activity("hammer", rig.clip_length("hammer") / STRIKE_TIME * work_speed())
 	elif _job_tool == "can":
-		rig.activity("pour", rig.clip_length("pour") / POUR_TIME)
+		rig.activity("pour", rig.clip_length("pour") / POUR_TIME * work_speed())
 	elif _reviving:
 		rig.activity("revive")
 	else:
@@ -984,12 +989,13 @@ func _move(delta: float) -> void:
 	if _held("sprint") and dir != Vector3.ZERO and _sprint_cd <= 0.0:
 		spd = SPRINT
 		_sprint_t += delta
-		if _sprint_t >= SPRINT_MAX:
+		# Ewan's sprint lasts longer and comes back sooner (Players.PERKS).
+		if _sprint_t >= SPRINT_MAX * Players.perk(idx, "sprint_len"):
 			_sprint_t = 0.0
-			_sprint_cd = SPRINT_COOLDOWN
+			_sprint_cd = SPRINT_COOLDOWN * Players.perk(idx, "sprint_rest")
 	else:
 		_sprint_t = maxf(0.0, _sprint_t - delta)
-	spd *= need_speed() * arsenal.move_mult()
+	spd *= need_speed() * arsenal.move_mult() * Players.perk(idx, "walk")
 	velocity.x = dir.x * spd
 	velocity.z = dir.z * spd
 
@@ -1048,6 +1054,11 @@ func _attack() -> void:
 	if _clips():
 		rig.shot("swing")
 	Audio.sfx("swing", global_position)
+	# A short step into the blow.
+	_push += Vector3(swing_dir.x, 0.0, swing_dir.z).normalized() * LUNGE
+	# Callum's is the heavier hook (Players.PERKS).
+	var dmg := roundi(ATTACK_DMG * Players.perk(idx, "hook_dmg"))
+	hit_push = Players.perk(idx, "hook_push")
 	for e in get_tree().get_nodes_in_group("enemies"):
 		if not (e is Node3D) or not e.has_method("take_damage"):
 			continue
@@ -1061,7 +1072,8 @@ func _attack() -> void:
 		var dir_to := swing_dir if d < 0.01 else to / d
 		if rad_to_deg(swing_dir.angle_to(dir_to)) > ATTACK_ARC_DEG:
 			continue
-		e.take_damage(ATTACK_DMG, dir_to, self)
+		e.take_damage(dmg, dir_to, self)
+	hit_push = 1.0
 
 # ---- the boathook as a harpoon ----
 
@@ -1343,8 +1355,12 @@ func _start_job(tool: String, target: Node, action: String = "interact") -> void
 	if tool == "can":
 		Audio.sfx("refuel", global_position, -2.0)
 
+## How fast this keeper's hammer jobs and pours go (Mairi's are quicker: Players.PERKS).
+func work_speed() -> float:
+	return Players.perk(idx, "work")
+
 func _work(delta: float) -> void:
-	_job_t += delta
+	_job_t += delta * work_speed()
 	if _job_target == null or not is_instance_valid(_job_target):
 		_end_job(false)
 		return
@@ -1450,7 +1466,7 @@ func knock_prone(t: float) -> void:
 		return
 	if _job_tool != "":
 		_end_job(false)
-	_prone_t = t
+	_prone_t = t * Players.perk(idx, "getup")
 	_kill_walk()
 	_scripted = false
 	var tw := create_tween()
@@ -1508,7 +1524,8 @@ func knock(impulse: Vector3, time: float) -> void:
 	if _clips() and not rig.is_ragdoll():
 		_play_stagger(impulse)
 		react = REACT_TIME
-	_rag_t = maxf(_rag_t, time + react)
+	# Ewan is up sooner (Players.PERKS).
+	_rag_t = maxf(_rag_t, time * Players.perk(idx, "getup") + react)
 	rig.ragdoll(impulse, "chest", react)
 
 func _play_stagger(push: Vector3) -> void:

@@ -14,6 +14,56 @@ const COLORS := [Color(1.0, 0.72, 0.25), Color(0.35, 0.85, 1.0), Color(1.0, 0.4,
 ## kinds of colour blindness.
 const SAFE_COLORS := [Color(1.0, 0.72, 0.25), Color(0.30, 0.55, 1.0), Color(0.96, 0.96, 0.96), Color(0.40, 0.90, 0.40)]
 
+## Each keeper's own knack, by slot, whoever plays them (a person or a helper). Read with
+## perk(slot, key); a key a keeper doesn't list is 1.0 (or 0 for "pellets" and
+## "mend_wood"). The host computes them (keepers run there), so on a LAN they follow the
+## slot. docs/DESIGN.md and docs/DECISIONS.md (2026-11-11) have the reasons.
+##  hook_dmg, hook_push: the boathook's damage and shove; ledge_shove: how surely an
+##    outward blow puts a creature over the ledge (the aim it needs is SHOVE_DOT / this).
+##  pellets: extra shotgun pellets; spread: the cone, x; draw: how fast the bow draws, x.
+##  work: how fast a hammer job or a pour (lamp oil, diesel) goes, x; mend_wood: driftwood
+##    off a mend that costs more than one thing.
+##  walk: speed on foot (walking and sprinting), x; sprint_len: how long a sprint lasts,
+##    x; sprint_rest: the wait after it, x; getup: time lying after a knock-down, x.
+const PERKS := [
+	{"hook_dmg": 1.35, "hook_push": 1.6, "ledge_shove": 2.5},
+	{"pellets": 1.0, "spread": 0.75, "draw": 1.25},
+	{"work": 1.4, "mend_wood": 1.0},
+	{"walk": 1.15, "sprint_len": 1.4, "sprint_rest": 0.6, "getup": 0.65},
+]
+## The line each keeper's knack gets on the title and in How to Play.
+const PERK_TEXT := [
+	"the old hand with the hook: boathook blows hit 35% harder and shove further",
+	"the shot: the shotgun throws an extra pellet in a tighter cone, the bow draws 25% faster",
+	"the mechanic: mends and refuels 40% faster, and a mend costs a driftwood less",
+	"the young one: 15% faster on foot, sprints longer, gets up sooner",
+]
+
+## The same, in a few words (the title's keeper lines).
+const PERK_SHORT := ["hits hardest with the hook", "the best shot", "mends and refuels fastest", "the quickest on foot"]
+
+## A keeper's knack (see PERKS): the multiplier, or the amount, for `key` in this slot.
+static func perk(slot: int, key: String) -> float:
+	var row: Dictionary = PERKS[posmod(slot, PERKS.size())]
+	if row.has(key):
+		return float(row[key])
+	return 0.0 if key in ["pellets", "mend_wood"] else 1.0
+
+## A mend's cost for the keeper in this slot: Mairi pays a driftwood less when it costs
+## more than one thing (the lighthouse's driftwood and scrap, the garden's driftwood and kelp).
+static func mend_cost(cost: Dictionary, slot: int) -> Dictionary:
+	var off := int(perk(slot, "mend_wood"))
+	var things := 0
+	for k in cost:
+		things += int(cost[k])
+	if off <= 0 or things <= 1 or int(cost.get("driftwood", 0)) <= 0:
+		return cost
+	var out := cost.duplicate()
+	out["driftwood"] = int(out["driftwood"]) - off
+	if int(out["driftwood"]) <= 0:
+		out.erase("driftwood")
+	return out
+
 ## A keeper's colour, in the palette that's chosen.
 static func color_of(idx: int) -> Color:
 	var list: Array = SAFE_COLORS if Settings.palette == 1 else COLORS

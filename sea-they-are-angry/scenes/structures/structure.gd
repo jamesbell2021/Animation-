@@ -131,12 +131,21 @@ func interact_prompt() -> String:
 		return ""
 	return "[E] Repair %s (%s)" % [display_name(), Stock.cost_str(repair_cost())]
 
+## What this mend costs the keeper doing it: Mairi pays a driftwood less when it costs
+## more than one thing (Players.mend_cost).
+func mend_cost_for(player: Node) -> Dictionary:
+	if player is Player:
+		return Players.mend_cost(repair_cost(), player.idx)
+	return repair_cost()
+
 func interact(_player: Node) -> bool:
 	if not is_damaged():
 		return false
-	if Stock.spend(repair_cost()):
+	var cost := mend_cost_for(_player)
+	if Stock.spend(cost):
 		repair(repair_amount())
-		Events.message.emit("Repaired %s  (%d/%d)" % [display_name(), hp, max_hp])
+		var saved := cost.size() < repair_cost().size() or int(cost.get("driftwood", 0)) < int(repair_cost().get("driftwood", 0))
+		Events.message.emit("Repaired %s  (%d/%d)%s" % [display_name(), hp, max_hp, "  (a driftwood saved)" if saved else ""])
 		Events.did.emit("repair", _player)
 		return true
 	Events.message.emit("Need " + Stock.cost_str(repair_cost()))

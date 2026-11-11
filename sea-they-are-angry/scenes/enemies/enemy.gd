@@ -901,44 +901,89 @@ func is_vulnerable() -> bool:
 
 # ---- damage ----
 
+## A blow with this much push (Player.hit_push: a full-draw arrow, a point-blank barrel)
+## is heavy: it shoves harder, wears footing down twice, and lands with a bigger stop.
+const HEAVY_PUSH := 2.0
+## Extra slide (m/s, divided by the creature's mass) for each unit of push above 1.
+const PUSH_SLIDE := 2.2
+const MAX_SLIDE := 6.0
+## A kill's ragdoll impulse (x the rig's mass): along the blow and up, more with the push.
+const KILL_FLING := 0.8
+const KILL_FLING_PUSH := 1.2
+const KILL_LIFT := 0.8
+const KILL_LIFT_PUSH := 0.4
+const KILL_IMPULSE := 6.0
+# The way the killing blow travelled and how hard (for the corpse's fling in _die).
+var _kill_push := Vector3.ZERO
+
 func take_damage(amount: int, from_dir: Vector3 = Vector3.ZERO, source: Node = null) -> void:
 	if puppet or state == &"Emerge" or hp <= 0 or not is_vulnerable():
 		return
+	var push := 1.0
+	var shove_dot := SHOVE_DOT
 	if source is Player:
 		last_hit = source.hit_kind
+		push = maxf(0.0, float(source.hit_push))
+		if source.hit_kind == "hook":
+			shove_dot = SHOVE_DOT / maxf(0.1, Players.perk(source.idx, "ledge_shove"))
+	var heavy := push >= HEAVY_PUSH or amount >= 30
 	hp -= amount
 	var shoved := false
 	var out := Vector3(global_position.x, 0.0, global_position.z).normalized()
+	var flat := Vector3(from_dir.x, 0.0, from_dir.z).normalized()
 	# On the ledge, a blow aimed outward sends it over the edge.
 	if source != null and hp > 0 and mass < SHOVE_MAX_MASS and Terrain.on_ledge(global_position.x, global_position.z):
-		shoved = Vector3(from_dir.x, 0.0, from_dir.z).dot(out) > SHOVE_DOT
+		shoved = flat.dot(out) > shove_dot
 	if rig != null and source != null and hp > 0:
-		var flat := Vector3(from_dir.x, 0.0, from_dir.z).normalized()
-		# Blows wear its footing down: the one that breaks it knocks it flat.
-		_poise += 1
+		# Blows wear its footing down: the one that breaks it knocks it flat. A heavy
+		# blow counts twice.
+		_poise += 2 if push >= HEAVY_PUSH else 1
 		_poise_t = POISE_TIME
 		var floored := shoved or (_poise >= poise_hits and can_ragdoll())
 		if floored:
 			_poise = 0
-			var push := (out * SHOVE_IMPULSE + Vector3(0.0, 1.2, 0.0)) if shoved else (flat * HIT_IMPULSE + Vector3(0.0, 1.0, 0.0))
-			knock_down(push * rig.mass * 10.0)
+			var p := (out * SHOVE_IMPULSE + Vector3(0.0, 1.2, 0.0)) if shoved else (flat * HIT_IMPULSE * clampf(push, 1.0, 2.0) + Vector3(0.0, 1.0, 0.0))
+			knock_down(p * rig.mass * 10.0)
 		if state != &"Ragdoll" and not rig.is_ragdoll():
 			hit_reaction(from_dir)
+			_slide(flat, push)
 	else:
-		_knock += Vector3(from_dir.x, 0.0, from_dir.z) * (KNOCKBACK / mass)
+		_knock += flat * (KNOCKBACK * maxf(push, 0.3) / mass)
 		if shoved:
 			_knock = out * SHOVE_SPEED
+		_knock = _knock.limit_length(maxf(MAX_SLIDE, SHOVE_SPEED))
 	if source != null:
-		FX.spray(get_parent(), global_position + Vector3(0.0, 1.1, 0.0), from_dir, Color(0.55, 0.65, 0.45))
+		var at := global_position + Vector3(0.0, 1.1, 0.0)
+		FX.spray(get_parent(), at, from_dir, Color(0.55, 0.65, 0.45))
+		FX.impact(get_parent(), at - flat * 0.25, flat, Color(0.6, 0.7, 0.5), heavy)
 		Audio.sfx("hit", global_position)
-		flash()
+		Audio.sfx("thunk", global_position, (2.0 if hp <= 0 else (0.0 if heavy else -3.0)), 0.1)
+		flash(FLASH_TIME * (1.6 if heavy or hp <= 0 else 1.0))
 	_on_hit()
 	if source is Player and not source.ai:
-		Feel.blow(hp <= 0, amount >= 30)
+		Feel.blow(hp <= 0, heavy, flat, amount)
 		FX.damage_number(get_parent(), global_position + Vector3(randf_range(-0.3, 0.3), 1.9, randf_range(-0.2, 0.2)), amount)
 	if hp <= 0:
 		hp = 0
+		if source != null:
+			_kill_push = flat * push
 		_die()
+
+# A blow that shoves: past what the stagger slides, a light creature is driven back the
+# further the harder the blow (a full-draw arrow, a point-blank barrel); a heavy one
+# barely moves.
+func _slide(flat: Vector3, push: float) -> void:
+	if push <= 1.0 or flat == Vector3.ZERO:
+		return
+	_knock = (_knock + flat * PUSH_SLIDE * (push - 1.0) / maxf(mass, 0.5)).limit_length(MAX_SLIDE)
+
+## The impulse a corpse goes down with: up, and along the killing blow if there was one.
+func _corpse_impulse() -> Vector3:
+	if _kill_push == Vector3.ZERO or rig == null:
+		return Vector3(0.0, 20.0, 0.0)
+	var p := _kill_push.length()
+	var along := _kill_push / p
+	return (along * (KILL_FLING + KILL_FLING_PUSH * p) + Vector3.UP * (KILL_LIFT + KILL_LIFT_PUSH * p)) * rig.mass * KILL_IMPULSE
 
 ## A blow landing: the creature flashes pale for a moment, so the hit reads.
 const FLASH_TIME := 0.09
@@ -946,7 +991,7 @@ static var _flash_mat: StandardMaterial3D
 var _flash_meshes: Array = []
 var _flash_t := 0.0
 
-func flash() -> void:
+func flash(time: float = FLASH_TIME) -> void:
 	if Settings.calm_lights:
 		return
 	if _flash_mat == null:
@@ -961,7 +1006,7 @@ func flash() -> void:
 			if m.mesh != null and m.get_aabb().size.length() > 0.25 and not (m.material_override is ShaderMaterial):
 				_flash_meshes.append(m)
 	var first := _flash_t <= 0.0
-	_flash_t = FLASH_TIME
+	_flash_t = maxf(_flash_t, time)
 	if not first:
 		return
 	for m in _flash_meshes:
@@ -981,7 +1026,7 @@ func _on_hit() -> void:
 func _die() -> void:
 	_drop_salvage()
 	Events.enemy_killed.emit(self)
-	if not _ragdoll_corpse(Vector3(0.0, 20.0, 0.0)):
+	if not _ragdoll_corpse(_corpse_impulse()):
 		queue_free()
 
 ## Virtual: what it leaves where it falls, as [kind, amount, chance] (Salvage).

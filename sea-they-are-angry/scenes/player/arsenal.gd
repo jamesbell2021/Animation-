@@ -16,6 +16,9 @@ const MIN_DRAW := 0.2
 const ARROW_DMG_MIN := 12
 const ARROW_DMG_MAX := 40
 const DRAW_SLOW := 0.5
+## How hard an arrow shoves (Player.hit_push), from a weak draw to a full one.
+const ARROW_PUSH_MIN := 0.4
+const ARROW_PUSH_MAX := 2.6
 # The shotgun: a cone of shot from each barrel, brutal close in. Two barrels, then the
 # keeper breaks it open and loads two more from the store.
 const PELLETS := 9
@@ -27,6 +30,10 @@ const CLOSE := 3.5
 const CLOSE_MULT := 1.6
 const BARREL_CD := 0.3
 const RELOAD_TIME := 1.6
+## How hard a barrel shoves what it hits (Player.hit_push), scaled by the share of the
+## pellets that found it: point-blank (within CLOSE) and from further off.
+const SHOT_PUSH_CLOSE := 3.0
+const SHOT_PUSH_FAR := 1.2
 # The flamer: a roaring tongue of burning bio. Whatever's in it stops and burns, and
 # burns on after; a tank lasts about six seconds, and refills from the store's bio.
 const FLAME_RANGE := 5.5
@@ -278,15 +285,27 @@ func _face() -> void:
 func _muzzle() -> Vector3:
 	return keeper.global_position + Vector3(0.0, MUZZLE_UP, 0.0) + keeper.aim_dir() * 0.7
 
-## Hurt a creature as this keeper's weapon of this kind (for the dawn tally).
-static func strike(e: Node, dmg: int, dir: Vector3, by: Node, kind: String) -> void:
+## Hurt a creature as this keeper's weapon of this kind (for the dawn tally), shoving it
+## with `push` (Player.hit_push: 1 a boathook blow's worth; left out, an arrow's comes
+## from how hard it was drawn, which its damage says, and anything else's is 1).
+static func strike(e: Node, dmg: int, dir: Vector3, by: Node, kind: String, push: float = -1.0) -> void:
+	if push < 0.0:
+		push = arrow_push(dmg) if kind == "arrow" else 1.0
 	if by != null and is_instance_valid(by) and by is Player:
 		by.hit_kind = kind
+		by.hit_push = push
 		e.take_damage(dmg, dir, by)
 		by.hit_kind = "hook"
+		by.hit_push = 1.0
 	else:
 		e.last_hit = kind
 		e.take_damage(dmg, dir, null)
+
+## An arrow's shove from its damage: a full draw drives what it hits back, a weak one
+## barely nudges it.
+static func arrow_push(dmg: int) -> float:
+	var power := clampf(float(dmg - ARROW_DMG_MIN) / float(ARROW_DMG_MAX - ARROW_DMG_MIN), 0.0, 1.0)
+	return lerpf(ARROW_PUSH_MIN, ARROW_PUSH_MAX, power * power)
 
 static func _live(e: Node) -> bool:
 	return e is Enemy and e.hp > 0 and e.state != &"Emerge" and e.state != &"Retreat"
@@ -305,7 +324,8 @@ func _bow(delta: float, pressed: bool, held: bool) -> void:
 		return
 	_face()
 	if held:
-		draw = minf(1.0, draw + delta / DRAW_TIME)
+		# Hamish draws faster (Players.PERKS).
+		draw = minf(1.0, draw + delta * Players.perk(keeper.idx, "draw") / DRAW_TIME)
 		return
 	# Let go: loose, if it was drawn far enough to fly.
 	var power := draw
@@ -362,8 +382,12 @@ func _shotgun(delta: float, pressed: bool) -> void:
 func fire_shot(aim: Vector3) -> void:
 	var from := _muzzle()
 	var hits := {}
-	for i in PELLETS:
-		var a := deg_to_rad(-SPREAD_DEG * 0.5 + SPREAD_DEG * (float(i) + randf_range(0.1, 0.9)) / float(PELLETS))
+	var near := {}
+	# Hamish's gun throws an extra pellet in a tighter cone (Players.PERKS).
+	var pellets := pellet_count()
+	var spread := spread_deg()
+	for i in pellets:
+		var a := deg_to_rad(-spread * 0.5 + spread * (float(i) + randf_range(0.1, 0.9)) / float(pellets))
 		var d := aim.rotated(Vector3.UP, a)
 		var best: Node = null
 		var best_t := SHOT_RANGE
@@ -381,10 +405,14 @@ func fire_shot(aim: Vector3) -> void:
 		if best != null:
 			var dmg := float(PELLET_DMG) * (CLOSE_MULT if best_t < CLOSE else 1.0)
 			hits[best] = float(hits.get(best, 0.0)) + dmg
+			if best_t < CLOSE:
+				near[best] = int(near.get(best, 0)) + 1
 	for e in hits:
 		var dir: Vector3 = e.global_position - keeper.global_position
 		dir.y = 0.0
-		strike(e, roundi(hits[e]), dir.normalized(), keeper, "shot")
+		var share := clampf(hits[e] / (float(PELLET_DMG) * float(pellets)), 0.0, 1.0)
+		var push := (SHOT_PUSH_CLOSE if int(near.get(e, 0)) > 0 else SHOT_PUSH_FAR) * clampf(share * 1.6, 0.25, 1.0)
+		strike(e, roundi(hits[e]), dir.normalized(), keeper, "shot", push)
 	Audio.sfx("shotgun", from, 5.0, 0.06)
 	if not keeper.ai:
 		Feel.shake(0.2)
@@ -403,6 +431,13 @@ func fire_shot(aim: Vector3) -> void:
 	keeper.recoil(-aim * 1.5)
 	if keeper._clips():
 		keeper.rig.shot("flare")
+
+## Pellets in a barrel, and the cone they spread over, for the keeper holding the gun.
+func pellet_count() -> int:
+	return PELLETS + int(Players.perk(keeper.idx, "pellets")) if keeper != null else PELLETS
+
+func spread_deg() -> float:
+	return SPREAD_DEG * Players.perk(keeper.idx, "spread") if keeper != null else SPREAD_DEG
 
 # ---- the flamer ----
 

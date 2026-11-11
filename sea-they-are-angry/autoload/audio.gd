@@ -24,6 +24,7 @@ const SOUNDS := {
 	"step": ["_s_step", false],
 	"swing": ["_s_swing", false],
 	"hit": ["_s_hit", false],
+	"thunk": ["_s_thunk", false],
 	"burst": ["_s_burst", false],
 	"splash": ["_s_splash", false],
 	"groan": ["_s_groan", false],
@@ -387,6 +388,17 @@ func _s_hit() -> PackedFloat32Array:
 	var b := _env(_tone(_n(0.22), 120.0, 55.0), 0.002, 22.0)
 	var click := _env(_lowpass(_noise(_n(0.05), 13), 2500.0), 0.001, 80.0)
 	return _gain(_mix(b, click, 0.8), 0.9)
+
+# A blow landing in flesh, played under "hit": a short, meaty thump (a low knock that
+# drops in pitch, a dull body of muffled noise, a soft wet slap on top).
+func _s_thunk() -> PackedFloat32Array:
+	var n := _n(0.2)
+	var knock := _env(_tone(n, 95.0, 42.0), 0.0015, 26.0)
+	var body := _env(_lowpass(_noise(n, 17), 380.0), 0.001, 30.0)
+	_mix(knock, _gain(body, 2.2), 1.0)
+	var slap := _env(_highpass(_lowpass(_noise(_n(0.04), 18), 1800.0), 300.0), 0.0005, 110.0)
+	_mix(knock, slap, 0.5)
+	return _gain(knock, 0.85)
 
 func _s_burst() -> PackedFloat32Array:
 	var n := _n(0.8)

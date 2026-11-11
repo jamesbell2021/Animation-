@@ -224,6 +224,19 @@ static func spray(parent: Node, at: Vector3, dir: Vector3, color: Color) -> void
 	_meshes()
 	emitter(parent, at, _drop_mesh, Color(color.r, color.g, color.b, 0.95), 14, 0.55, (dir + Vector3.UP * 0.6).normalized(), 35.0, 2.0, 4.0, 9.0, 0.5, 1.1)
 
+## Where a blow lands: a quick pale spark-burst and a spit of droplets thrown on along
+## the blow (`dir`), bigger for a heavy one. Drawn on the machine that dealt the blow only
+## (the host on a LAN; the clients see the spray that goes with it).
+static func impact(parent: Node, at: Vector3, dir: Vector3, color: Color, heavy: bool = false) -> void:
+	if parent == null or not parent.is_inside_tree() or (Net.playing() and not Net.is_host()):
+		return
+	_meshes()
+	var d := Vector3(dir.x, 0.0, dir.z)
+	d = (d.normalized() + Vector3.UP * 0.35).normalized() if d.length() > 0.01 else Vector3.UP
+	var k := 1.6 if heavy else 1.0
+	emitter(parent, at, _drop_mesh, Color(1.0, 0.96, 0.82, 1.0), int(10 * k), 0.22, d, 55.0, 4.0 * k, 7.0 * k, 3.0, 0.25, 0.5, true, false, 3.0)
+	emitter(parent, at, _drop_mesh, Color(color.r, color.g, color.b, 0.95), int(8 * k), 0.5, d, 25.0, 3.0 * k, 5.5 * k, 9.0, 0.5, 1.0)
+
 ## A puff of steam and embers from a creature being burned by the focused beam.
 static func steam(parent: Node, at: Vector3) -> void:
 	if not ambient and not Net.fx_gate("steam", [at]):

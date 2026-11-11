@@ -124,7 +124,9 @@ func _run() -> void:
 	player._aim = Vector3(0, 0, -1)
 	player._attack_cd = 0.0
 	player._attack()
-	check(b.hp == 40, "boathook hit takes 20 hp (hp now %d)" % b.hp)
+	# Keeper one is Callum, whose hook hits harder (Players.PERKS: 20 x 1.35).
+	var hook_dmg := roundi(Player.ATTACK_DMG * root.get_node("Players").perk(player.idx, "hook_dmg"))
+	check(b.hp == 60 - hook_dmg, "boathook hit takes %d hp, Callum's (hp now %d)" % [hook_dmg, b.hp])
 	b.process_mode = Node.PROCESS_MODE_INHERIT
 	player.global_position = on_ground(Vector3(2.6, 0.1, 2.4))
 	b.take_damage(20, Vector3.ZERO, player)
