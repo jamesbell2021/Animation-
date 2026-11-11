@@ -17,6 +17,8 @@ const FOCUS_RANGE := 29.0
 const BURN_WIDE := Balance.LAMP_BURN_WIDE
 const BURN_FOCUSED := Balance.LAMP_BURN_FOCUSED
 const UNMANNED_MULT := 0.8
+## Hard Light (Run.hard_light): how much faster the lamp burns.
+const HARD_LIGHT := 1.25
 const AUTO_SWEEP_DEG := 20.0
 const AIM_SHARPNESS := 6.0
 # Tipped down far enough that the focused beam lands on the beaches from the crag top.
@@ -128,6 +130,9 @@ func burn_rate() -> float:
 	var rate := BURN_WIDE if mode == Mode.WIDE else BURN_FOCUSED
 	if operator == null:
 		rate *= UNMANNED_MULT
+	# Hard Light (an unlock, Run.hard_light): the rock's lamp burns a quarter faster.
+	if Run.hard_light and Run.chapter == 1:
+		rate *= HARD_LIGHT
 	return rate * Upgrades.pick("lighthouse", Upgrades.BURN_MULT)
 
 func _apply_mode() -> void:

@@ -66,6 +66,8 @@ Everything here has passed the tests but not a person.
 - [ ] **A jump (Space), and walking into a fence to climb it.** Can you get back up from the beach? Does the climb feel like a move, or like a glitch?
 - [ ] **The outline.** Standing behind the lighthouse or a tower, can you still see where your keeper is?
 - [ ] **Hits.** The screen shake, the pause on a heavy blow, the pale flash on a creature, the numbers floating up. Too much, too little? Try Settings, Comfort and access, and turn each down.
+- [ ] **Heavy hits** (2026-11-11): a boathook blow, a full-draw arrow, a barrel at point-blank. Does each land with weight: the short freeze, the view kicked the way the blow went, the pale flash, the thump under the hit sound, the creature driven back (a squid further than a bloated, a crab hardly)? Does a kill from a big hit throw the body? In a busy fight, with helpers swinging too, does it ever stutter or feel slow? With the shake Off, is the kick gone too?
+- [ ] **The keepers' knacks** (2026-11-11): play a night as each. Callum's hook (35% harder, a bigger shove, puts them off the ledge more easily), Hamish's gun (a pellet more, a tighter cone) and quicker bow, Mairi's mending and refuelling (40% quicker, a driftwood saved on the lighthouse and garden), and, if Ewan is ever in a run, his pace. Does each feel different enough to notice, and does any feel like the one to pick every time? Are the lines on the title and in How to Play clear?
 - [ ] **The arrows at the edge of the screen** pointing at creatures you can't see: do they help, and do they tell you the right thing about a raid on the camp?
 - [ ] **Salvage.** Creatures leave bio, scrap or kelp where they fall. Do you pick it up in time? Does the sea taking what's left at dusk feel fair?
 - [ ] **Gull Rock.** Row out by day, take the eggs, row back before dark. Do the keeper's hands stay on the oars? Do the gulls go at night and in a storm?
@@ -129,6 +131,11 @@ Chapter Two (from the title: "Chapter Two: The Harbour"):
 - [ ] **The diary's last pages:** do they tell you enough about the kraken to prepare?
 - [ ] **The kraken rising:** frightening? Can you see all of it? Does the camp coming down read from the main island?
 - [ ] **At the lighthouse:** is the reared arm enough warning to get clear? Can you tell when it is blind, and that blind is the time to attack? Is cutting an arm back worth doing?
+- [ ] **The kraken's three stages** (the camp, the crossing, the light): does each feel different? Do you notice the stage bar at the top and the line as each begins ("It is through the wire.", "It's coming round for the light!", "It can't abide the light!")?
+- [ ] **Stage 1, the camp:** do you see an arm flinch back from the flamer, a petrol bomb, an arrow or two, or a searchlight held on it? Is saving some of the camp worth the effort? Is the count of what still stands (in the line and on the last card) noticed?
+- [ ] **Stage 2, the crossing:** do you see the pale glowing wound on an arm laid on the rock, and understand it means "cut here"? Does cutting one feel like it slowed it? Is 4.5 s long enough to get to it?
+- [ ] **Stage 3, the light:** do you notice each blinding getting shorter? When an arm goes up the tower, is it clear you must blind it before it shakes you out of the lamp room? Is being thrown out fair?
+- [ ] **The rear-up:** at a quarter of its strength it heaves itself out of the sea. Does it read as a last chance to throw everything? Is it frightening?
 - [ ] **The lamp in the fight:** can you hold the focused beam on its eyes? Does the lamp running low mid-fight feel like tension or like a trap?
 - [ ] **How long:** too long, too short? Did you run out of everything?
 - [ ] **The ending:** the fog going, the sky clearing, the last pages. Does it land?
@@ -161,3 +168,15 @@ To try it on its own: `godot --path . -- --escape` (add `calm` or `raging` for t
 - [ ] **Two or three on one screen:** does everyone fit in the one view? Can the arrow-key player steer?
 - [ ] **The log's pages after:** do they name whoever was lost on the crossing?
 
+
+## Added 2026-11-11: the rock's days and nights differ
+
+Play the story from the rock (Start on the Rock), on an angry sea: seven nights, the kraken on the seventh.
+
+- [ ] **The length:** six, seven or eight nights by the sea. Enough days to arm for the kraken? Too few to see the camp's research through?
+- [ ] **Each day's event** (the line as the day starts, the note at the top, the gold marker): a wreck, fish, the camp's old kit, a cave at low tide, a long day... Do you notice it? Is it worth the walk before dusk? Does the note at the top get in the way?
+- [ ] **The special nights:** does the morning's sign ("The glass is falling: a storm tonight") tell you enough to get ready? Does each feel different: squid up the crag, smotherers at the lamp, a fog night from every beach, the eel, a big night? Any of them unfair?
+- [ ] **The seven's requests:** do you see who is asking ("Asked: ..." at the top, then [E] beside them)? Are the rewards worth it, and do you notice them after (two scrap from Isla Rennie, the dressings at dusk, the arrows)? Is one at a time, for a day, right?
+- [ ] **Losing one of them:** does the line from one of the others at dawn land, or feel tacked on?
+- [ ] **The dawn's rating** (the last line of the log, with stars): fair? Do you want the stars? Do the stars show as stars on your machine (they come from the system's fallback font)?
+- [ ] **The unlocks:** finish on an angry sea; is the oilskin in Settings, and on the keeper next run? On a raging sea, Hard Light: is the fourth star worth the oil?

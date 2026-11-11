@@ -45,6 +45,17 @@ game is that sentence.
 | Tam Geddes | harbour master | Two cartridges each dawn |
 | Peter Main | net-mender | Four arrows each dawn |
 
+On the rock each of them asks one small thing on some day, and doing it helps them help
+more (added 2026-11-11): Mr Baird's bible went over the side of the *Mary Ann* on the
+crossing and comes ashore (he reads from it over the water, and the sea is quieter);
+Isla Rennie wants driftwood for a store rack (two scrap a dawn); Sandy Coull wants scrap
+and diesel to strip down the camp's generator (he fits a governor); Morag Duthie wants
+gull eggs (two meals a dawn); Nurse Buchan wants the glowing bio for dressings (she sees
+to the keepers at dusk as well); Tam Geddes's chest is bad and he wants the quarters'
+stove lit (he gives up the box of cartridges he kept back from the harbour office); Peter
+Main wants kelp for netting (six arrows a dawn). When one of them is lost, one of the
+others marks it at the next dawn, in a line.
+
 ## The acts
 
 **Act One: Kirkhaven. "The night the lights went out."** Three nights. Feed the
@@ -70,13 +81,17 @@ town. If her hull is broken she founders, and that run is lost.
 keepers off. The diary's last pages say what came in November 1944, "the size of the
 holm", on the ninth night, and that "it cannot abide the light in its eyes". The days
 are for arming: the shotgun, the longbows, petrol bombs, the flamer, the camp's
-searchlights fuelled.
+searchlights fuelled. The rock is six, seven or eight nights (a calm, angry or raging
+sea), the kraken on the last; no two days are quite alike (a wreck ashore, fish in close,
+a cave dry at low tide, the wireless by day), and the morning can tell what kind of night
+is coming (the glass falling for a storm, ink in the pools before the squid).
 
 **The last night: the kraken.** Vast, dark and many-armed, with two great pale eyes: an
 octopus the size of the holm. It rises off the holm, tears down the wire, the huts and
-the towers, then comes round for the lighthouse. Its arms can be cut back. The
-focused beam in its eyes blinds it: it stops, its arms go slack, and it can be hurt.
-When it dies, the fog rolls out, the storm ends, the sky clears blue.
+the towers (fire and the camp's searchlights drive its arms back), then comes round
+for the lighthouse. Its arms can be cut back. The focused beam in its eyes blinds it:
+it stops, its arms go slack, and it can be hurt; it learns to turn its head sooner each
+time. At the last it rears up out of the sea, the whole of it. When it dies, the fog rolls out, the storm ends, the sky clears blue.
 
 ## The keeper's log (the sketch pages)
 

@@ -1046,3 +1046,109 @@ crossing pages 2 and 3 of the log, after the Mary Ann leaves Kirkhaven's pier.
   the mouse or the stick. Helpers still swing where their brain aims them (they turn to
   it first).
 
+
+## 2026-11-11: heavy hits, and each keeper's own knack
+
+The owner asked to "make this game great"; this is the part about how a fight feels and
+the keepers being different people.
+
+- **Hit-stop by time scale, kept narrow.** `Feel.hitstop` dips `Engine.time_scale` to
+  0.04 rather than pausing animations: one place, and it stops the physics, the ragdolls
+  and the particles together, which is what reads. It is made safe instead: it is timed
+  in real time (`Time.get_ticks_usec`), so it cannot hang on a slow frame; it puts the
+  clock back to 1.0 only if the clock is still at its own 0.04 (anything else that set it
+  meanwhile wins); it never stacks or extends, and none starts within 0.12 s of the last;
+  and it does nothing unless the clock is at exactly 1.0, so the playtest bots and the
+  tour, which run the game fast, never get one. Only a person's blows call it
+  (`Enemy.take_damage` checks `not source.ai`), so helpers swinging in a busy fight don't
+  make it stutter. Off headless (unless a test sets `force_live`), on a LAN and with
+  Settings' hit pause off, as before.
+- **The numbers.** No stop under 15 damage (a chip: a weak arrow, a stray pellet or two).
+  A solid blow 0.055 s (the boathook), a heavy one 0.075 s (30 damage or more, or a push
+  of 2 or more: a full-draw arrow, a point-blank barrel), a kill 0.085 s, a heavy kill
+  0.11 s. The shake stays as it was (0.08, 0.16, 0.22).
+- **The camera's kick** (`Feel.kick`): the view is pushed up to 0.22 m the way the blow
+  travelled (0.45 of that for a blow, 0.75 for a kill, all of it for a heavy one) and
+  springs back at 16 a second. It is projected through the camera's own axes, so it is
+  right however the free camera is turned. It follows the shake setting: Low scales it by
+  0.4, Off turns it off.
+- **The flash and the thump.** The pale flash was already there (an additive overlay, so
+  it doesn't fight the rig's `tint()` that burning and the Smotherer's light use); a heavy
+  blow or a kill holds it 1.6 times as long (0.14 s). Reduce flashing still turns it off.
+  A new sound, `thunk` (`Audio._s_thunk`: a 95 to 42 Hz knock, a muffled noise body and a
+  soft slap, 0.2 s, levelled with `hit`: both peak alike and their RMS is 0.205 against
+  0.215), plays under `hit` on every keeper's blow: -3 dB, 0 dB heavy, +2 dB on a kill.
+- **Impact sparks** (`FX.impact`): a quick pale burst and a spit of droplets thrown on
+  along the blow, 1.6 times bigger for a heavy one. Drawn on the machine that dealt the
+  blow only: `net.gd` replays effects by name and isn't this change's to edit, so a LAN
+  client sees the existing spray but not the sparks.
+- **The shove** (`Player.hit_push`, set by the weapon for the blow and put back after):
+  1 for the boathook (Callum 1.6), an arrow 0.4 to 2.6 by the square of its draw (read
+  from its damage in `Arsenal.strike`, so `arrow.gd` is unchanged), a barrel 1.2, or 3.0
+  if any pellet hit within 3.5 m, times the share of the pellets that found that creature
+  (x1.6, between 0.25 and 1). Past 1, a creature still on its feet slides back 2.2 m/s per
+  unit over 1, divided by its mass (Squid 0.8, Bloated 2, Crab 5: a full-draw arrow drives
+  a Squid about a metre and a Crab a few centimetres), capped at 6 m/s. A push of 2 or
+  more wears the footing down twice, so it usually floors a light creature, and the
+  knock-down's impulse grows with it (up to 2x). Without a rig the old knockback is scaled
+  by the push.
+- **Kills fling the body.** The corpse's ragdoll impulse was straight up (20); a kill by a
+  blow now sends it along the blow and up, (0.8 + 1.2 x push) along and (0.8 + 0.4 x push)
+  up, times the rig's mass and 6: about 7 m/s on the chest for a boathook kill, 16 for a
+  point-blank barrel, under `CharacterRig.BLOWUP_SPEED` (40), and `MAX_SPEED` (7) still
+  caps every bone each step. Kills by fire, poison or a fall go up as before.
+- **The swing:** a person's swing still goes the way the keeper faces; it now steps into
+  the blow, 2.2 m/s fading at the keeper's push decay (about a quarter of a metre, kept on
+  the island by the usual clamp).
+- **Each keeper's knack** goes with the slot (`Players.PERKS`, `Players.perk(slot, key)`),
+  whoever plays it, a person or a helper, because the story's keepers are people with
+  their trades (docs/STORY.md) and helpers are those keepers too. Keepers run on the host,
+  so the host computes every knack. Callum, the old hand: boathook x1.35 (27), shove 1.6,
+  and an outward blow on the ledge needs only a dot of 0.14 (0.35 / 2.5) to put a creature
+  over. Hamish, the shot: 10 pellets in 18 degrees (9 in 24), bow draw x1.25 (0.64 s).
+  Mairi, the mechanic: hammer jobs and pours x1.4 quicker (`Player.work_speed`; the
+  clips are sped to match), and a mend that costs more than one thing costs a driftwood
+  less (`Players.mend_cost`, applied in `Structure.interact`). No mend costs more than one
+  driftwood, so "one less driftwood where it costs more than one" is read as "where it
+  costs more than one thing": the lighthouse then takes only the scrap and the garden only
+  the kelp; a one-driftwood mend is unchanged. Ewan, the young one: x1.15 on foot (walk
+  and sprint), sprint x1.4 long (4.2 s) and x0.6 rest (1.2 s), x0.65 time lying after a
+  knock-down. `Players.MAX` is still 3, so Ewan's knack waits for a run he can be in; the
+  title and How to Play show the knacks of the slots that can play.
+- **Where they're shown:** the title's keeper lines ("P1 Callum (hits hardest with the
+  hook) — Keyboard + mouse") and a line each on How to Play's Together page. Not on the
+  HUD card (the HUD is being edited elsewhere).
+- **Known edges:** the prompts and `work_kind()` still check the full mend cost, so Mairi
+  with only a scrap can't start the lighthouse mend she could pay for; the message on
+  finishing says "a driftwood saved". Tests that assert the hook's damage use slot 0
+  (Callum) now hitting 27.
+
+## 2026-11-11: the rock's days and nights differ; the seven ask; a shorter Act Two; ratings and unlocks
+
+The owner asked to "make this game great"; this part, approved by them, is about Act Two.
+
+- **A shorter, fuller Act Two.** The story's rock is `Rescue.STORY_NIGHTS` = 6, 7, 8 (calm, angry, raging), set outright rather than "the boat's count less two" (which was 6, 8, 10): the angry sea loses a night, the raging two. The kraken still comes on the last (`Rescue.is_last_night`), its table still surges. `StoryRock.DIARY_NIGHTS_LEFT` stays 3, so the diary is read after night 3, 4 or 5, leaving three days to arm. The rock alone (LAN, the old tests) keeps 8, 10, 12.
+- **Day events and special nights only in the story** (`RockDays`, made beside `StoryRock`). The story is never played on a LAN (`Run.story` is forced false online), so all of it is local and host-side by construction, and the LAN code is untouched. The stores it puts out are ordinary `ScavengePoint`s (`once`), so a helper keeper gathers them too. Old modes (the rock alone) play as before.
+- **One event a day, from a seeded pool, never twice running.** The draw is `hash([Run.weather_seed, day, ...])`, so a Continue gets the same day. Day 1 draws only from three gentle ones while the jobs list is up. A long clear day never comes before a fog night (it would contradict the sign).
+- **No card at the start of the day** (the owner dislikes big pop-ups): the event, the night's sign and a request are three `Events.message` lines, 0.6 s, 5.5 s and 10 s into the day, and a small two-line note at the top centre of the screen keeps what matters (`scenes/ui/day_note.gd`; hidden with the HUD off). The HUD itself is not touched apart from the dawn report's last line and the game-over card's tally.
+- **Markers are built in code:** a bobbing gold cone and a Label3D with the place's name; no new art. A wreck's keel and ribs and a cave's slabs are boxes.
+- **Special nights reshape the table rather than replace it** (`Spawner.special_rows`), so the night's length, the holm raids, the anger and people scaling all still apply. The storm and fog nights set `Run.weather_for`/`weather_kind` at the day's start, before anything asks for tonight's weather. A big night every third night (so never more than two on the rock, and never the kraken's).
+- **Requests are one at a time, for one day**, so an undone one never blocks the others and stays optional; a lapsed one can be asked again. Seven people on a six-night rock: a done request lets the next ask 15 s later, so all seven can be asked. Rewards that hold use `Run.favours` (saved), read where the gift is given (`Villagers.dawn_gifts`, `dusk_dressings`). Nurse Buchan's reward is dressings at dusk (+30) rather than more max health, because the cottage's meals cap `max_hp_bonus` and would take it away. Sandy Coull's is the governor research (the owner's suggestion); if it is already done, he fills the generator instead. Mr Baird's (the sea's anger -2) is hidden like the anger itself; the line says "the sea is quieter".
+- **Grief** is a line in the next dawn's log from one of the living, chosen by the lost one's place in the roster, so it isn't always the same speaker.
+- **The dawn rating is for every rock run**, LAN included (the host writes the dawn report and relays it): three plain measures a player can see (the light, the souls, the holding), not a hidden score. Creatures burned and killed are already the log's first line, so the stars don't repeat them. The total is saved with the run (`Run.stars`, `star_nights`) for Continue.
+- **Unlocks are modest and live in the profile** (`SaveSys.UNLOCKS`, `unlocked`, `choice`/`set_choice`): angry gives the keeper's oilskin (a tint through `CharacterRig.tint` on the keepers people play, on the rock only: the town and the Escape build their keepers in their own `begin_run`), raging gives Hard Light (lamp burn x1.25 on the rock, a fourth star for a night the light never went out). Only a story finish unlocks (`finish_chapter(1)` with `Run.story`); the boat's ending does not. No starting-stores bonus, to keep it modest.
+- **The story's wireless at dusk** had the relief-boat run's lines (the relief "on schedule", Kirkhaven going dark night by night, and on the last night the *Mary Ann* "off your landing at dawn"), which contradict the story on the rock. It now has its own (`NightEvents.WIRELESS_STORY`): Kirkhaven silent, the Board's engineers asking who tends the rock, the counting voice, and on the kraken's night only the sea.
+- **Stars** are U+2605/U+2606; neither font has them, so they come from the system fallback, as the HUD's fold arrows (▾) already do. If they show as boxes on a machine, swap `NightRating.FULL`/`EMPTY`.
+
+## 2026-11-11: the kraken in three stages
+
+- **The owner asked to "make this game great"; this part, which they approved: give the kraken stages**, each where a different weapon or action shines, instead of one long fight at the lighthouse. The octopus's look is kept (`KrakenBody` only gained moves: `recoil`, `set_wound`, `rear`, and a longer lie after a slam). The rules are in `docs/DESIGN.md`, "The kraken: three stages".
+- **Stage 1, the camp: fire and light drive its arms back.** One arm over the wire at a time, with a longer wind-up (1.6 s) so there is time to answer it. The flamer or a petrol bomb on an arm makes it recoil and burn; two good arrows sting it back; a searchlight held on it 0.8 s does it too. That made the camp's searchlights and generator matter: the helper up a tower already holds its light on the nearest creature, and the arms now count (`KrakenPart.light_probe_points` gives an arm's points in stage 1 only, so the lighthouse's lamp is still only for its eyes later). The camp falls in the end; what still stands is reported when it leaves ("3 of the camp's buildings still stand.") and on the last card. Not done: the survivors running from the camp, because the story already has them on the crag with the keepers from the last dusk. Its blows over the wire are for the huts: it only goes for a keeper there once nothing of the camp is in reach, and a keeper caught by one takes 20, not 32 (the computer's camp keeper was going down there in every run and lying out of reach for the rest of the night).
+- **Stage 2, the crossing: cutting pays.** It comes round slowly (1.35 m/s, about 27 s), and an arm that comes down on land lies 4.5 s with a pale glowing weal (the tell, with a one-time line). Cut, it costs 300 (not 110), stalls it 3 s, slows it a fifth for the rest of the way, and the arm stays gone until the light. A slower crossing is not a longer fight: the damage shortens the light.
+- **Stage 3, the light: it learns.** Blindings shorten (8 s, x0.88 each, never under 4 s). Between them it grips the tower: 13 s of sight and an arm goes up; unless it is blinded within 4 s of looking back at the lamp (the grip waits out its turned head, or it could never be stopped) it shakes the tower (14) and throws the lamp's keeper out of the lamp room. At 30% it rears its whole body out of the sea for 10 s: no blows, no blinding, every hit x2.5.
+- **While its head is turned after a blinding its eyes can't be found** (`eye_points` empty). The lamp could not blind it then anyway; the change is that a helper on the lamp drops to the wide beam instead of burning focused oil at nothing. Without it the computer's keepers ran the lamp dry at the light in most runs.
+- **Strength and the sea.** `BASE_HP` 5600 to 4800 (the camp and the crossing now take some of it); the sea's creature multiplier counts a third on the kraken (raging 1.12, not 1.35), because a raging sea's blows already land 1.3x on the keepers and the lamp's oil, not the kraken's strength, is what ends the computer's losses. BLIND_MULT 2.5 to 3, the beam on a blind eye 22 to 34 a second.
+- **Once it is dying the night is won**: `StoryRock` turns `Run.active` off on its "dying" phase. A run was lost with the kraken at 0%, the lamp guttering out during its 7 s death.
+- **KeeperAI, one small change** (`_kraken_at_light`, its own function, used in `_decide`): from the crossing on, the camp's helper goes to the light like the others, rather than patrolling a fallen camp out of reach. Stage 1 behaviour is untouched.
+- **A bar across the top** (`scenes/enemies/kraken_bar.gd`, its own `CanvasLayer`; `hud.gd` untouched): the three stage names, the one it is in lit, its strength, and a line while it is blind, has an arm up the tower or rears. It hides with the HUD off. The music already steps up to the finale at the last dusk; there is no further piece to step to, so each stage gets a roar and a line instead.
+- **Balance** (`tools/playtest_kraken.gd`, which now prints when each stage began and how each went; the computer's three keepers, 5 of the seven, speed 5, the playtest's arsenal; game seconds from its rising): angry, 6 won and 2 lost of 8; won in 187 to 241 s (3.1 to 4.0 min), the camp about 48 s, the crossing 26 to 39 s, the light 99 to 160 s; losses were the lamp going dark with it at 24% and 31%. Raging, 4 won and 3 lost of 7 (an eighth did not finish in time on a loaded machine and was stopped); won in 150 to 215 s; losses the lamp dark with it at 12%, 13% and 14% (in one, both other keepers were down by the crossing). Before: about 2.5 min at the light. The computer's keepers never throw petrol bombs or use the flamer and rarely fire the shotgun (the store's 6 bombs and 16 cartridges come back untouched), so a person fighting with fire and cutting in the crossing should find it shorter; whether it is too easy for a person is for the owner's playtest.

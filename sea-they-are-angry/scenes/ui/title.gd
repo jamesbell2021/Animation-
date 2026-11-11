@@ -81,6 +81,10 @@ func _ready() -> void:
 		record.append("Kirkhaven left behind. The rock is next.")
 	if not record.is_empty():
 		_label(box, "  ".join(record), 18, GOLD)
+	# What finishing the story on a harder sea has unlocked (SaveSys.UNLOCKS): one small line.
+	var unlocks: Array = SaveSys.unlocked_names()
+	if not unlocks.is_empty():
+		_label(box, "Unlocked: %s (in Settings)." % ", ".join(unlocks), 15, Color(0.8, 0.84, 0.9, 0.85))
 	_hint = _label(root, "", 15, Color(0.8, 0.84, 0.9, 0.8))
 	var hint := _hint
 	_update_hint()
@@ -146,7 +150,7 @@ func _update_keepers() -> void:
 	Players.configure(_keepers)
 	var lines: Array[String] = []
 	for i in _keepers:
-		lines.append("P%d %s — %s" % [i + 1, Players.NAMES[i], Players.device_label(i)])
+		lines.append("P%d %s (%s) — %s" % [i + 1, Players.NAMES[i], Players.PERK_SHORT[i], Players.device_label(i)])
 	_device_label.text = "\n".join(lines)
 
 # How hard the sea is, for a new run (a continued one keeps its own).

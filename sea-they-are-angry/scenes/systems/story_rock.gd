@@ -55,6 +55,10 @@ func _living() -> Array:
 
 func _on_taken(v: Villager) -> void:
 	_lost_tonight.append(v.display_name())
+	_lost_ids.append(v.id)
+
+## The ids of those lost since dusk (for the grief lines at dawn).
+var _lost_ids: Array = []
 
 func _on_phase(p: int) -> void:
 	if done or not Run.active:
@@ -62,6 +66,7 @@ func _on_phase(p: int) -> void:
 	match p:
 		Cycle.Phase.DUSK:
 			_lost_tonight = []
+			_lost_ids = []
 			if Rescue.is_last_night():
 				_stand_to()
 				main.hud.warn("Tonight. Everything you have, to hand. It comes tonight.")
@@ -70,6 +75,8 @@ func _on_phase(p: int) -> void:
 					v.go_inside()
 				if main.camp != null and Villagers.dusk_engineer(main.camp.generator):
 					Events.message.emit("Sandy Coull has seen to the camp's generator  (%d%%)" % roundi(main.camp.generator.fuel))
+				# With her dressings made up (her request done), the nurse sees to them at dusk too.
+				Villagers.dusk_dressings(main.players)
 		Cycle.Phase.DAWN:
 			for v in _living():
 				v.fighting = false
@@ -93,6 +100,11 @@ func dawn_lines() -> Array[String]:
 	var lines: Array[String] = []
 	if not _lost_tonight.is_empty():
 		lines.append("Lost in the night: %s." % ", ".join(_lost_tonight))
+		# And one of those left says something for each.
+		for id in _lost_ids:
+			var g := Villagers.grief_line(String(id))
+			if g != "":
+				lines.append(g)
 	var gifts := Villagers.dawn_gifts()
 	if gifts != "":
 		lines.append(gifts)
@@ -177,18 +189,27 @@ func raise_kraken() -> void:
 	Audio.music("finale", 2.0)
 	main.hud.report("It has come.", [
 		"Off the east of the holm, the size of the holm. It will have the camp first, and then the light.",
-		"The focused beam held in its eyes blinds it [Q at the lamp]. Blind, it cannot strike, and everything that hits it counts for more.",
-		"An arm reared over you is about to come down: move. An arm lying ashore can be cut back.",
+		"At the camp: fire and the searchlights drive its arms back over the wire.",
+		"On its way round: cut the arms it lays on the rock, at the pale wound.",
+		"At the light: the focused beam held in its eyes blinds it [Q at the lamp]. Blind, everything that hits it counts for more.",
 	], 14.0)
 
+# The fight's stages, each with its line (docs/DESIGN.md, "The kraken").
 func _on_kraken_phase(p: String) -> void:
 	match p:
+		"camp_east":
+			main.hud.warn("It is through the wire. Fire and the searchlights: drive its arms back!")
 		"camp_north":
 			main.hud.warn("It is working round the north of the holm.")
 		"cross":
-			main.hud.warn("It is coming for the lighthouse! The east beach: get the lamp in its eyes!")
+			var stood: int = kraken.camp_left if kraken != null else 0
+			main.hud.warn("It's coming round for the light! %s" % ("The camp is gone." if stood <= 0 else "%d of the camp's buildings still stand." % stood))
 		"light":
-			main.hud.warn("It is at the east beach. Blind it with the focused beam, and hit it with everything!")
+			main.hud.warn("It can't abide the light! The focused beam in its eyes, and hit it with everything!")
+		"dying":
+			# Its strength is gone: the night is won, even if the lamp gutters out while
+			# it goes down.
+			Run.active = false
 
 # It is dead: the fog goes out, the weather clears, the sky is blue.
 func _on_kraken_dead() -> void:
@@ -205,7 +226,10 @@ func _on_kraken_dead() -> void:
 	main.atmosphere.apply(Cycle.Phase.DAY, 9.0)
 	main.lighthouse.lamp._set_state(Lamp.State.OFF)
 	Audio.music("ending", 3.0)
-	main.hud.report("It is over.", ["It went down at first light, and the fog went with it."], 9.0)
+	var lines: Array = ["It went down at first light, and the fog went with it."]
+	if kraken != null and kraken.camp_had > 0:
+		lines.append("The camp: %s." % ("nothing left standing" if kraken.camp_left <= 0 else "%d of %d still standing" % [kraken.camp_left, kraken.camp_had]))
+	main.hud.report("It is over.", lines, 9.0)
 	_end_t = END_AFTER
 
 # The keepers' camera only ever looks down. For the end it lets go of them and looks up:
@@ -244,5 +268,18 @@ func _end_card() -> void:
 	card.kills = main._total_kills
 	card.sea = Difficulty.name()
 	card.saved = Villagers.count()
+	card.rating = NightRating.total_line()
+	card.unlocked = unlock_line()
 	card.back_to_title.connect(main._after_chapter.bind(false))
 	main.add_child(card)
+
+## What finishing on this sea has unlocked (SaveSys.UNLOCKS), for the end card ("" if
+## nothing: a calm sea unlocks nothing).
+static func unlock_line() -> String:
+	var got: Array[String] = []
+	for id in SaveSys.UNLOCKS:
+		if Run.difficulty >= int(SaveSys.UNLOCKS[id]["sea"]) and SaveSys.unlocked(id):
+			got.append(String(SaveSys.UNLOCKS[id]["name"]))
+	if got.is_empty():
+		return ""
+	return "Finished on %s: %s yours, in Settings." % [["a calm sea", "an angry sea", "a raging sea"][Difficulty.level()], " and ".join(got) + (" are" if got.size() > 1 else " is")]

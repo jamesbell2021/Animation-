@@ -99,6 +99,7 @@ func _ready() -> void:
 		func(_d: int) -> void:
 			Settings.telemetry = not Settings.telemetry)
 	_label(_box, Strings.t("settings.telemetry_note"), 16, DIM)
+	_unlocks()
 
 	_heading(Strings.t("settings.keys"))
 	_label(_box, Strings.t("settings.keys_note"), 16, DIM)
@@ -115,6 +116,25 @@ func _ready() -> void:
 	_box.add_child(gap)
 	_button(_box, Strings.t("settings.back"), _close, 32)
 	_first.grab_focus.call_deferred()
+
+# What finishing the story on a harder sea has unlocked (SaveSys.UNLOCKS), kept with
+# the profile, not the settings file. Nothing shows until something is unlocked.
+func _unlocks() -> void:
+	var coat := SaveSys.unlocked("coat")
+	var hard := SaveSys.unlocked("hard_light")
+	if not coat and not hard:
+		return
+	_heading("Unlocked")
+	if coat:
+		_cycler("Keeper's coat", func() -> String: return ["The Board's blue", "Oilskin"][clampi(int(SaveSys.choice("coat", 0)), 0, 1)],
+			func(_d: int) -> void:
+				SaveSys.set_choice("coat", 1 - clampi(int(SaveSys.choice("coat", 0)), 0, 1)))
+		_label(_box, String(SaveSys.UNLOCKS["coat"]["note"]).trim_suffix(" (Settings).") + ". From the next run.", 16, DIM)
+	if hard:
+		_cycler("Hard Light", func() -> String: return _on_off(bool(SaveSys.choice("hard_light", false))),
+			func(_d: int) -> void:
+				SaveSys.set_choice("hard_light", not bool(SaveSys.choice("hard_light", false))))
+		_label(_box, String(SaveSys.UNLOCKS["hard_light"]["note"]).trim_suffix(" (Settings).") + ". From the next run.", 16, DIM)
 
 func _on_off(v: bool) -> String:
 	return Strings.t("settings.on") if v else Strings.t("settings.off")

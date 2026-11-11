@@ -11,8 +11,8 @@ const NIGHTS := [8, 10, 12]
 ## Chapter Two: the nights Kirkhaven has to be held (by the sea's mood).
 const HARBOUR_NIGHTS := [3, 3, 3]
 ## In the story nothing takes the keepers off: the last night on the rock is the
-## kraken's, this many nights sooner than the boat would have come.
-const STORY_SOONER := 2
+## kraken's. A shorter, fuller Act Two than the boat's chapter (calm, angry, raging).
+const STORY_NIGHTS := [6, 7, 8]
 const WIRELESS_SOONER := 2
 ## The last night's landings are this much bigger.
 const LAST_NIGHT_SURGE := 1.3
@@ -21,9 +21,9 @@ const LAST_NIGHT_SURGE := 1.3
 static func night() -> int:
 	if Run.chapter == 2:
 		return HARBOUR_NIGHTS[Difficulty.level()]
-	var n: int = NIGHTS[Difficulty.level()]
 	if Run.story:
-		return n - STORY_SOONER
+		return STORY_NIGHTS[Difficulty.level()]
+	var n: int = NIGHTS[Difficulty.level()]
 	if Research.has("wireless"):
 		n -= WIRELESS_SOONER
 	return n

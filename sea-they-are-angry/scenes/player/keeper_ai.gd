@@ -136,7 +136,7 @@ func _decide() -> void:
 	if Terrain.chapter == 2:
 		_harbour(night)
 		return
-	if role == "light":
+	if role == "light" or _kraken_at_light():
 		if night:
 			_night_light()
 		else:
@@ -146,6 +146,13 @@ func _decide() -> void:
 			_night_camp()
 		else:
 			_day_camp()
+
+# The last night: once the kraken has left the camp for the lighthouse (its second
+# stage), everyone's place is at the light, the camp's keeper too (docs/DESIGN.md,
+# "The kraken: three stages").
+func _kraken_at_light() -> bool:
+	var kr := get_tree().get_first_node_in_group("kraken")
+	return kr != null and int(kr.get("stage")) >= 2
 
 # Still on its way to gather something that's still there: keep at it (the nearest
 # thing can change as it walks, and swapping back and forth gets it nowhere).

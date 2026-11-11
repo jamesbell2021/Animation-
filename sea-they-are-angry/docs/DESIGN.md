@@ -75,7 +75,7 @@ The cottage menu (E at the door; walk inside): eat (1 food: full health, hunger 
 
 ## Weapons (the shed's workbench, `scenes/structures/shed.gd`, `scenes/player/arsenal.gd`)
 
-Everyone has the **boathook** (20 damage, 2.5 m, 60 degree arc, 0.6 s). The shed's bench adds four more, picked with Tab, the wheel, or keys 1 to 5 (`Arsenal.ORDER`: hook, bow, shotgun, flamer, bombs):
+Everyone has the **boathook** (20 damage, Callum's 27; 2.5 m, 60 degree arc, 0.6 s). The shed's bench adds four more, picked with Tab, the wheel, or keys 1 to 5 (`Arsenal.ORDER`: hook, bow, shotgun, flamer, bombs):
 
 - **Longbow:** made for 3 driftwood and 1 kelp, one per keeper (a helper can have one too). Hold to draw (0.8 s, movement at half speed), release to loose: 12 to 40 damage, range 26 m. Arrows cost 1 each.
 - **Double-barrelled shotgun:** one gun on the wall, taken and left at the bench. Two barrels, then a 1.6 s reload; 9 pellets of 7 (11 within 3.5 m) in a 24 degree cone out to 11 m; knocks the keeper back. Cartridges are shared.
@@ -112,6 +112,7 @@ Chosen on the title screen, kept with the run.
 | Cartridges / rat poison at start | 10 / 4 | 10 / 4 | 6 / 2 |
 | Ammunition | never runs out | normal | normal |
 | Boat after night | 8 | 10 | 12 |
+| The story's rock: the kraken on night | 6 | 7 | 8 |
 
 ## Gull Rock and the rowing boat
 
@@ -120,6 +121,15 @@ Chosen on the title screen, kept with the run.
 ## Keepers, helpers, co-op and LAN
 
 There are always three keepers. Pick 1 to 3 people on the title; the rest are helpers (`scenes/player/keeper_ai.gd`): the light helper gathers and mends by day, works the lamp at night (or holds the ledge if a person has it), the camp warden fills the generator, mends the camp and climbs the tower facing the danger. Both fight what comes close, revive the downed, fetch a thrown boathook, eat and warm up. Creatures scale with people, not keepers: groups x(1 + 0.5 per extra person), Crab and Eel hp +20% each. Local co-op is on one screen with keyboard and pads (the screen splits when apart); LAN is one person per machine, host-authoritative, up to three, no joining after the start (`autoload/net.gd`, lobby in `scenes/ui/lan_lobby.gd`). The first days' jobs (`scenes/systems/jobs.gd`): a list for the first three nights of eight things, ticked off only by people.
+
+**Each keeper's knack** (`Players.PERKS`, by slot, whoever plays them, a person or a helper; computed on the host, so on a LAN it follows the slot; shown on the title's keeper lines and in How to Play's Together page):
+
+| Keeper (slot) | Knack | Numbers |
+|---|---|---|
+| Callum (0), the old hand | the hook | boathook damage x1.35 (27), shove x1.6, an outward blow on the ledge puts a creature over with an aim 2.5 times looser (dot 0.14 against 0.35) |
+| Hamish (1), the shot | the guns | shotgun 10 pellets in an 18 degree cone (against 9 in 24), bow draws x1.25 (0.64 s) |
+| Mairi (2), the mechanic | mending and fuel | hammer jobs and pours (lamp bio, generator diesel, dirty fuel) x1.4 quicker; a mend that costs more than one thing costs a driftwood less (the lighthouse takes only the scrap, the garden only the kelp) |
+| Ewan (3), the young one | his legs | x1.15 on foot (walking and sprinting), sprint lasts x1.4 (4.2 s) and rests x0.6 (1.2 s), lies x0.65 as long after a knock-down. `Players.MAX` is 3, so he is not in a run yet |
 
 ## Controls (`autoload/input_setup.gd`, `autoload/players.gd`, `scenes/ui/how_to_play.gd`)
 
@@ -138,6 +148,8 @@ There are always three keepers. Pick 1 to 3 people on the title; the rest are he
 | Camera (alone only) | Q, E turn (all the way round), X reset, wheel or - and = zoom, middle drag | | d-pad up and down zoom, a stick pressed in turns |
 | Pause | Esc | | Start |
 
+A person's boathook swings the way the keeper faces, with a short step into the blow (`Player.LUNGE`). How blows land (hit-stop, the camera's kick, the flash, the thump, the shove) is in `docs/DECISIONS.md`, 2026-11-11.
+
 Keeper one's keys, except 1 to 5 and Esc, can be rebound in Settings (any key or mouse button; clashes swap). Code diverges from the docs here: `README.md` lists Sprint as Space, but `InputSetup` binds Sprint to Shift and Jump to Space; and `Settings.ARROW_NAMES` names the arrow-key player's Use key as Shift while `Players.bind_device` binds M, so in-game hints for that player name the wrong key.
 
 ## HUD (`scenes/ui/hud.gd`)
@@ -147,5 +159,52 @@ Top left: day or night number and the time left; weather (dusk and night), sea a
 ## The story round it
 
 Since v1.1.0 the rock is the story's second act (`docs/STORY.md`): Kirkhaven comes first (`docs/KIRKHAVEN.md`), its survivors live in the camp here, no relief boat comes, and the last night is the kraken's (`scenes/systems/story_rock.gd`, `scenes/enemies/kraken.gd`). Everything above still describes how the rock plays. The relief boat's ending (`scenes/ui/chapter_end.gd`) remains for the rock played alone, which is what LAN games are.
+
+## The kraken: three stages (2026-11-11)
+
+The last night's fight (`scenes/enemies/kraken.gd`, rules; `kraken_body.gd`, the octopus; `kraken_part.gd`, what weapons hit; `kraken_bar.gd`, its bar) comes in three stages, each with its own answer, instead of one long fight at the lighthouse. Across the top of the screen a bar shows its strength under the three stage names, the one it is in lit, with a line under it while it is blind, has an arm up the tower, or rears. Each stage opens with a roar and one line (`StoryRock._on_kraken_phase`).
+
+1. **It takes the camp** (`camp_east` for up to `CAMP_TIME` 24 s, then round to the north side for 24 s more): "It is through the wire." Its arms come over one at a time (`CAMP_WINDUP` 1.6 s reared, a gap after); two slams bring a hut down (`SLAM_CAMP` 110). Fire is the answer: the flamer or a petrol bomb's blast or pool on an arm makes it recoil (`KrakenBody.recoil`: it whips about and pulls back under for `RECOIL_TIME`), calls off the slam it was winding up, sets it burning (its fire hurts the kraken) and keeps that arm away for `SHY_TIME` 6 s. A searchlight held on an arm for `ARM_LIGHT_TIME` 0.8 s (half that focused) does the same, without the burn: a helper up a tower holds its light on the nearest arm, and the towers sweep on their own while the generator runs. Arrows and shot sting: `STING` 40 on one arm sends it back. An arm reared over the wire can be got at where it comes over (its middle), not under the blow. The camp falls in the end whatever is done; what still stands when it moves on (`camp_left` of `camp_had`: the generator, the huts, the greenhouse) is in the stage line and on the "It is over" card. The survivors are already on the crag with the keepers (they went at the last dusk), so nobody has to run.
+2. **The crossing** (`cross`): "It's coming round for the light!" It works through the shallows round the north of the holm, slowly (`CROSS_SPEED` 1.35 m/s, about 27 s if nothing is cut), reaching for keepers on the path and the bridge (`SLAM_EVERY_CROSS`). An arm that comes down on land lies there `LIE_CROSS` 4.5 s with a pale glowing weal on it (`KrakenBody.set_wound`), the place to cut; the first time, one line says so. Cut there (`ARM_HP` 110: a shotgun at close range, or a few boathook blows) it costs it `SEVER_DAMAGE_CROSS` 300 (110 elsewhere), it stops thrashing for `SEVER_STALL` 3 s, it is a fifth slower for the rest of the way (never under 40%), and the arm does not grow again until it reaches the light.
+3. **The light** (`light`): "It can't abide the light!" Hauled up the east beach under the tower. The focused beam held on its eyes for `DAZZLE_TIME` blinds it and holds it: its arms go slack, hits on its head count `BLIND_MULT` 3x, and the beam itself burns it (`BEAM_DPS` 34). It learns: the first blinding lasts `BLIND_TIME` 8 s, each after x`BLIND_LEARN` 0.88, never under `BLIND_MIN` 4 s; after each it keeps its head turned for `BLIND_REST` 5 s (its eyes can't be found then, so a helper on the lamp drops to the wide beam and saves oil). Between blindings it slams keepers and, one blow in three, the tower; and after `GRIP_EVERY` 13 s sighted it gets an arm up the tower: unless it is blinded within `GRIP_TIME` 4 s of looking back, it shakes the tower (`GRIP_DAMAGE` 14) and throws whoever is on the lamp out of the lamp room. At `REAR_AT` 30% of its strength it rears its whole body up out of the sea on its arms for `REAR_TIME` 10 s (`KrakenBody.rear`): it does not strike and cannot be blinded, and everything that hits it counts `REAR_MULT` 2.5x: the last window for every weapon. Then it drops back and the fight goes on until it dies; the fog goes out and the sky clears as before.
+
+Its strength is `BASE_HP` 4800 (was 5600), x1.35 per extra person, and the sea counts for a third of what it does on the nights' landings (calm 0.9, angry 1.0, raging 1.12; it was the full 0.7, 1.0, 1.35), since a raging sea's blows already land harder and the lamp's oil is the limit. Once it leaves the camp, the camp's helper comes back to the light too (`KeeperAI._kraken_at_light`). Once it is dying the night is won (`Run.active` off), even if the lamp gutters out while it goes down. Tuned with `tools/playtest_kraken.gd`, which prints when each stage began and how it went (see `docs/DECISIONS.md`, 2026-11-11, for the numbers).
+
+## The story's rock: days and nights that differ (2026-11-11)
+
+In the story (`Run.story`, local play only; never on a LAN, where the rock is played alone) the rock is `Rescue.STORY_NIGHTS` long: 6, 7 or 8 nights on a calm, angry or raging sea, the kraken on the last (`StoryRock`, rising at `KRAKEN_AT` of that night). The diary's last pages are read at the dawn with `DIARY_NIGHTS_LEFT` (3) nights to come: after night 3, 4 or 5. The rock alone keeps the boat's 8, 10 and 12. `scenes/systems/rock_days.gd` (`RockDays`, made beside `StoryRock`) does the rest; everything it puts out is host-side by construction (the story is offline).
+
+**Each day's event** (`RockDays.EVENTS`, drawn from the run's weather seed, never the same two days running; day 1 from `FIRST_DAY`): one line as the day starts (`Events.message`), kept short at the top of the screen (`scenes/ui/day_note.gd`) until done, with a gold marker (a bobbing cone and its name, built in code) over its place. What the sea doesn't give up by dusk it takes back.
+
+| Event | What | Where |
+|---|---|---|
+| wreck | 2 scrap, 1 diesel, 3 cartridges, beside a wreck's keel and ribs | a main-island beach |
+| camp_kit | 2 rat poison, 1 oil drum, 2 cartridges | the long grass by the camp's wire |
+| fish | 3 food (seals working off the beach) | a beach's tideline |
+| long_day | the day is 30 s longer (`LONG_DAY`); never before a fog night | none |
+| gulls | every nest on Gull Rock full (3 eggs) | Gull Rock's slip |
+| lifejacket | a page of the internees' notes (counts as notes) | a beach |
+| wireless | the set by day: a hint of the night to come (`WIRELESS_DAY`) | none |
+| low_tide | 2 scrap, 2 bio, 2 driftwood in a cave's mouth | one of the holm's beaches |
+
+**Special nights** (`RockDays.night_kind(n)`, from the seed and the sea): night 1 and the last are plain; every third night (`BIG_EVERY`) is a big night; others are plain with chance 0.4, 0.25 or 0 by sea, or one of storm, squid, fog (from night 2), smotherer, eel (from night 3; calm 4), never the same two nights running, and never the eel on its own night. The morning gives a sign of it (`SIGNS`, "The glass is falling: a storm tonight."), dusk one line (`DUSK`), and `Spawner.special_rows` shapes the table: squid, every Bloated group comes as Squid (one fewer, at least two); smotherer, three more Smotherers at 0.18, 0.38, 0.56 on their own beaches; fog, groups x0.75 but each lands on every beach (the weather forced clear); big, groups x1.3 (+1 at least) and another Crab and Smotherer; storm, the weather forced to a storm; eel, the Eel comes.
+
+**The seven's requests** (`Villagers.REQUESTS`): from day 2 one of the living asks one thing, for that day only (the order is shuffled by the seed; those never asked first). Done, another asks 15 s later if 30 s of day are left; not done, it lapses at dusk and they may ask again another day. It shows in the top note ("Asked: ..."), and [E] beside them hands it over:
+
+| Who | Asks | Reward (for the rest of the run) |
+|---|---|---|
+| Mr Baird | his bible, washed up on a beach (marker), brought to him | the sea's anger -2 |
+| Isla Rennie | 3 driftwood | two scrap a dawn, not one |
+| Sandy Coull | 2 scrap, 1 diesel | the generator governor (or, already researched, the generator filled) |
+| Morag Duthie | 3 gull eggs | two meals a dawn |
+| Nurse Buchan | 2 bio | she sees to the keepers at dusk too (+30 each) |
+| Tam Geddes | the quarters' stove lit | a box of 10 cartridges |
+| Peter Main | 3 kelp | six arrows a dawn, not four |
+
+When one of the seven is lost, the dawn's log has a line from one of the living (`Villagers.GRIEF`).
+
+**The dawn rating** (`scenes/systems/night_rating.gd`, every rock run, LAN included): the last line of each dawn's log, up to three stars, one each for the light (lit for 99% of the night), the souls (none of the seven lost, no keeper downed) and the holding (nothing reached the light, nothing wrecked, the tower lost under 20% of its strength); "The light never went out. Not a soul lost. Nothing got through.  ★★★". The run's total (`Run.stars` of `Run.star_nights` x 3) is on the end cards and the game-over card. (The fonts have no star; the stars come from the system's fallback font, as the HUD's fold arrows do.)
+
+**Unlocks** (`SaveSys.UNLOCKS`, kept in `user://profile.json` with the choices): the story finished on an angry sea unlocks the keeper's oilskin (a yellow tint over the keepers people play, chosen in Settings, on the rock); on a raging sea, Hard Light too (Settings: the rock's lamp burns oil x1.25, `Lamp.HARD_LIGHT`, and a night the light never goes out earns a fourth star). The title shows what is unlocked in one small line; the end card says what the finish unlocked. The best total is kept (`best_stars`).
 
 Since v1.0.0 the nights have the glowing fog bank (`FogBank`), the wireless at dusk, the knock at the cottage door, lights dipping as the fog comes ashore and a far foghorn (`NightEvents`), and a synthesiser score at night.

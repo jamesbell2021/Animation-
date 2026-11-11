@@ -65,6 +65,24 @@ const WIRELESS_AFTER := [
 	"(Static. Far down in it, somebody is still counting.)",
 	"(The set warms up by itself. Static. Nothing else.)",
 ]
+## The story's rock (Run.story): the town has fallen and nobody is coming, so the set
+## has other things to say, by night.
+const WIRELESS_STORY := {
+	2: ["Coastguard, all stations. Kirkhaven harbour office is not answering. Any vessel near Kirkhaven, report.",
+		"Coastguard. A fishing boat reports no lights at all in Kirkhaven tonight. None."],
+	3: ["Coastguard. Fog lying off the coast north and south of Kirkhaven. It has not moved in three days.",
+		"(Static. Somebody far off reading the shipping forecast, and stopping halfway through.)"],
+	4: ["Coastguard. The Board's engineers report the rock light still showing. They ask who is tending it.",
+		"(Static. A long way down in it a voice is counting, slowly. It stops at three.)"],
+	5: ["(Static. A voice under it says the rock, the rock, the rock, like a man reading from a list.)",
+		"(Static. Kirkhaven's channel is open, and nobody is speaking on it.)"],
+	6: ["(Static. The voice is counting the nights. It has the number right.)",
+		"(Static. The counting again. It stops at three, and waits.)"],
+	7: ["(Static. The voice says the rock, and then your names. It has two of them right.)",
+		"(Only static. Then, quite clearly, and from very near: the rock.)"],
+}
+## The story's last night, the kraken's.
+const WIRELESS_STORY_LAST := "(The set comes on by itself. No static: only the sea in it, very loud, and very near.)"
 ## The last night before the boat (Rescue): she calls the rock herself.
 const WIRELESS_BOAT := "Mary Ann to the rock. We have sailed, and will be off your landing at dawn. Keep the lamp burning."
 
@@ -237,6 +255,11 @@ func _creature_near(at: Vector3, within: float) -> bool:
 
 ## What the wireless says at dusk on a night.
 func line_for(night: int) -> String:
+	if Run.story and Run.chapter == 1:
+		if night >= Rescue.night():
+			return WIRELESS_STORY_LAST
+		var said: Array = WIRELESS_STORY.get(night, WIRELESS_AFTER)
+		return said[randi() % said.size()]
 	if not Run.endless and night == Rescue.night():
 		return WIRELESS_BOAT
 	var lines: Array = WIRELESS.get(night, WIRELESS_AFTER)

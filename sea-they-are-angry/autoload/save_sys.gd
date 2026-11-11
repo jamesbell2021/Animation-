@@ -20,6 +20,11 @@ func snapshot() -> Dictionary:
 		"bell_mended": Run.bell_mended,
 		"story": Run.story,
 		"diary_read": Run.diary_read,
+		"favours": Run.favours,
+		"asked": Run.asked,
+		"stars": Run.stars,
+		"star_nights": Run.star_nights,
+		"hard_light": Run.hard_light,
 		"villagers": Run.villagers,
 		"lost": Run.lost,
 		"difficulty": Run.difficulty,
@@ -79,13 +84,50 @@ func save_best(night: int) -> void:
 func load_best() -> int:
 	return int(load_profile().get("best_night", 0))
 
-## A chapter finished (on which sea, the hardest kept).
+## A chapter finished (on which sea, the hardest kept). The story finished on a harder
+## sea unlocks something (UNLOCKS), and its best dawn rating is kept.
 func finish_chapter(n: int) -> void:
 	var d := load_profile()
 	var done: Dictionary = d.get("chapters", {})
 	var key := str(n)
 	done[key] = maxi(int(done.get(key, -1)), Run.difficulty)
 	d["chapters"] = done
+	if n == 1 and Run.story:
+		var got: Array = d.get("unlocks", [])
+		for id in UNLOCKS:
+			if Run.difficulty >= int(UNLOCKS[id]["sea"]) and not got.has(id):
+				got.append(id)
+		d["unlocks"] = got
+		d["best_stars"] = maxi(int(d.get("best_stars", 0)), Run.stars)
+	_save_profile(d)
+
+## What finishing the story on a harder sea unlocks: the sea it takes, what it is called
+## on the title, and what it does (shown in Settings).
+const UNLOCKS := {
+	"coat": {"sea": 1, "name": "the keeper's oilskin", "note": "A yellow oilskin for the keepers people play (Settings)."},
+	"hard_light": {"sea": 2, "name": "Hard Light", "note": "The lamp burns oil a quarter faster; a night it never goes out earns a fourth star (Settings)."},
+}
+
+func unlocked(id: String) -> bool:
+	return (load_profile().get("unlocks", []) as Array).has(id)
+
+## The names of what is unlocked, for the title.
+func unlocked_names() -> Array:
+	var out := []
+	for id in UNLOCKS:
+		if unlocked(id):
+			out.append(String(UNLOCKS[id]["name"]))
+	return out
+
+## A choice kept with the profile (the coat, Hard Light), or `default`.
+func choice(id: String, default: Variant) -> Variant:
+	return load_profile().get("choices", {}).get(id, default)
+
+func set_choice(id: String, v: Variant) -> void:
+	var d := load_profile()
+	var c: Dictionary = d.get("choices", {})
+	c[id] = v
+	d["choices"] = c
 	_save_profile(d)
 
 func chapter_done(n: int) -> bool:

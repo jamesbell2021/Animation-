@@ -76,11 +76,26 @@ var escape_carry := {}
 var story_next := false
 ## The diary's last pages have been read (the rock, in the story).
 var diary_read := false
+## The seven's requests on the rock (RockDays): whose are done (each one's reward holds
+## for the rest of the run), and who has been asked so far, in order.
+var favours: Array = []
+var asked: Array = []
+## The dawn ratings (NightRating): stars won on the nights held, and how many were rated.
+var stars := 0
+var star_nights := 0
+## The Hard Light modifier (unlocked on a raging sea; SaveSys.choice): the lamp burns
+## oil a quarter faster, and a night the light never went out earns a fourth star.
+var hard_light := false
 
 func start_new() -> void:
 	night = 1
 	story = false
 	diary_read = false
+	favours = []
+	asked = []
+	stars = 0
+	star_nights = 0
+	hard_light = SaveSys.unlocked("hard_light") and bool(SaveSys.choice("hard_light", false))
 	villagers = []
 	lost = []
 	lamps_on = []
@@ -122,6 +137,15 @@ func start_loaded(d: Dictionary) -> void:
 	bell_rung_night = 0
 	story = bool(d.get("story", false))
 	diary_read = bool(d.get("diary_read", false))
+	favours = []
+	for v in d.get("favours", []):
+		favours.append(String(v))
+	asked = []
+	for v in d.get("asked", []):
+		asked.append(String(v))
+	stars = int(d.get("stars", 0))
+	star_nights = int(d.get("star_nights", 0))
+	hard_light = bool(d.get("hard_light", false))
 	villagers = []
 	for v in d.get("villagers", []):
 		villagers.append(String(v))

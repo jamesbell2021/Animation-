@@ -117,17 +117,28 @@ func pages() -> Array:
 		]],
 		["The last night", "Act Two: the rock, and what is coming", [
 			"The survivors shelter in the old camp over the bridge. A hut wrecked in the night can cost one of them.",
+			"Each day on the rock brings something (a wreck to strip before dusk, fish in close, a cave dry at low tide...), named at the top of the screen with a gold marker over the place. Some nights are different too: the morning gives a sign of a storm, a squid night, smotherers, a fog from every beach, the eel, or a big night.",
+			"Now and then one of the seven asks a small thing for a day. Do it ([E] beside them) and they help more for the rest of the time on the rock. Each dawn's log ends by rating the night: the light, the souls, the holding.",
 			"Nothing is coming to take you off. The diary in the camp says what came in 1944 and when it will come again: use the days to arm. Petrol bombs, cartridges, arrows, the flamer, the lamp full.",
 			"On the last night it rises off the holm, takes the camp, then comes to the east beach for the lighthouse. An arm reared over you is about to come down: move. An arm lying ashore can be cut back.",
 			"Hold the focused beam in its eyes and it goes blind: it cannot strike, and everything that hits it counts for more. That is when to throw all you have.",
 		]],
 		["Together", "Keepers together", [
 			"There are always three keepers. Any nobody plays are the computer's helpers: one keeps the light, one the camp.",
+		] + _knacks() + [
 			"Up to three can play on one screen (the screen splits when you're apart), or each on their own machine over the LAN. A friend can join a game under way, by day: Insert for the arrow keys, or A on a second gamepad.",
 			"F12 saves a snapshot of the moment to feedback.txt (in the game's user folder): press it when something feels wrong, and say what you were doing.",
 			"Pick how hard the sea is on the title screen. A calm sea never runs you out of ammunition.",
 		]],
 	]
+
+# A line for each keeper's own knack (Players.PERKS), whoever plays them.
+func _knacks() -> Array:
+	var rows := []
+	for i in Players.MAX:
+		var t: String = Players.PERK_TEXT[i]
+		rows.append([Players.NAMES[i], t.left(1).to_upper() + t.substr(1)])
+	return rows
 
 func _show(i: int) -> void:
 	page = clampi(i, 0, pages().size() - 1)

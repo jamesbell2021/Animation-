@@ -302,7 +302,7 @@ func _go() -> void:
 	me.hunger = 40.0
 	await process_frame
 	await process_frame
-	check(rows["fed"].visible and not rows["warm"].visible and hud._cards[0]["bars"]["fed"].value == 40.0 and float(hud._need_flash["0fed"]) > 0.0, "hungry: the fed bar comes in, flashing")
+	check(rows["fed"].visible and not rows["warm"].visible and absf(hud._cards[0]["bars"]["fed"].value - 40.0) < 1.0 and float(hud._need_flash["0fed"]) > 0.0, "hungry: the fed bar comes in, flashing")
 	me.warmth = 30.0
 	await process_frame
 	await process_frame

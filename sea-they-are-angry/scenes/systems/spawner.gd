@@ -27,6 +27,11 @@ const NIGHT_TABLES := {
 	8: [[0.04, "B", 4], [0.16, "C", 2], [0.28, "S", 4, "opp"], [0.50, "M", 2, "opp"], [0.60, "B", 5], [0.72, "S", 3, "opp"]],
 }
 const EEL_AT := 0.42
+## Special nights (special_rows): a fog night's groups are this much of themselves, a big
+## night's this much more; a smotherer night's extra climbers land at these times.
+const FOG_SCALE := 0.75
+const BIG_SCALE := 1.3
+const SMOTHERER_ROWS := [0.18, 0.38, 0.56]
 # The second and later Bloated groups of a night (from night 2) make for the homestead.
 const RAID_FROM_NIGHT := 2
 # While the Eel is about, other landings shrink to a quarter.
@@ -70,6 +75,9 @@ var raid_from := RAID_FROM_NIGHT
 var raid_skip := 0
 ## Called with each creature as it's made, before it enters the tree: (enemy, kind, raid).
 var on_spawn: Callable
+## The story's rock: what kind of night a night is (RockDays.night_kind: "" plain,
+## "storm", "squid", "fog", "smotherer", "eel" or "big"), to shape its table.
+var night_kind: Callable
 var enemies_root: Node
 var lighthouse: Node3D
 
@@ -117,8 +125,43 @@ func night_table(n: int) -> Array[Dictionary]:
 			k += 1
 			e["holm"] = k % every == 0
 	# The Eel keeps to the open sea round the rock: it never comes into the harbour.
-	if Terrain.chapter != 2 and eel_night(n, Players.humans(), Anger.value):
+	var special := String(night_kind.call(n - table_shift)) if night_kind.is_valid() else ""
+	if Terrain.chapter != 2 and (eel_night(n, Players.humans(), Anger.value) or special == "eel"):
 		out.append({"t": EEL_AT, "kind": "E", "count": 1, "opp": false, "point": -1, "holm": false})
+	if special != "":
+		out = special_rows(out, special)
+	return out
+
+## A special night's table, made from the plain one (RockDays):
+##   squid: the Bloated groups come as Squid instead (one fewer each, at least two);
+##   smotherer: three more Smotherers, each landing on its own;
+##   fog: a quarter fewer in each group, but each group comes ashore on every beach;
+##   big: a third more in each group, and another Crab and Smotherer;
+##   storm and eel: the table as it is (the storm and the Eel are the night's trouble).
+static func special_rows(rows: Array[Dictionary], kind: String) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for r in rows:
+		var e: Dictionary = r.duplicate()
+		match kind:
+			"squid":
+				if e["kind"] == "B":
+					e["kind"] = "S"
+					e["count"] = maxi(2, int(e["count"]) - 1)
+			"fog":
+				if e["kind"] != "E":
+					e["count"] = maxi(1, roundi(float(e["count"]) * FOG_SCALE))
+					e["every"] = not e.get("holm", false)
+			"big":
+				if e["kind"] != "E":
+					e["count"] = maxi(int(e["count"]) + 1, roundi(float(e["count"]) * BIG_SCALE))
+		out.append(e)
+	match kind:
+		"smotherer":
+			for t in SMOTHERER_ROWS:
+				out.append({"t": t, "kind": "M", "count": 1, "opp": true, "point": -1, "holm": false})
+		"big":
+			out.append({"t": 0.34, "kind": "C", "count": 1, "opp": true, "point": -1, "holm": false})
+			out.append({"t": 0.5, "kind": "M", "count": 1, "opp": true, "point": -1, "holm": false})
 	return out
 
 ## Whether there's anything left on the holm to raid.
@@ -179,7 +222,12 @@ func _queue_group(entry: Dictionary) -> void:
 		var turn := _bloated_groups % raid_skip != 0 if raid_skip > 0 else _bloated_groups % 2 == 0
 		raid = Run.night >= raid_from and turn and Enemy.nearest_home(Vector3.ZERO) != null
 	var landings: Array = [points[idx]]
-	if kind == "B" and not raid and Run.night >= SPLIT_FROM_NIGHT and count >= SPLIT_MIN and points.size() > 2:
+	if entry.get("every", false) and points.size() > 2:
+		# A fog night: a landing at every beach (points come in pairs, one pair per beach).
+		landings = []
+		for b in range(0, points.size(), 2):
+			landings.append(points[b + (randi() % 2 if b + 1 < points.size() else 0)])
+	elif kind == "B" and not raid and Run.night >= SPLIT_FROM_NIGHT and count >= SPLIT_MIN and points.size() > 2:
 		# A second landing at a different beach.
 		var other := (idx + 2 + 2 * (randi() % maxi(1, points.size() / 2 - 1))) % points.size()
 		landings.append(points[other])

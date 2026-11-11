@@ -123,6 +123,8 @@ var atmosphere: Atmosphere
 var events: NightEvents
 ## Act Two as the story tells it: the survivors, the diary, the kraken (when Run.story).
 var story: StoryRock
+## The story's rock days: each day's event, the special nights, the seven's requests.
+var days: RockDays
 var _sun: DirectionalLight3D
 ## Gull Rock's boat, and the gulls.
 var rowing_boat: RowingBoat
@@ -396,8 +398,14 @@ func begin_run(continue_save: bool, n: int) -> void:
 		story = StoryRock.new()
 		story.main = self
 		add_child(story)
+		# Days and nights that differ, and the seven's requests (local play only).
+		days = RockDays.new()
+		days.main = self
+		add_child(days)
+		spawner.night_kind = RockDays.night_kind
 	else:
 		Run.story = false
+	_dress_keepers()
 	lighthouse.lamp.fuel = Run.lamp_fuel
 	for p in players:
 		p.max_hp = Player.BASE_HP + int(Run.max_hp_bonus[p.idx])
@@ -434,6 +442,7 @@ func _process(delta: float) -> void:
 		_title_cam.look_at_from_position(Vector3(sin(a) * 38.0, 15.0, cos(a) * 38.0), Vector3(-3.0, 6.0, 0.0), Vector3.UP)
 	_rescue_step(delta)
 	_cine_step(delta)
+	_rate_step(delta)
 	if Run.active and not _rescue and not Net.is_client() and Input.is_action_just_pressed("skip"):
 		Cycle.skip()
 	_alarms(delta)
@@ -520,6 +529,7 @@ func _chapter_end() -> void:
 	card.nights = Rescue.night()
 	card.kills = _total_kills
 	card.sea = Difficulty.name()
+	card.rating = NightRating.total_line()
 	card.host_decides = Net.is_client()
 	card.back_to_title.connect(_after_chapter.bind(false))
 	card.stay_on.connect(_after_chapter.bind(true))
@@ -1375,6 +1385,7 @@ func _on_phase_changed(p: int) -> void:
 		_warned_low = false
 	if p == Cycle.Phase.DUSK:
 		_tally = {}
+		_rate_reset()
 		if Run.active and Rescue.is_last_night() and not Net.is_client() and not Run.story:
 			hud.warn("The last night. The relief boat comes at dawn: hold the light!")
 		if Run.active and not Net.is_client():
@@ -1484,6 +1495,8 @@ func _dawn_report() -> void:
 			lines.append("One more night: the relief boat comes the dawn after.")
 		elif left > 1:
 			lines.append("The relief boat is due in %d nights." % left)
+	# How the night went, in one line with its stars (NightRating).
+	lines.append(_rate_night())
 	hud.report("Night %d held." % Run.night, lines)
 
 # The camp's state for the dawn report: what's wrecked or hurt, or "" if it's all sound.
@@ -1546,8 +1559,75 @@ func _wash_up_shells() -> void:
 	_shells_at = sp.position
 	add_child(sp)
 
+## The keeper's oilskin (unlocked on an angry sea, chosen in Settings): the keepers
+## people play wear it, a tint over the model's own colours.
+const OILSKIN := Color(1.12, 1.0, 0.62)
+
+func _dress_keepers() -> void:
+	if not SaveSys.unlocked("coat") or int(SaveSys.choice("coat", 0)) != 1:
+		return
+	for p in players:
+		if is_instance_valid(p) and not p.ai and p.rig != null:
+			p.rig.tint(OILSKIN)
+
+# ---- the dawn rating (NightRating) ----
+
+var _night_t := 0.0
+var _lit_t := 0.0
+var _downs := 0
+var _was_down := {}
+var _hp_dusk := 0
+var _hp_low := 0
+
+func _rate_reset() -> void:
+	_night_t = 0.0
+	_lit_t = 0.0
+	_downs = 0
+	_was_down = {}
+	_hp_dusk = lighthouse.hp
+	_hp_low = lighthouse.hp
+
+# Through the night: how long the light burned, who went down, the tower's worst.
+func _rate_step(delta: float) -> void:
+	if not Run.active or Net.is_client() or Cycle.phase != Cycle.Phase.NIGHT:
+		return
+	_night_t += delta
+	if lighthouse.lamp.state == Lamp.State.BURNING:
+		_lit_t += delta
+	_hp_low = mini(_hp_low, lighthouse.hp)
+	for k in players:
+		if not is_instance_valid(k):
+			continue
+		var down: bool = k.downed
+		if down and not bool(_was_down.get(k.idx, false)):
+			_downs += 1
+		_was_down[k.idx] = down
+
+## The night just held, measured for its rating.
+func night_measures() -> Dictionary:
+	var t := _tally
+	return {
+		"uptime": _lit_t / _night_t if _night_t > 0.0 else 1.0,
+		"lost": (story._lost_tonight as Array).duplicate() if story != null else [],
+		"downs": _downs,
+		"reached": int(t.get("reached", 0)),
+		"wrecked": int(t.get("fence", 0)) + int(t.get("home", 0)) + int(t.get("camp_lost", 0)),
+		"hurt": float(maxi(0, _hp_dusk - _hp_low)) / float(maxi(1, lighthouse.max_hp)),
+		"hard": Run.hard_light,
+	}
+
+# The night's line, and its stars into the run's total.
+func _rate_night() -> String:
+	var m := night_measures()
+	Run.stars += NightRating.stars(m)
+	Run.star_nights += 1
+	return NightRating.line(m)
+
 func _on_run_ended(_reason: String, _night: int) -> void:
 	Cycle.stop()
+	# The run's dawn ratings on the game-over card, under its tally.
+	if Run.chapter == 1 and hud != null and hud.get("_over_tally") != null and NightRating.total_line() != "":
+		hud._over_tally.text += "\n" + NightRating.total_line()
 	for e in get_tree().get_nodes_in_group("enemies"):
 		e.process_mode = Node.PROCESS_MODE_DISABLED
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE

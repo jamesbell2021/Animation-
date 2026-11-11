@@ -21,7 +21,7 @@ Order is as in `project.godot` `[autoload]`. `Settings._ready` reads the default
 | Net | `autoload/net.gd` | LAN host/client (see "LAN"). |
 | Settings | `autoload/settings.gd` | `user://settings.cfg`: volumes (Master, Music, SFX), fullscreen, window size, graphics quality (Low/Medium/High), render scale, camera shake, keeper one's rebinds. Signal `changed`. `use_world(env, sun)` receives main's Environment, `key_name(action)` and `keys_in(text, idx)` rewrite "[E]" hints to the keys in use or the pad's buttons, `rebind`, `reset_controls`, `apply_*`. |
 | Telemetry | `autoload/telemetry.gd` | The optional local play log (`user://telemetry.jsonl`: run start, each night at dawn, upgrades, dirty fuel, run end; off unless `Settings.telemetry` or `--telemetry`) and the F12 snapshot to `user://feedback.txt`. Format in `docs/TELEMETRY.md`. |
-| Feel | `autoload/feel.gd` | Camera trauma shake (decay 1.7/s, offset is trauma squared, max 0.55 m lens shift) and hit-stop (`Engine.time_scale` x0.04). `shake(amount, at)` fades with distance to the nearest person's keeper (6 m full, 26 m none); `hitstop(s)`; `blow(killed, heavy)`. Both are off headless (tests stay frame-exact) and hit-stop is off on a LAN. |
+| Feel | `autoload/feel.gd` | Camera trauma shake (decay 1.7/s, offset is trauma squared, max 0.55 m lens shift), a kick toward a blow (`kick(dir, amount)`, up to 0.22 m, springs back at 16/s; follows the shake setting) and hit-stop (`Engine.time_scale` 0.04 for 0.055 to 0.11 real seconds, timed in real time; never stacks, 0.12 s between stops, skipped whenever the clock is not at 1.0). `shake(amount, at)` fades with distance to the nearest person's keeper (6 m full, 26 m none); `hitstop(s)`; `blow(killed, heavy, dir, amount)` (a person's blows only; under 15 damage no stop). All off headless unless `force_live` (tests stay frame-exact) and hit-stop is off on a LAN. |
 
 ## Scene and class map
 
@@ -93,7 +93,11 @@ One 45-degree camera framing a whole island from the south (offset 38 up, 26 bac
 | `people/villager.gd` | `Villager`: one of them on their feet; in the group "prey" when out of doors in the dark (`Enemy.nearest_prey`) |
 | `people/outfits.gd` | `Outfits`: dresses a villager's borrowed keeper model as their own (the texture repainted by part, parts cut away, a skirt and props hung on the bones). `LOOKS` by villager id; the keepers' materials are not touched |
 | `systems/story_rock.gd` | `StoryRock`: Act Two's story. Survivors in the camp, dawn gifts, the diary, raising the kraken, its death, the clear sky, the last pages |
-| `enemies/kraken.gd` | `Kraken`: the fight's rules (phases, slams, blinding, hurt, death) |
+| `systems/rock_days.gd` | `RockDays`: the story's rock days and nights: each day's event (stores, markers), the special night (`night_kind`, shaping `Spawner.special_rows`), the seven's requests and rewards (`Villagers.REQUESTS`, `Run.favours`) |
+| `ui/day_note.gd` | the small note at the top of the screen by day: today's event, and who has asked what |
+| `systems/night_rating.gd` | `NightRating`: the dawn report's rated line and the run's total (every rock run) |
+| `enemies/kraken.gd` | `Kraken`: the fight's rules in three stages (the camp: fire and searchlights drive arms back; the crossing: cut arms slow it; the light: blinding that shortens, the tower grip, the rear-up), slams, hurt, death |
+| `enemies/kraken_bar.gd` | The kraken's bar across the top: its strength under the three stage names (a `CanvasLayer` the kraken makes) |
 | `enemies/kraken_body.gd` | `KrakenBody`: the creature (head, eyes, eight arms as tubes rebuilt each frame, like the Eel) |
 | `enemies/kraken_part.gd` | `KrakenPart` (an `Enemy`): the places on it that weapons find, which pass hits on to `Kraken.struck` |
 | `ui/story_pages.gd`, `ui/story_text.gd` | the keeper's log: the page player, and the pages' words |

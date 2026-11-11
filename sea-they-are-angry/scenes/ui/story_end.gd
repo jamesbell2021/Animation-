@@ -16,6 +16,9 @@ var nights := 0
 var kills := 0
 var sea := ""
 var saved := 0
+## The run's dawn ratings (NightRating.total_line), and anything the finish unlocked.
+var rating := ""
+var unlocked := ""
 
 func _ready() -> void:
 	layer = 30
@@ -45,6 +48,10 @@ func _ready() -> void:
 		people = "None of Kirkhaven's seven saw the sky clear. The keepers did."
 	_label(box, people, 22, PALE)
 	_label(box, "%d night%s on the rock, on an %s. %d of them sent back to the sea, and one that will not come again." % [nights, "" if nights == 1 else "s", sea.to_lower(), kills], 20, DIM)
+	if rating != "":
+		_label(box, rating, 20, GOLD)
+	if unlocked != "":
+		_label(box, unlocked, 18, GOLD)
 	var gap2 := Control.new()
 	gap2.custom_minimum_size = Vector2(0, 10)
 	box.add_child(gap2)

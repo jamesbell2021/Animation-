@@ -15,6 +15,8 @@ var kills := 0
 var sea := ""
 ## On a LAN client the host decides: the buttons say so.
 var host_decides := false
+## The run's dawn ratings (NightRating.total_line), or "".
+var rating := ""
 
 func _ready() -> void:
 	layer = 30
@@ -41,6 +43,8 @@ func _ready() -> void:
 		"buttoned inside Callum's coat.") % [nights, sea.to_lower()], 22, PALE)
 	Fonts.use_serif(body)
 	_label(box, "%d of them sent back to the sea." % kills, 20, DIM)
+	if rating != "":
+		_label(box, rating, 20, GOLD)
 	var gap := Control.new()
 	gap.custom_minimum_size = Vector2(0, 18)
 	box.add_child(gap)

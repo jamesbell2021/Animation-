@@ -34,6 +34,9 @@ func _init(p_id: String = "") -> void:
 
 func _ready() -> void:
 	add_to_group("villagers")
+	# On the story's rock one of them may have asked for something (RockDays): a keeper
+	# at their side sees it, and [E] hands it over.
+	add_to_group("interactable")
 	var w := Villagers.who(id)
 	rig = CharacterRig.create(Players.MODELS[int(w.get("model", 0)) % Players.MODELS.size()])
 	if rig != null:
@@ -57,6 +60,19 @@ func _ready() -> void:
 
 func display_name() -> String:
 	return Villagers.name_of(id)
+
+func _days() -> Node:
+	return get_tree().get_first_node_in_group("rock_days") if is_inside_tree() else null
+
+func interact_prompt() -> String:
+	var d := _days()
+	if d == null or not visible or state != "about":
+		return ""
+	return d.villager_prompt(id)
+
+func interact(keeper: Node) -> bool:
+	var d := _days()
+	return d != null and visible and state == "about" and d.villager_interact(id, keeper)
 
 ## Out of doors where something could reach them.
 func exposed() -> bool:
