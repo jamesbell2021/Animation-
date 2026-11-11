@@ -60,6 +60,7 @@ func _furnish() -> void:
 	var iz := DEPTH * 0.5 - WALL_T
 	var boards := Geo.box(self, Vector3(WIDTH - WALL_T * 2.0, 0.03, DEPTH - WALL_T * 2.0), Color.WHITE, Vector3(0.0, 0.015, 0.0))
 	boards.material_override = Look.textured("planks", Color(0.42, 0.36, 0.3), 0.8)
+	Geo.solid(self, Vector3(1.6, 0.9, 0.55), Vector3(-0.1, 0.45, iz - 0.28))
 	var bench := Geo.box(self, Vector3(1.6, 0.07, 0.55), Color.WHITE, Vector3(-0.1, 0.85, iz - 0.28))
 	bench.material_override = wood
 	for lx in [-0.8, 0.6]:

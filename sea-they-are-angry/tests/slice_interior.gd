@@ -52,6 +52,11 @@ func _go() -> void:
 			cot = s
 		elif s is Shed:
 			shed = s
+	# Its furniture is solid: the table can't be walked through.
+	var fq := PhysicsPointQueryParameters3D.new()
+	fq.position = cot.to_global(Vector3(0.25, 0.5, 0.2))
+	fq.collision_mask = 4
+	check(not main.get_world_3d().direct_space_state.intersect_point(fq).is_empty(), "the cottage's table is solid")
 
 	# In at the cottage door.
 	var outside := cot.to_global(Vector3(Cottage.DOOR_X, 0.0, -Cottage.DEPTH * 0.5 - 1.2))

@@ -8,6 +8,22 @@ static func mat(color: Color, unshaded: bool = false) -> StandardMaterial3D:
 		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	return m
 
+## Something to bump into, not see: a box on the props' solid layer (layer 4, which keepers
+## collide with), for furniture and the like that is otherwise only drawn.
+static func solid(parent: Node, size: Vector3, pos: Vector3) -> StaticBody3D:
+	var body := StaticBody3D.new()
+	body.name = "Solid"
+	body.collision_layer = 4
+	body.collision_mask = 0
+	var cs := CollisionShape3D.new()
+	var b := BoxShape3D.new()
+	b.size = size
+	cs.shape = b
+	body.add_child(cs)
+	body.position = pos
+	parent.add_child(body)
+	return body
+
 static func box(parent: Node, size: Vector3, color: Color, pos: Vector3 = Vector3.ZERO) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
 	var m := BoxMesh.new()

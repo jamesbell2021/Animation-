@@ -584,14 +584,17 @@ func _furnish_quarters(hut: Node3D) -> void:
 				frame.material_override = iron
 				var bed := Geo.box(hut, Vector3(1.8, 0.1, 0.72), Color.WHITE, Vector3(bx, y + 0.09, z))
 				bed.material_override = blanket
+			Geo.solid(hut, Vector3(1.9, 1.6, 0.8), Vector3(bx, 0.8, z))
 			for px in [-0.92, 0.92]:
 				for pz in [-0.36, 0.36]:
 					var post := Geo.box(hut, Vector3(0.05, 1.55, 0.05), Color.WHITE, Vector3(bx + px, 0.78, z + pz))
 					post.material_override = iron
 	for i in 3:
 		var locker := Geo.box(hut, Vector3(0.5, 1.6, 0.45), Color.WHITE, Vector3(1.6 + float(i) * 0.55, 0.8, -(HUT_R - 0.65)))
+		Geo.solid(hut, Vector3(0.5, 1.6, 0.45), Vector3(1.6 + float(i) * 0.55, 0.8, -(HUT_R - 0.65)))
 		locker.material_override = Look.flat_mat(Color(0.32, 0.38, 0.32), 0.45)
 	var stove := Geo.cyl(hut, 0.3, 0.75, Color.WHITE, Vector3(HUT_LEN * 0.25, 0.42, HUT_PIPE_Z))
+	Geo.solid(hut, Vector3(0.6, 0.9, 0.6), Vector3(HUT_LEN * 0.25, 0.45, HUT_PIPE_Z))
 	stove.material_override = Look.flat_mat(Color(0.08, 0.08, 0.09), 0.4)
 	var pipe := Geo.cyl(hut, 0.08, 1.6, Color.WHITE, Vector3(HUT_LEN * 0.25, 1.6, HUT_PIPE_Z))
 	pipe.material_override = Look.flat_mat(Color(0.1, 0.1, 0.1), 0.4)
@@ -606,6 +609,8 @@ func _furnish_mess(hut: Node3D) -> void:
 	var boards := Geo.box(hut, Vector3(HUT_LEN - 0.4, 0.03, (HUT_R - 0.35) * 2.0), Color.WHITE, Vector3(0.0, 0.03, 0.0))
 	boards.material_override = Look.textured("planks", Color(0.5, 0.42, 0.34), 0.8)
 	var table := Geo.box(hut, Vector3(4.0, 0.06, 0.9), Color.WHITE, Vector3(-0.8, 0.76, 0.0))
+	# The table with its benches, the counter and the desk are solid.
+	Geo.solid(hut, Vector3(4.0, 0.9, 1.8), Vector3(-0.8, 0.45, 0.0))
 	table.material_override = wood
 	for lx in [-2.6, -0.8, 1.0]:
 		var trestle := Geo.box(hut, Vector3(0.08, 0.74, 0.75), Color.WHITE, Vector3(lx, 0.37, 0.0))
@@ -621,11 +626,13 @@ func _furnish_mess(hut: Node3D) -> void:
 		mug.material_override = Look.flat_mat(Color(0.86, 0.86, 0.82), 0.4)
 	# The serving counter across the far end, a big pot on it.
 	var counter := Geo.box(hut, Vector3(0.6, 0.95, 2.4), Color.WHITE, Vector3(HUT_LEN * 0.5 - 0.75, 0.48, 0.0))
+	Geo.solid(hut, Vector3(0.6, 1.0, 2.4), Vector3(HUT_LEN * 0.5 - 0.75, 0.5, 0.0))
 	counter.material_override = wood
 	var pot := Geo.cyl(hut, 0.22, 0.3, Color.WHITE, Vector3(HUT_LEN * 0.5 - 0.75, 1.1, 0.5))
 	pot.material_override = Look.flat_mat(Color(0.5, 0.5, 0.52), 0.3)
 	# A desk of papers and a lamp: the internees' notes.
 	var desk := Geo.box(hut, Vector3(1.0, 0.05, 0.6), Color.WHITE, Vector3(2.0, 0.76, -(HUT_R - 0.75)))
+	Geo.solid(hut, Vector3(1.0, 0.9, 0.6), Vector3(2.0, 0.45, -(HUT_R - 0.75)))
 	desk.material_override = wood
 	for lx in [-0.45, 0.45]:
 		var dl := Geo.box(hut, Vector3(0.05, 0.74, 0.55), Color.WHITE, Vector3(2.0 + lx, 0.37, -(HUT_R - 0.75)))

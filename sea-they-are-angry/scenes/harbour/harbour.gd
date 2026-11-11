@@ -322,6 +322,31 @@ func _build_kirk() -> void:
 	kirk.bell_rung.connect(_on_bell)
 	kirk.destroyed.connect(_on_kirk_fallen)
 
+# A boat hauled up the strand is something to walk round, not through: a box for her hull
+# on the props' solid layer, and her ground kept out of the town's paths.
+func _solid_hull(craft: Node3D) -> void:
+	var body := StaticBody3D.new()
+	body.name = "Hull"
+	body.collision_layer = HarbourProps.SOLID_LAYER
+	body.collision_mask = 0
+	var cs := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = Vector3(HarbourProps.BOAT_BEAM * 0.92, 1.7, HarbourProps.BOAT_LEN * 0.94)
+	cs.shape = box
+	cs.position = Vector3(0.0, 0.85, 0.0)
+	body.add_child(cs)
+	craft.add_child(body)
+	var b := Basis(Vector3.UP, craft.rotation.y)
+	var lo := Vector2(INF, INF)
+	var hi := Vector2(-INF, -INF)
+	for sx: float in [-0.5, 0.5]:
+		for sz: float in [-0.5, 0.5]:
+			var c := b * Vector3(sx * box.size.x, 0.0, sz * box.size.z) + craft.position
+			lo = Vector2(minf(lo.x, c.x), minf(lo.y, c.z))
+			hi = Vector2(maxf(hi.x, c.x), maxf(hi.y, c.z))
+	HarbourMap.extra_solids.append(Rect2(lo, hi - lo))
+	HarbourMap.reset_nav()
+
 func _put(n: Node3D, x: float, z: float, yaw_deg: float = 0.0, lift: float = 0.0) -> Node3D:
 	n.position = _ground(x, z) + Vector3(0.0, lift, 0.0)
 	n.rotation.y = deg_to_rad(yaw_deg)
@@ -381,6 +406,7 @@ func _build_dressing() -> void:
 		else:
 			craft.position = _ground(float(bt[2]), float(bt[3])) + Vector3(0.0, 0.25, 0.0)
 			craft.rotation.z = deg_to_rad(9.0 if i % 2 == 1 else -11.0)
+			_solid_hull(craft)
 		add_child(craft)
 	# The Mary Ann herself lies beside the pier head, plank in, till the last night.
 	boat = ReliefBoat.new()

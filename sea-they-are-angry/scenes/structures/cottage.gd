@@ -148,6 +148,8 @@ func _furnish() -> void:
 	# The range in the chimney breast, the fire showing through its grate.
 	var stove := Geo.box(self, Vector3(0.55, 0.75, 0.95), Color.WHITE, Vector3(ix - 0.28, 0.4, 0.0))
 	stove.material_override = iron
+	# The furniture is solid: nobody walks through the range, the table, the bed or the dresser.
+	Geo.solid(self, Vector3(0.55, 1.0, 0.95), Vector3(ix - 0.28, 0.5, 0.0))
 	var fire := Geo.box(self, Vector3(0.05, 0.22, 0.4), Color.WHITE, Vector3(ix - 0.57, 0.32, 0.0))
 	fire.material_override = Look.glow_mat(Color(1.0, 0.45, 0.15), 3.0)
 	var mantel := Geo.box(self, Vector3(0.25, 0.06, 1.3), Color.WHITE, Vector3(ix - 0.12, 1.25, 0.0))
@@ -166,6 +168,7 @@ func _furnish() -> void:
 	var tx := 0.25
 	var tz := 0.2
 	var top := Geo.box(self, Vector3(1.0, 0.05, 0.7), Color.WHITE, Vector3(tx, 0.75, tz))
+	Geo.solid(self, Vector3(1.85, 0.9, 0.7), Vector3(tx, 0.45, tz))
 	top.material_override = wood
 	for lx in [-0.42, 0.42]:
 		for lz in [-0.28, 0.28]:
@@ -194,6 +197,7 @@ func _furnish() -> void:
 	bowl.material_override = Look.flat_mat(Color(0.85, 0.85, 0.8), 0.4)
 	# The box bed along the far gable, a blanket and a pillow.
 	var bed := Geo.box(self, Vector3(0.95, 0.45, 1.9), Color.WHITE, Vector3(-ix + 0.48, 0.25, iz - 0.97))
+	Geo.solid(self, Vector3(0.95, 0.65, 1.9), Vector3(-ix + 0.48, 0.32, iz - 0.97))
 	bed.material_override = dark
 	var blanket := Geo.box(self, Vector3(0.88, 0.1, 1.35), Color.WHITE, Vector3(-ix + 0.48, 0.52, iz - 1.2))
 	blanket.material_override = Look.flat_mat(Color(0.45, 0.16, 0.14), 0.9)
@@ -201,6 +205,7 @@ func _furnish() -> void:
 	pillow.material_override = Look.flat_mat(Color(0.86, 0.84, 0.78), 0.9)
 	# A dresser of plates against the back wall.
 	var dresser := Geo.box(self, Vector3(1.0, 0.85, 0.4), Color.WHITE, Vector3(1.15, 0.43, iz - 0.2))
+	Geo.solid(self, Vector3(1.0, 1.6, 0.4), Vector3(1.15, 0.8, iz - 0.2))
 	dresser.material_override = wood
 	var rack := Geo.box(self, Vector3(1.0, 0.75, 0.12), Color.WHITE, Vector3(1.15, 1.25, iz - 0.06))
 	rack.material_override = wood

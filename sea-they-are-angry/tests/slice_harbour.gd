@@ -84,6 +84,12 @@ func _go() -> void:
 	await _wait(60)
 	check(lamp.fog_hole().z > 6.0 and main.lamps[5].fog_hole().z == 0.0, "its light holds the fog off (%.1f m)" % lamp.fog_hole().z)
 	check(main.landing_lit(0) and not main.landing_lit(1) and not main.landing_lit(2), "the west slip has a lamp at its head; the east slip and the strand are dark")
+	# The boats hauled up the strand are solid, and the paths go round them.
+	var hulls := main.find_children("Hull", "StaticBody3D", true, false).size()
+	var hq := PhysicsPointQueryParameters3D.new()
+	hq.position = Vector3(29.0, Terrain.height_at(29.0, 6.4) + 0.8, 6.4)
+	hq.collision_mask = HarbourProps.SOLID_LAYER
+	check(hulls == 2 and not main.get_world_3d().direct_space_state.intersect_point(hq).is_empty() and HarbourMap._blocked(29.0, 6.4), "the boats on the strand are solid (%d hulls) and the paths go round them" % hulls)
 	check(is_equal_approx(main._landing_scale(HarbourMap.landing_point(0, 0.0)) / main._landing_scale(HarbourMap.landing_point(2, 0.0)), main.LIT_LANDING), "a lit landing lets fewer through")
 	var picks := [0, 0, 0]
 	for i in 600:
