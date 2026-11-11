@@ -45,7 +45,8 @@ var weather_for := 0
 var weather_kind := 0
 # Set before reloading the scene to skip the title screen (New Run from game over).
 var quick_start := false
-## Which chapter is being played: 1 the rock, 2 Kirkhaven harbour.
+## Which chapter is being played: 1 the rock, 2 Kirkhaven harbour, 3 the Escape (the
+## crossing between them, scenes/escape/).
 var chapter := 1
 ## Set by whoever sends the game to the harbour scene: begin there (true to continue a
 ## saved run). Cleared once the harbour has read it.
@@ -64,6 +65,13 @@ var lost: Array = []
 ## Set by the town as the Mary Ann sails: the rock begins a run with this carried over
 ## ({"stock": ..., "arms": ...}). Cleared once read.
 var carry := {}
+## The Escape (the crossing from Kirkhaven to the rock): set by whoever sends the game to
+## its scene (true to continue it from the save), cleared once it has read them. Its
+## carry is what came off the pier ({"stock", "arms", "villagers", "lost",
+## "difficulty"}), kept here while it is played so a try again starts it the same way.
+var enter_escape := false
+var escape_continue := false
+var escape_carry := {}
 ## Set by the title for a run that starts on the rock but is still the story.
 var story_next := false
 ## The diary's last pages have been read (the rock, in the story).

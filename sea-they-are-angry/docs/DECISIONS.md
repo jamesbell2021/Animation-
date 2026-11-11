@@ -983,3 +983,57 @@ The owner, having seen v1.0.0: the screen is crowded; is the story backwards, sh
 - **The longbow** is one swept tube (Arsenal._bow_tube) with a drawn string.
 - **The shotgun recording** is driven into a soft clipper and limiter (+8 dB on average).
 
+
+## 2026-11-11: the Escape, a level between the acts (the owner asked for it)
+
+The owner: "a short level where you have to sail to the lighthouse island and creatures
+attack your boat so you or the ai either control the boat avoiding sea creature or hit
+things off the boat as they climb up. Or shoot them off with a shotgun. Call the level
+the escape or something." Built as **the Escape** (`docs/ESCAPE.md`), played between
+crossing pages 2 and 3 of the log, after the Mary Ann leaves Kirkhaven's pier.
+
+- **The boat stays put; the world moves.** Keepers are `CharacterBody3D`s walking real
+  collision: a moving deck would carry them only as well as Godot's moving platforms do.
+  So the deck is a static body at the origin, and the world (rocks, arms, the coast, the
+  rock, the sea's and the fog's patterns) goes past. Steering moves her across a channel
+  by moving the world sideways. Her model rolls and yaws on top, the deck does not (a few
+  centimetres of mismatch at the rail, not seen from the game's camera).
+- **Chapter 3.** `Terrain.chapter` and `Run.chapter` are 3, the way Kirkhaven is 2:
+  `Terrain`, `KeeperNav` and `CameraDirector` hand over to `EscapeMap`. The scene extends
+  `main.gd` like the harbour's, for the HUD, pause, keepers and the game-over card.
+- **The bow points to the right of the screen.** The camera only looks north, so a boat
+  heading up the screen would see what's ahead foreshortened and late; across the screen
+  there is a 16:9 width of warning. "Dod put her head to the north-east" still holds.
+- **The wheel uses `Player.in_menu`**, and reads the keeper's own move keys and Use,
+  so `player.gd` (which the owner is editing for the HUD's clicks) is not touched. Both
+  up/down and left/right steer, so the arrow keys and a stick work without a second map.
+- **Dod Wiseman always has the wheel when nobody else does**, not only with the helpers
+  off: a helper walking to it would otherwise leave her unsteered. His skill is set lower
+  than a helper's (looks 15 m ahead against 21, reacts in 1 s against 0.6, steers up to a
+  metre off against 0.6).
+- **The arm aims where she will be** and marks it: a red ring on the water, as wide as
+  its blow, drawn over the fog. It comes down as her middle comes level. That makes it a
+  steering test with warning, not a dice roll, and shooting it while it is up is the
+  other answer.
+- **One hit knocks a climber off**, of any kind (the owner's "hit things off the boat").
+  That makes the computer's keepers very good at it, so they don't see one until it is a
+  third of the way up her side, and hesitate a fifth of a second at the rail
+  (`HELPER_NOTICE`, `KeeperAI.REPEL_EAGER`); a person isn't slowed. Surges three times a
+  crossing put more on her sides than two keepers can reach in time.
+- **The light ends it.** At 90 % of the way the rock's light reaches her and they fall
+  back, as the lamp keeps them off elsewhere.
+- **Foundering is a lost run, but not a lost story.** `Run.end_run` clears the save as
+  for any loss; the Escape then writes its save again (chapter 3, with the carry), so
+  Continue on the title begins the crossing again with what came off the pier, rather
+  than sending the player back to Kirkhaven's first day.
+- **The HUD is untouched** (the owner is editing it). Its light card is made invisible
+  from outside, the game-over card's two lines reworded after it is shown, and the
+  Escape's own card is its own `CanvasLayer`.
+- **No jobs list** on the crossing (`Jobs.list()` is empty in chapter 3): the HUD would
+  title it "Jobs for the first days". The opening card says what to do instead, and How
+  to Play has a page.
+- **No new art files or sounds.** The boat is ReliefBoat's model (`escape_fit`: a
+  narrower wheelhouse and a clear fore deck); the drowned and the bloated are the
+  Smotherer's and the Bloated's models; the arm is a tube built in code; the sounds are
+  the existing horn, wave crash, splash, groan and creak. The log's stills are unchanged;
+  page 3's words gain a sentence about the crossing.

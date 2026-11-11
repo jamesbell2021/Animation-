@@ -20,6 +20,7 @@ const EN := {
 	"title.rock": "Start on the Rock",
 	"title.rock_note": "Skip Kirkhaven: begin on the rock with all seven saved.",
 	"title.continue_harbour": "Continue  (Kirkhaven, night %d)",
+	"title.continue_escape": "Continue  (the Escape)",
 	"title.lan": "Play on the LAN",
 	"title.how": "How to Play",
 	"title.settings": "Settings",

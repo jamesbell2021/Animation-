@@ -16,6 +16,7 @@ Both chapters are built and tested by script; neither has been played through by
 **The story was turned round on 2026-11-10** at the owner's direction (`docs/STORY.md`):
 
 - **Act One, Kirkhaven** (`scenes/harbour.tscn`, `scenes/harbour/`, `docs/KIRKHAVEN.md`): New Run starts here. Three nights; seven named villagers (`scenes/people/`) to keep alive; the town falls and they are brought down to the *Mary Ann* on the third night. Local play only.
+- **Between the acts, the Escape** (`scenes/escape.tscn`, `scenes/escape/`, `docs/ESCAPE.md`; added 2026-11-11 at the owner's request): the log's first two crossing pages, then the Mary Ann runs up the coast to the rock in the fog, with the arms, rocks and climbers to fight off (a person, a helper or Dod Wiseman at the wheel), then the last two pages. Her hull broken, the run is lost and Continue begins the crossing again. Local play only.
 - **Act Two, the rock** (`scenes/main.gd` with `scenes/systems/story_rock.gd` when `Run.story`): the survivors in the camp, the diary, no relief boat.
 - **The kraken** (`scenes/enemies/kraken.gd` the rules, `kraken_body.gd` the creature, `kraken_part.gd` what weapons hit): the last night; its death is the end (`scenes/ui/story_end.gd`).
 - **The keeper's log** (`scenes/ui/story_pages.gd`, `story_text.gd`, stills in `art/story/` made by `tools/make_story_stills.gd` with `shaders/sketch.gdshader`): before Act One, on the crossing, at the diary, after the end.
@@ -67,6 +68,7 @@ godot --headless --path sea-they-are-angry --script res://tests/slice_events.gd
 godot --headless --path sea-they-are-angry --script res://tests/slice_harbour.gd
 godot --headless --path sea-they-are-angry --script res://tests/slice_kraken.gd
 godot --headless --path sea-they-are-angry --script res://tests/slice_story.gd
+godot --headless --path sea-they-are-angry --script res://tests/slice_escape.gd
 godot --headless --path sea-they-are-angry --script res://tests/smoke.gd    # a whole run at 20x, about half a minute
 GODOT=godot sea-they-are-angry/tests/run_lan.sh   # the LAN test: a host and a client, two processes
 ```

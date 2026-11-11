@@ -30,6 +30,9 @@ const UNTIL_NIGHT := 3
 
 ## The list for the chapter being played.
 static func list() -> Array:
+	if Run.chapter == 3:
+		# The Escape has no jobs list: its opening card says what to do.
+		return []
 	return HARBOUR if Run.chapter == 2 else LIST
 
 var players: Array = []

@@ -268,6 +268,16 @@ func _go() -> void:
 			break
 	Engine.time_scale = 1.0
 	await _wait(5)
+	# Up the coast first: the Escape (tests/slice_escape.gd plays it); here she is brought
+	# straight in under the rock's light.
+	var escape = current_scene
+	check(escape != main and escape.get("helm") != null and Terrain.chapter == 3 and escape.villagers.size() == aboard, "she sails, and the Escape is next, with the %d aboard" % aboard)
+	escape.travelled = escape.distance - 0.5
+	for i in 3000:
+		await process_frame
+		if current_scene != null and current_scene != escape and current_scene.get("player") != null and current_scene.player != null:
+			break
+	await _wait(5)
 	var rock = current_scene
 	check(rock != main and Terrain.chapter == 1 and run.chapter == 1 and root.get_node("SaveSys").chapter_done(2), "she sails, and the rock is next")
 	check(run.active and run.story and run.night == 1 and run.villagers.size() == aboard, "Act Two begins with those who were saved (%d)" % run.villagers.size())

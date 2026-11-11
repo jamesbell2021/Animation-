@@ -93,6 +93,9 @@ func _ready() -> void:
 ## Where a keeper standing at p should be framed from: their island, or between the two
 ## on the bridge.
 static func focus_for(p: Vector3) -> Vector3:
+	if Terrain.chapter == 3:
+		# The Escape: everyone is aboard the Mary Ann, framed together.
+		return EscapeMap.FOCUS
 	if Terrain.chapter == 2:
 		# Kirkhaven is too deep for one framing: the view follows the keeper up the town
 		# and out along the pier, and leans a little their way along the quay.
@@ -118,6 +121,8 @@ static func zoom_for_keeper(k: Node3D) -> float:
 	var boat = k.get("riding")
 	if boat != null and is_instance_valid(boat):
 		return lerpf(1.0, ISLET_ZOOM, smoothstep(0.35, 0.95, boat.progress()))
+	if Terrain.chapter == 3:
+		return EscapeMap.ZOOM
 	return ISLET_ZOOM if Terrain.island_of(k.global_position.x, k.global_position.z) == 2 else 1.0
 
 var _zooms := {}

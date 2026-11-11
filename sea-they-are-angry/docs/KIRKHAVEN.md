@@ -76,8 +76,8 @@ toward the camera.
   through the streets to the boat at the pier head. Three Bloated come up each slip as
   the horn sounds (the way to the pier runs between the slips), and more every nine
   seconds while anyone is still ashore. When each is aboard or lost, her plank goes out and the keepers board ([E]); then
-  she sails, and Act Two begins on the rock with whoever was saved and whatever the
-  keepers were carrying.
+  she sails: the Escape (`docs/ESCAPE.md`), the crossing up the coast, and then Act Two
+  begins on the rock with whoever was saved and whatever the keepers were carrying.
 - **What ends the run here:** the harbour light going dark, or every keeper down. Losing
   all seven does not: the keepers still sail, alone.
 - **Nights:** three, whatever the sea's mood (the mood sets how many come). They start
@@ -121,8 +121,9 @@ Small hooks added to shared systems for this chapter:
 
 Getting there: the title's New Run shows the keeper's log and then starts here; a saved
 Kirkhaven run continues from the title. Leaving (pause → quit, game over → title) goes
-back to `main.tscn`, where the title lives; the Mary Ann sailing goes there too, with
-`Run.carry` holding what came across.
+back to `main.tscn`, where the title lives; the Mary Ann sailing goes to the Escape
+(`scenes/escape.tscn`) with `Run.carry` holding what came off the pier, and the Escape
+goes on to `main.tscn` with it.
 
 ## Runs played by the computer's keepers (2026-11-10)
 

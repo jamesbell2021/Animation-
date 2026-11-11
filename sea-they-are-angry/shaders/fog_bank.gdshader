@@ -15,6 +15,9 @@ uniform float brightness = 1.0;
 uniform float gap = 60.0;
 uniform float flood = 0.0;
 uniform vec2 drift = vec2(0.5, 0.18);
+// The Escape: the world goes past a boat that stays put, so the billows are shifted by
+// this (how far she has come) while the shores and holes stay where they are.
+uniform vec2 scroll = vec2(0.0);
 uniform float soft = 1.2;
 uniform vec4 isles[3];              // centre x, z, half extents x, z
 uniform float isle_yaw[3];
@@ -54,8 +57,8 @@ void fragment() {
 	vec2 p = world.xz;
 	float t = TIME;
 	// The bank's body: slow billows, and a faster, finer layer that makes it roll.
-	float big = fbm(p * 0.045 + drift * t * 0.02 + vec2(layer * 13.0));
-	float fine = fbm(p * 0.16 - drift.yx * t * 0.05 + vec2(layer * 5.0, 2.0));
+	float big = fbm((p + scroll) * 0.045 + drift * t * 0.02 + vec2(layer * 13.0));
+	float fine = fbm((p + scroll) * 0.16 - drift.yx * t * 0.05 + vec2(layer * 5.0, 2.0));
 	float body = big * 0.7 + fine * 0.3;
 	// Off every shore by `gap` metres, the edge torn by the billows.
 	float off = 1.0;

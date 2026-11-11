@@ -100,6 +100,19 @@ One 45-degree camera framing a whole island from the south (offset 38 up, 26 bac
 | `ui/story_end.gd` | the end card |
 | `tools/make_story_stills.gd`, `shaders/sketch.gdshader` | renders the log's drawings from the game's scenes into `art/story/` |
 
+**Between the acts, the Escape** (`scenes/escape.tscn`, `scenes/escape/`, `docs/ESCAPE.md`): the Mary Ann's crossing from Kirkhaven to the rock, played. Its script also extends `scenes/main.gd`; `Terrain.chapter` and `Run.chapter` are 3, and `Terrain`, `KeeperNav` and `CameraDirector` hand over to `EscapeMap`. The boat stays at the origin and the world goes past her. Kirkhaven's `_after_town` sends `Run.carry` there; it hands it on to the rock, less whoever was lost and whatever was spent.
+
+| File | What |
+|---|---|
+| `escape/escape.gd` | the scene: the boat, the scrolled sea and fog, the rock and its beam, steering, rocks and arms, waves and surges of boarders, the hull, the light, founder and arrival, the save; the autopilot for Dod and a helper; what helper keepers ask |
+| `escape/escape_map.gd` | `EscapeMap`: the deck (height, walkable, routes round the wheelhouse), the climbing places, the hull's outline, the camera's framing |
+| `escape/escape_helm.gd` | `EscapeHelm`: the wheel (interactable; a keeper at it is held with `in_menu`), Dod Wiseman |
+| `escape/boarder.gd` | `Boarder` (an `Enemy`): the drowned and the bloated, swimming up, climbing her side (any hit knocks it off), loose on deck (grab, strike, bloat and burst) |
+| `escape/sea_arm.gd` | `SeaArm` (an `Enemy`): an arm that lurks, rears and comes down on a marked ring |
+| `escape/escape_hud.gd` | the Escape's card (miles to the rock, hull, the wheel, the seven); the HUD itself is unchanged |
+| `shaders/escape_sea.gdshader` | the open sea, its pattern scrolled; her wake and wash |
+| `tools/playtest_escape.gd` | the balance bot: the computer's keepers sail it, per sea |
+
 The fog on both maps is `scenes/world/fog_bank.gd` (`FogBank`, owned by `Atmosphere`); the night's small events are `scenes/world/night_events.gd`.
 
 ## Tests
@@ -119,6 +132,7 @@ Each prints `PASS`/`FAIL` lines and a `RESULT` line. Most `quit(1)` on failure; 
 
 - `tools/playtest.gd`: balance bot. `-- [nights] [bot|idle] [keepers] [helpers] [calm|angry|raging]` (the README also names an `eco` mode that plants, eats, buys upgrades and sets traps). Backs up and restores your save and best night; stops when the boat comes.
 - `tools/playtest_harbour.gd`: the same for Act One. `-- [calm|angry|raging] [speed]`: three computer keepers hold Kirkhaven with nobody playing, each dawn prints what came, what was lost and who is left, and on the last night they bring the seven to the boat.
+- `tools/playtest_escape.gd`: the Escape. `-- [calm|angry|raging] [helpers|dod|careless] [speed] [runs]`: the computer's keepers sail the Mary Ann to the rock (one at the wheel, or Dod; or nobody steering or fighting), and each run prints her hull, who was lost, what came over the side and how often she was struck.
 - `tools/playtest_kraken.gd`: the last night. `-- [calm|angry|raging] [survivors] [speed]`: the computer's keepers against the kraken, with a line every few seconds and the result.
 - `tools/tour.gd`: renders a run played entirely by computer keepers, saving a frame every few seconds of game time (`xvfb-run`, `--fixed-fps 20`).
 - `tools/screenshot.gd`: one PNG of a chosen phase, beam mode, or close or homestead view.

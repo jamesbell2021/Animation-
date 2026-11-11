@@ -108,6 +108,13 @@ func pages() -> Array:
 			"Work the harbour light on the pier. Keep the kirk doors mended: if they go down in the night, those inside are taken one by one. Splice the kirk's bell rope (%s, two scrap) and ring it in the dark, once a night: every burning lamp flares white." % k.call("use_dirty"),
 			"The town cannot be held. On the third night, when the Mary Ann sounds her horn, the seven come out of the kirk and run for the boat at the pier head. Stay by them and keep their way lit: anything that gets within reach of one takes them. Then go aboard yourselves.",
 		]],
+		["The Escape", "Between the acts: the Escape", [
+			"The Mary Ann runs up the coast in the fog for the rock, whose light sweeps ahead. The card at the top of the screen says how far it is and how much her hull can take.",
+			"Take the wheel (%s behind the wheelhouse) and steer with your move keys: up and down the screen, or left and right. Let go with %s. Nobody at it, a helper keeps it, or Dod Wiseman, who doesn't see so far ahead." % [k.call("interact"), k.call("interact")],
+			"Steer round the rocks breaking white, and out from under an arm reared up out of the sea: it comes down on the ring of foam it marks. Enough arrows or shot in it while it's up, and it goes back under.",
+			"Things swim up alongside and climb her sides (a ! over the gunwale where each one is). One blow knocks one back into the sea: the boathook at the rail, an arrow, the shotgun. Over the gunwale, the drowned go for the seven and take them over the side; a bloated one bursts among you.",
+			"When the rock's light reaches her they fall back. Her hull broken, she founders, and Continue begins the crossing again.",
+		]],
 		["The last night", "Act Two: the rock, and what is coming", [
 			"The survivors shelter in the old camp over the bridge. A hut wrecked in the night can cost one of them.",
 			"Nothing is coming to take you off. The diary in the camp says what came in 1944 and when it will come again: use the days to arm. Petrol bombs, cartridges, arrows, the flamer, the lamp full.",

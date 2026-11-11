@@ -25,11 +25,29 @@ static func intro() -> Array:
 	]
 
 ## Between the acts: `saved` of the seven reached the boat; `lost` is the names of the rest.
+## All four pages, as the log has them (the game shows them either side of the Escape:
+## crossing_before as the Mary Ann leaves the pier, crossing_after as she comes in).
 static func crossing(saved: int, lost: Array) -> Array:
+	return crossing_before(saved, lost) + crossing_after([])
+
+## Leaving Kirkhaven: the town lost, and who got aboard.
+static func crossing_before(saved: int, lost: Array) -> Array:
 	return [
 		_page("crossing_1", "We could not hold it. The third night it came over the quay and up the wynds."),
 		_page("crossing_2", brought_down(saved, lost)),
-		_page("crossing_3", "Dod Wiseman put her head to the north-east. There is one light on this coast the Board's engineers have not reached."),
+	]
+
+## Coming in to the rock after the Escape: `lost_on_way` is the names of any of the seven
+## taken off her deck on the crossing.
+static func crossing_after(lost_on_way: Array) -> Array:
+	var head := "Dod Wiseman put her head to the north-east. There is one light on this coast the Board's engineers have not reached."
+	var sea := "They came up out of the water after us all the way up the coast."
+	if lost_on_way.is_empty():
+		sea += " We kept them off her."
+	else:
+		sea += " They took %s over the side." % _names(lost_on_way)
+	return [
+		_page("crossing_3", head + " " + sea),
 		_page("crossing_4", "The rock. The old camp on the holm will shelter them. The lamp wants oil and a hand to light it, and it has both."),
 	]
 

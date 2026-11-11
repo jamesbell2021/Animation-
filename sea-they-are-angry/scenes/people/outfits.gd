@@ -143,6 +143,18 @@ const LOOKS := {
 			["chest", "ring", Vector3(0.04, -0.04, 0.0), Vector3(0.235, 0.03, 0.74), Vector3(0.0, 0.0, -45.0), Color(0.45, 0.33, 0.17)],
 		],
 	},
+	# Dod Wiseman, the Mary Ann's skipper (not one of the seven: the Escape's helmsman):
+	# yellow oilskins and a sou'wester over a navy gansey, a grey beard. He borrows
+	# Hamish's model ("model", as the seven have theirs in Villagers.ROSTER).
+	"wiseman": {
+		"model": 1,
+		"label": Color(1.0, 0.9, 0.5),
+		"paint": {"coat": [Color(0.86, 0.66, 0.12), 0.75], "tails": Color(0.86, 0.66, 0.12), "trim": Color(0.8, 0.6, 0.1), "cuffs": Color(0.8, 0.6, 0.1),
+			"collar": NAVY, "trousers": [Color(0.84, 0.64, 0.12), 0.7], "boots": Color(0.08, 0.08, 0.09), "hat": Color(0.86, 0.66, 0.12),
+			"beard": Color(0.62, 0.62, 0.6), "hair": Color(0.55, 0.55, 0.54), "brows": Color(0.5, 0.5, 0.5)},
+		"hide": ["kit"],
+		"props": [],
+	},
 }
 
 # What is known of each keeper's model, by model name (found once).
@@ -159,7 +171,7 @@ static func dress(rig: CharacterRig, id: String) -> void:
 	if rig == null or rig.mesh == null or rig.skeleton == null or not LOOKS.has(id):
 		return
 	var look: Dictionary = LOOKS[id]
-	var model: String = Players.MODELS[int(Villagers.who(id).get("model", 0)) % Players.MODELS.size()]
+	var model: String = Players.MODELS[int(look.get("model", Villagers.who(id).get("model", 0))) % Players.MODELS.size()]
 	var key := id + "/" + model
 	var base := _base(model, rig)
 	if not base.is_empty():

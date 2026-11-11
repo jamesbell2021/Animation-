@@ -41,6 +41,8 @@ const BOW_DRAW := 0.8
 const SHELLS_SPARE := 2
 ## Kelp it keeps back for the garden's beds when it boils a broth.
 const KELP_KEEP := 3
+## The Escape: the chance each frame that a helper at the rail swings at what's climbing.
+const REPEL_EAGER := 0.1
 
 var keeper: Player
 var role := "light"
@@ -71,6 +73,10 @@ func _physics_process(delta: float) -> void:
 	if keeper.downed or keeper.is_climbing() or keeper.is_busy() or keeper.is_staggering():
 		keeper.ai_move = Vector2.ZERO
 		return
+	if Terrain.chapter == 3 and keeper.in_menu:
+		# The Escape: at the Mary Ann's wheel, which steers for it (EscapeHelm).
+		keeper.ai_move = Vector2.ZERO
+		return
 	_think -= delta
 	if _think <= 0.0:
 		_think = THINK_EVERY
@@ -89,6 +95,9 @@ func _physics_process(delta: float) -> void:
 # ---- choosing what to do ----
 
 func _decide() -> void:
+	if Terrain.chapter == 3:
+		_escape()
+		return
 	# The relief boat is in: down to the beach and aboard.
 	var boat := get_tree().get_first_node_in_group("relief_boat")
 	if boat != null and boat.waiting:
@@ -456,6 +465,68 @@ func _act(delta: float) -> void:
 				_task_target.alt_use(keeper)
 				_task = ""
 				_route.clear()
+		"helm":
+			if _task_target != null and is_instance_valid(_task_target) and Geo.flat_dist(keeper.global_position, EscapeMap.HELM_STAND) < 0.9:
+				_task_target.take(keeper)
+				_task = ""
+				_route.clear()
+		"repel":
+			_repel()
+
+## The Escape (Chapter "3", the crossing on the Mary Ann): the "helm" helper takes the
+## wheel from Dod unless a person has it; every helper not at the wheel keeps the
+## gunwales, knocking off what climbs her sides and fighting what gets aboard, and
+## otherwise stands by the seven.
+func _escape() -> void:
+	var esc := get_tree().get_first_node_in_group("escape")
+	if esc == null:
+		return
+	var mate := _downed_keeper()
+	if mate != null:
+		_set_task("revive", mate, mate.global_position)
+		return
+	if role == "helm" and esc.call("helm_free_for", keeper):
+		_set_task("helm", esc.get("helm"), EscapeMap.HELM_STAND)
+		return
+	var e: Node3D = esc.call("threat_for", keeper)
+	if e != null:
+		if e.call("clinging"):
+			_set_task("repel", e, e.call("rail_point"))
+		else:
+			_set_task("fight", e, e.global_position)
+		return
+	_set_task("post", null, esc.call("post_for", keeper))
+
+# The Escape: at the rail by something climbing her side, one blow knocks it back into the
+# sea; from further off, a shot or an arrow does as well once it is high on her side.
+func _repel() -> void:
+	var e: Node3D = _task_target if is_instance_valid(_task_target) else null
+	if e == null or e.get("hp") <= 0 or not e.call("clinging"):
+		_task = ""
+		return
+	var to := e.global_position - keeper.global_position
+	to.y = 0.0
+	var d := to.length()
+	var arms := keeper.arsenal
+	if d <= Player.ATTACK_RANGE - 0.35:
+		if arms != null and arms.in_hand():
+			arms.cease()
+			arms.select("hook")
+		_route.clear()
+		_goal = Vector3.INF
+		keeper.ai_move = Vector2.ZERO
+		keeper._aim = to.normalized()
+		keeper._aim_face_t = 0.3
+		# Not quite at once, as a person wouldn't be (a fifth of a second, give or take).
+		if keeper._attack_cd <= 0.0 and randf() < REPEL_EAGER:
+			keeper._attack()
+		return
+	if arms != null and d > 4.0 and float(e.call("climb_progress")) > 0.8 and _shoot(e, to, d):
+		return
+	if arms != null and arms.in_hand():
+		arms.cease()
+		arms.select("hook")
+	_go(e.call("rail_point"))
 
 func _fight() -> void:
 	var e: Node3D = _task_target if is_instance_valid(_task_target) else null

@@ -46,8 +46,9 @@ func _ready() -> void:
 	box.add_child(gap)
 	var save := SaveSys.load_run()
 	if not save.is_empty():
-		var key := "title.continue_harbour" if int(save.get("chapter", 1)) == 2 else "title.continue"
-		_first = _button(box, Strings.t(key, [int(save.get("night", 1))]), _on_continue)
+		var ch := int(save.get("chapter", 1))
+		var key := "title.continue_harbour" if ch == 2 else ("title.continue_escape" if ch == 3 else "title.continue")
+		_first = _button(box, Strings.t(key, [] if ch == 3 else [int(save.get("night", 1))]), _on_continue)
 	var new_btn := _button(box, Strings.t("title.new_run"), _on_new)
 	if _first == null:
 		_first = new_btn

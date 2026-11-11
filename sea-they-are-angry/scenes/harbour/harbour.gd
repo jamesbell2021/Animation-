@@ -935,7 +935,8 @@ func _sail() -> void:
 	boat.departed.connect(_after_town)
 	_follow_boat()
 
-# Away. What was saved goes with them to the rock (Act Two).
+# Away. What was saved goes with them: first up the coast on the Mary Ann (the Escape,
+# scenes/escape/), then to the rock (Act Two).
 func _after_town() -> void:
 	Run.active = false
 	Cycle.stop()
@@ -945,15 +946,18 @@ func _after_town() -> void:
 		"lost": Run.lost.duplicate(), "difficulty": Run.difficulty}
 	if DisplayServer.get_name() != "headless":
 		hud.visible = false
-		var book := StoryPages.open(self, StoryText.crossing(Villagers.count(), Villagers.lost_names()), "")
-		book.finished.connect(_to_rock)
+		var book := StoryPages.open(self, StoryText.crossing_before(Villagers.count(), Villagers.lost_names()), "")
+		book.finished.connect(_to_escape)
 	else:
-		_to_rock()
+		_to_escape()
 
-func _to_rock() -> void:
-	Run.chapter = 1
-	Terrain.chapter = 1
-	get_tree().change_scene_to_file(MAIN_SCENE)
+const ESCAPE_SCENE := "res://scenes/escape.tscn"
+
+## Up the coast in the Mary Ann (the Escape), with Run.carry; it goes on to the rock.
+func _to_escape() -> void:
+	Run.enter_escape = true
+	Run.escape_continue = false
+	get_tree().change_scene_to_file(ESCAPE_SCENE)
 
 func _to_title() -> void:
 	Run.active = false

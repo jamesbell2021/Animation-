@@ -144,3 +144,20 @@ Chapter Two (from the title: "Chapter Two: The Harbour"):
 - [ ] **The seven.** Can you tell who is who at the game's usual distance, without reading the names?
 - [ ] **The town's ground.** Does the paving look right from above, and close in? Is anything too busy, or shimmering as the camera moves?
 
+## Added after v1.1.2: the Escape
+
+To try it on its own: `godot --path . -- --escape` (add `calm` or `raging` for the other seas). In the story it comes after Kirkhaven's third night.
+
+- [ ] **Leaving the pier:** do the log's first two pages, then the boat, read as one thing? Is the opening card enough to know what to do?
+- [ ] **The wheel:** do you find it ([E] behind the wheelhouse)? Does steering feel like steering a boat, or too twitchy, or too slow? Up/down and left/right both steer: is that natural, or confusing? Is letting go with [E] obvious?
+- [ ] **Dod and the helpers at the wheel:** if you leave it to them, do they steer well enough that you can fight? Too well?
+- [ ] **What's in her way:** do the rocks show in time? The arm's swirl, then the arm and its red ring: do you understand where it will come down, and get out from under it? Did you think of shooting it?
+- [ ] **Climbers:** can you see them, on both sides (the ! marks)? Does one blow knocking them off feel good? Do you use the shotgun, the bow?
+- [ ] **On deck:** when one gets over, is it clear it is going for the seven? Is losing one your fault, or the game's?
+- [ ] **The surges** ("They're coming up all round her!"): exciting or unfair?
+- [ ] **The light:** do you see the rock's beam coming nearer through the fog? Does the moment they fall back land?
+- [ ] **How long:** about three and a half minutes on an angry sea. Too long, too short?
+- [ ] **Foundering:** if she goes down, does Continue put you back at the start of the crossing with everyone who came off the pier?
+- [ ] **Two or three on one screen:** does everyone fit in the one view? Can the arrow-key player steer?
+- [ ] **The log's pages after:** do they name whoever was lost on the crossing?
+

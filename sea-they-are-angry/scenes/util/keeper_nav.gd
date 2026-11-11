@@ -231,6 +231,8 @@ static func _nearest(p: Vector3) -> int:
 ## A keeper's way from here to there: an Array of steps {"p": where to walk, and
 ## "climb": the far end of a ladder to climb from p, with "time"}. Ends at `to`.
 static func route(from: Vector3, to: Vector3) -> Array:
+	if Terrain.chapter == 3:
+		return EscapeMap.route(from, to)
 	if Terrain.chapter == 2:
 		var way := []
 		for q in HarbourMap.path(from, to, false):

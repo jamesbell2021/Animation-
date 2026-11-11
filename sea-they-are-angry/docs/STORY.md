@@ -55,6 +55,16 @@ that he cannot lie at the pier past the ebb, and the seven have to be brought fr
 kirk down through the streets to the boat. Whoever reaches her is saved. Then the
 keepers board and she sails.
 
+**Between the acts: the Escape.** (Added 2026-11-11 at the owner's request.) The *Mary
+Ann* runs up the coast in the fog on the third night, for the rock, whose light sweeps
+ahead and comes nearer. What was in the fog comes up out of the water after her: rocks
+and great arms rearing out of the sea in her way, and the drowned and the bloated
+climbing her sides. Dod Wiseman keeps the wheel unless a keeper takes it; the keepers
+knock them back into the sea before they get over the gunwale and take one of the seven
+over the side. When the rock's light reaches her they fall back (they cannot abide it),
+and she comes in under the light. Whoever was taken on the crossing is lost, as in the
+town. If her hull is broken she founders, and that run is lost.
+
 **Act Two: the rock.** The survivors live in the camp on the holm. The game as it was
 (gather, mend, the lamp, the camp, the creatures), but nobody is coming to take the
 keepers off. The diary's last pages say what came in November 1944, "the size of the
@@ -89,10 +99,14 @@ person of the head keeper. Dated entries. Plain words.
 
 **Between the acts (the crossing)**
 
+Pages 1 and 2 as the *Mary Ann* leaves the pier; then the Escape is played; pages 3 and
+4 as she comes in under the rock's light.
+
 1. We could not hold it. The third night it came over the quay and up the wynds.
 2. We got (so many) of them down to the Mary Ann. (The names of the lost, if any.)
 3. Dod Wiseman put her head to the north-east. There is one light on this coast the
-   Board's engineers have not reached.
+   Board's engineers have not reached. They came up out of the water after us all the
+   way up the coast. (We kept them off her. / They took (the names) over the side.)
 4. The rock. The old camp on the holm will shelter them. The lamp wants oil and a hand
    to light it, and it has both.
 

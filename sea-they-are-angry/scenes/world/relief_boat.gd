@@ -32,6 +32,10 @@ var _smoke: GPUParticles3D
 var _wake_t := 0.0
 var _moving := false
 var _heading := 0.0
+## Built for the Escape (scenes/escape/): a narrower wheelhouse with the funnel through
+## its roof, and the fore deck clear of the fish boxes and the hatch, so there is room to
+## fight round it. Set before she is added to the tree.
+var escape_fit := false
 
 func _ready() -> void:
 	_build()
@@ -201,7 +205,7 @@ func _build() -> void:
 			tyre.rotation.x = PI * 0.5
 			add_child(tyre)
 	# Fish boxes stacked forward, a coil of rope, a hatch.
-	for k in 3:
+	for k in (0 if escape_fit else 3):
 		var box := Geo.box(self, Vector3(0.6, 0.25, 0.4), Color.WHITE, Vector3(1.1 + 0.05 * float(k % 2), 1.14 + 0.25 * float(k), 0.4 - 0.1 * float(k)))
 		box.material_override = Look.wood(Color(0.55, 0.42, 0.3), 0.5)
 	var coil := MeshInstance3D.new()
@@ -212,24 +216,27 @@ func _build() -> void:
 	coil.material_override = Look.flat_mat(Color(0.55, 0.46, 0.3), 1.0)
 	coil.position = Vector3(2.1, 1.06, -0.5)
 	add_child(coil)
-	var hatch := Geo.box(self, Vector3(0.9, 0.18, 0.9), Color.WHITE, Vector3(0.3, 1.08, 0.0))
-	hatch.material_override = hull
+	if not escape_fit:
+		var hatch := Geo.box(self, Vector3(0.9, 0.18, 0.9), Color.WHITE, Vector3(0.3, 1.08, 0.0))
+		hatch.material_override = hull
 	# Wheelhouse aft of midships, windows lit.
-	var house := Geo.box(self, Vector3(1.8, 1.4, 1.7), Color.WHITE, Vector3(-0.9, 1.7, 0.0))
+	var hw := 1.0 if escape_fit else 1.7
+	var house := Geo.box(self, Vector3(1.8, 1.4, hw), Color.WHITE, Vector3(-0.9, 1.7, 0.0))
 	house.material_override = Look.wood(Color(0.62, 0.6, 0.52), 0.8)
-	var roof := Geo.box(self, Vector3(2.0, 0.08, 1.9), Color.WHITE, Vector3(-0.9, 2.44, 0.0))
+	var roof := Geo.box(self, Vector3(2.0, 0.08, hw + 0.2), Color.WHITE, Vector3(-0.9, 2.44, 0.0))
 	roof.material_override = hull
 	var glass := Look.glow_mat(Color(1.0, 0.85, 0.55), 1.2)
-	for sz in [-0.86, 0.86]:
+	for sz in [-hw * 0.5 - 0.01, hw * 0.5 + 0.01]:
 		for k in 2:
 			var w := Geo.box(self, Vector3(0.45, 0.4, 0.03), Color.WHITE, Vector3(-0.55 - 0.65 * float(k), 1.95, sz))
 			w.material_override = glass
-	var fwin := Geo.box(self, Vector3(0.03, 0.4, 1.2), Color.WHITE, Vector3(0.01, 1.95, 0.0))
+	var fwin := Geo.box(self, Vector3(0.03, 0.4, hw - 0.5), Color.WHITE, Vector3(0.01, 1.95, 0.0))
 	fwin.material_override = glass
 	# Funnel, black with a red band, and the mast forward with her lights.
-	var funnel := Geo.cyl(self, 0.28, 1.4, Color.WHITE, Vector3(-2.1, 2.2, 0.0))
+	var fx := -1.3 if escape_fit else -2.1
+	var funnel := Geo.cyl(self, 0.28, 1.4, Color.WHITE, Vector3(fx, 2.2 + (0.5 if escape_fit else 0.0), 0.0))
 	funnel.material_override = hull
-	var band := Geo.cyl(self, 0.29, 0.25, Color.WHITE, Vector3(-2.1, 2.6, 0.0))
+	var band := Geo.cyl(self, 0.29, 0.25, Color.WHITE, Vector3(fx, 2.6 + (0.5 if escape_fit else 0.0), 0.0))
 	band.material_override = red
 	var mast := Geo.cyl(self, 0.06, 4.2, Color.WHITE, Vector3(1.8, 3.1, 0.0))
 	mast.material_override = deck
@@ -243,7 +250,7 @@ func _build() -> void:
 	Look.glint(self, Vector3(0.2, 1.4, -BEAM * 0.52), Color(1.0, 0.15, 0.1), 0.25)
 	Look.glint(self, Vector3(0.2, 1.4, BEAM * 0.52), Color(0.15, 1.0, 0.3), 0.25)
 	# Lifebelts on the wheelhouse, and her name on the stern.
-	for sz in [-0.88, 0.88]:
+	for sz in [-hw * 0.5 - 0.03, hw * 0.5 + 0.03]:
 		var belt := MeshInstance3D.new()
 		var tm := TorusMesh.new()
 		tm.inner_radius = 0.16
@@ -262,7 +269,7 @@ func _build() -> void:
 	label.position = Vector3(-LEN * 0.5 - 0.06, 0.7, 0.0)
 	label.rotation.y = -PI * 0.5
 	add_child(label)
-	_smoke = FX.smoke(self, to_global(Vector3(-2.1, 3.0, 0.0)), Color(0.25, 0.25, 0.26, 0.5), 18, 3.0, Vector3(-0.3, 1.0, 0.0).normalized(), 15.0, 0.6, 1.2, 0.15, 0.4, 1.0)
+	_smoke = FX.smoke(self, to_global(Vector3(fx, 3.0 + (0.5 if escape_fit else 0.0), 0.0)), Color(0.25, 0.25, 0.26, 0.5), 18, 3.0, Vector3(-0.3, 1.0, 0.0).normalized(), 15.0, 0.6, 1.2, 0.15, 0.4, 1.0)
 	# The plank (laid when she's in).
 	_plank = Node3D.new()
 	add_child(_plank)

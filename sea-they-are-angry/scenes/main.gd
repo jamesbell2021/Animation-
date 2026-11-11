@@ -191,11 +191,24 @@ func _ready() -> void:
 	elif not Run.carry.is_empty():
 		# Off the Mary Ann from Kirkhaven: Act Two begins.
 		begin_run(false, Players.wanted)
+	elif OS.get_cmdline_user_args().has("--escape") and not _escape_asked:
+		# For testing: straight to the Escape (godot --path . -- --escape [calm|angry|raging]).
+		_escape_asked = true
+		var args := OS.get_cmdline_user_args()
+		for i in 3:
+			if args.has(["calm", "angry", "raging"][i]):
+				Run.next_difficulty = i
+		Run.carry = {}
+		Run.escape_carry = {}
+		go_escape.call_deferred(Players.wanted, false)
 	elif DisplayServer.get_name() == "headless" or Run.quick_start:
 		Run.quick_start = false
 		begin_run(true, Players.wanted)
 	else:
 		_show_title()
+
+## The --escape argument is read once a launch (later visits to the title are the title).
+static var _escape_asked := false
 
 func _show_title() -> void:
 	Run.active = false
@@ -279,6 +292,17 @@ func go_harbour(n: int, continue_save: bool) -> void:
 	Run.harbour_continue = continue_save
 	get_tree().change_scene_to_file("res://scenes/harbour.tscn")
 
+## To the Escape, the crossing between the acts (scenes/escape/escape.gd): its own scene.
+## `continue_save` begins it again from the save's carry; otherwise it uses Run.carry, or,
+## begun on its own (the --escape argument), the town's kit and all seven.
+func go_escape(n: int, continue_save: bool) -> void:
+	Net.leave()
+	Players.wanted = clampi(n, 1, Players.MAX)
+	Run.active = false
+	Run.enter_escape = true
+	Run.escape_continue = continue_save
+	get_tree().change_scene_to_file("res://scenes/escape.tscn")
+
 # What came over from Kirkhaven on the Mary Ann: who lived, what was in the store, what
 # the keepers were carrying.
 func _unpack_carry() -> void:
@@ -294,10 +318,16 @@ func _unpack_carry() -> void:
 		Run.arms[i] = (arms[i] as Array).duplicate()
 
 func begin_run(continue_save: bool, n: int) -> void:
-	# A saved run in Kirkhaven continues there.
-	if continue_save and title != null and not Net.online() and int(SaveSys.load_run().get("chapter", 1)) == 2:
-		go_harbour(n, true)
-		return
+	# A saved run in Kirkhaven continues there; one saved on the crossing begins the
+	# Escape again with what came off the pier.
+	if continue_save and title != null and not Net.online():
+		var chapter := int(SaveSys.load_run().get("chapter", 1))
+		if chapter == 2:
+			go_harbour(n, true)
+			return
+		if chapter == 3:
+			go_escape(n, true)
+			return
 	if title != null:
 		title.queue_free()
 		title = null
