@@ -85,6 +85,11 @@ func _go() -> void:
 	var blinds := 0
 	var was_blind := false
 	var fight_from := -1.0
+	# When each stage began (game seconds from its rising), and how each went.
+	var rose := -1.0
+	var stage_at := {}
+	var shakes := 0
+	var was_grip := false
 	while _ended == "" and not story.done and t < 1200.0:
 		await physics_frame
 		# Game seconds (under load several physics steps pass between two of these).
@@ -97,6 +102,15 @@ func _go() -> void:
 		was_blind = kr.is_blind()
 		if kr.phase == "light" and fight_from < 0.0:
 			fight_from = t
+		if rose < 0.0:
+			rose = t
+		if not stage_at.has(kr.stage):
+			stage_at[kr.stage] = (t - rose) * speed
+		if was_grip and not kr.gripping() and not kr.is_blind() and kr.hp > 0:
+			shakes += 1
+		was_grip = kr.gripping()
+		if kr.reared and not stage_at.has("rear"):
+			stage_at["rear"] = (t - rose) * speed
 		if t >= next:
 			next = t + 20.0
 			var who := []
@@ -108,6 +122,16 @@ func _go() -> void:
 				int(main.lighthouse.lamp.fuel), main.camp.targets().size(), run.villagers.size(), " ; ".join(who)])
 	Engine.time_scale = 1.0
 	var kr2: Kraken = story.kraken
+	if is_instance_valid(kr2):
+		var end_g := (t - rose) * speed
+		var s1: float = stage_at.get(1, -1.0)
+		var s2: float = stage_at.get(2, end_g)
+		var s3: float = stage_at.get(3, end_g)
+		print("STAGES (game s from its rising): camp %.0f-%.0f (%.0f s), crossing %.0f-%.0f (%.0f s), light %.0f-%.0f (%.0f s)%s; whole fight %.0f s" % [
+			s1, s2, s2 - s1, s2, s3, s3 - s2, s3, end_g, end_g - s3,
+			(", reared at %.0f" % stage_at["rear"]) if stage_at.has("rear") else ", never reared", end_g])
+		print("STAGE 1: camp %d of %d left, %d arms driven back | STAGE 2: %d arms cut on the way | STAGE 3: blinded %d, tower grips ended by a shake (or a cut) %d, arms cut in all %d" % [
+			kr2.camp_left, kr2.camp_had, kr2.recoils, kr2.cross_cuts, kr2.blinds, shakes, kr2.arms_cut])
 	if story.done:
 		print("RESULT: it is dead. %.0f real s at the lighthouse (x speed for game time), blinded %d times, %d arms cut, lighthouse %d/%d, %d of the seven left, store %s" % [
 			t - fight_from, blinds, kr2.arms_cut if is_instance_valid(kr2) else -1, main.lighthouse.hp, main.lighthouse.max_hp, run.villagers.size(),

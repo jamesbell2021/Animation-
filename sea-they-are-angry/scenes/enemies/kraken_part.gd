@@ -38,14 +38,19 @@ func salvage() -> Array:
 	return []
 
 func light_probe_points() -> Array:
-	# Only its eyes are worth the lamp: an arm's tip is nothing to aim a beam at.
-	if arm < 0 and kraken != null and is_instance_valid(kraken):
-		return kraken.eye_points()
-	return []
+	# Its eyes are what the lamp is for. Over the camp's wire (the fight's first stage) a
+	# searchlight held on an arm drives it back, so there an arm can be lit along its length.
+	if kraken == null or not is_instance_valid(kraken):
+		return []
+	return kraken.eye_points() if arm < 0 else kraken.arm_light_points(arm)
 
 func in_light(mode: int, delta: float) -> void:
-	if arm < 0 and kraken != null and is_instance_valid(kraken):
+	if kraken == null or not is_instance_valid(kraken):
+		return
+	if arm < 0:
 		kraken.lit(mode, delta)
+	else:
+		kraken.lit_arm(arm, mode, delta)
 
 func set_alight(t: float) -> void:
 	if kraken != null and is_instance_valid(kraken):

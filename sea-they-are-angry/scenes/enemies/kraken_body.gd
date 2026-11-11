@@ -73,7 +73,12 @@ const BLANCH := Color(2.0, 1.95, 1.8)
 const ARM_ANGLES := [-22.5, 22.5, -67.5, 67.5, -112.5, 112.5, -157.5, 157.5]
 
 enum Order { REST, REACH }
-enum Act { NONE, WINDUP, STRIKE, LIE, THRASH, WITHDRAW, GONE, REGROW }
+enum Act { NONE, WINDUP, STRIKE, LIE, THRASH, WITHDRAW, GONE, REGROW, RECOIL }
+## A recoiling arm (fire, or a light held on it) whips about for this long, then sinks.
+const RECOIL_WHIP := 0.55
+## How high the last-gasp rear lifts the head and the roots of its arms.
+const REAR_UP := 5.0
+const WOUND := Color(0.72, 1.0, 0.72)
 
 ## One arm: where its control points are, what it has been told, and what it is doing.
 class Arm:
@@ -98,6 +103,11 @@ class Arm:
 	var ground_at := PackedVector2Array()
 	var lag := 0.0
 	var drawn := false
+	## How long it lies where a slam put it.
+	var lie := SLAM_LIE
+	## Where its wound mark (the place it can be cut) shows, or INF for none.
+	var wound := Vector3.INF
+	var mark: MeshInstance3D
 	var mesh: ArrayMesh
 	var inst: MeshInstance3D
 
@@ -136,6 +146,10 @@ var _flash_t := 0.0
 var _splash_t := 0.0
 var _runoff_t := 0.0
 var _blink_t := 5.0
+var _rear_t := 0.0
+var _rear_len := 1.0
+var _rear := 0.0
+var _wound_mat: StandardMaterial3D
 
 var _pivot: Node3D
 var _head: Node3D
@@ -208,14 +222,49 @@ func arm_rest(arm: int) -> void:
 ## of a second, emits `slammed`, lies there a moment, then goes back to what it was
 ## doing. Ignored if the arm is already slamming, is not out, or the kraken is blinded,
 ## dying or under. Being blinded in the wind-up calls the slam off (no signal).
-func arm_slam(arm: int, target: Vector3, windup: float = 1.2) -> void:
+## `lie` is how long it lies there before it lifts again.
+func arm_slam(arm: int, target: Vector3, windup: float = 1.2, lie: float = SLAM_LIE) -> void:
 	var a := _arms[arm]
-	if a.act != Act.NONE or _blind_on or _die_t >= 0.0 or _dead or _emerge < 0.5:
+	if a.act != Act.NONE or _blind_on or _die_t >= 0.0 or _dead or _emerge < 0.5 or _rear > 0.05:
 		return
 	a.act = Act.WINDUP
 	a.act_t = 0.0
 	a.act_len = maxf(windup, 0.05)
 	a.slam_at = target
+	a.lie = maxf(lie, 0.1)
+
+## The arm flinches from fire or a light held on it: it whips about, then pulls back
+## under the water for `time` seconds, and then comes out to idle again. Calls off a
+## slam it was winding up or lying after. Ignored for an arm cut back or regrowing.
+func recoil(arm: int, time: float = 2.5) -> void:
+	var a := _arms[arm]
+	if a.act >= Act.THRASH and a.act != Act.RECOIL:
+		return
+	a.act = Act.RECOIL
+	a.act_t = 0.0
+	a.act_len = maxf(time, RECOIL_WHIP + 0.1)
+	a.spray_t = 0.0
+	a.order = Order.REST
+
+## True while the arm is recoiling.
+func arm_recoiling(arm: int) -> bool:
+	return _arms[arm].act == Act.RECOIL
+
+## Shows a pale, glowing wound mark on the arm at `at` (a point on it), the place it
+## can be cut; Vector3.INF hides it.
+func set_wound(arm: int, at: Vector3) -> void:
+	_arms[arm].wound = at
+
+## The last gasp: it heaves its whole head up out of the sea on its arms, arms flung
+## wide, for `time` seconds, then drops back. No slams while it is up.
+func rear(time: float = 8.0) -> void:
+	_rear_len = maxf(time, 0.5)
+	_rear_t = _rear_len
+	_swell(2.6)
+
+## True while it is reared up (or still coming down).
+func is_reared() -> bool:
+	return _rear > 0.05
 
 ## True while the arm is winding up, coming down, or lying where it landed.
 func arm_busy(arm: int) -> bool:
@@ -254,7 +303,7 @@ func sever(arm: int) -> void:
 ## Brings a severed arm back out over `time` seconds.
 func regrow(arm: int, time: float = 10.0) -> void:
 	var a := _arms[arm]
-	if a.act < Act.THRASH or a.act == Act.REGROW:
+	if a.act < Act.THRASH or a.act == Act.REGROW or a.act == Act.RECOIL:
 		return
 	a.act = Act.REGROW
 	a.act_len = maxf(time, 0.1)
@@ -559,6 +608,10 @@ func _build_arms() -> void:
 	_arm_mat = _wet(Look.flat_mat(Color.WHITE, 0.4))
 	_arm_mat.albedo_texture = _arm_texture()
 	_arm_mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	# The wound mark: a pale weal that glows, so the place to cut reads at night.
+	_wound_mat = Look.glow_mat(WOUND, 1.5)
+	_wound_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	_wound_mat.albedo_color = Color(WOUND.r, WOUND.g, WOUND.b, 0.85)
 	for r in RINGS - 1:
 		var a := r * (SIDES + 1)
 		var b := (r + 1) * (SIDES + 1)
@@ -589,6 +642,10 @@ func _build_arms() -> void:
 		a.inst.visible = false
 		add_child(a.inst)
 		a.inst.global_transform = Transform3D.IDENTITY
+		a.mark = _ball(self, 0.5, _wound_mat, Vector3.ZERO)
+		a.mark.top_level = true
+		a.mark.visible = false
+		a.mark.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		_arms.append(a)
 
 # The arms' hide, wrapped once round the tube: dark and blotched on the back, a pale
@@ -637,6 +694,7 @@ func _step(delta: float) -> void:
 	_emerge = smoothstep(0.3, 1.0, risen)
 	for i in ARMS:
 		_step_arm(i, delta)
+		_step_mark(_arms[i])
 	if not _landed.is_empty():
 		var landed := _landed
 		_landed = []
@@ -688,16 +746,23 @@ func _step_head(delta: float) -> void:
 	_roar_t = maxf(0.0, _roar_t - delta)
 	var into := _roar_len - _roar_t
 	_roar = smoothstep(0.0, 0.35, into) * smoothstep(0.0, 0.5, _roar_t) if _roar_t > 0.0 else 0.0
+	var was_rear := _rear
+	_rear_t = maxf(0.0, _rear_t - delta)
+	_rear = smoothstep(0.0, 1.4, _rear_len - _rear_t) * smoothstep(0.0, 1.1, _rear_t) if _rear_t > 0.0 else 0.0
+	if was_rear > 0.3 and _rear <= 0.3 and _rear_t < 1.0:
+		# Down it comes.
+		_swell(3.0)
 	var dying := clampf(_die_t / _die_len, 0.0, 1.0) if _die_t >= 0.0 else 0.0
 	var roll := smoothstep(0.25, 0.75, dying)
 	var up := smoothstep(0.0, 1.0, risen)
 	var y := -HEAD_SUNK * (1.0 - up) + sin(up * PI) * up * 0.9
 	y += sin(_t * 0.9) * 0.22 * up
-	y += 1.7 * _roar - 1.0 * _blind
+	y += 1.7 * _roar - 1.0 * _blind + REAR_UP * _rear
 	_pivot.position.y = y
 	_pivot.rotation.y = _yaw + _aside * (0.55 * _blind + 0.5 * roll)
 	var shudder := sin(_t * 23.0) * 0.02 * maxf(_blind, _roar)
-	_head.rotation.x = 0.3 * _blind + 0.26 * _roar + 0.45 * roll + sin(_t * 0.6) * 0.02 + shudder
+	shudder += sin(_t * 17.0) * 0.025 * _rear
+	_head.rotation.x = 0.3 * _blind + 0.26 * _roar + 0.3 * _rear + 0.45 * roll + sin(_t * 0.6) * 0.02 + shudder
 	_head.rotation.z = sin(_t * 0.43) * 0.025 + 0.9 * roll * _aside + shudder
 	# Breathing: the mantle fills and empties.
 	var breath := sin(_t * 1.1)
@@ -736,7 +801,7 @@ func _step_head(delta: float) -> void:
 func _root(i: int) -> Vector3:
 	var a := deg_to_rad(float(ARM_ANGLES[i]))
 	var out := _turn * Vector3(sin(a), 0.0, -cos(a))
-	return global_position + out * ARM_ROOT_AT + Vector3(0.0, -ARM_ROOT_DEPTH - (1.0 - _emerge) * 3.0, 0.0)
+	return global_position + out * (ARM_ROOT_AT + 1.2 * _rear) + Vector3(0.0, -ARM_ROOT_DEPTH - (1.0 - _emerge) * 3.0 + REAR_UP * 0.85 * _rear, 0.0)
 
 func _arm_shows(a: Arm) -> bool:
 	return a.inst.visible and a.drawn
@@ -776,6 +841,14 @@ func _step_arm(i: int, delta: float) -> void:
 			a.grown = minf(1.0, a.grown + delta / a.act_len)
 			if a.grown >= 1.0:
 				a.act = Act.NONE
+		Act.RECOIL:
+			a.act_t += delta
+			a.spray_t -= delta
+			if a.act_t < RECOIL_WHIP and a.spray_t <= 0.0 and a.inst.visible:
+				a.spray_t = 0.12
+				_fx_spray(a.pts[CTRL - 1], out)
+			if a.act_t >= a.act_len:
+				a.act = Act.NONE
 	var share := a.grown * _emerge
 	if a.act == Act.GONE or share < 0.03 or _dead:
 		# Under, and not drawn: keep its points folded at the root for when it comes out.
@@ -801,6 +874,13 @@ func _step_arm(i: int, delta: float) -> void:
 	elif a.act == Act.WITHDRAW:
 		_pose_under(root, out)
 		moved = _follow(a, root, 4.5, delta)
+	elif a.act == Act.RECOIL:
+		if a.act_t < RECOIL_WHIP:
+			_pose_thrash(a, root, out, share)
+			moved = _follow(a, root, 10.0, delta)
+		else:
+			_pose_under(root, out)
+			moved = _follow(a, root, 3.0, delta)
 	elif slack:
 		moved = _drop(a, root, share, delta)
 	elif a.act == Act.WINDUP:
@@ -836,12 +916,12 @@ func _step_arm(i: int, delta: float) -> void:
 		for k in CTRL:
 			_goal[k] = a.to[k]
 		moved = _follow(a, root, 20.0, delta)
-		if a.act_t >= SLAM_LIE:
+		if a.act_t >= a.lie:
 			a.act = Act.NONE
 	elif _die_t >= 0.0:
 		_pose_thrash(a, root, out, share)
 		moved = _follow(a, root, 6.0, delta)
-	elif _roar > 0.02:
+	elif _roar > 0.02 or _rear > 0.02:
 		_pose_spread(a, root, out, share)
 		moved = _follow(a, root, 4.0, delta)
 	elif a.order == Order.REACH:
@@ -856,6 +936,15 @@ func _step_arm(i: int, delta: float) -> void:
 	if moved < 0.00001 and a.drawn:
 		return
 	_draw_arm(a, share)
+
+# The wound mark sits on the arm where the fight says, pulsing.
+func _step_mark(a: Arm) -> void:
+	var on := a.wound != Vector3.INF and _arm_shows(a) and a.act < Act.THRASH and not _dead and _die_t < 0.0
+	a.mark.visible = on
+	if on:
+		a.mark.global_position = a.wound + Vector3(0.0, 0.55, 0.0)
+		var pulse := 1.0 + 0.25 * sin(_t * 7.0 + a.phase)
+		a.mark.scale = Vector3(pulse * 1.3, pulse * 0.7, pulse * 1.3)
 
 # Eases the arm's points toward the pose in _goal, never through the ground. Returns
 # the furthest any point moved, squared.
@@ -983,10 +1072,15 @@ func _pose_lie(a: Arm, root: Vector3, out: Vector3, share: float) -> void:
 # The roar: every arm flung up and out, shaking.
 func _pose_spread(a: Arm, root: Vector3, out: Vector3, share: float) -> void:
 	var lat := Vector3(-out.z, 0.0, out.x)
+	var i := _arms.find(a)
+	var prop := i <= 1 or i >= 6
 	for k in CTRL:
 		var s := float(k) / float(CTRL - 1)
 		var p := root + out * (s * 14.0 * share) + lat * sin(_t * 9.0 + s * 5.0 + a.phase) * 0.9 * s
-		p.y = root.y + 11.5 * share * sin(PI * 0.6 * s) + sin(_t * 11.0 + a.phase + s * 3.0) * 0.4 * s
+		p.y = root.y + (11.5 + 3.0 * _rear) * share * sin(PI * 0.6 * s) + sin(_t * 11.0 + a.phase + s * 3.0) * 0.4 * s
+		# Reared, it stands on the arms nearest its eyes and back: those reach down to the sea.
+		if _rear > 0.02 and prop:
+			p.y = lerpf(p.y, Terrain.SEA_LEVEL - 0.3 + (root.y - Terrain.SEA_LEVEL) * (1.0 - s) * (1.0 - s), _rear)
 		_goal[k] = p
 
 # Thrashing: a cut stump, or the arms of a dying animal.
