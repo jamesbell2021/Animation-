@@ -142,6 +142,8 @@ func _ready() -> void:
 	# Off the pier: the rock is not to begin until she gets there.
 	Run.carry = {}
 	Run.chapter = 3
+	Terrain.deck_height = EscapeMap.height_at
+	Terrain.deck_walkable = EscapeMap.walkable
 	Terrain.chapter = 3
 	add_to_group("escape")
 	_build_environment()

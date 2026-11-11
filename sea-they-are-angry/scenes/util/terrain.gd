@@ -131,6 +131,12 @@ const COLONY_TURF := Color(0.27, 0.42, 0.14)
 ## hand over to), 3 the Escape (EscapeMap: the Mary Ann's deck). Set before the scene
 ## is built.
 static var chapter := 1
+## The Escape's deck (EscapeMap.height_at and .walkable), handed in by its scene when it
+## starts. Not named here: EscapeMap's constants read Terrain's, and naming it made the two
+## scripts load each other, which changed the rock's ground (a keeper could no longer get
+## back up off a beach over its fence).
+static var deck_height := Callable()
+static var deck_walkable := Callable()
 
 static var _noise: FastNoiseLite
 static var _detail: FastNoiseLite
@@ -255,7 +261,7 @@ static func beach_half_width(t: float) -> float:
 ## higher there (both fall away to the same sea floor).
 static func height_at(x: float, z: float) -> float:
 	if chapter == 3:
-		return EscapeMap.height_at(x, z)
+		return float(deck_height.call(x, z)) if deck_height.is_valid() else SEA_LEVEL
 	if chapter == 2:
 		return HarbourMap.height_at(x, z)
 	return maxf(maxf(_main_height(x, z), _holm_height(x, z)), _islet_height(x, z))
@@ -292,7 +298,7 @@ static func slope_at(x: float, z: float) -> float:
 ## or on the rope bridge's deck.
 static func walkable(x: float, z: float) -> bool:
 	if chapter == 3:
-		return EscapeMap.walkable(x, z)
+		return bool(deck_walkable.call(x, z)) if deck_walkable.is_valid() else false
 	if chapter == 2:
 		return HarbourMap.walkable(x, z)
 	if on_bridge(x, z):
