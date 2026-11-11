@@ -8,6 +8,9 @@ var pad_active := false
 ## The gamepad keeper one plays on (-1 until one's used): others' presses can join.
 var main_pad := -1
 var _pad_events: Array = []
+## A left click the HUD took (a panel's heading folded or opened): keeper one's attack
+## ignores it until the button comes up, so folding a panel doesn't swing the boathook.
+var hud_click := false
 
 func _ready() -> void:
 	_key("move_left", KEY_A)

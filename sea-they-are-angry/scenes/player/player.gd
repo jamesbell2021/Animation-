@@ -431,12 +431,20 @@ func _just(a: String) -> bool:
 		return Net.just(idx, a)
 	if ai:
 		return bool(ai_just.get(a, false))
+	if a == "attack" and _hud_took_click():
+		return false
 	return Input.is_action_just_pressed(_act(a))
 
 func _held(a: String) -> bool:
 	if remote:
 		return Net.held(idx, a)
+	if not ai and a == "attack" and _hud_took_click():
+		return false
 	return bool(ai_held.get(a, false)) if ai else Input.is_action_pressed(_act(a))
+
+# Keeper one's left click went to the HUD (a panel folded): not a swing.
+func _hud_took_click() -> bool:
+	return idx == 0 and InputSetup.hud_click
 
 func aim_yaw() -> float:
 	return atan2(-_aim.x, -_aim.z)

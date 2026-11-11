@@ -512,13 +512,10 @@ func begin_run(continue_save: bool, n: int) -> void:
 		p.hp = p.max_hp
 	Upgrades.apply(get_tree())
 	if d.is_empty():
-		hud.report("Kirkhaven. First light.", [
-			"Seven of the town are left. At dusk they shut themselves in the kirk.",
-			"Fill the generator (west end of the quay) and switch the street lamps in: the fog cannot lie in a burning lamp's light.",
-			"At dusk they come up the slips and the strand. Work the harbour light ([R] at its door on the pier), and keep them from the kirk doors.",
-		], FIRST_DAY_TIP_TIME + 4.0)
+		# One line, not a card over the middle of the screen: the jobs list says the rest.
+		Events.message.emit("Kirkhaven. First light. Light the town and keep the seven alive: the jobs are on the right.")
 	else:
-		hud.report("Kirkhaven. Night %d to come." % Run.night, ["%d of %d lamps are switched in." % [_lamps_on(), lamps.size()]], 6.0)
+		Events.message.emit("Kirkhaven. Night %d to come. %d of %d lamps are switched in." % [Run.night, _lamps_on(), lamps.size()])
 	_apply_lighting(Cycle.Phase.DAY, 0.0)
 	atmosphere.apply(Cycle.Phase.DAY, 0.0)
 	Cycle.start(Cycle.Phase.DAY)

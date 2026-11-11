@@ -37,6 +37,9 @@ func _hud_key(down: bool, up: bool) -> String:
 	return said
 
 ## A left click at a point of the HUD's canvas.
+func InputSetup_hud_click() -> bool:
+	return bool(root.get_node("InputSetup").hud_click)
+
 func _click(at: Vector2) -> void:
 	for pressed in [true, false]:
 		var ev := InputEventMouseButton.new()
@@ -218,9 +221,12 @@ func _go() -> void:
 	# Folding by a click, when the mouse is free: the pause menu up.
 	var light_head: Control = hud._heads["light"]["head"]
 	var light_mark: Label = hud._heads["light"]["mark"]
-	check(not hud.mouse_free() and not light_mark.visible, "in play the mouse aims: no fold marks")
+	check(not hud.mouse_free() and light_mark.visible, "in play with the mouse: the headings show they fold")
 	await _click(light_head.get_global_rect().get_center())
-	check(not hud.folded("light") and hud._lh_row.visible, "and a click on a heading in play folds nothing")
+	check(hud.folded("light") and not hud._lh_row.visible, "a click on a heading in play folds it")
+	check(main.player._swing_t <= 0.0 and not InputSetup_hud_click(), "and the keeper doesn't swing for it")
+	await _click(light_head.get_global_rect().get_center())
+	check(not hud.folded("light") and hud._lh_row.visible, "a click again opens it")
 	var pm = _pause_menu(main)
 	pm.toggle()
 	await process_frame

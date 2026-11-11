@@ -381,19 +381,12 @@ func begin_run(continue_save: bool, n: int) -> void:
 		_place_notes()
 	if d.is_empty() and Run.story:
 		var who := "The seven of Kirkhaven are" if Villagers.count() == 7 else ("%d of Kirkhaven's people are" % Villagers.count() if Villagers.count() > 1 else ("One of Kirkhaven's people is" if Villagers.count() == 1 else "Nobody from Kirkhaven is"))
-		hud.report("The rock. The first day.", [
-			"%s in the old camp over the bridge. Nobody is coming to take us off: keep the light, keep the camp, and gather everything that might hurt what is following." % who,
-			"The jobs on the right show you round: the beaches, the camp, the shed and its weapons.",
-			"At dusk they come ashore and climb the ledge. Work the lamp ([R] at the door); [Q] focuses the beam to burn them, and on the ledge a blow aimed outward knocks them over the edge.",
-		], FIRST_DAY_TIP_TIME + 2.0)
+		# One line, not a card over the middle of the screen: the jobs list shows them round.
+		Events.message.emit("The rock. %s in the old camp over the bridge. Nobody is coming: keep the light, and arm." % who)
 		# Kept from here if the game is left before the first dawn.
 		SaveSys.save_run()
 	elif d.is_empty():
-		hud.report("The first day.", [
-			"Keep the light burning until the relief boat comes for you: %d nights." % Rescue.night(),
-			"The jobs on the right show you round: the beaches, the camp over the bridge, the shed.",
-			"At dusk they come ashore and climb the ledge. Work the lamp ([R] at the door); [Q] focuses the beam to burn them, and on the ledge a blow aimed outward knocks them over the edge.",
-		], FIRST_DAY_TIP_TIME)
+		Events.message.emit("The first day. Keep the light burning until the relief boat comes: %d nights. The jobs are on the right." % Rescue.night())
 	_apply_lighting(Cycle.Phase.DAY, 0.0)
 	atmosphere.apply(Cycle.Phase.DAY, 0.0)
 	Cycle.start(Cycle.Phase.DAY)

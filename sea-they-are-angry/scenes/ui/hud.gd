@@ -3,8 +3,9 @@ extends CanvasLayer
 ## full, slim (the clock, the light and your health) or off (prompts, messages and
 ## warnings only); the hud_mode key steps through them, and held, puts everything back.
 ## In full its panels shrink themselves once they have said their piece. While the mouse
-## is free (the pause menu up, a choice open, the keeper down) a panel's heading can be
-## clicked to fold it to one line, and again to unfold it.
+## is free (the pause menu up, a choice open, the keeper down), and in play with the mouse,
+## a panel's heading can be clicked to fold it to one line, and again to unfold it (the
+## click is the HUD's: the keeper doesn't swing for it).
 
 const FULL := 0
 const SLIM := 1
@@ -320,7 +321,7 @@ func _head(parent: Node, id: String) -> HBoxContainer:
 	_heads[id] = {"head": r, "mark": null}
 	return r
 
-## The small mark at the end of a heading that says it folds; up only while the mouse is free.
+## The small mark at the end of a heading that says it folds; up while it can be clicked.
 func _add_mark(head: HBoxContainer, id: String) -> void:
 	var m := _label(head, FONT - 2)
 	m.add_theme_color_override("font_color", GOLD)
@@ -870,12 +871,22 @@ func click_at(at: Vector2) -> bool:
 			return true
 	return false
 
+## In play, with the mouse (not a pad): a heading can be clicked without the pause menu.
+func clicks_in_play() -> bool:
+	return visible and Run.active and not _over.visible and not get_tree().paused and not InputSetup.pad_active
+
 func _input(ev: InputEvent) -> void:
-	if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT and mouse_free():
+	if not (ev is InputEventMouseButton and ev.button_index == MOUSE_BUTTON_LEFT):
+		return
+	if not ev.pressed:
+		InputSetup.hud_click = false
+		return
+	if mouse_free() or clicks_in_play():
 		# A button of the menu that's open comes first.
 		if get_viewport().gui_get_hovered_control() is BaseButton:
 			return
 		if click_at(ev.position):
+			InputSetup.hud_click = true
 			get_viewport().set_input_as_handled()
 
 func _unhandled_input(ev: InputEvent) -> void:
@@ -956,7 +967,7 @@ func _layout() -> void:
 	for id in _heads:
 		var mark: Label = _heads[id]["mark"]
 		if mark != null and is_instance_valid(mark):
-			mark.visible = free and _can_fold(id)
+			mark.visible = (free or clicks_in_play()) and _can_fold(id)
 			mark.text = FOLD_SHUT if folded(id) else FOLD_OPEN
 	_fold_hint.visible = free
 	if free:
