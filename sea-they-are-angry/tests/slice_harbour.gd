@@ -84,6 +84,17 @@ func _go() -> void:
 	await _wait(60)
 	check(lamp.fog_hole().z > 6.0 and main.lamps[5].fog_hole().z == 0.0, "its light holds the fog off (%.1f m)" % lamp.fog_hole().z)
 	check(main.landing_lit(0) and not main.landing_lit(1) and not main.landing_lit(2), "the west slip has a lamp at its head; the east slip and the strand are dark")
+	# A villager walking faces the way they go (they once walked backwards).
+	var wv: Villager = main.villagers[0]
+	var was_at: Vector3 = wv.global_position
+	var was_state: String = wv.state
+	wv.place(Vector3(-6.0, 0.0, 2.6))
+	wv.walk_to(Vector3(20.0, 0.0, 2.6))
+	for i in 40:
+		await physics_frame
+	var fwd: Vector3 = -wv.rig.global_transform.basis.z if wv.rig != null else Vector3.RIGHT
+	check(wv.global_position.x > -5.9 and Vector2(fwd.x, fwd.z).normalized().dot(Vector2(1.0, 0.0)) > 0.8, "a villager walking east faces east")
+	wv.place(was_at, was_state)
 	# The boats hauled up the strand are solid, and the paths go round them.
 	var hulls := main.find_children("Hull", "StaticBody3D", true, false).size()
 	var hq := PhysicsPointQueryParameters3D.new()

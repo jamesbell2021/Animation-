@@ -149,7 +149,8 @@ func _physics_process(delta: float) -> void:
 			var step := to.normalized() * _speed * delta
 			var p := global_position + step
 			global_position = Vector3(p.x, Terrain.height_at(p.x, p.z), p.z)
-			_yaw = lerp_angle(_yaw, atan2(to.x, to.z), 1.0 - exp(-delta * 8.0))
+			# The rig faces its own -Z (as the keepers' do): turned the other way, they walked backwards.
+			_yaw = lerp_angle(_yaw, atan2(-to.x, -to.z), 1.0 - exp(-delta * 8.0))
 			moving = _speed
 	if rig != null:
 		rig.rotation.y = _yaw
