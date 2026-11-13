@@ -285,6 +285,47 @@ func _face() -> void:
 func _muzzle() -> Vector3:
 	return keeper.global_position + Vector3(0.0, MUZZLE_UP, 0.0) + keeper.aim_dir() * 0.7
 
+## The muzzle or nozzle of what's in hand, by weapon ("shotgun", "flamer"): a marker on
+## its model, so flame and flash come out of the thing itself wherever the hands hold it.
+var _tips := {}
+
+## A flat shape with thickness: `outline` is its side view as (z, y) points in order, `thick`
+## its width across x, with the edges of its faces softened by the shading.
+static func _slab(outline: Array, thick: float) -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var n := outline.size()
+	var h := thick * 0.5
+	for side: float in [-1.0, 1.0]:
+		for i in range(1, n - 1):
+			var tri := [outline[0], outline[i], outline[i + 1]]
+			if side > 0.0:
+				tri.reverse()
+			for q: Vector2 in tri:
+				st.add_vertex(Vector3(side * h, q.y, q.x))
+	for i in n:
+		var a: Vector2 = outline[i]
+		var b: Vector2 = outline[(i + 1) % n]
+		var p := [Vector3(-h, a.y, a.x), Vector3(h, a.y, a.x), Vector3(h, b.y, b.x), Vector3(-h, b.y, b.x)]
+		for k: int in [0, 1, 2, 0, 2, 3]:
+			st.add_vertex(p[k])
+	st.generate_normals()
+	return st.commit()
+
+static func _tip(model: Node3D, at: Vector3) -> Node3D:
+	var n := Node3D.new()
+	n.position = at
+	model.add_child(n)
+	return n
+
+## Where the flash, smoke and flame are drawn from: the weapon's own tip while it shows
+## (what is hit is still worked out from _muzzle()).
+func _muzzle_seen() -> Vector3:
+	var t: Node3D = _tips.get(weapon)
+	if t != null and is_instance_valid(t) and t.is_visible_in_tree():
+		return t.global_position
+	return _muzzle()
+
 ## Hurt a creature as this keeper's weapon of this kind (for the dawn tally), shoving it
 ## with `push` (Player.hit_push: 1 a boathook blow's worth; left out, an arrow's comes
 ## from how hard it was drawn, which its damage says, and anything else's is 1).
@@ -416,14 +457,15 @@ func fire_shot(aim: Vector3) -> void:
 	Audio.sfx("shotgun", from, 5.0, 0.06)
 	if not keeper.ai:
 		Feel.shake(0.2)
-	FX.sparks(keeper.get_parent(), from)
-	FX.emitter(keeper.get_parent(), from, FX._puff_mesh_ref(), Color(0.75, 0.72, 0.68, 0.45), 8, 0.9, aim, 25.0, 1.5, 3.5, -0.3, 0.4, 0.9, true, true)
+	var seen := _muzzle_seen()
+	FX.sparks(keeper.get_parent(), seen)
+	FX.emitter(keeper.get_parent(), seen, FX._puff_mesh_ref(), Color(0.75, 0.72, 0.68, 0.45), 8, 0.9, aim, 25.0, 1.5, 3.5, -0.3, 0.4, 0.9, true, true)
 	var flash := OmniLight3D.new()
 	flash.light_color = Color(1.0, 0.8, 0.45)
 	flash.light_energy = 8.0
 	flash.omni_range = 9.0
 	keeper.get_parent().add_child(flash)
-	flash.global_position = from
+	flash.global_position = seen
 	var tw := flash.create_tween()
 	tw.tween_property(flash, "light_energy", 0.0, 0.12)
 	tw.tween_callback(flash.queue_free)
@@ -525,7 +567,7 @@ func _physics_process(delta: float) -> void:
 	_ticked = false
 	# The stream comes from the wand's nozzle and goes where the keeper aims.
 	if _flame != null and keeper != null:
-		_flame.global_position = _muzzle()
+		_flame.global_position = _muzzle_seen()
 		var pm := _flame.process_material as ParticleProcessMaterial
 		pm.direction = _jet_dir()
 		_flame_light.global_position = _muzzle() + keeper.aim_dir() * 2.0
@@ -555,7 +597,7 @@ func _tend_jet(delta: float) -> void:
 	var roar := 1.0 + sin(Time.get_ticks_msec() * 0.031) * 0.05 + randf_range(-0.04, 0.04)
 	var length := FLAME_RANGE * 1.05 * _jet_reach * roar
 	var dir := _jet_dir()
-	PixelFire.aim_jet(_jet, _muzzle() - dir.normalized() * 0.1, dir, length, 1.9 * maxf(_jet_reach, 0.3))
+	PixelFire.aim_jet(_jet, _muzzle_seen() - dir.normalized() * 0.03, dir, length, 1.9 * maxf(_jet_reach, 0.3))
 	(_jet.material_override as ShaderMaterial).set_shader_parameter("reach", 1.0)
 
 # ---- petrol bombs ----
@@ -693,16 +735,53 @@ func _build_models() -> void:
 		_bow_string.append(half)
 	_models["bow"] = bow
 	_pose_bow()
-	# The double-barrelled shotgun: walnut stock, two blued barrels side by side.
+	# The double-barrelled shotgun, side by side: a walnut butt dropping from the wrist, a
+	# steel action with its two hammers and trigger guard, a walnut fore-end, two blued
+	# barrels with a rib between and a brass bead at the muzzle. The grip is in the hand.
 	var gun := Node3D.new()
 	gun.scale = Vector3.ONE * 1.5
 	pivot.add_child(gun)
-	var stock := Geo.box(gun, Vector3(0.06, 0.1, 0.34), Color.WHITE, Vector3(0.0, -0.03, 0.08))
-	stock.material_override = Look.wood(Color(0.32, 0.18, 0.1), 0.5)
-	for sx in [-0.018, 0.018]:
-		var barrel := Geo.cyl(gun, 0.016, 0.62, Color.WHITE, Vector3(sx, 0.02, -0.38))
+	var walnut := Look.flat_mat(Color(0.3, 0.16, 0.08), 0.5)
+	var blued := Look.flat_mat(Color(0.12, 0.13, 0.16), 0.3)
+	blued.metallic = 0.8
+	# The butt and wrist in one piece: her side's outline (z back from the hand, y up),
+	# given thickness.
+	var stock := MeshInstance3D.new()
+	stock.mesh = _slab([Vector2(-0.01, 0.014), Vector2(0.14, 0.0), Vector2(0.39, -0.028), Vector2(0.385, -0.15),
+		Vector2(0.3, -0.125), Vector2(0.13, -0.062), Vector2(-0.01, -0.036)], 0.04)
+	stock.material_override = walnut
+	gun.add_child(stock)
+	var plate := Geo.box(gun, Vector3(0.042, 0.124, 0.012), Color.WHITE, Vector3(0.0, -0.089, 0.392))
+	plate.rotation.x = -0.04
+	plate.material_override = Look.flat_mat(Color(0.08, 0.07, 0.07), 0.7)
+	var action := Geo.box(gun, Vector3(0.05, 0.062, 0.13), Color.WHITE, Vector3(0.0, 0.008, -0.06))
+	action.material_override = steel
+	for sx: float in [-0.0145, 0.0145]:
+		var barrel := Geo.cyl(gun, 0.0135, 0.64, Color.WHITE, Vector3(sx, 0.024, -0.44))
 		barrel.rotation.x = PI * 0.5
-		barrel.material_override = steel
+		barrel.material_override = blued
+		var hammer := Geo.box(gun, Vector3(0.01, 0.028, 0.016), Color.WHITE, Vector3(sx * 1.2, 0.048, 0.0))
+		hammer.rotation.x = 0.5
+		hammer.material_override = steel
+	var rib := Geo.box(gun, Vector3(0.007, 0.006, 0.62), Color.WHITE, Vector3(0.0, 0.038, -0.44))
+	rib.material_override = blued
+	var fore := Geo.box(gun, Vector3(0.05, 0.034, 0.24), Color.WHITE, Vector3(0.0, 0.0, -0.27))
+	fore.material_override = walnut
+	var guard := MeshInstance3D.new()
+	var ring := TorusMesh.new()
+	ring.inner_radius = 0.02
+	ring.outer_radius = 0.026
+	ring.rings = 12
+	ring.ring_segments = 6
+	guard.mesh = ring
+	guard.rotation.z = PI * 0.5
+	guard.scale = Vector3(1.0, 1.0, 1.5)
+	guard.position = Vector3(0.0, -0.04, -0.02)
+	guard.material_override = steel
+	gun.add_child(guard)
+	var bead := Geo.sphere(gun, 0.006, Color.WHITE, Vector3(0.0, 0.044, -0.75))
+	bead.material_override = Look.flat_mat(Color(0.8, 0.62, 0.25), 0.3)
+	_tips["shotgun"] = _tip(gun, Vector3(0.0, 0.024, -0.78))
 	_models["shotgun"] = gun
 	# The flamer's wand: the weed burner's lance with its brass valve and hose.
 	var wand := Node3D.new()
@@ -716,6 +795,7 @@ func _build_models() -> void:
 	bell.material_override = Look.flat_mat(Color(0.12, 0.1, 0.09), 0.6)
 	var valve := Geo.box(wand, Vector3(0.05, 0.05, 0.07), Color.WHITE, Vector3(0.0, 0.03, -0.02))
 	valve.material_override = Look.flat_mat(Color(0.75, 0.58, 0.25), 0.3)
+	_tips["flamer"] = _tip(wand, Vector3(0.0, 0.0, -0.74))
 	_models["flamer"] = wand
 	# A petrol bomb: a bottle of bio with a kelp rag in the neck, lit.
 	var bottle := Node3D.new()
