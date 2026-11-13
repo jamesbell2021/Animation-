@@ -9,5 +9,9 @@ Everything for the game's itch.io page, for version 1.3.1.
 - `art/`: the cover (630x500), the banner (960x320) and a square icon (512x512).
 - `screenshots/`: eleven 1280x720 screenshots, numbered for reference (the upload order
   is in `PAGE.md`).
+- `trailer/`: the 40-second trailer (`SeaTheyAreAngry-trailer.mp4`) and its thumbnail
+  (`poster.png`). itch only takes a YouTube or Vimeo link: upload the MP4 there first.
+- `gifs/`: six small animated GIFs for the page (each under 2.5 MB); `PAGE.md` says where
+  each goes.
 
 The downloads themselves are built into `build/itch/` (not kept in git).

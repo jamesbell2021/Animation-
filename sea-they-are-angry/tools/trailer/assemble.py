@@ -45,25 +45,25 @@ FINALE_FROM_BAR = 8         # where in the finale the action starts (its third p
 # A length given as "2b" is in bars of the finale; the first shot with one starts it.
 EDL = [
     ("shot", "dusk", 0.3, 3.0, {"over": [("Kirkhaven, October 1987.", "text", 34)], "fade_in": 0.6, "gain": 4.0}),
-    ("card", [("The Board put the harbour light on a clock.", "text", 36)], 1.9),
-    ("shot", "fog", 0.9, 2.6, {"gain": 4.0}),
+    ("card", [("The Board put the harbour light on a clock.", "text", 40)], 1.9),
+    ("shot", "fog", 1.7, 2.6, {"gain": 4.0}),
     ("card", [("The clock stuck.", "title", 76)], 1.3),
     ("shot", "hook", 0.35, "1b", {}),
     ("shot", "shotgun", 0.55, "1b", {}),
-    ("shot", "fire", 0.6, "1b", {}),
+    ("shot", "fire", 0.4, "1b", {}),
     ("shot", "pier", 0.2, "1b", {}),
     ("shot", "boat", 0.5, "1b", {}),
-    ("shot", "arm", 0.9, "1.5b", {}),
-    ("shot", "beam", 0.5, "1.5b", {}),
+    ("shot", "arm", 0.6, "1.5b", {}),
+    ("shot", "beam", 0.3, "1.5b", {}),
     ("card", [("It cannot abide the light.", "title", 64)], "1b"),
-    ("shot", "rise", 1.5, "1.5b", {}),
-    ("shot", "camp", 0.6, "1b", {}),
-    ("shot", "blind", 0.7, "1b", {}),
-    ("shot", "rear", 0.3, "1.5b", {"tail": 2.5}),
-    ("title", None, "2b+1.0"),
+    ("shot", "rise", 1.2, "1.5b", {}),
+    ("shot", "camp", 0.5, "1b", {}),
+    ("shot", "blind", 1.0, "1b", {}),
+    ("shot", "rear", 0.2, "1.5b", {"tail": 2.5}),
+    ("title", None, "2b+0.7"),
 ]
 # The poster: this take, this many seconds after its REC mark, under the title.
-POSTER = ("rear", 2.0)
+POSTER = ("blind", 0.6)
 
 
 def run(cmd, **kw):
@@ -97,7 +97,7 @@ def card_png(lines, path: Path) -> None:
 def title_png(path: Path, alpha: bool = False) -> None:
     """The title card. With alpha: only the lettering (for the poster), on a soft shade."""
     lines_top = [("SEA THEY ARE ANGRY", "title", 104)]
-    lines_low = [("Keep the light burning.", "text", 34), ("", "text", 14), ("1 to 3 keepers · Windows and Linux", "text", 24)]
+    lines_low = [("Keep the light burning.", "text", 34), ("", "text", 14), ("1 to 3 keepers · Windows and Linux", "text", 28)]
     if not alpha:
         img = Image.new("RGB", (W, H), NIGHT)
         draw_lines(img, lines_top, H * 0.42)
@@ -237,7 +237,7 @@ def main() -> None:
     inputs, chains, mix = [], [], []
 
     def add(path, chain: str, at: float) -> None:
-        n = len(inputs)
+        n = len(inputs) // 2
         inputs.extend(["-i", str(path)])
         ms = max(0, round(at * 1000))
         chains.append(f"[{n}:a]{chain},aformat=sample_fmts=fltp:sample_rates=48000:channel_layouts=stereo,adelay={ms}:all=1[a{n}]")
@@ -279,7 +279,7 @@ def main() -> None:
 
     # ---- together ----
     run(["ffmpeg", "-y", "-loglevel", "error", "-i", silent, "-i", mixed, "-map", "0:v", "-map", "1:a",
-         "-c:v", "libx264", "-preset", "slow", "-crf", "18", "-pix_fmt", "yuv420p", "-profile:v", "high", "-r", FPS,
+         "-c:v", "libx264", "-preset", "slow", "-crf", "21", "-pix_fmt", "yuv420p", "-profile:v", "high", "-r", FPS,
          "-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-t", f"{total:.3f}", "-movflags", "+faststart", out])
     final = loudness(out)
 

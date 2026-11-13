@@ -4,7 +4,7 @@ Everything to fill in on itch.io's "Create new project" form, in the form's orde
 version 1.3.1. The description itself is in `description.html` (open it in a browser,
 select all, copy, and paste into itch's description box: the formatting comes with it).
 How to upload the builds is in `UPLOAD.md`. The art is in `art/`, the screenshots in
-`screenshots/`.
+`screenshots/`, the trailer in `trailer/` and the animated GIFs in `gifs/`.
 
 ---
 
@@ -102,6 +102,34 @@ Start as **Draft** to check the page, then **Public**.
   11. `screenshots/01_title.png`: the title
 - **Icon** (for social links and embeds, optional): `art/icon_512.png`
 
+## The trailer
+
+- **File:** `trailer/SeaTheyAreAngry-trailer.mp4` (40 seconds, 1280x720, with sound), and
+  `trailer/poster.png` to use as its thumbnail.
+- **itch.io cannot host the video itself.** The "Gameplay video or trailer" field only
+  takes a link to YouTube or Vimeo. So: upload the MP4 to YouTube (or Vimeo) yourself, set
+  `poster.png` as the thumbnail, and paste the video's link into that field. Until that is
+  done the page has no trailer.
+- A title for the upload: `Sea They Are Angry: trailer`. All the footage is the game
+  itself and all the sound is the game's own music and effects.
+
+## The animated GIFs
+
+Six short loops in `gifs/`, each under 2.5 MB (itch refuses images over 3 MB). Use them in
+either of two places: add them to the screenshot list like any screenshot (itch plays
+them), or put them in the description with the editor's image button, between its
+sections. Two or three in the description is plenty; the rest can go in the screenshots.
+
+1. `gifs/01_kirkhaven_fog.gif`: the fog on the west slip, the lamps going out, the pale
+   eyes coming up out of it. Best at the top of the description, or first screenshot.
+2. `gifs/02_shotgun.gif`: a keeper's shotgun, both barrels, on the quay.
+3. `gifs/03_fire.gif`: a petrol bomb and the flamer on the quay. Beside the weapons text.
+4. `gifs/04_the_escape.gif`: the Mary Ann, climbers on her side. Beside "The Escape".
+5. `gifs/05_the_beam.gif`: the lighthouse beam burning them on the beach.
+6. `gifs/06_the_kraken.gif`: the kraken rearing up at the light. Beside the last act.
+
+The trailer and the GIFs are made by the scripts in `tools/trailer/` (its README says how).
+
 ## Theme suggestion (Edit theme)
 
 - Background: `#0b1018` (night sea); inner column: `#141a24`
@@ -110,8 +138,5 @@ Start as **Draft** to check the page, then **Public**.
 
 ## What's not on the page yet
 
-- **A trailer or GIF.** itch takes a YouTube or Vimeo link for a trailer. The old reel in
-  `build/sea_reel.mp4` is from before the story, so it's out of date; a new one would need
-  recording on a real PC (the cloud machine renders at about one frame a second).
 - **The Windows build has never been run on Windows.** Try it yourself before going
   public.

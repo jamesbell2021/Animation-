@@ -27,7 +27,7 @@ GIFS = {
     "03_fire": ("fire", 1.2, 3.0, 520, 12, "cut"),
     "04_the_escape": ("boat", 0.4, 2.0, 520, 12, "pingpong"),
     "05_the_beam": ("beam", 1.0, 3.0, 520, 12, "cut"),
-    "06_the_kraken": ("rear", 0.8, 3.2, 520, 12, "cut"),
+    "06_the_kraken": ("rear", 0.6, 2.6, 520, 12, "cut"),
 }
 # Tried in order until the file fits: (colours, width scale, fps scale, bayer scale).
 LADDER = [(128, 1.0, 1.0, 3), (96, 1.0, 1.0, 3), (64, 1.0, 1.0, 3), (64, 0.92, 1.0, 3), (64, 0.92, 0.84, 4), (48, 0.92, 0.84, 4),
