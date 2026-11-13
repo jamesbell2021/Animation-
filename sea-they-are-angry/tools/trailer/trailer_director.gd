@@ -399,7 +399,7 @@ func _setup_fog() -> void:
 
 func _direct_fog(t: float) -> void:
 	var k := t / 5.0
-	flood(lerpf(0.1, 0.4, smoothstep(0.0, 1.0, k)))
+	flood(lerpf(0.08, 0.27, smoothstep(0.0, 1.0, k)))
 	if at(1.3, t, "l1"):
 		main.lamps[1].on = false
 	if at(2.3, t, "l2"):
@@ -624,6 +624,19 @@ func rock_night(storm: float) -> void:
 	if main.camp != null and main.camp.generator != null:
 		main.camp.generator.fuel = 100.0
 
+## The camp's searchlights, all turned on one point and held there.
+func searchlights(point: Vector3) -> void:
+	for sl in main.camp.searchlights:
+		if not sl._on:
+			continue
+		sl.set_physics_process(false)
+		sl._head.look_at(point, Vector3.UP)
+		var r: float = clampf(sl.global_position.distance_to(point) + 7.0, 10.0, 44.0)
+		sl._light.spot_range = r
+		sl._cone_mesh.height = r
+		sl._cone_mesh.bottom_radius = r * tan(deg_to_rad(sl.current_angle()))
+		sl._cone.position = Vector3(0.0, 0.0, -r * 0.5)
+
 func weather() -> Weather:
 	return main.atmosphere.weather
 
@@ -683,7 +696,7 @@ func kraken_up(at_point: Vector2, ph: String) -> Kraken:
 
 # It rises off the east of the holm, over the camp's huts and wire.
 func _setup_rise() -> void:
-	rock_night(0.85)
+	rock_night(0.6)
 	for i in 3:
 		away(i)
 
@@ -691,15 +704,14 @@ func _direct_rise(t: float) -> void:
 	if at(-0.1, t, "rise"):
 		main.story.raise_kraken()
 		var kr: Kraken = main.story.kraken
-		kr.body.rise(4.2)
+		kr.body.rise(3.4)
 		if kr._bar != null:
 			kr._bar.visible = false
 		_a["kr"] = kr
 	if at(2.2, t, "flash"):
 		weather().strike(false, false)
-	var c := Terrain.CAMP_C
 	var k := t / 5.0
-	shoot(mix(Vector3(c.x - 9.0, 3.4, c.y + 5.5), Vector3(c.x - 7.5, 3.0, c.y + 5.0), k), mix(Vector3(66.0, 6.0, 4.0), Vector3(67.0, 10.5, 4.0), k), 56.0)
+	shoot(mix(Vector3(52.0, 6.9, 10.5), Vector3(53.5, 6.2, 9.6), k), mix(Vector3(68.5, 3.0, 3.8), Vector3(68.5, 6.8, 3.8), k), 50.0)
 
 # Stage one: its arms over the wire and down on the huts, the searchlights on them.
 func _setup_camp() -> void:
@@ -722,7 +734,7 @@ func _direct_camp(t: float) -> void:
 	if at(2.6, t, "flash"):
 		weather().strike(false, false)
 	var k := t / 4.4
-	shoot(mix(Vector3(c.x - 10.5, 3.2, c.y + 9.0), Vector3(c.x - 9.0, 2.7, c.y + 8.0), k), mix(Vector3(c.x + 9.0, 6.0, c.y - 1.0), Vector3(c.x + 9.0, 6.5, c.y - 1.0), k), 58.0)
+	shoot(mix(Vector3(c.x - 8.2, 3.6, c.y + 8.2), Vector3(c.x - 7.0, 3.1, c.y + 7.4), k), mix(Vector3(c.x + 12.0, 5.5, c.y - 0.5), Vector3(c.x + 12.0, 6.2, c.y - 0.5), k), 58.0)
 
 func eyes_mid(kr: Kraken) -> Vector3:
 	var eyes: Array = kr.body.eye_points()
@@ -773,11 +785,11 @@ func _direct_rear(t: float) -> void:
 	var kr: Kraken = _a["kr"]
 	kr._slam_t = 99.0
 	kr._grip_t = 0.0
-	aim_lamp(kr.global_position + Vector3(0.0, 3.0, 0.0))
+	aim_lamp(kr.global_position + Vector3(0.0, 5.0, 0.0))
 	if at(0.3, t, "rear"):
 		kr._rear()
 	if at(2.3, t, "flash"):
 		weather().strike(false, false)
-	var bp := Terrain.beach_point(0, 0.55, 3.0)
+	var kp := kr.global_position
 	var k := t / 4.6
-	shoot(bp + mix(Vector3(0.0, 1.6, 2.0), Vector3(0.6, 1.3, 1.0), k), mix(kr.global_position + Vector3(0.0, 5.0, 0.0), kr.global_position + Vector3(0.0, 8.5, 0.0), k), 60.0)
+	shoot(mix(Vector3(7.5, 4.6, 15.0), Vector3(8.5, 4.0, 13.5), k), mix(kp + Vector3(0.0, 4.5, 0.0), kp + Vector3(0.0, 8.0, 0.0), k), 58.0)
