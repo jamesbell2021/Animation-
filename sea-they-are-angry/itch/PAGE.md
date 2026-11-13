@@ -1,7 +1,7 @@
 # Sea They Are Angry: the itch.io page
 
 Everything to fill in on itch.io's "Create new project" form, in the form's order, for
-version 1.3.2. The description itself is in `description.html` (open it in a browser,
+version 1.3.3. The description itself is in `description.html` (open it in a browser,
 select all, copy, and paste into itch's description box: the formatting comes with it).
 How to upload the builds is in `UPLOAD.md`. The art is in `art/`, the screenshots in
 `screenshots/`, the trailer in `trailer/` and the animated GIFs in `gifs/`.
@@ -32,8 +32,8 @@ Your call. Pay-what-you-want with a suggested price, or free with donations, bot
 first release. itch lets you change it later.
 
 ## Uploads
-- `SeaTheyAreAngry-1.3.2-windows.zip`: tick **Windows** ("This file will be played on")
-- `SeaTheyAreAngry-1.3.2-linux.zip`: tick **Linux**
+- `SeaTheyAreAngry-1.3.3-windows.zip`: tick **Windows** ("This file will be played on")
+- `SeaTheyAreAngry-1.3.3-linux.zip`: tick **Linux**
 
 (Or push them with butler: see `UPLOAD.md`. butler is better: players get small patches
 for updates and the itch app installs it cleanly.)

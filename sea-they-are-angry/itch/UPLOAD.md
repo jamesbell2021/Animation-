@@ -5,8 +5,8 @@ machine they are in `build/itch/`:
 
 | File | What | itch upload: "This file will be played on" |
 |---|---|---|
-| `SeaTheyAreAngry-1.3.2-windows.zip` | the game for Windows: the .exe, the .pck, README.txt, licences | Windows |
-| `SeaTheyAreAngry-1.3.2-linux.zip` | the game for Linux: the binary (already executable), the .pck, README.txt, licences | Linux |
+| `SeaTheyAreAngry-1.3.3-windows.zip` | the game for Windows: the .exe, the .pck, README.txt, licences | Windows |
+| `SeaTheyAreAngry-1.3.3-linux.zip` | the game for Linux: the binary (already executable), the .pck, README.txt, licences | Linux |
 | `windows/`, `linux/` | the same, unzipped, for butler | |
 
 ## The easy way: upload the zips
@@ -26,8 +26,8 @@ game cleanly.
 3. Push each platform to its own channel (replace `yourname` with your itch.io user name):
 
    ```
-   butler push build/itch/windows yourname/sea-they-are-angry:windows --userversion 1.3.2
-   butler push build/itch/linux   yourname/sea-they-are-angry:linux   --userversion 1.3.2
+   butler push build/itch/windows yourname/sea-they-are-angry:windows --userversion 1.3.3
+   butler push build/itch/linux   yourname/sea-they-are-angry:linux   --userversion 1.3.3
    ```
 
    The channel names `windows` and `linux` tell itch which platform each is, so you don't

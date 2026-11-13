@@ -1,6 +1,6 @@
 # Handoff: Sea They Are Angry
 
-**v1.3.2 (the flamer's nozzle and a proper shotgun; solid boats and furniture; hits that land, keepers' knacks, the rock's days and nights, the seven's requests, a kraken in three stages, stars and unlocks) is the current build** (`docs/RELEASE_NOTES_v1.3.2.md`; earlier notes are v1.3.1, v1.3.0, v1.2.1, v1.2.0, v1.1.2, v1.1.1, v1.1.0, v1.0.0, v0.1.4 and v0.1.0). The cloud session can't push tags: make `sea-v1.3.2`, or a release, on GitHub's Releases page. Read this first, then `docs/STORY.md` (the story, which everything written for players must agree with), `docs/DESIGN.md` (the rock), `docs/KIRKHAVEN.md` (the town), `docs/DECISIONS.md` (why, newest last) and `git log`. Brought up to date 2026-11-10.
+**v1.3.3 (the seven walk forwards; the flamer's nozzle and a proper shotgun; solid boats and furniture; hits that land, keepers' knacks, the rock's days and nights, the seven's requests, a kraken in three stages, stars and unlocks) is the current build** (`docs/RELEASE_NOTES_v1.3.3.md`; earlier notes are v1.3.2, v1.3.1, v1.3.0, v1.2.1, v1.2.0, v1.1.2, v1.1.1, v1.1.0, v1.0.0, v0.1.4 and v0.1.0). The cloud session can't push tags: make `sea-v1.3.3`, or a release, on GitHub's Releases page. Read this first, then `docs/STORY.md` (the story, which everything written for players must agree with), `docs/DESIGN.md` (the rock), `docs/KIRKHAVEN.md` (the town), `docs/DECISIONS.md` (why, newest last) and `git log`. Brought up to date 2026-11-10.
 
 ## Where things stand
 

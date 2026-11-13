@@ -1,6 +1,6 @@
 # The itch.io pack
 
-Everything for the game's itch.io page, for version 1.3.2.
+Everything for the game's itch.io page, for version 1.3.3.
 
 - `PAGE.md`: what to type into each field of itch's project form, the tags, the order of
   the screenshots, and a colour theme.
