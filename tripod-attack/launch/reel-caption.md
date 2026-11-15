@@ -21,6 +21,25 @@ Windows · Linux · Android. Link in bio.
 #waroftheworlds #hgwells #pixelart #gamedev #indiegames #androidgames #pcgaming #belfast
 #northernireland #madeinni #scifi #80s
 
+## TikTok (James, 15 November: "New trailer for this game needed for tik tok")
+
+Video: `tools/make_tiktok.py` from a fresh take of the same reel choreography (31 s, 1080 x 1920,
+30 fps, the game's own audio normalised). The differences from the Instagram reel are TikTok's: no
+opening card, the hook ("THE MARTIANS ARE IN BELFAST") over the running game in the first second,
+the game band in the safe zone clear of the caption and buttons, bigger and fewer captions timed to
+the take's EVENT lines, and one end card: play it now, free in the browser, link in bio, the handle.
+
+Caption (TikTok shows the first line before "more", so it carries the hook):
+
+The Martians are in Belfast. Shoot the legs, duck the Heat-Ray, take Europe back. Tripod Attack! is
+free to play in your browser, link in bio. #indiegame #gamedev #retrogaming #arcade #waroftheworlds
+#godot #indiedev
+
+Posting notes: upload the file itself, choose the cover from the collapse (the script writes
+`-cover.jpg`); the game's sound is on the video, and a trending sound can be laid under it at low
+volume in TikTok's editor if James wants the reach that brings; reply to every comment in the first
+hour.
+
 ## Short version (Stories / X / Threads)
 
 TRIPOD ATTACK! is out. Shoot the legs, duck the Heat-Ray, take Europe back. A vector arcade game
