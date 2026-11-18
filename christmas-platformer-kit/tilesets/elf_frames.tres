@@ -1,0 +1,101 @@
+[gd_resource type="SpriteFrames" load_steps=12 format=3]
+
+[ext_resource type="Texture2D" path="res://tiles/player_elf.png" id="1_0gxvk"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_5el3t"]
+atlas = ExtResource("1_0gxvk")
+region = Rect2(512, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_53kbe"]
+atlas = ExtResource("1_0gxvk")
+region = Rect2(576, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_4n1we"]
+atlas = ExtResource("1_0gxvk")
+region = Rect2(448, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_jam50"]
+atlas = ExtResource("1_0gxvk")
+region = Rect2(0, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_5os8s"]
+atlas = ExtResource("1_0gxvk")
+region = Rect2(64, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_06ydr"]
+atlas = ExtResource("1_0gxvk")
+region = Rect2(384, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_sf4de"]
+atlas = ExtResource("1_0gxvk")
+region = Rect2(128, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_d6yct"]
+atlas = ExtResource("1_0gxvk")
+region = Rect2(192, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_s6uly"]
+atlas = ExtResource("1_0gxvk")
+region = Rect2(256, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_cnkt6"]
+atlas = ExtResource("1_0gxvk")
+region = Rect2(320, 0, 64, 64)
+
+[resource]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_5el3t")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_53kbe")
+}],
+"loop": true,
+"name": &"climb",
+"speed": 6.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_4n1we")
+}],
+"loop": false,
+"name": &"fall",
+"speed": 1.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_jam50")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_5os8s")
+}],
+"loop": true,
+"name": &"idle",
+"speed": 3.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_06ydr")
+}],
+"loop": false,
+"name": &"jump",
+"speed": 1.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_sf4de")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_d6yct")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_s6uly")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_cnkt6")
+}],
+"loop": true,
+"name": &"run",
+"speed": 10.0
+}]

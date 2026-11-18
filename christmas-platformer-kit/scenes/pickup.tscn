@@ -1,0 +1,21 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/pickup.gd" id="1_2bg4x"]
+[ext_resource type="SpriteFrames" path="res://tilesets/pickup_frames.tres" id="2_v1m4u"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_cl3l7"]
+radius = 20.0
+
+[node name="Pickup" type="Area2D" groups=["pickups"]]
+collision_layer = 0
+collision_mask = 4
+script = ExtResource("1_2bg4x")
+kind = "star"
+value = 1
+
+[node name="Sprite" type="AnimatedSprite2D" parent="."]
+sprite_frames = ExtResource("2_v1m4u")
+animation = &"star"
+
+[node name="Shape" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_cl3l7")

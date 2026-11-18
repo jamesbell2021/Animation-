@@ -1,0 +1,403 @@
+{
+ "platforms": {
+  "plank_L": {
+   "col": 0,
+   "row": 0,
+   "collide": "oneway"
+  },
+  "candy_L": {
+   "col": 4,
+   "row": 0,
+   "collide": "oneway"
+  },
+  "ice_slab_L": {
+   "col": 0,
+   "row": 1,
+   "collide": "oneway",
+   "slippery": true
+  },
+  "plank_M": {
+   "col": 1,
+   "row": 0,
+   "collide": "oneway"
+  },
+  "candy_M": {
+   "col": 5,
+   "row": 0,
+   "collide": "oneway"
+  },
+  "ice_slab_M": {
+   "col": 1,
+   "row": 1,
+   "collide": "oneway",
+   "slippery": true
+  },
+  "plank_R": {
+   "col": 2,
+   "row": 0,
+   "collide": "oneway"
+  },
+  "candy_R": {
+   "col": 6,
+   "row": 0,
+   "collide": "oneway"
+  },
+  "ice_slab_R": {
+   "col": 2,
+   "row": 1,
+   "collide": "oneway",
+   "slippery": true
+  },
+  "plank_single": {
+   "col": 3,
+   "row": 0,
+   "collide": "oneway"
+  },
+  "candy_single": {
+   "col": 7,
+   "row": 0,
+   "collide": "oneway"
+  },
+  "ice_slab_single": {
+   "col": 3,
+   "row": 1,
+   "collide": "oneway",
+   "slippery": true
+  },
+  "crate": {
+   "col": 4,
+   "row": 1,
+   "collide": "full"
+  },
+  "gift_block": {
+   "col": 5,
+   "row": 1,
+   "collide": "full",
+   "hit_block": true
+  },
+  "ice_block": {
+   "col": 6,
+   "row": 1,
+   "collide": "full",
+   "slippery": true
+  },
+  "cracked_ice": {
+   "col": 7,
+   "row": 1,
+   "collide": "full",
+   "crumble": true
+  },
+  "spikes_up": {
+   "col": 0,
+   "row": 2,
+   "hazard": true
+  },
+  "icicles_down": {
+   "col": 1,
+   "row": 2,
+   "hazard": true
+  },
+  "spring": {
+   "col": 2,
+   "row": 2,
+   "collide": "spring",
+   "bounce": 1.8
+  },
+  "ladder_top": {
+   "col": 3,
+   "row": 2,
+   "climbable": true
+  },
+  "ladder_mid": {
+   "col": 4,
+   "row": 2,
+   "climbable": true
+  },
+  "spikes_left": {
+   "col": 5,
+   "row": 2,
+   "hazard": true
+  },
+  "spikes_right": {
+   "col": 6,
+   "row": 2,
+   "hazard": true
+  },
+  "used_block": {
+   "col": 7,
+   "row": 2,
+   "collide": "full"
+  },
+  "water_top": {
+   "col": 0,
+   "row": 3,
+   "hazard": true,
+   "frames": 4,
+   "fps": 6
+  },
+  "water_deep": {
+   "col": 4,
+   "row": 3,
+   "hazard": true,
+   "frames": 4,
+   "fps": 6
+  }
+ },
+ "decorations": {
+  "christmas_tree": {
+   "col": 0,
+   "row": 0,
+   "w": 2,
+   "h": 3
+  },
+  "pine_tree": {
+   "col": 2,
+   "row": 0,
+   "w": 2,
+   "h": 3
+  },
+  "cabin": {
+   "col": 4,
+   "row": 0,
+   "w": 3,
+   "h": 3
+  },
+  "north_pole_sign": {
+   "col": 7,
+   "row": 0,
+   "w": 1,
+   "h": 3,
+   "goal": true
+  },
+  "snowman": {
+   "col": 0,
+   "row": 3,
+   "w": 1,
+   "h": 2
+  },
+  "lamp_post": {
+   "col": 1,
+   "row": 3,
+   "w": 1,
+   "h": 2
+  },
+  "present_red": {
+   "col": 2,
+   "row": 3,
+   "w": 1,
+   "h": 1
+  },
+  "present_green": {
+   "col": 3,
+   "row": 3,
+   "w": 1,
+   "h": 1
+  },
+  "present_blue": {
+   "col": 4,
+   "row": 3,
+   "w": 1,
+   "h": 1
+  },
+  "present_stack": {
+   "col": 5,
+   "row": 3,
+   "w": 1,
+   "h": 1
+  },
+  "candy_cane": {
+   "col": 6,
+   "row": 3,
+   "w": 1,
+   "h": 1
+  },
+  "signpost": {
+   "col": 7,
+   "row": 3,
+   "w": 1,
+   "h": 1
+  },
+  "wreath": {
+   "col": 2,
+   "row": 4,
+   "w": 1,
+   "h": 1
+  },
+  "stocking": {
+   "col": 3,
+   "row": 4,
+   "w": 1,
+   "h": 1
+  },
+  "holly": {
+   "col": 4,
+   "row": 4,
+   "w": 1,
+   "h": 1
+  },
+  "bell": {
+   "col": 5,
+   "row": 4,
+   "w": 1,
+   "h": 1
+  },
+  "snowy_bush": {
+   "col": 6,
+   "row": 4,
+   "w": 1,
+   "h": 1
+  },
+  "gingerbread_man": {
+   "col": 7,
+   "row": 4,
+   "w": 1,
+   "h": 1
+  },
+  "snowy_rock": {
+   "col": 0,
+   "row": 5,
+   "w": 1,
+   "h": 1
+  },
+  "snow_pile": {
+   "col": 1,
+   "row": 5,
+   "w": 1,
+   "h": 1
+  },
+  "icicles_hanging": {
+   "col": 2,
+   "row": 5,
+   "w": 1,
+   "h": 1
+  },
+  "fence_L": {
+   "col": 3,
+   "row": 5,
+   "w": 1,
+   "h": 1
+  },
+  "fence_M": {
+   "col": 4,
+   "row": 5,
+   "w": 1,
+   "h": 1
+  },
+  "fence_R": {
+   "col": 5,
+   "row": 5,
+   "w": 1,
+   "h": 1
+  },
+  "string_lights": {
+   "col": 6,
+   "row": 5,
+   "w": 1,
+   "h": 1,
+   "frames": 2,
+   "fps": 2
+  }
+ },
+ "pickups": [
+  {
+   "name": "star",
+   "row": 0,
+   "frames": 6,
+   "fps": 10,
+   "loop": true
+  },
+  {
+   "name": "present",
+   "row": 1,
+   "frames": 6,
+   "fps": 8,
+   "loop": true
+  },
+  {
+   "name": "candy_cane",
+   "row": 2,
+   "frames": 6,
+   "fps": 8,
+   "loop": true
+  },
+  {
+   "name": "bauble",
+   "row": 3,
+   "frames": 6,
+   "fps": 8,
+   "loop": true
+  },
+  {
+   "name": "cookie",
+   "row": 4,
+   "frames": 6,
+   "fps": 8,
+   "loop": true
+  },
+  {
+   "name": "bell",
+   "row": 5,
+   "frames": 6,
+   "fps": 8,
+   "loop": true
+  },
+  {
+   "name": "heart",
+   "row": 6,
+   "frames": 6,
+   "fps": 8,
+   "loop": true
+  },
+  {
+   "name": "snowflake",
+   "row": 7,
+   "frames": 6,
+   "fps": 8,
+   "loop": true
+  },
+  {
+   "name": "sparkle",
+   "row": 8,
+   "frames": 6,
+   "fps": 14,
+   "loop": false
+  }
+ ],
+ "player": [
+  {
+   "name": "idle",
+   "start": 0,
+   "frames": 2,
+   "fps": 3,
+   "loop": true
+  },
+  {
+   "name": "run",
+   "start": 2,
+   "frames": 4,
+   "fps": 10,
+   "loop": true
+  },
+  {
+   "name": "jump",
+   "start": 6,
+   "frames": 1,
+   "fps": 1,
+   "loop": false
+  },
+  {
+   "name": "fall",
+   "start": 7,
+   "frames": 1,
+   "fps": 1,
+   "loop": false
+  },
+  {
+   "name": "climb",
+   "start": 8,
+   "frames": 2,
+   "fps": 6,
+   "loop": true
+  }
+ ]
+}

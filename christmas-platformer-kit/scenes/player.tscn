@@ -1,0 +1,71 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scripts/player.gd" id="1_xpsdj"]
+[ext_resource type="SpriteFrames" path="res://tilesets/elf_frames.tres" id="2_3eu8h"]
+[ext_resource type="Texture2D" path="res://backgrounds/snow_particle.png" id="3_34dv8"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_nybak"]
+size = Vector2(26, 54)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_l4nmc"]
+size = Vector2(18, 42)
+
+[node name="Player" type="CharacterBody2D"]
+collision_layer = 4
+floor_snap_length = 8.0
+script = ExtResource("1_xpsdj")
+run_speed = 360.0
+accel = 2800.0
+friction = 3200.0
+ice_accel = 650.0
+ice_friction = 220.0
+air_accel = 1800.0
+jump_velocity = -820.0
+gravity = 2200.0
+fall_gravity_mult = 1.35
+jump_cut = 0.45
+max_fall = 1300.0
+coyote_time = 0.1
+jump_buffer = 0.12
+climb_speed = 230.0
+
+[node name="Sprite" type="AnimatedSprite2D" parent="."]
+sprite_frames = ExtResource("2_3eu8h")
+animation = &"idle"
+autoplay = "idle"
+
+[node name="Shape" type="CollisionShape2D" parent="."]
+position = Vector2(0, 2)
+shape = SubResource("RectangleShape2D_nybak")
+
+[node name="Hurtbox" type="Area2D" parent="."]
+collision_layer = 0
+collision_mask = 2
+
+[node name="Shape" type="CollisionShape2D" parent="Hurtbox"]
+position = Vector2(0, 4)
+shape = SubResource("RectangleShape2D_l4nmc")
+
+[node name="Camera" type="Camera2D" parent="."]
+position_smoothing_enabled = true
+position_smoothing_speed = 7.0
+drag_horizontal_enabled = true
+drag_left_margin = 0.1
+drag_right_margin = 0.1
+
+[node name="Snowfall" type="CPUParticles2D" parent="Camera"]
+z_index = 10
+position = Vector2(0, -420)
+amount = 120
+lifetime = 6.0
+preprocess = 6.0
+texture = ExtResource("3_34dv8")
+emission_shape = 3
+emission_rect_extents = Vector2(900, 10)
+direction = Vector2(0.15, 1)
+spread = 12.0
+gravity = Vector2(0, 30)
+initial_velocity_min = 50.0
+initial_velocity_max = 110.0
+scale_amount_min = 0.5
+color = Color(1, 1, 1, 0.85)
